@@ -3,8 +3,10 @@
 namespace App\Concerns;
 
 use App\Models\User;
+use App\Tenancy\CurrentTenant;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
 
 trait ProfileValidationRules
 {
@@ -43,9 +45,17 @@ trait ProfileValidationRules
             'string',
             'email',
             'max:255',
-            $userId === null
-                ? Rule::unique(User::class)
-                : Rule::unique(User::class)->ignore($userId),
+            $this->buildEmailUniqueRule($userId),
         ];
+    }
+
+    private function buildEmailUniqueRule(?int $userId): Unique
+    {
+        $restaurantId = app(CurrentTenant::class)->id();
+
+        $rule = Rule::unique(User::class, 'email')
+            ->where(fn ($q) => $q->where('restaurant_id', $restaurantId));
+
+        return $userId === null ? $rule : $rule->ignore($userId);
     }
 }

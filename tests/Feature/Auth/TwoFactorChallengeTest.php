@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\UserRole;
+use App\Models\Restaurant;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
@@ -8,10 +10,26 @@ beforeEach(function () {
     $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
 });
 
-test('two factor challenge redirects to login when not authenticated', function () {
-    $response = $this->get(route('two-factor.login'));
+function tfRestaurant(): Restaurant
+{
+    return Restaurant::create([
+        'name' => 'TF Test',
+        'subdomain' => 'tftest',
+        'email' => 'hello@tftest.test',
+        'street' => '1 Main',
+        'city' => 'NYC',
+        'state' => 'NY',
+        'postal_code' => '10001',
+    ]);
+}
 
-    $response->assertRedirect(route('login'));
+test('two factor challenge redirects to login when not authenticated', function () {
+    $restaurant = tfRestaurant();
+    $base = "http://{$restaurant->subdomain}.plateful.test";
+
+    $response = $this->get("{$base}/two-factor-challenge");
+
+    $response->assertRedirect();
 });
 
 test('two factor challenge can be rendered', function () {
@@ -20,14 +38,20 @@ test('two factor challenge can be rendered', function () {
         'confirmPassword' => true,
     ]);
 
-    $user = User::factory()->withTwoFactor()->create();
+    $restaurant = tfRestaurant();
+    $base = "http://{$restaurant->subdomain}.plateful.test";
 
-    $this->post(route('login'), [
+    $user = User::factory()->withTwoFactor()->create([
+        'restaurant_id' => $restaurant->id,
+        'role' => UserRole::Customer,
+    ]);
+
+    $this->post("{$base}/login", [
         'email' => $user->email,
         'password' => 'password',
     ]);
 
-    $this->get(route('two-factor.login'))
+    $this->get("{$base}/two-factor-challenge")
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('auth/TwoFactorChallenge'),

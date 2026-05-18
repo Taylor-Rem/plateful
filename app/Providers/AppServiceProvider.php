@@ -2,20 +2,21 @@
 
 namespace App\Providers;
 
+use App\Models\Restaurant;
+use App\Tenancy\CurrentTenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        $this->app->singleton(CurrentTenant::class);
     }
 
     /**
@@ -24,6 +25,16 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        Route::bind('restaurant', function ($value) {
+            $restaurant = Restaurant::query()->where('subdomain', $value)->first();
+
+            if (! $restaurant) {
+                throw new NotFoundHttpException;
+            }
+
+            return $restaurant;
+        });
     }
 
     /**

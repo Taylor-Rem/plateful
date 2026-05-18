@@ -4,8 +4,12 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
+use App\Enums\UserRole;
 use App\Models\User;
+use App\Tenancy\CurrentTenant;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -13,21 +17,36 @@ class CreateNewUser implements CreatesNewUsers
     use PasswordValidationRules, ProfileValidationRules;
 
     /**
-     * Validate and create a newly registered user.
-     *
      * @param  array<string, string>  $input
      */
     public function create(array $input): User
     {
+        $request = app(Request::class);
+        $adminHost = 'admin.'.config('platform.primary_domain');
+
+        if ($request->getHost() === $adminHost) {
+            abort(404);
+        }
+
+        $tenant = app(CurrentTenant::class);
+
+        if (! $tenant->check()) {
+            throw ValidationException::withMessages([
+                'email' => 'Registration is only available on a restaurant site.',
+            ]);
+        }
+
         Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
         ])->validate();
 
         return User::create([
+            'restaurant_id' => $tenant->id(),
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
+            'role' => UserRole::Customer,
         ]);
     }
 }

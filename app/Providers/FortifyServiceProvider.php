@@ -4,13 +4,18 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Enums\UserRole;
+use App\Models\User;
+use App\Tenancy\CurrentTenant;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
@@ -21,7 +26,10 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(
+            LoginResponse::class,
+            \App\Http\Responses\LoginResponse::class,
+        );
     }
 
     /**
@@ -34,6 +42,16 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
     }
 
+    private function adminHost(): string
+    {
+        return 'admin.'.config('platform.primary_domain');
+    }
+
+    private function isAdminHost(Request $request): bool
+    {
+        return $request->getHost() === $this->adminHost();
+    }
+
     /**
      * Configure Fortify actions.
      */
@@ -41,6 +59,37 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $email = (string) $request->input(Fortify::username());
+            $password = (string) $request->input('password');
+
+            if ($this->isAdminHost($request)) {
+                $user = User::query()
+                    ->where('email', $email)
+                    ->where('role', UserRole::Admin)
+                    ->whereNull('restaurant_id')
+                    ->first();
+            } else {
+                $tenant = app(CurrentTenant::class);
+                $query = User::query()->where('email', $email)
+                    ->where('role', UserRole::Customer);
+
+                if ($tenant->check()) {
+                    $query->where('restaurant_id', $tenant->id());
+                } else {
+                    return null;
+                }
+
+                $user = $query->first();
+            }
+
+            if ($user && Hash::check($password, $user->password)) {
+                return $user;
+            }
+
+            return null;
+        });
     }
 
     /**
@@ -48,11 +97,20 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        Fortify::loginView(fn (Request $request) => Inertia::render('auth/Login', [
-            'canResetPassword' => Features::enabled(Features::resetPasswords()),
-            'canRegister' => Features::enabled(Features::registration()),
-            'status' => $request->session()->get('status'),
-        ]));
+        Fortify::loginView(function (Request $request) {
+            if ($this->isAdminHost($request)) {
+                return Inertia::render('Admin/Login', [
+                    'canResetPassword' => Features::enabled(Features::resetPasswords()),
+                    'status' => $request->session()->get('status'),
+                ]);
+            }
+
+            return Inertia::render('auth/Login', [
+                'canResetPassword' => Features::enabled(Features::resetPasswords()),
+                'canRegister' => Features::enabled(Features::registration()),
+                'status' => $request->session()->get('status'),
+            ]);
+        });
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/ResetPassword', [
             'email' => $request->email,
@@ -68,9 +126,16 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(fn () => Inertia::render('auth/Register', [
-            'passwordRules' => Password::defaults()->toPasswordRulesString(),
-        ]));
+        // Admin host has no public registration. Tenant hosts use the customer register view.
+        Fortify::registerView(function (Request $request) {
+            if ($this->isAdminHost($request)) {
+                abort(404);
+            }
+
+            return Inertia::render('auth/Register', [
+                'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            ]);
+        });
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/TwoFactorChallenge'));
 
