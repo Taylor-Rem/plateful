@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import AppearanceTabs from '@/components/AppearanceTabs.vue';
 
 defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -7,34 +8,37 @@ defineProps<{
 </script>
 
 <template>
-    <div class="min-h-screen bg-neutral-50">
-        <header class="border-b border-neutral-200 bg-white">
+    <div class="min-h-screen bg-background text-foreground">
+        <header class="border-b border-border bg-card">
             <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
                 <div class="flex items-center gap-4">
-                    <Link href="/" class="text-sm text-neutral-500 hover:text-neutral-900">←</Link>
-                    <h1 class="text-lg font-semibold text-neutral-900">{{ restaurant.name }}</h1>
+                    <Link href="/" class="text-sm text-muted-foreground hover:text-foreground">←</Link>
+                    <h1 class="text-lg font-semibold text-foreground">{{ restaurant.name }}</h1>
                 </div>
-                <Link
-                    href="/logout"
-                    method="post"
-                    as="button"
-                    class="text-sm text-neutral-600 hover:text-neutral-900"
-                >
-                    Log out
-                </Link>
+                <div class="flex items-center gap-4">
+                    <AppearanceTabs />
+                    <Link
+                        href="/logout"
+                        method="post"
+                        as="button"
+                        class="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                        Log out
+                    </Link>
+                </div>
             </div>
-            <nav class="mx-auto flex max-w-5xl gap-6 px-6 pb-3 text-sm text-neutral-600">
+            <nav class="mx-auto flex max-w-5xl gap-6 px-6 pb-3 text-sm text-muted-foreground">
                 <Link
                     :href="`/${restaurant.subdomain}/dashboard`"
-                    class="hover:text-neutral-900"
+                    class="hover:text-foreground"
                 >
                     Dashboard
                 </Link>
-                <Link :href="`/${restaurant.subdomain}/menu`" class="hover:text-neutral-900">Menu</Link>
-                <Link :href="`/${restaurant.subdomain}/orders`" class="hover:text-neutral-900">Orders</Link>
+                <Link :href="`/${restaurant.subdomain}/menu`" class="hover:text-foreground">Menu</Link>
+                <Link :href="`/${restaurant.subdomain}/orders`" class="hover:text-foreground">Orders</Link>
                 <Link
                     :href="`/${restaurant.subdomain}/settings`"
-                    class="hover:text-neutral-900"
+                    class="hover:text-foreground"
                 >
                     Settings
                 </Link>

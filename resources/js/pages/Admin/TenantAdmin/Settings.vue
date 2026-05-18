@@ -68,16 +68,16 @@ const submit = (): void => {
 <template>
     <TenantAdminLayout :restaurant="restaurant">
         <Head :title="`${restaurant.name} Settings`" />
-        <h2 class="text-2xl font-semibold text-neutral-900">Settings</h2>
+        <h2 class="text-2xl font-semibold text-foreground">Settings</h2>
 
         <form class="mt-6 max-w-2xl space-y-6" @submit.prevent="submit">
-            <section class="rounded-lg border border-neutral-200 bg-white p-5">
-                <h3 class="text-base font-medium text-neutral-900">Branding</h3>
+            <section class="rounded-lg border border-border bg-card p-5">
+                <h3 class="text-base font-medium text-foreground">Branding</h3>
 
                 <div class="mt-4 grid gap-2">
                     <Label>Logo</Label>
                     <div class="flex items-start gap-4">
-                        <div class="flex size-24 items-center justify-center overflow-hidden rounded-md border border-dashed border-neutral-300 bg-neutral-50">
+                        <div class="flex size-24 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
                             <img
                                 v-if="newLogoPreview"
                                 :src="newLogoPreview"
@@ -90,26 +90,26 @@ const submit = (): void => {
                                 alt="Current logo"
                                 class="size-full object-contain"
                             />
-                            <span v-else class="px-2 text-center text-xs text-neutral-400">No logo</span>
+                            <span v-else class="px-2 text-center text-xs text-muted-foreground">No logo</span>
                         </div>
                         <div class="flex-1 space-y-2">
                             <input
                                 type="file"
                                 accept="image/jpeg,image/png,image/webp"
-                                class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-neutral-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-neutral-800"
+                                class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
                                 @change="onLogoChange"
                             />
-                            <p class="text-xs text-neutral-500">JPEG, PNG, or WebP up to 5 MB.</p>
+                            <p class="text-xs text-muted-foreground">JPEG, PNG, or WebP up to 5 MB.</p>
                             <div v-if="currentLogo && !form.remove_logo" class="flex items-center gap-2">
                                 <button
                                     type="button"
-                                    class="text-xs text-red-600 hover:text-red-800"
+                                    class="text-xs text-destructive hover:opacity-80"
                                     @click="markRemoveLogo"
                                 >
                                     Remove logo
                                 </button>
                             </div>
-                            <p v-if="form.remove_logo" class="text-xs text-amber-700">
+                            <p v-if="form.remove_logo" class="text-xs text-amber-600 dark:text-amber-400">
                                 Will remove logo on save.
                                 <button type="button" class="underline" @click="form.remove_logo = false">Undo</button>
                             </p>
@@ -126,7 +126,7 @@ const submit = (): void => {
                                 id="primary-color-picker"
                                 v-model="form.primary_color"
                                 type="color"
-                                class="h-9 w-12 cursor-pointer rounded border border-neutral-200"
+                                class="h-9 w-12 cursor-pointer rounded border border-input bg-background"
                             />
                             <Input id="primary-color" v-model="form.primary_color" class="flex-1" />
                         </div>
@@ -139,7 +139,7 @@ const submit = (): void => {
                                 id="secondary-color-picker"
                                 v-model="form.secondary_color"
                                 type="color"
-                                class="h-9 w-12 cursor-pointer rounded border border-neutral-200"
+                                class="h-9 w-12 cursor-pointer rounded border border-input bg-background"
                             />
                             <Input id="secondary-color" v-model="form.secondary_color" class="flex-1" />
                         </div>
@@ -148,8 +148,8 @@ const submit = (): void => {
                 </div>
             </section>
 
-            <section class="rounded-lg border border-neutral-200 bg-white p-5">
-                <h3 class="text-base font-medium text-neutral-900">Restaurant details</h3>
+            <section class="rounded-lg border border-border bg-card p-5">
+                <h3 class="text-base font-medium text-foreground">Restaurant details</h3>
                 <div class="mt-4 grid gap-4">
                     <div class="grid gap-2">
                         <Label for="name">Name</Label>
@@ -162,7 +162,7 @@ const submit = (): void => {
                             id="description"
                             v-model="form.description"
                             rows="3"
-                            class="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-neutral-400 focus:outline-none"
+                            class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                         <InputError :message="form.errors.description" />
                     </div>
@@ -183,13 +183,13 @@ const submit = (): void => {
 
             <div class="flex items-center gap-3">
                 <Button type="submit" :disabled="form.processing">Save settings</Button>
-                <span v-if="form.recentlySuccessful" class="text-sm text-green-600">Saved.</span>
+                <span v-if="form.recentlySuccessful" class="text-sm text-emerald-600 dark:text-emerald-400">Saved.</span>
             </div>
         </form>
 
-        <section class="mt-10 max-w-md rounded-lg border border-neutral-200 bg-white p-5">
-            <h3 class="text-lg font-medium text-neutral-900">Invite admin</h3>
-            <p class="mt-1 text-sm text-neutral-500">
+        <section class="mt-10 max-w-md rounded-lg border border-border bg-card p-5">
+            <h3 class="text-lg font-medium text-foreground">Invite admin</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
                 Send an invitation to a new admin for {{ restaurant.name }}.
             </p>
 

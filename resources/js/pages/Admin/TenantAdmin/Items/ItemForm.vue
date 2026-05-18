@@ -112,8 +112,8 @@ const modifierError = (index: number, field: string): string | undefined => {
 
 <template>
     <form class="space-y-6" @submit.prevent="submit">
-        <section class="rounded-lg border border-neutral-200 bg-white p-5">
-            <h3 class="text-base font-medium text-neutral-900">Details</h3>
+        <section class="rounded-lg border border-border bg-card p-5">
+            <h3 class="text-base font-medium text-foreground">Details</h3>
             <div class="mt-4 grid gap-4">
                 <div class="grid gap-2">
                     <Label for="item-name">Name</Label>
@@ -127,7 +127,7 @@ const modifierError = (index: number, field: string): string | undefined => {
                         id="item-description"
                         v-model="form.description"
                         rows="3"
-                        class="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-neutral-400 focus:outline-none"
+                        class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                     <InputError :message="form.errors.description" />
                 </div>
@@ -138,7 +138,7 @@ const modifierError = (index: number, field: string): string | undefined => {
                         <select
                             id="item-category"
                             v-model="form.menu_category_id"
-                            class="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-neutral-400 focus:outline-none"
+                            class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                             required
                         >
                             <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
@@ -163,7 +163,7 @@ const modifierError = (index: number, field: string): string | undefined => {
                 <div class="grid gap-2">
                     <Label>Image</Label>
                     <div class="flex items-start gap-4">
-                        <div class="flex size-28 items-center justify-center overflow-hidden rounded-md border border-dashed border-neutral-300 bg-neutral-50">
+                        <div class="flex size-28 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
                             <img
                                 v-if="newImagePreview"
                                 :src="newImagePreview"
@@ -176,25 +176,25 @@ const modifierError = (index: number, field: string): string | undefined => {
                                 alt="Current image"
                                 class="size-full object-cover"
                             />
-                            <span v-else class="px-2 text-center text-xs text-neutral-400">No image</span>
+                            <span v-else class="px-2 text-center text-xs text-muted-foreground">No image</span>
                         </div>
                         <div class="flex-1 space-y-2">
                             <input
                                 type="file"
                                 accept="image/jpeg,image/png,image/webp"
-                                class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-neutral-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-neutral-800"
+                                class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
                                 @change="onImageChange"
                             />
-                            <p class="text-xs text-neutral-500">JPEG, PNG, or WebP up to 5 MB.</p>
+                            <p class="text-xs text-muted-foreground">JPEG, PNG, or WebP up to 5 MB.</p>
                             <button
                                 v-if="currentImage && !form.remove_image"
                                 type="button"
-                                class="text-xs text-red-600 hover:text-red-800"
+                                class="text-xs text-destructive hover:opacity-80"
                                 @click="markRemoveImage"
                             >
                                 Remove image
                             </button>
-                            <p v-if="form.remove_image" class="text-xs text-amber-700">
+                            <p v-if="form.remove_image" class="text-xs text-amber-600 dark:text-amber-400">
                                 Will remove image on save.
                                 <button type="button" class="underline" @click="undoRemoveImage">Undo</button>
                             </p>
@@ -203,26 +203,30 @@ const modifierError = (index: number, field: string): string | undefined => {
                     </div>
                 </div>
 
-                <label class="flex items-center gap-2 text-sm text-neutral-800">
+                <label class="flex items-center gap-2 text-sm text-foreground">
                     <Checkbox v-model="form.is_available" />
                     Available on storefront
                 </label>
             </div>
         </section>
 
-        <section class="rounded-lg border border-neutral-200 bg-white p-5">
+        <section class="rounded-lg border border-border bg-card p-5">
             <div class="flex items-center justify-between">
-                <h3 class="text-base font-medium text-neutral-900">Modifiers</h3>
+                <h3 class="text-base font-medium text-foreground">Modifiers</h3>
                 <Button type="button" variant="outline" size="sm" @click="addModifier">
                     <Plus class="size-4" /> Add modifier
                 </Button>
             </div>
 
-            <p v-if="form.modifiers.length === 0" class="mt-4 text-sm text-neutral-500">
+            <p v-if="form.modifiers.length === 0" class="mt-4 text-sm text-muted-foreground">
                 No modifiers. Modifiers let customers choose size, toppings, etc.
             </p>
 
-            <div v-for="(mod, index) in form.modifiers" :key="index" class="mt-4 grid gap-2 rounded-md border border-neutral-100 p-3 sm:grid-cols-12 sm:items-end">
+            <div
+                v-for="(mod, index) in form.modifiers"
+                :key="index"
+                class="mt-4 grid gap-3 rounded-md border border-border bg-muted/30 p-3 sm:grid-cols-12 sm:items-end"
+            >
                 <div class="grid gap-1 sm:col-span-3">
                     <Label :for="`mod-name-${index}`">Name</Label>
                     <Input :id="`mod-name-${index}`" v-model="mod.name" required />
@@ -245,13 +249,13 @@ const modifierError = (index: number, field: string): string | undefined => {
                     <InputError :message="modifierError(index, 'price_delta')" />
                 </div>
                 <div class="flex items-center gap-3 sm:col-span-3">
-                    <label class="flex items-center gap-2 text-sm text-neutral-800">
+                    <label class="flex items-center gap-2 text-sm text-foreground">
                         <Checkbox v-model="mod.is_default" />
                         Default
                     </label>
                     <button
                         type="button"
-                        class="ml-auto rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600"
+                        class="ml-auto rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive"
                         aria-label="Remove modifier"
                         @click="removeModifier(index)"
                     >
@@ -261,14 +265,11 @@ const modifierError = (index: number, field: string): string | undefined => {
             </div>
         </section>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center justify-end gap-2">
+            <Button as-child variant="outline">
+                <Link :href="`${base}/menu`">Cancel</Link>
+            </Button>
             <Button type="submit" :disabled="form.processing">{{ isEdit ? 'Save changes' : 'Create item' }}</Button>
-            <Link
-                :href="`${base}/menu`"
-                class="rounded-md px-3 py-2 text-sm text-neutral-600 hover:text-neutral-900"
-            >
-                Cancel
-            </Link>
         </div>
     </form>
 </template>

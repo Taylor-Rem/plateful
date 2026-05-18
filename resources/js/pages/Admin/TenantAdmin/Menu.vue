@@ -110,11 +110,11 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
         <Head :title="`${restaurant.name} Menu`" />
 
         <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-semibold text-neutral-900">Menu</h2>
+            <h2 class="text-2xl font-semibold text-foreground">Menu</h2>
             <div class="flex items-center gap-2">
                 <Link
                     :href="`${base}/menu/items/create`"
-                    class="inline-flex items-center gap-1 rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-800"
+                    class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
                     <Plus class="size-4" /> Add item
                 </Link>
@@ -124,9 +124,9 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
             </div>
         </div>
 
-        <div v-if="localCategories.length === 0" class="mt-12 rounded-lg border border-dashed border-neutral-300 bg-white p-10 text-center">
-            <h3 class="text-base font-medium text-neutral-900">No categories yet</h3>
-            <p class="mt-1 text-sm text-neutral-500">Create your first category to start building the menu.</p>
+        <div v-if="localCategories.length === 0" class="mt-12 rounded-lg border border-dashed border-border bg-card p-10 text-center">
+            <h3 class="text-base font-medium text-foreground">No categories yet</h3>
+            <p class="mt-1 text-sm text-muted-foreground">Create your first category to start building the menu.</p>
             <Button class="mt-4" @click="openCreateCategory">
                 <Plus class="size-4" /> Add category
             </Button>
@@ -143,19 +143,19 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
             <section
                 v-for="category in localCategories"
                 :key="category.id"
-                class="rounded-lg border border-neutral-200 bg-white"
+                class="rounded-lg border border-border bg-card"
             >
-                <header class="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
+                <header class="flex items-center justify-between border-b border-border px-4 py-3">
                     <div class="flex items-center gap-2">
-                        <button class="category-handle cursor-grab text-neutral-400 hover:text-neutral-600" type="button" aria-label="Drag category">
+                        <button class="category-handle cursor-grab text-muted-foreground hover:text-foreground" type="button" aria-label="Drag category">
                             <GripVertical class="size-4" />
                         </button>
-                        <h3 class="text-lg font-medium text-neutral-900">{{ category.name }}</h3>
-                        <span class="text-xs text-neutral-500">{{ category.items.length }} item<span v-if="category.items.length !== 1">s</span></span>
+                        <h3 class="text-lg font-medium text-foreground">{{ category.name }}</h3>
+                        <span class="text-xs text-muted-foreground">{{ category.items.length }} item<span v-if="category.items.length !== 1">s</span></span>
                     </div>
                     <div class="flex items-center gap-1">
                         <button
-                            class="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+                            class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                             type="button"
                             aria-label="Edit category"
                             @click="openEditCategory(category)"
@@ -163,7 +163,7 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                             <Pencil class="size-4" />
                         </button>
                         <button
-                            class="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                            class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                             type="button"
                             aria-label="Delete category"
                             :title="category.items.length > 0 ? 'Move or delete items first' : 'Delete category'"
@@ -175,7 +175,7 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                     </div>
                 </header>
 
-                <div v-if="category.items.length === 0" class="px-4 py-6 text-center text-sm text-neutral-500">
+                <div v-if="category.items.length === 0" class="px-4 py-6 text-center text-sm text-muted-foreground">
                     No items yet.
                 </div>
 
@@ -184,7 +184,7 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                     v-model="category.items"
                     :animation="150"
                     handle=".item-handle"
-                    class="divide-y divide-neutral-100"
+                    class="divide-y divide-border"
                     @end="onItemDragEnd(category)"
                 >
                     <div
@@ -193,7 +193,7 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                         class="flex items-center justify-between gap-4 px-4 py-2.5 text-sm"
                     >
                         <div class="flex min-w-0 items-center gap-2">
-                            <button class="item-handle cursor-grab text-neutral-400 hover:text-neutral-600" type="button" aria-label="Drag item">
+                            <button class="item-handle cursor-grab text-muted-foreground hover:text-foreground" type="button" aria-label="Drag item">
                                 <GripVertical class="size-4" />
                             </button>
                             <img
@@ -202,23 +202,23 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                                 :alt="item.name"
                                 class="size-8 shrink-0 rounded object-cover"
                             />
-                            <span class="truncate text-neutral-900">{{ item.name }}</span>
+                            <span class="truncate text-foreground">{{ item.name }}</span>
                             <span
                                 v-if="!item.isAvailable"
-                                class="rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600"
+                                class="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
                             >Unavailable</span>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="text-neutral-700">{{ formatPrice(item.priceCents) }}</span>
+                            <span class="text-foreground">{{ formatPrice(item.priceCents) }}</span>
                             <Link
                                 :href="`${base}/menu/items/${item.id}/edit`"
-                                class="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+                                class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                                 aria-label="Edit item"
                             >
                                 <Pencil class="size-4" />
                             </Link>
                             <button
-                                class="rounded p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-red-600"
+                                class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive"
                                 type="button"
                                 aria-label="Delete item"
                                 @click="deleteItem(item)"
@@ -248,7 +248,7 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                             id="category-description"
                             v-model="categoryForm.description"
                             rows="3"
-                            class="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-neutral-400 focus:outline-none"
+                            class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                         <InputError :message="categoryForm.errors.description" />
                     </div>

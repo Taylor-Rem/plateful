@@ -13,7 +13,7 @@ defineProps<{
 <template>
     <TenantAdminLayout :restaurant="restaurant">
         <Head :title="`${restaurant.name} — New item`" />
-        <h2 class="text-2xl font-semibold text-neutral-900">New item</h2>
+        <h2 class="text-2xl font-semibold text-foreground">New item</h2>
         <div class="mt-6 max-w-3xl">
             <ItemForm :restaurant="restaurant" :categories="categories" :item="item" />
         </div>

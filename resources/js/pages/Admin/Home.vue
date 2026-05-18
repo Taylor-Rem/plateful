@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import AppearanceTabs from '@/components/AppearanceTabs.vue';
 
 defineProps<{
     restaurants: App.Data.RestaurantData[];
@@ -8,25 +9,28 @@ defineProps<{
 </script>
 
 <template>
-    <div class="min-h-screen bg-neutral-50">
+    <div class="min-h-screen bg-background text-foreground">
         <Head title="Admin" />
 
-        <header class="border-b border-neutral-200 bg-white">
+        <header class="border-b border-border bg-card">
             <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-                <h1 class="text-lg font-semibold text-neutral-900">Plateful Admin</h1>
-                <Link
-                    :href="'/logout'"
-                    method="post"
-                    as="button"
-                    class="text-sm text-neutral-600 hover:text-neutral-900"
-                >
-                    Log out
-                </Link>
+                <h1 class="text-lg font-semibold text-foreground">Plateful Admin</h1>
+                <div class="flex items-center gap-4">
+                    <AppearanceTabs />
+                    <Link
+                        :href="'/logout'"
+                        method="post"
+                        as="button"
+                        class="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                        Log out
+                    </Link>
+                </div>
             </div>
         </header>
 
         <main class="mx-auto max-w-5xl px-6 py-10">
-            <h2 class="mb-6 text-xl font-semibold text-neutral-900">
+            <h2 class="mb-6 text-xl font-semibold text-foreground">
                 {{ isSuperAdmin ? 'All restaurants' : 'Your restaurants' }}
             </h2>
 
@@ -34,19 +38,19 @@ defineProps<{
                 <Link
                     v-if="isSuperAdmin"
                     href="/super/restaurants"
-                    class="flex flex-col rounded-lg border border-indigo-200 bg-indigo-50 p-5 shadow-sm transition hover:border-indigo-400"
+                    class="flex flex-col rounded-lg border border-primary/30 bg-primary/5 p-5 shadow-sm transition hover:border-primary/60"
                 >
-                    <span class="text-xs font-medium uppercase tracking-wide text-indigo-700">Platform</span>
-                    <span class="mt-2 text-lg font-semibold text-indigo-900">Manage platform</span>
-                    <span class="mt-1 text-sm text-indigo-700">Restaurants, admins, invitations</span>
-                    <span class="mt-4 text-sm font-medium text-indigo-700">Open →</span>
+                    <span class="text-xs font-medium uppercase tracking-wide text-primary">Platform</span>
+                    <span class="mt-2 text-lg font-semibold text-foreground">Manage platform</span>
+                    <span class="mt-1 text-sm text-muted-foreground">Restaurants, admins, invitations</span>
+                    <span class="mt-4 text-sm font-medium text-primary">Open →</span>
                 </Link>
 
                 <Link
                     v-for="restaurant in restaurants"
                     :key="restaurant.id"
                     :href="`/${restaurant.subdomain}/dashboard`"
-                    class="flex flex-col rounded-lg border border-neutral-200 bg-white p-5 shadow-sm transition hover:border-neutral-400"
+                    class="flex flex-col rounded-lg border border-border bg-card p-5 shadow-sm transition hover:border-foreground/30"
                 >
                     <img
                         v-if="restaurant.logoUrl"
@@ -54,15 +58,15 @@ defineProps<{
                         :alt="restaurant.name"
                         class="mb-3 h-12 w-12 rounded object-cover"
                     />
-                    <span class="text-lg font-semibold text-neutral-900">{{ restaurant.name }}</span>
-                    <span class="mt-1 text-sm text-neutral-500">{{ restaurant.subdomain }}</span>
-                    <span class="mt-4 text-sm font-medium text-neutral-700">Manage →</span>
+                    <span class="text-lg font-semibold text-foreground">{{ restaurant.name }}</span>
+                    <span class="mt-1 text-sm text-muted-foreground">{{ restaurant.subdomain }}</span>
+                    <span class="mt-4 text-sm font-medium text-foreground">Manage →</span>
                 </Link>
             </div>
 
             <div
                 v-if="restaurants.length === 0 && !isSuperAdmin"
-                class="rounded-lg border border-neutral-200 bg-white p-6 text-neutral-600"
+                class="mt-6 rounded-lg border border-border bg-card p-6 text-muted-foreground"
             >
                 You don't have access to any restaurants yet.
             </div>

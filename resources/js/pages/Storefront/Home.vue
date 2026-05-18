@@ -12,7 +12,7 @@ const formatPrice = (cents: number): string =>
 </script>
 
 <template>
-    <div class="min-h-screen bg-neutral-50">
+    <div class="min-h-screen bg-background text-foreground">
         <Head :title="restaurant.name" />
 
         <header
@@ -49,18 +49,18 @@ const formatPrice = (cents: number): string =>
                 :key="category.id"
                 class="mb-10"
             >
-                <h2 class="mb-4 text-2xl font-semibold text-neutral-900">
+                <h2 class="mb-4 text-2xl font-semibold text-foreground">
                     {{ category.name }}
                 </h2>
                 <ul class="grid gap-4 md:grid-cols-2">
                     <li
                         v-for="item in category.items"
                         :key="item.id"
-                        class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm"
+                        class="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
                     >
                         <div
                             v-if="item.imageMediumUrl"
-                            class="aspect-[4/3] w-full overflow-hidden bg-neutral-100"
+                            class="aspect-[4/3] w-full overflow-hidden bg-muted"
                         >
                             <img
                                 :src="item.imageMediumUrl"
@@ -70,17 +70,17 @@ const formatPrice = (cents: number): string =>
                         </div>
                         <div class="flex items-start justify-between gap-4 p-4">
                             <div>
-                                <h3 class="font-medium text-neutral-900">
+                                <h3 class="font-medium text-foreground">
                                     {{ item.name }}
                                 </h3>
                                 <p
                                     v-if="item.description"
-                                    class="mt-1 text-sm text-neutral-600"
+                                    class="mt-1 text-sm text-muted-foreground"
                                 >
                                     {{ item.description }}
                                 </p>
                             </div>
-                            <span class="whitespace-nowrap font-semibold text-neutral-900">
+                            <span class="whitespace-nowrap font-semibold text-foreground">
                                 {{ formatPrice(item.priceCents) }}
                             </span>
                         </div>

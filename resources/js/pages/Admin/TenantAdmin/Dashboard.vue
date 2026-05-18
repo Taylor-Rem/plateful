@@ -10,23 +10,23 @@ defineProps<{
 <template>
     <TenantAdminLayout :restaurant="restaurant">
         <Head :title="`${restaurant.name} Dashboard`" />
-        <h2 class="text-2xl font-semibold text-neutral-900">Dashboard</h2>
+        <h2 class="text-2xl font-semibold text-foreground">Dashboard</h2>
         <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-lg border border-neutral-200 bg-white p-4">
-                <div class="text-xs uppercase tracking-wide text-neutral-500">Orders today</div>
-                <div class="mt-2 text-2xl font-semibold text-neutral-900">—</div>
+            <div class="rounded-lg border border-border bg-card p-4">
+                <div class="text-xs uppercase tracking-wide text-muted-foreground">Orders today</div>
+                <div class="mt-2 text-2xl font-semibold text-foreground">—</div>
             </div>
-            <div class="rounded-lg border border-neutral-200 bg-white p-4">
-                <div class="text-xs uppercase tracking-wide text-neutral-500">Revenue</div>
-                <div class="mt-2 text-2xl font-semibold text-neutral-900">—</div>
+            <div class="rounded-lg border border-border bg-card p-4">
+                <div class="text-xs uppercase tracking-wide text-muted-foreground">Revenue</div>
+                <div class="mt-2 text-2xl font-semibold text-foreground">—</div>
             </div>
-            <div class="rounded-lg border border-neutral-200 bg-white p-4">
-                <div class="text-xs uppercase tracking-wide text-neutral-500">Avg ticket</div>
-                <div class="mt-2 text-2xl font-semibold text-neutral-900">—</div>
+            <div class="rounded-lg border border-border bg-card p-4">
+                <div class="text-xs uppercase tracking-wide text-muted-foreground">Avg ticket</div>
+                <div class="mt-2 text-2xl font-semibold text-foreground">—</div>
             </div>
-            <div class="rounded-lg border border-neutral-200 bg-white p-4">
-                <div class="text-xs uppercase tracking-wide text-neutral-500">Pending</div>
-                <div class="mt-2 text-2xl font-semibold text-neutral-900">—</div>
+            <div class="rounded-lg border border-border bg-card p-4">
+                <div class="text-xs uppercase tracking-wide text-muted-foreground">Pending</div>
+                <div class="mt-2 text-2xl font-semibold text-foreground">—</div>
             </div>
         </div>
     </TenantAdminLayout>

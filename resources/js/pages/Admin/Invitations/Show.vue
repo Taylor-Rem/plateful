@@ -18,22 +18,22 @@ defineProps<{
 </script>
 
 <template>
-    <div class="flex min-h-screen items-center justify-center bg-neutral-50 px-6">
+    <div class="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
         <Head title="Accept invitation" />
 
-        <div v-if="error || !invitation" class="max-w-md rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-            <h1 class="text-lg font-semibold text-red-900">Invitation invalid</h1>
-            <p class="mt-2 text-sm text-red-700">{{ error ?? 'This invitation is no longer valid.' }}</p>
+        <div v-if="error || !invitation" class="max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center">
+            <h1 class="text-lg font-semibold text-destructive">Invitation invalid</h1>
+            <p class="mt-2 text-sm text-destructive/80">{{ error ?? 'This invitation is no longer valid.' }}</p>
         </div>
 
         <div
             v-else
-            class="w-full max-w-md rounded-lg border border-neutral-200 bg-white p-6 shadow-sm"
+            class="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm"
         >
-            <h1 class="text-xl font-semibold text-neutral-900">Accept invitation</h1>
-            <p class="mt-1 text-sm text-neutral-600">
+            <h1 class="text-xl font-semibold text-foreground">Accept invitation</h1>
+            <p class="mt-1 text-sm text-muted-foreground">
                 You've been invited to manage
-                <span class="font-medium">{{ invitation.restaurantName ?? 'the Plateful platform' }}</span>.
+                <span class="font-medium text-foreground">{{ invitation.restaurantName ?? 'the Plateful platform' }}</span>.
             </p>
 
             <Form
