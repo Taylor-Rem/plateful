@@ -14,6 +14,8 @@ class MenuCategoryData extends Data
         public int $id,
         public string $name,
         public string $slug,
+        public ?string $description,
+        public int $position,
         #[DataCollectionOf(MenuItemData::class)]
         /** @var array<int, MenuItemData> */
         public array $items,
@@ -25,6 +27,8 @@ class MenuCategoryData extends Data
             id: $category->id,
             name: $category->name,
             slug: $category->slug,
+            description: $category->description,
+            position: $category->position,
             items: $category->items
                 ->map(fn ($i) => MenuItemData::fromModel($i))
                 ->all(),

@@ -1,14 +1,68 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, useForm } from '@inertiajs/vue3';
 import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { computed, ref } from 'vue';
 
-defineProps<{
+const props = defineProps<{
     restaurant: App.Data.RestaurantData;
 }>();
+
+const form = useForm({
+    _method: 'put' as const,
+    name: props.restaurant.name,
+    description: props.restaurant.description ?? '',
+    primary_color: props.restaurant.primaryColor ?? '#111827',
+    secondary_color: props.restaurant.secondaryColor ?? '#ffffff',
+    email: props.restaurant.email ?? '',
+    phone: props.restaurant.phone ?? '',
+    logo: null as File | null,
+    remove_logo: false as boolean,
+});
+
+const newLogoPreview = ref<string | null>(null);
+
+const currentLogo = computed(
+    () => props.restaurant.logoMediumUrl,
+);
+
+const onLogoChange = (event: Event): void => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0] ?? null;
+    form.logo = file;
+    form.remove_logo = false;
+    if (newLogoPreview.value) {
+        URL.revokeObjectURL(newLogoPreview.value);
+    }
+    newLogoPreview.value = file ? URL.createObjectURL(file) : null;
+};
+
+const clearNewLogo = (): void => {
+    form.logo = null;
+    if (newLogoPreview.value) {
+        URL.revokeObjectURL(newLogoPreview.value);
+    }
+    newLogoPreview.value = null;
+};
+
+const markRemoveLogo = (): void => {
+    form.remove_logo = true;
+    clearNewLogo();
+};
+
+const submit = (): void => {
+    form.post(`/${props.restaurant.subdomain}/settings`, {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            clearNewLogo();
+            form.remove_logo = false;
+        },
+    });
+};
 </script>
 
 <template>
@@ -16,7 +70,124 @@ defineProps<{
         <Head :title="`${restaurant.name} Settings`" />
         <h2 class="text-2xl font-semibold text-neutral-900">Settings</h2>
 
-        <section class="mt-6 max-w-md rounded-lg border border-neutral-200 bg-white p-5">
+        <form class="mt-6 max-w-2xl space-y-6" @submit.prevent="submit">
+            <section class="rounded-lg border border-neutral-200 bg-white p-5">
+                <h3 class="text-base font-medium text-neutral-900">Branding</h3>
+
+                <div class="mt-4 grid gap-2">
+                    <Label>Logo</Label>
+                    <div class="flex items-start gap-4">
+                        <div class="flex size-24 items-center justify-center overflow-hidden rounded-md border border-dashed border-neutral-300 bg-neutral-50">
+                            <img
+                                v-if="newLogoPreview"
+                                :src="newLogoPreview"
+                                alt="New logo preview"
+                                class="size-full object-contain"
+                            />
+                            <img
+                                v-else-if="currentLogo && !form.remove_logo"
+                                :src="currentLogo"
+                                alt="Current logo"
+                                class="size-full object-contain"
+                            />
+                            <span v-else class="px-2 text-center text-xs text-neutral-400">No logo</span>
+                        </div>
+                        <div class="flex-1 space-y-2">
+                            <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                class="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-neutral-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-neutral-800"
+                                @change="onLogoChange"
+                            />
+                            <p class="text-xs text-neutral-500">JPEG, PNG, or WebP up to 5 MB.</p>
+                            <div v-if="currentLogo && !form.remove_logo" class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="text-xs text-red-600 hover:text-red-800"
+                                    @click="markRemoveLogo"
+                                >
+                                    Remove logo
+                                </button>
+                            </div>
+                            <p v-if="form.remove_logo" class="text-xs text-amber-700">
+                                Will remove logo on save.
+                                <button type="button" class="underline" @click="form.remove_logo = false">Undo</button>
+                            </p>
+                            <InputError :message="form.errors.logo" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div class="grid gap-2">
+                        <Label for="primary-color">Primary color</Label>
+                        <div class="flex items-center gap-2">
+                            <input
+                                id="primary-color-picker"
+                                v-model="form.primary_color"
+                                type="color"
+                                class="h-9 w-12 cursor-pointer rounded border border-neutral-200"
+                            />
+                            <Input id="primary-color" v-model="form.primary_color" class="flex-1" />
+                        </div>
+                        <InputError :message="form.errors.primary_color" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="secondary-color">Secondary color</Label>
+                        <div class="flex items-center gap-2">
+                            <input
+                                id="secondary-color-picker"
+                                v-model="form.secondary_color"
+                                type="color"
+                                class="h-9 w-12 cursor-pointer rounded border border-neutral-200"
+                            />
+                            <Input id="secondary-color" v-model="form.secondary_color" class="flex-1" />
+                        </div>
+                        <InputError :message="form.errors.secondary_color" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-lg border border-neutral-200 bg-white p-5">
+                <h3 class="text-base font-medium text-neutral-900">Restaurant details</h3>
+                <div class="mt-4 grid gap-4">
+                    <div class="grid gap-2">
+                        <Label for="name">Name</Label>
+                        <Input id="name" v-model="form.name" required />
+                        <InputError :message="form.errors.name" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="description">Description</Label>
+                        <textarea
+                            id="description"
+                            v-model="form.description"
+                            rows="3"
+                            class="rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-neutral-400 focus:outline-none"
+                        />
+                        <InputError :message="form.errors.description" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="grid gap-2">
+                            <Label for="email">Email</Label>
+                            <Input id="email" v-model="form.email" type="email" />
+                            <InputError :message="form.errors.email" />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="phone">Phone</Label>
+                            <Input id="phone" v-model="form.phone" />
+                            <InputError :message="form.errors.phone" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="flex items-center gap-3">
+                <Button type="submit" :disabled="form.processing">Save settings</Button>
+                <span v-if="form.recentlySuccessful" class="text-sm text-green-600">Saved.</span>
+            </div>
+        </form>
+
+        <section class="mt-10 max-w-md rounded-lg border border-neutral-200 bg-white p-5">
             <h3 class="text-lg font-medium text-neutral-900">Invite admin</h3>
             <p class="mt-1 text-sm text-neutral-500">
                 Send an invitation to a new admin for {{ restaurant.name }}.
@@ -30,9 +201,9 @@ defineProps<{
                 class="mt-4 space-y-3"
             >
                 <div class="grid gap-2">
-                    <Label for="email">Email address</Label>
+                    <Label for="invite-email">Email address</Label>
                     <Input
-                        id="email"
+                        id="invite-email"
                         name="email"
                         type="email"
                         required

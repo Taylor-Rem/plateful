@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\MenuCategory;
+use App\Models\MenuItem;
 use App\Models\Restaurant;
+use App\Observers\MenuItemObserver;
+use App\Observers\RestaurantObserver;
 use App\Tenancy\CurrentTenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -26,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
+        Restaurant::observe(RestaurantObserver::class);
+        MenuItem::observe(MenuItemObserver::class);
+
         Route::bind('restaurant', function ($value) {
             $restaurant = Restaurant::query()->where('subdomain', $value)->first();
 
@@ -34,6 +41,38 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return $restaurant;
+        });
+
+        Route::bind('category', function ($value) {
+            $restaurant = request()->route('restaurant');
+            $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : null;
+
+            $category = MenuCategory::withoutTenantScope()
+                ->when($restaurantId, fn ($q) => $q->where('restaurant_id', $restaurantId))
+                ->where('id', $value)
+                ->first();
+
+            if (! $category || ($restaurantId && $category->restaurant_id !== $restaurantId)) {
+                throw new NotFoundHttpException;
+            }
+
+            return $category;
+        });
+
+        Route::bind('item', function ($value) {
+            $restaurant = request()->route('restaurant');
+            $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : null;
+
+            $item = MenuItem::withoutTenantScope()
+                ->when($restaurantId, fn ($q) => $q->where('restaurant_id', $restaurantId))
+                ->where('id', $value)
+                ->first();
+
+            if (! $item || ($restaurantId && $item->restaurant_id !== $restaurantId)) {
+                throw new NotFoundHttpException;
+            }
+
+            return $item;
         });
     }
 

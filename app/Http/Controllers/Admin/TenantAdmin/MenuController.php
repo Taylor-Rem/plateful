@@ -15,7 +15,10 @@ class MenuController extends Controller
     {
         $categories = $restaurant->menuCategories()
             ->orderBy('position')
-            ->with(['items' => fn ($q) => $q->orderBy('position')])
+            ->with([
+                'items' => fn ($q) => $q->orderBy('position'),
+                'items.modifiers' => fn ($q) => $q->orderBy('position'),
+            ])
             ->get()
             ->map(fn ($c) => MenuCategoryData::fromModel($c))
             ->all();

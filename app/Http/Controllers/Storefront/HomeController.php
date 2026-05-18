@@ -18,12 +18,17 @@ class HomeController extends Controller
         $categories = $restaurant->menuCategories()
             ->where('is_active', true)
             ->orderBy('position')
-            ->with(['items' => function ($q): void {
-                $q->orderBy('position');
-            }, 'items.modifiers' => function ($q): void {
-                $q->orderBy('position');
-            }])
+            ->with([
+                'items' => function ($q): void {
+                    $q->where('is_available', true)->orderBy('position');
+                },
+                'items.modifiers' => function ($q): void {
+                    $q->orderBy('position');
+                },
+            ])
             ->get()
+            ->filter(fn ($c) => $c->items->isNotEmpty())
+            ->values()
             ->map(fn ($c) => MenuCategoryData::fromModel($c))
             ->all();
 

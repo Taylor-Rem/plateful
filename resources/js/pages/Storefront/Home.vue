@@ -19,11 +19,21 @@ const formatPrice = (cents: number): string =>
             class="px-6 py-10 text-white"
             :style="{ backgroundColor: restaurant.primaryColor ?? '#111827' }"
         >
+            <div class="mx-auto flex max-w-4xl items-center gap-4">
+                <img
+                    v-if="restaurant.logoMediumUrl"
+                    :src="restaurant.logoMediumUrl"
+                    :alt="`${restaurant.name} logo`"
+                    class="size-16 shrink-0 rounded-lg bg-white object-contain p-1"
+                />
+                <div>
+                    <h1 class="text-3xl font-bold">{{ restaurant.name }}</h1>
+                    <p v-if="restaurant.description" class="mt-2 text-sm opacity-90">
+                        {{ restaurant.description }}
+                    </p>
+                </div>
+            </div>
             <div class="mx-auto max-w-4xl">
-                <h1 class="text-3xl font-bold">{{ restaurant.name }}</h1>
-                <p v-if="restaurant.description" class="mt-2 text-sm opacity-90">
-                    {{ restaurant.description }}
-                </p>
                 <a
                     :href="storefront.home().url"
                     class="mt-4 inline-block text-xs underline opacity-75 hover:opacity-100"
@@ -46,9 +56,19 @@ const formatPrice = (cents: number): string =>
                     <li
                         v-for="item in category.items"
                         :key="item.id"
-                        class="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm"
+                        class="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm"
                     >
-                        <div class="flex items-start justify-between gap-4">
+                        <div
+                            v-if="item.imageMediumUrl"
+                            class="aspect-[4/3] w-full overflow-hidden bg-neutral-100"
+                        >
+                            <img
+                                :src="item.imageMediumUrl"
+                                :alt="item.name"
+                                class="size-full object-cover"
+                            />
+                        </div>
+                        <div class="flex items-start justify-between gap-4 p-4">
                             <div>
                                 <h3 class="font-medium text-neutral-900">
                                     {{ item.name }}

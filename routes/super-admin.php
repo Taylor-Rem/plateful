@@ -18,8 +18,22 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
         Route::prefix('{restaurant}')->middleware('admin.restaurant')->name('admin.restaurant.')->group(function () {
             Route::get('/dashboard', TenantAdmin\DashboardController::class)->name('dashboard');
             Route::get('/menu', [TenantAdmin\MenuController::class, 'index'])->name('menu.index');
+
+            Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
+            Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
+            Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');
+            Route::delete('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'destroy'])->name('categories.destroy');
+
+            Route::get('/menu/items/create', [TenantAdmin\MenuItemController::class, 'create'])->name('items.create');
+            Route::post('/menu/items', [TenantAdmin\MenuItemController::class, 'store'])->name('items.store');
+            Route::post('/menu/items/reorder', [TenantAdmin\MenuItemController::class, 'reorder'])->name('items.reorder');
+            Route::get('/menu/items/{item}/edit', [TenantAdmin\MenuItemController::class, 'edit'])->name('items.edit');
+            Route::put('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'update'])->name('items.update');
+            Route::delete('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'destroy'])->name('items.destroy');
+
             Route::get('/orders', [TenantAdmin\OrdersController::class, 'index'])->name('orders.index');
             Route::get('/settings', [TenantAdmin\SettingsController::class, 'edit'])->name('settings.edit');
+            Route::put('/settings', [TenantAdmin\SettingsController::class, 'update'])->name('settings.update');
             Route::post('/invitations', [TenantAdmin\InvitationController::class, 'store'])->name('invitations.store');
         });
 

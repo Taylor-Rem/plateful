@@ -3,7 +3,6 @@
 namespace App\Data;
 
 use App\Models\Restaurant;
-use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
@@ -16,8 +15,12 @@ class RestaurantData extends Data
         public string $subdomain,
         public ?string $description,
         public ?string $logoUrl,
+        public ?string $logoMediumUrl,
+        public ?string $logoThumbUrl,
         public ?string $primaryColor,
         public ?string $secondaryColor,
+        public ?string $email,
+        public ?string $phone,
     ) {}
 
     public static function fromModel(Restaurant $restaurant): self
@@ -27,9 +30,13 @@ class RestaurantData extends Data
             name: $restaurant->name,
             subdomain: $restaurant->subdomain,
             description: $restaurant->description,
-            logoUrl: $restaurant->logo_path ? Storage::url($restaurant->logo_path) : null,
+            logoUrl: $restaurant->logoUrl(),
+            logoMediumUrl: $restaurant->logoMediumUrl(),
+            logoThumbUrl: $restaurant->logoThumbUrl(),
             primaryColor: $restaurant->primary_color,
             secondaryColor: $restaurant->secondary_color,
+            email: $restaurant->email,
+            phone: $restaurant->phone,
         );
     }
 }
