@@ -22,6 +22,7 @@ class RestaurantData extends Data
         public ?string $email,
         public ?string $phone,
         public float $taxRatePercent,
+        public int $deliveryFeeCents,
     ) {}
 
     public static function fromModel(Restaurant $restaurant): self
@@ -39,6 +40,7 @@ class RestaurantData extends Data
             email: $restaurant->email,
             phone: $restaurant->phone,
             taxRatePercent: (float) $restaurant->tax_rate_percent,
+            deliveryFeeCents: (int) $restaurant->delivery_fee_cents,
         );
     }
 }

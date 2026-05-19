@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Minus, Plus, Trash2 } from 'lucide-vue-next';
-import { router, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 type PageProps = {
@@ -28,6 +28,12 @@ const page = usePage<PageProps>();
 const cart = computed(() => page.props.cart ?? null);
 const restaurant = computed(() => page.props.restaurant);
 const items = computed(() => cart.value?.items ?? []);
+const hasUnavailable = computed(() =>
+    items.value.some((i) => !i.isAvailable),
+);
+const canCheckout = computed(
+    () => items.value.length > 0 && !hasUnavailable.value,
+);
 
 const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
@@ -173,7 +179,20 @@ const clearCart = (): void => {
                             {{ formatPrice(cart.subtotalCents) }}
                         </span>
                     </div>
+                    <Link
+                        v-if="canCheckout"
+                        href="/checkout"
+                        class="block w-full rounded-md px-4 py-2 text-center text-sm font-medium"
+                        :style="{
+                            backgroundColor: 'var(--brand-primary)',
+                            color: 'var(--brand-primary-foreground)',
+                        }"
+                        @click="close"
+                    >
+                        Checkout
+                    </Link>
                     <Button
+                        v-else
                         type="button"
                         class="w-full"
                         :style="{
@@ -181,12 +200,14 @@ const clearCart = (): void => {
                             color: 'var(--brand-primary-foreground)',
                         }"
                         disabled
-                        title="Coming next session"
                     >
                         Checkout
                     </Button>
-                    <p class="text-center text-xs text-muted-foreground">
-                        Checkout — coming next session.
+                    <p
+                        v-if="hasUnavailable"
+                        class="text-center text-xs text-destructive"
+                    >
+                        Remove unavailable items to continue.
                     </p>
                     <button
                         type="button"

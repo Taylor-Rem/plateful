@@ -22,6 +22,7 @@ class Restaurant extends Model
             'is_active' => 'boolean',
             'application_fee_percent' => 'decimal:2',
             'tax_rate_percent' => 'decimal:2',
+            'delivery_fee_cents' => 'integer',
         ];
     }
 

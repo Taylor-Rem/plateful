@@ -3,7 +3,9 @@
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Storefront\CartController;
+use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\HomeController;
+use App\Http\Controllers\Storefront\OrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('tenant')->group(function () {
@@ -17,6 +19,14 @@ Route::middleware('tenant')->group(function () {
         ->name('storefront.cart.remove');
     Route::delete('cart', [CartController::class, 'clear'])
         ->name('storefront.cart.clear');
+
+    Route::get('checkout', [CheckoutController::class, 'show'])
+        ->name('storefront.checkout.show');
+    Route::post('orders', [CheckoutController::class, 'store'])
+        ->name('storefront.orders.store');
+    Route::get('orders/{number}', [OrderController::class, 'show'])
+        ->where('number', '[A-Za-z0-9-]+')
+        ->name('storefront.orders.show');
 
     Route::middleware('auth')->group(function () {
         Route::inertia('dashboard', 'Dashboard')->name('dashboard');

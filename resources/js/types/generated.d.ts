@@ -1,5 +1,17 @@
 declare namespace App {
 namespace Data {
+export type AddressData = {
+id: number,
+label: string | null,
+street: string,
+street2: string | null,
+city: string,
+state: string,
+postalCode: string,
+country: string,
+instructions: string | null,
+isDefault: boolean,
+};
 export type CartData = {
 id: number,
 itemCount: number,
@@ -70,6 +82,36 @@ itemTemplateId: number | null,
 template: App.Data.ItemTemplateData | null,
 defaultSelectionIds: number[],
 };
+export type OrderData = {
+id: number,
+number: string,
+status: string,
+type: string,
+customerName: string,
+customerEmail: string,
+customerPhone: string | null,
+deliveryAddress: Record<string, any> | null,
+subtotalCents: number,
+taxCents: number,
+tipCents: number,
+deliveryFeeCents: number,
+totalCents: number,
+notes: string | null,
+placedAt: string | null,
+items: App.Data.OrderItemData[],
+};
+export type OrderItemData = {
+id: number,
+name: string,
+quantity: number,
+unitPriceCents: number,
+subtotalCents: number,
+modifierSummary: string,
+modifierGroups: {
+groupName: string,
+selectionNames: string[],
+}[],
+};
 export type RestaurantData = {
 id: number,
 name: string,
@@ -83,6 +125,7 @@ secondaryColor: string | null,
 email: string | null,
 phone: string | null,
 taxRatePercent: number,
+deliveryFeeCents: number,
 };
 }
 namespace Enums {

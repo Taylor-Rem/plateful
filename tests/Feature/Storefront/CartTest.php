@@ -4,6 +4,7 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Services\CartManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 
 require_once __DIR__.'/CartTestHelpers.php';
 
@@ -261,6 +262,28 @@ test('subtotal updates with multiple lines and quantities', function () {
             ->where('cart.itemCount', 4)
             ->where('cart.subtotalCents', 1400 * 3 + 299)
         );
+});
+
+test('after placing an order, the cart is empty', function () {
+    Mail::fake();
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
+        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],
+    ]);
+    $cookie = cartCookieFrom($first);
+
+    expect(CartItem::count())->toBe(1);
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'pickup',
+        ]);
+
+    expect(CartItem::count())->toBe(0);
 });
 
 test('cart item shows isAvailable false when underlying menu item is unavailable', function () {
