@@ -3,6 +3,7 @@ import { initializeTheme } from '@/composables/useAppearance';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import StorefrontLayout from '@/layouts/StorefrontLayout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -17,6 +18,11 @@ createInertiaApp({
                 return AuthLayout;
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];
+            case name.startsWith('Storefront/'):
+                return StorefrontLayout;
+            case name.startsWith('Admin/'):
+                // Admin pages compose their own layouts (TenantAdminLayout, etc.) internally
+                return null;
             default:
                 return AppLayout;
         }
