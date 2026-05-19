@@ -3,9 +3,11 @@
 namespace App\Http\Middleware;
 
 use App\Models\Restaurant;
+use App\Support\BrandColors;
 use App\Tenancy\CurrentTenant;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -35,6 +37,11 @@ class ResolveTenant
         }
 
         $this->currentTenant->set($restaurant);
+
+        View::share('brandPalette', BrandColors::paletteFor(
+            $restaurant->primary_color,
+            $restaurant->secondary_color,
+        ));
 
         return $next($request);
     }

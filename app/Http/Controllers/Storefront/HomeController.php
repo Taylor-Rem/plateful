@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Storefront;
 use App\Data\MenuCategoryData;
 use App\Data\RestaurantData;
 use App\Http\Controllers\Controller;
+use App\Support\BrandColors;
 use App\Tenancy\CurrentTenant;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -35,6 +36,10 @@ class HomeController extends Controller
         return Inertia::render('Storefront/Home', [
             'restaurant' => RestaurantData::fromModel($restaurant),
             'categories' => $categories,
+            'brand' => BrandColors::paletteFor(
+                $restaurant->primary_color,
+                $restaurant->secondary_color,
+            ),
         ]);
     }
 }

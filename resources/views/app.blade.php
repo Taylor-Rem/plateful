@@ -1,12 +1,22 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"  @class(['dark' => ($appearance ?? 'system') == 'dark'])>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+      data-appearance-context="{{ $appearanceContext ?? 'apex' }}"
+      @class(['dark' => ($appearance ?? 'system') == 'dark' && ($appearanceContext ?? 'apex') !== 'tenant'])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        {{-- Inline script to detect system dark mode preference and apply it immediately --}}
+        {{-- Inline script to detect system dark mode preference and apply it immediately.
+             Tenant storefronts opt out entirely — they always render in light mode. --}}
         <script>
             (function() {
+                const context = '{{ $appearanceContext ?? "apex" }}';
+
+                if (context === 'tenant') {
+                    document.documentElement.classList.remove('dark');
+                    return;
+                }
+
                 const appearance = '{{ $appearance ?? "system" }}';
 
                 if (appearance === 'system') {
@@ -29,6 +39,17 @@
                 background-color: oklch(0.145 0 0);
             }
         </style>
+
+        @isset($brandPalette)
+            <style>
+                :root {
+                    --brand-primary: {{ $brandPalette['primary'] }};
+                    --brand-primary-foreground: {{ $brandPalette['primaryForeground'] }};
+                    --brand-secondary: {{ $brandPalette['secondary'] }};
+                    --brand-secondary-foreground: {{ $brandPalette['secondaryForeground'] }};
+                }
+            </style>
+        @endisset
 
         <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">

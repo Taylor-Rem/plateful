@@ -10,8 +10,25 @@ export type UseAppearanceReturn = {
     updateAppearance: (value: Appearance) => void;
 };
 
+const isTenantContext = (): boolean => {
+    if (typeof document === 'undefined') {
+        return false;
+    }
+
+    return (
+        document.documentElement.getAttribute('data-appearance-context') ===
+        'tenant'
+    );
+};
+
 export function updateTheme(value: Appearance): void {
     if (typeof window === 'undefined') {
+        return;
+    }
+
+    // Tenant storefronts are locked to light mode regardless of preference.
+    if (isTenantContext()) {
+        document.documentElement.classList.remove('dark');
         return;
     }
 
