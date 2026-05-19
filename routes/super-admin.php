@@ -24,6 +24,13 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');
             Route::delete('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'destroy'])->name('categories.destroy');
 
+            Route::get('/menu/templates', [TenantAdmin\ItemTemplateController::class, 'index'])->name('templates.index');
+            Route::get('/menu/templates/create', [TenantAdmin\ItemTemplateController::class, 'create'])->name('templates.create');
+            Route::post('/menu/templates', [TenantAdmin\ItemTemplateController::class, 'store'])->name('templates.store');
+            Route::get('/menu/templates/{template}/edit', [TenantAdmin\ItemTemplateController::class, 'edit'])->name('templates.edit');
+            Route::put('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'update'])->name('templates.update');
+            Route::delete('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'destroy'])->name('templates.destroy');
+
             Route::get('/menu/items/create', [TenantAdmin\MenuItemController::class, 'create'])->name('items.create');
             Route::post('/menu/items', [TenantAdmin\MenuItemController::class, 'store'])->name('items.store');
             Route::post('/menu/items/reorder', [TenantAdmin\MenuItemController::class, 'reorder'])->name('items.reorder');

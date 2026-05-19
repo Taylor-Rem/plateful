@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Admin\TenantAdmin;
 
+use App\Data\ItemTemplateData;
 use App\Data\MenuItemData;
 use App\Data\RestaurantData;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\MenuItemReorderRequest;
 use App\Http\Requests\Admin\MenuItemStoreRequest;
 use App\Http\Requests\Admin\MenuItemUpdateRequest;
+use App\Models\ItemTemplate;
 use App\Models\MenuItem;
-use App\Models\MenuItemModifier;
 use App\Models\Restaurant;
 use App\Services\RestaurantImageService;
 use Illuminate\Http\RedirectResponse;
@@ -23,15 +24,10 @@ class MenuItemController extends Controller
 {
     public function create(Restaurant $restaurant): \Inertia\Response
     {
-        $categories = $restaurant->menuCategories()
-            ->orderBy('position')
-            ->get(['id', 'name'])
-            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])
-            ->all();
-
         return Inertia::render('Admin/TenantAdmin/Items/Create', [
             'restaurant' => RestaurantData::fromModel($restaurant),
-            'categories' => $categories,
+            'categories' => $this->categoryOptions($restaurant),
+            'templates' => $this->templateOptions($restaurant),
             'item' => null,
         ]);
     }
@@ -52,6 +48,7 @@ class MenuItemController extends Controller
             $item = MenuItem::create([
                 'restaurant_id' => $restaurant->id,
                 'menu_category_id' => $validated['menu_category_id'],
+                'item_template_id' => $validated['item_template_id'] ?? null,
                 'name' => $validated['name'],
                 'slug' => $slug,
                 'description' => $validated['description'] ?? null,
@@ -60,7 +57,7 @@ class MenuItemController extends Controller
                 'position' => $position,
             ]);
 
-            $this->syncModifiers($item, $request->input('modifiers', []) ?? []);
+            $this->syncDefaultSelections($item, $validated['default_selection_ids'] ?? []);
 
             return $item;
         });
@@ -75,17 +72,12 @@ class MenuItemController extends Controller
 
     public function edit(Restaurant $restaurant, MenuItem $item): \Inertia\Response
     {
-        $item->load(['modifiers' => fn ($q) => $q->orderBy('position')]);
-
-        $categories = $restaurant->menuCategories()
-            ->orderBy('position')
-            ->get(['id', 'name'])
-            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])
-            ->all();
+        $item->load(['template.groups.options', 'defaultSelections']);
 
         return Inertia::render('Admin/TenantAdmin/Items/Edit', [
             'restaurant' => RestaurantData::fromModel($restaurant),
-            'categories' => $categories,
+            'categories' => $this->categoryOptions($restaurant),
+            'templates' => $this->templateOptions($restaurant),
             'item' => MenuItemData::fromModel($item),
         ]);
     }
@@ -95,8 +87,12 @@ class MenuItemController extends Controller
         $validated = $request->validated();
 
         DB::transaction(function () use ($item, $validated, $request): void {
+            $previousTemplateId = $item->item_template_id;
+            $newTemplateId = $validated['item_template_id'] ?? null;
+
             $item->update([
                 'menu_category_id' => $validated['menu_category_id'],
+                'item_template_id' => $newTemplateId,
                 'name' => $validated['name'],
                 'slug' => $validated['slug'] ?? $item->slug,
                 'description' => $validated['description'] ?? null,
@@ -104,7 +100,11 @@ class MenuItemController extends Controller
                 'is_available' => (bool) ($validated['is_available'] ?? false),
             ]);
 
-            $this->syncModifiers($item, $request->input('modifiers', []) ?? []);
+            if ($newTemplateId !== $previousTemplateId) {
+                $item->defaultSelections()->detach();
+            }
+
+            $this->syncDefaultSelections($item, $validated['default_selection_ids'] ?? []);
         });
 
         if ($request->boolean('remove_image') && $item->image_path) {
@@ -156,41 +156,44 @@ class MenuItemController extends Controller
     }
 
     /**
-     * @param  array<int, array<string, mixed>>  $modifiers
+     * @param  array<int, int>  $optionIds
      */
-    protected function syncModifiers(MenuItem $item, array $modifiers): void
+    protected function syncDefaultSelections(MenuItem $item, array $optionIds): void
     {
-        $keepIds = [];
+        if ($item->item_template_id === null) {
+            $item->defaultSelections()->detach();
 
-        foreach (array_values($modifiers) as $index => $mod) {
-            $attrs = [
-                'menu_item_id' => $item->id,
-                'name' => $mod['name'],
-                'group_label' => $mod['group_label'] ?? null,
-                'price_delta_cents' => (int) ($mod['price_delta_cents'] ?? 0),
-                'is_default' => (bool) ($mod['is_default'] ?? false),
-                'position' => $index,
-            ];
-
-            if (! empty($mod['id'])) {
-                $existing = MenuItemModifier::where('menu_item_id', $item->id)
-                    ->where('id', $mod['id'])
-                    ->first();
-                if ($existing) {
-                    $existing->update($attrs);
-                    $keepIds[] = $existing->id;
-
-                    continue;
-                }
-            }
-
-            $created = MenuItemModifier::create($attrs);
-            $keepIds[] = $created->id;
+            return;
         }
 
-        MenuItemModifier::where('menu_item_id', $item->id)
-            ->whereNotIn('id', $keepIds ?: [0])
-            ->delete();
+        $item->defaultSelections()->sync(array_values(array_unique(array_map('intval', $optionIds))));
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string}>
+     */
+    protected function categoryOptions(Restaurant $restaurant): array
+    {
+        return $restaurant->menuCategories()
+            ->orderBy('position')
+            ->get(['id', 'name'])
+            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function templateOptions(Restaurant $restaurant): array
+    {
+        return ItemTemplate::query()
+            ->where('restaurant_id', $restaurant->id)
+            ->where('is_active', true)
+            ->with('groups.options')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (ItemTemplate $t) => ItemTemplateData::fromModel($t)->toArray())
+            ->all();
     }
 
     protected function ensureUniqueSlug(int $restaurantId, string $base): string

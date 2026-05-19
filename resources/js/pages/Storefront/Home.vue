@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import storefront from '@/routes/storefront';
+import { Toaster } from '@/components/ui/sonner';
+import { toast } from 'vue-sonner';
+import { ref } from 'vue';
+import ItemConfiguratorModal from '@/pages/Storefront/components/ItemConfiguratorModal.vue';
 
 type BrandPalette = {
     primary: string;
@@ -17,6 +21,25 @@ defineProps<{
 
 const formatPrice = (cents: number): string =>
     `$${(cents / 100).toFixed(2)}`;
+
+const configuratorOpen = ref(false);
+const activeItem = ref<App.Data.MenuItemData | null>(null);
+
+const onItemClick = (item: App.Data.MenuItemData): void => {
+    if (item.template) {
+        activeItem.value = item;
+        configuratorOpen.value = true;
+        return;
+    }
+    toast.success(`Added ${item.name} to cart (cart wiring next session)`);
+};
+
+const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: number; optionIds: number[] }>; unitPriceCents: number }): void => {
+    const name = activeItem.value?.name ?? 'Item';
+    // eslint-disable-next-line no-console
+    console.log('[storefront] add-to-cart', payload);
+    toast.success(`Added ${name} to cart (cart wiring next session): ${formatPrice(payload.unitPriceCents)}`);
+};
 </script>
 
 <template>
@@ -75,7 +98,12 @@ const formatPrice = (cents: number): string =>
                     <li
                         v-for="item in category.items"
                         :key="item.id"
-                        class="overflow-hidden rounded-lg border border-border bg-card shadow-sm transition hover:shadow-md"
+                        class="cursor-pointer overflow-hidden rounded-lg border border-border bg-card text-left shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        tabindex="0"
+                        role="button"
+                        @click="onItemClick(item)"
+                        @keydown.enter.prevent="onItemClick(item)"
+                        @keydown.space.prevent="onItemClick(item)"
                     >
                         <div
                             v-if="item.imageMediumUrl"
@@ -98,6 +126,12 @@ const formatPrice = (cents: number): string =>
                                 >
                                     {{ item.description }}
                                 </p>
+                                <p
+                                    v-if="item.template"
+                                    class="mt-2 text-xs uppercase tracking-wide text-muted-foreground"
+                                >
+                                    Customize
+                                </p>
                             </div>
                             <span
                                 class="whitespace-nowrap font-semibold"
@@ -110,5 +144,14 @@ const formatPrice = (cents: number): string =>
                 </ul>
             </section>
         </main>
+
+        <ItemConfiguratorModal
+            v-if="activeItem"
+            v-model:open="configuratorOpen"
+            :item="activeItem"
+            @add-to-cart="onAddToCart"
+        />
+
+        <Toaster />
     </div>
 </template>

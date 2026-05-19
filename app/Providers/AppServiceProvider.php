@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ItemTemplate;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Restaurant;
@@ -57,6 +58,22 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return $category;
+        });
+
+        Route::bind('template', function ($value) {
+            $restaurant = request()->route('restaurant');
+            $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : null;
+
+            $template = ItemTemplate::withoutTenantScope()
+                ->when($restaurantId, fn ($q) => $q->where('restaurant_id', $restaurantId))
+                ->where('id', $value)
+                ->first();
+
+            if (! $template || ($restaurantId && $template->restaurant_id !== $restaurantId)) {
+                throw new NotFoundHttpException;
+            }
+
+            return $template;
         });
 
         Route::bind('item', function ($value) {

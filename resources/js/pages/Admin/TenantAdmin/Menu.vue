@@ -121,6 +121,9 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                 <Button variant="outline" @click="openCreateCategory">
                     <Plus class="size-4" /> Add category
                 </Button>
+                <Button as-child variant="outline">
+                    <Link :href="`${base}/menu/templates`">Templates</Link>
+                </Button>
             </div>
         </div>
 
@@ -203,6 +206,11 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                                 class="size-8 shrink-0 rounded object-cover"
                             />
                             <span class="truncate text-foreground">{{ item.name }}</span>
+                            <span
+                                v-if="item.template"
+                                class="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary"
+                                :title="`Template: ${item.template.name}`"
+                            >Configurable</span>
                             <span
                                 v-if="!item.isAvailable"
                                 class="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"

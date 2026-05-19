@@ -5,46 +5,31 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import InputError from '@/components/InputError.vue';
 import { Link, useForm } from '@inertiajs/vue3';
-import { Plus, Trash2 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 type CategoryOption = { id: number; name: string };
-
-type ModifierRow = {
-    id: number | null;
-    name: string;
-    group_label: string;
-    price_delta: string;
-    is_default: boolean;
-};
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     categories: CategoryOption[];
+    templates: App.Data.ItemTemplateData[];
     item: App.Data.MenuItemData | null;
 }>();
 
 const isEdit = computed(() => props.item !== null);
 const base = computed(() => `/${props.restaurant.subdomain}`);
 
-const initialModifiers: ModifierRow[] = (props.item?.modifiers ?? []).map((m) => ({
-    id: m.id,
-    name: m.name,
-    group_label: m.groupLabel ?? '',
-    price_delta: (m.priceDeltaCents / 100).toFixed(2),
-    is_default: m.isDefault,
-}));
-
 const form = useForm({
     _method: 'post' as 'post' | 'put',
     name: props.item?.name ?? '',
     description: props.item?.description ?? '',
     menu_category_id: props.item?.menuCategoryId ?? (props.categories[0]?.id ?? null),
+    item_template_id: props.item?.itemTemplateId ?? null,
     price: props.item ? (props.item.priceCents / 100).toFixed(2) : '',
     is_available: props.item ? props.item.isAvailable : true,
     image: null as File | null,
     remove_image: false as boolean,
-    modifiers: initialModifiers,
+    default_selection_ids: [...(props.item?.defaultSelectionIds ?? [])] as number[],
 });
 
 const newImagePreview = ref<string | null>(null);
@@ -74,18 +59,67 @@ const undoRemoveImage = (): void => {
     form.remove_image = false;
 };
 
-const addModifier = (): void => {
-    form.modifiers.push({
-        id: null,
-        name: '',
-        group_label: '',
-        price_delta: '0.00',
-        is_default: false,
-    });
+const selectedTemplate = computed<App.Data.ItemTemplateData | null>(() => {
+    if (form.item_template_id === null) return null;
+    return props.templates.find((t) => t.id === form.item_template_id) ?? null;
+});
+
+// Reset default selections when the template changes (but keep existing on first load).
+let initialTemplateId: number | null = form.item_template_id;
+watch(
+    () => form.item_template_id,
+    (val) => {
+        if (val !== initialTemplateId) {
+            form.default_selection_ids = [];
+            initialTemplateId = val;
+        }
+    },
+);
+
+const isSelected = (optionId: number): boolean => form.default_selection_ids.includes(optionId);
+
+const toggleSingle = (groupId: number, optionId: number | null): void => {
+    const group = selectedTemplate.value?.groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const groupOptionIds = group.options.map((o) => o.id);
+    form.default_selection_ids = form.default_selection_ids.filter((id) => !groupOptionIds.includes(id));
+    if (optionId !== null) {
+        form.default_selection_ids.push(optionId);
+    }
 };
 
-const removeModifier = (index: number): void => {
-    form.modifiers.splice(index, 1);
+const toggleMulti = (optionId: number): void => {
+    if (isSelected(optionId)) {
+        form.default_selection_ids = form.default_selection_ids.filter((id) => id !== optionId);
+    } else {
+        form.default_selection_ids = [...form.default_selection_ids, optionId];
+    }
+};
+
+const groupCount = (groupId: number): number => {
+    const group = selectedTemplate.value?.groups.find((g) => g.id === groupId);
+    if (!group) return 0;
+    const ids = group.options.map((o) => o.id);
+    return form.default_selection_ids.filter((id) => ids.includes(id)).length;
+};
+
+const groupSatisfied = (group: App.Data.ItemTemplateGroupData): boolean => {
+    const count = groupCount(group.id);
+    if (count < group.minSelections) return false;
+    if (group.maxSelections !== null && count > group.maxSelections) return false;
+    return true;
+};
+
+const defaultsValid = computed<boolean>(() => {
+    const tpl = selectedTemplate.value;
+    if (!tpl) return true;
+    return tpl.groups.every((g) => groupSatisfied(g));
+});
+
+const formatDelta = (cents: number): string => {
+    if (cents === 0) return '';
+    const sign = cents > 0 ? '+' : '-';
+    return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 };
 
 const submit = (): void => {
@@ -102,11 +136,6 @@ const submit = (): void => {
             preserveScroll: true,
         });
     }
-};
-
-const modifierError = (index: number, field: string): string | undefined => {
-    const key = `modifiers.${index}.${field}` as keyof typeof form.errors;
-    return form.errors[key];
 };
 </script>
 
@@ -161,6 +190,22 @@ const modifierError = (index: number, field: string): string | undefined => {
                 </div>
 
                 <div class="grid gap-2">
+                    <Label for="item-template">Template</Label>
+                    <select
+                        id="item-template"
+                        v-model="form.item_template_id"
+                        class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+                    >
+                        <option :value="null">None (no configurator)</option>
+                        <option v-for="t in templates" :key="t.id" :value="t.id">{{ t.name }}</option>
+                    </select>
+                    <p class="text-xs text-muted-foreground">
+                        Optional. If set, customers see a configurator with options from this template.
+                    </p>
+                    <InputError :message="form.errors.item_template_id" />
+                </div>
+
+                <div class="grid gap-2">
                     <Label>Image</Label>
                     <div class="flex items-start gap-4">
                         <div class="flex size-28 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
@@ -210,57 +255,89 @@ const modifierError = (index: number, field: string): string | undefined => {
             </div>
         </section>
 
-        <section class="rounded-lg border border-border bg-card p-5">
-            <div class="flex items-center justify-between">
-                <h3 class="text-base font-medium text-foreground">Modifiers</h3>
-                <Button type="button" variant="outline" size="sm" @click="addModifier">
-                    <Plus class="size-4" /> Add modifier
-                </Button>
-            </div>
-
-            <p v-if="form.modifiers.length === 0" class="mt-4 text-sm text-muted-foreground">
-                No modifiers. Modifiers let customers choose size, toppings, etc.
+        <section v-if="selectedTemplate" class="rounded-lg border border-border bg-card p-5">
+            <h3 class="text-base font-medium text-foreground">Default selections</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+                These options are pre-checked when customers open the configurator. The item's price should reflect this default configuration.
             </p>
 
-            <div
-                v-for="(mod, index) in form.modifiers"
-                :key="index"
-                class="mt-4 grid gap-3 rounded-md border border-border bg-muted/30 p-3 sm:grid-cols-12 sm:items-end"
-            >
-                <div class="grid gap-1 sm:col-span-3">
-                    <Label :for="`mod-name-${index}`">Name</Label>
-                    <Input :id="`mod-name-${index}`" v-model="mod.name" required />
-                    <InputError :message="modifierError(index, 'name')" />
-                </div>
-                <div class="grid gap-1 sm:col-span-3">
-                    <Label :for="`mod-group-${index}`">Group</Label>
-                    <Input :id="`mod-group-${index}`" v-model="mod.group_label" placeholder="e.g. Size" />
-                    <InputError :message="modifierError(index, 'group_label')" />
-                </div>
-                <div class="grid gap-1 sm:col-span-3">
-                    <Label :for="`mod-price-${index}`">Price delta</Label>
-                    <Input
-                        :id="`mod-price-${index}`"
-                        v-model="mod.price_delta"
-                        type="number"
-                        step="0.01"
-                        required
-                    />
-                    <InputError :message="modifierError(index, 'price_delta')" />
-                </div>
-                <div class="flex items-center gap-3 sm:col-span-3">
-                    <label class="flex items-center gap-2 text-sm text-foreground">
-                        <Checkbox v-model="mod.is_default" />
-                        Default
-                    </label>
-                    <button
-                        type="button"
-                        class="ml-auto rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive"
-                        aria-label="Remove modifier"
-                        @click="removeModifier(index)"
-                    >
-                        <Trash2 class="size-4" />
-                    </button>
+            <InputError class="mt-2" :message="(form.errors as Record<string, string>)['default_selection_ids']" />
+
+            <div class="mt-4 space-y-4">
+                <div v-for="group in selectedTemplate.groups" :key="group.id" class="rounded-md border border-border bg-muted/20 p-4">
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <h4 class="text-sm font-medium text-foreground">
+                            {{ group.name }}
+                            <span v-if="group.isRequired" class="text-destructive">*</span>
+                        </h4>
+                        <span class="text-xs text-muted-foreground">
+                            <template v-if="group.isSingleSelect">Pick exactly 1</template>
+                            <template v-else-if="group.minSelections > 0 && group.maxSelections">
+                                Pick {{ group.minSelections }}–{{ group.maxSelections }}
+                            </template>
+                            <template v-else-if="group.maxSelections">
+                                Pick up to {{ group.maxSelections }}
+                            </template>
+                            <template v-else-if="group.minSelections > 0">
+                                Pick at least {{ group.minSelections }}
+                            </template>
+                            <template v-else>Optional</template>
+                            <span v-if="group.maxSelections"> ({{ groupCount(group.id) }} / {{ group.maxSelections }})</span>
+                        </span>
+                    </div>
+
+                    <p v-if="!groupSatisfied(group)" class="mt-1 text-xs text-destructive">
+                        Group "{{ group.name }}" is not satisfied.
+                    </p>
+
+                    <div v-if="group.isSingleSelect" class="mt-3 space-y-1.5">
+                        <label
+                            v-if="!group.isRequired"
+                            class="flex items-center gap-2 text-sm text-foreground"
+                        >
+                            <input
+                                type="radio"
+                                :name="`grp-${group.id}`"
+                                :checked="groupCount(group.id) === 0"
+                                @change="toggleSingle(group.id, null)"
+                            />
+                            None
+                        </label>
+                        <label
+                            v-for="opt in group.options"
+                            :key="opt.id"
+                            class="flex items-center gap-2 text-sm text-foreground"
+                            :class="{ 'opacity-50': !opt.isAvailable }"
+                        >
+                            <input
+                                type="radio"
+                                :name="`grp-${group.id}`"
+                                :checked="isSelected(opt.id)"
+                                :disabled="!opt.isAvailable"
+                                @change="toggleSingle(group.id, opt.id)"
+                            />
+                            <span class="flex-1">{{ opt.name }}</span>
+                            <span class="text-xs text-muted-foreground">{{ formatDelta(opt.priceDeltaCents) }}</span>
+                        </label>
+                    </div>
+
+                    <div v-else class="mt-3 grid gap-1.5 sm:grid-cols-2">
+                        <label
+                            v-for="opt in group.options"
+                            :key="opt.id"
+                            class="flex items-center gap-2 text-sm text-foreground"
+                            :class="{ 'opacity-50': !opt.isAvailable }"
+                        >
+                            <input
+                                type="checkbox"
+                                :checked="isSelected(opt.id)"
+                                :disabled="!opt.isAvailable"
+                                @change="toggleMulti(opt.id)"
+                            />
+                            <span class="flex-1">{{ opt.name }}</span>
+                            <span class="text-xs text-muted-foreground">{{ formatDelta(opt.priceDeltaCents) }}</span>
+                        </label>
+                    </div>
                 </div>
             </div>
         </section>
@@ -269,7 +346,9 @@ const modifierError = (index: number, field: string): string | undefined => {
             <Button as-child variant="outline">
                 <Link :href="`${base}/menu`">Cancel</Link>
             </Button>
-            <Button type="submit" :disabled="form.processing">{{ isEdit ? 'Save changes' : 'Create item' }}</Button>
+            <Button type="submit" :disabled="form.processing || !defaultsValid">
+                {{ isEdit ? 'Save changes' : 'Create item' }}
+            </Button>
         </div>
     </form>
 </template>

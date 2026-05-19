@@ -1,5 +1,30 @@
 declare namespace App {
 namespace Data {
+export type ItemTemplateData = {
+id: number,
+name: string,
+description: string | null,
+isActive: boolean,
+position: number,
+groups: App.Data.ItemTemplateGroupData[],
+};
+export type ItemTemplateGroupData = {
+id: number,
+name: string,
+minSelections: number,
+maxSelections: number | null,
+position: number,
+isSingleSelect: boolean,
+isRequired: boolean,
+options: App.Data.ItemTemplateOptionData[],
+};
+export type ItemTemplateOptionData = {
+id: number,
+name: string,
+priceDeltaCents: number,
+isAvailable: boolean,
+position: number,
+};
 export type MenuCategoryData = {
 id: number,
 name: string,
@@ -20,15 +45,9 @@ imageMediumUrl: string | null,
 imageThumbUrl: string | null,
 isAvailable: boolean,
 position: number,
-modifiers: App.Data.MenuItemModifierData[],
-};
-export type MenuItemModifierData = {
-id: number,
-name: string,
-groupLabel: string | null,
-priceDeltaCents: number,
-isDefault: boolean,
-position: number,
+itemTemplateId: number | null,
+template: App.Data.ItemTemplateData | null,
+defaultSelectionIds: number[],
 };
 export type RestaurantData = {
 id: number,
