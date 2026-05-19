@@ -21,6 +21,7 @@ class RestaurantData extends Data
         public ?string $secondaryColor,
         public ?string $email,
         public ?string $phone,
+        public float $taxRatePercent,
     ) {}
 
     public static function fromModel(Restaurant $restaurant): self
@@ -37,6 +38,7 @@ class RestaurantData extends Data
             secondaryColor: $restaurant->secondary_color,
             email: $restaurant->email,
             phone: $restaurant->phone,
+            taxRatePercent: (float) $restaurant->tax_rate_percent,
         );
     }
 }

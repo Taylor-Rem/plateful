@@ -34,6 +34,7 @@ class SettingsController extends Controller
             'secondary_color' => $validated['secondary_color'] ?? null,
             'email' => $validated['email'] ?? $restaurant->email,
             'phone' => $validated['phone'] ?? null,
+            'tax_rate_percent' => $validated['tax_rate_percent'] ?? 0,
         ]);
 
         if ($request->boolean('remove_logo') && $restaurant->logo_path) {

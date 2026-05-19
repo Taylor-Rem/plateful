@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Listeners\MergeGuestCartOnLogin;
 use App\Models\ItemTemplate;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
@@ -10,8 +11,10 @@ use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
 use App\Tenancy\CurrentTenant;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -33,6 +36,8 @@ class AppServiceProvider extends ServiceProvider
 
         Restaurant::observe(RestaurantObserver::class);
         MenuItem::observe(MenuItemObserver::class);
+
+        Event::listen(Login::class, MergeGuestCartOnLogin::class);
 
         Route::bind('restaurant', function ($value) {
             $restaurant = Restaurant::query()->where('subdomain', $value)->first();

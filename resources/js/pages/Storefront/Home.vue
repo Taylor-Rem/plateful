@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
 import { ref } from 'vue';
 import ItemConfiguratorModal from '@/pages/Storefront/components/ItemConfiguratorModal.vue';
@@ -29,14 +29,39 @@ const onItemClick = (item: App.Data.MenuItemData): void => {
         configuratorOpen.value = true;
         return;
     }
-    toast.success(`Added ${item.name} to cart (cart wiring next session)`);
+    router.post(
+        `/cart/items/${item.id}`,
+        { quantity: 1, option_ids: [] },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                toast.success(`Added ${item.name} to cart`);
+            },
+            onError: () => {
+                toast.error('Could not add to cart.');
+            },
+        },
+    );
 };
 
 const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: number; optionIds: number[] }>; unitPriceCents: number }): void => {
     const name = activeItem.value?.name ?? 'Item';
-    // eslint-disable-next-line no-console
-    console.log('[storefront] add-to-cart', payload);
-    toast.success(`Added ${name} to cart (cart wiring next session): ${formatPrice(payload.unitPriceCents)}`);
+    const optionIds = payload.selections.flatMap((s) => s.optionIds);
+    router.post(
+        `/cart/items/${payload.itemId}`,
+        { quantity: 1, option_ids: optionIds },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                toast.success(`Added ${name} to cart`);
+            },
+            onError: () => {
+                toast.error('Could not add to cart.');
+            },
+        },
+    );
 };
 </script>
 

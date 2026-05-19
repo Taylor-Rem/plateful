@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { ShoppingCart, User } from 'lucide-vue-next';
 import { Toaster } from '@/components/ui/sonner';
+import CartDrawer from '@/components/Storefront/CartDrawer.vue';
 
 type StorefrontPageProps = {
     restaurant?: App.Data.RestaurantData;
+    cart?: App.Data.CartData | null;
     auth?: { user?: { name: string } | null } | null;
 };
 
 const page = usePage<StorefrontPageProps>();
 const restaurant = computed(() => page.props.restaurant);
 const isAuthenticated = computed(() => Boolean(page.props.auth?.user));
-const cartCount = 0;
+const cartCount = computed(() => page.props.cart?.itemCount ?? 0);
+
+const drawerOpen = ref(false);
 </script>
 
 <template>
@@ -46,7 +50,7 @@ const cartCount = 0;
                         type="button"
                         class="relative rounded-md p-2 text-foreground hover:bg-muted"
                         aria-label="Cart"
-                        title="Cart (coming soon)"
+                        @click="drawerOpen = true"
                     >
                         <ShoppingCart class="size-5" />
                         <span
@@ -82,6 +86,7 @@ const cartCount = 0;
 
         <slot />
 
+        <CartDrawer v-model:open="drawerOpen" />
         <Toaster />
     </div>
 </template>

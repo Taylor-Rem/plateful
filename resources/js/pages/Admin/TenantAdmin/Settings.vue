@@ -21,6 +21,7 @@ const form = useForm({
     phone: props.restaurant.phone ?? '',
     logo: null as File | null,
     remove_logo: false as boolean,
+    tax_rate_percent: props.restaurant.taxRatePercent ?? 0,
 });
 
 const newLogoPreview = ref<string | null>(null);
@@ -177,6 +178,18 @@ const submit = (): void => {
                             <Input id="phone" v-model="form.phone" />
                             <InputError :message="form.errors.phone" />
                         </div>
+                    </div>
+                    <div class="grid gap-2 sm:max-w-xs">
+                        <Label for="tax-rate">Sales tax rate (%)</Label>
+                        <Input
+                            id="tax-rate"
+                            v-model="form.tax_rate_percent"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="30"
+                        />
+                        <InputError :message="form.errors.tax_rate_percent" />
                     </div>
                 </div>
             </section>

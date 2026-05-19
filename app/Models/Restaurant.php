@@ -21,6 +21,7 @@ class Restaurant extends Model
         return [
             'is_active' => 'boolean',
             'application_fee_percent' => 'decimal:2',
+            'tax_rate_percent' => 'decimal:2',
         ];
     }
 

@@ -35,6 +35,7 @@ class DemoRestaurantSeeder extends Seeder
             'country' => 'US',
             'timezone' => 'America/New_York',
             'is_active' => true,
+            'tax_rate_percent' => 8.25,
         ]);
 
         $owner = User::create([

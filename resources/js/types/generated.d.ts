@@ -1,5 +1,26 @@
 declare namespace App {
 namespace Data {
+export type CartData = {
+id: number,
+itemCount: number,
+subtotalCents: number,
+items: App.Data.CartItemData[],
+};
+export type CartItemData = {
+id: number,
+menuItemId: number,
+menuItemName: string,
+imageThumbUrl: string | null,
+quantity: number,
+unitPriceCents: number,
+lineTotalCents: number,
+selectionSummary: string,
+selectionGroups: {
+groupName: string,
+selectionNames: string[],
+}[],
+isAvailable: boolean,
+};
 export type ItemTemplateData = {
 id: number,
 name: string,
@@ -61,6 +82,7 @@ primaryColor: string | null,
 secondaryColor: string | null,
 email: string | null,
 phone: string | null,
+taxRatePercent: number,
 };
 }
 namespace Enums {

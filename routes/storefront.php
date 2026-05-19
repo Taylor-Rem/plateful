@@ -2,11 +2,21 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\HomeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('tenant')->group(function () {
     Route::get('/', HomeController::class)->name('storefront.home');
+
+    Route::post('cart/items/{menuItem}', [CartController::class, 'addItem'])
+        ->name('storefront.cart.add');
+    Route::patch('cart/items/{cartItem}', [CartController::class, 'updateItem'])
+        ->name('storefront.cart.update');
+    Route::delete('cart/items/{cartItem}', [CartController::class, 'removeItem'])
+        ->name('storefront.cart.remove');
+    Route::delete('cart', [CartController::class, 'clear'])
+        ->name('storefront.cart.clear');
 
     Route::middleware('auth')->group(function () {
         Route::inertia('dashboard', 'Dashboard')->name('dashboard');

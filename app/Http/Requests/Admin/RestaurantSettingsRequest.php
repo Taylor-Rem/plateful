@@ -25,6 +25,7 @@ class RestaurantSettingsRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:32'],
             'logo' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
             'remove_logo' => ['nullable', 'boolean'],
+            'tax_rate_percent' => ['nullable', 'numeric', 'between:0,30'],
         ];
     }
 }
