@@ -31,8 +31,9 @@ const items = computed(() => cart.value?.items ?? []);
 const hasUnavailable = computed(() =>
     items.value.some((i) => !i.isAvailable),
 );
+const isClosed = computed(() => restaurant.value?.isOpen === false);
 const canCheckout = computed(
-    () => items.value.length > 0 && !hasUnavailable.value,
+    () => items.value.length > 0 && !hasUnavailable.value && !isClosed.value,
 );
 
 const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
@@ -208,6 +209,13 @@ const clearCart = (): void => {
                         class="text-center text-xs text-destructive"
                     >
                         Remove unavailable items to continue.
+                    </p>
+                    <p
+                        v-else-if="isClosed"
+                        class="text-center text-xs text-amber-700"
+                    >
+                        We're closed — come back after
+                        {{ restaurant?.nextOpenLabel?.replace(/^Opens\s*/, '') }} to check out.
                     </p>
                     <button
                         type="button"

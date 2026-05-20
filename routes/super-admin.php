@@ -43,6 +43,8 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             Route::post('/orders/{order:number}/transitions', [TenantAdmin\OrdersController::class, 'transition'])->name('orders.transition');
             Route::get('/settings', [TenantAdmin\SettingsController::class, 'edit'])->name('settings.edit');
             Route::put('/settings', [TenantAdmin\SettingsController::class, 'update'])->name('settings.update');
+            Route::get('/hours', [TenantAdmin\HoursController::class, 'edit'])->name('hours.edit');
+            Route::put('/hours', [TenantAdmin\HoursController::class, 'update'])->name('hours.update');
             Route::post('/invitations', [TenantAdmin\InvitationController::class, 'store'])->name('invitations.store');
         });
 

@@ -33,6 +33,15 @@ class OrderPlacement
     {
         $cart->loadMissing(['items.menuItem.template.groups.options']);
 
+        if (! $restaurant->isOpenAt()) {
+            $label = $restaurant->formatNextOpenAt();
+            $message = $restaurant->name.' is currently closed.'
+                .($label ? " {$label}." : '');
+            throw InvalidCheckoutException::withErrors([
+                'restaurant_closed' => $message,
+            ]);
+        }
+
         if ($cart->items->isEmpty()) {
             throw InvalidCheckoutException::withErrors([
                 'cart' => 'Your cart is empty.',

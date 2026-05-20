@@ -154,6 +154,22 @@ const submit = (): void => {
         </h1>
 
         <div
+            v-if="restaurant.isOpen === false"
+            class="mb-6 rounded-md border border-amber-300 bg-amber-100 px-4 py-3 text-sm text-amber-900"
+        >
+            <strong class="font-semibold">We're currently closed.</strong>
+            {{ restaurant.nextOpenLabel }}. You can still keep items in your cart, but
+            you'll need to wait until we open to check out.
+        </div>
+
+        <p
+            v-if="form.errors.restaurant_closed"
+            class="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+        >
+            {{ form.errors.restaurant_closed }}
+        </p>
+
+        <div
             v-if="cart.items.length === 0"
             class="rounded-lg border border-border bg-card p-8 text-center"
         >
@@ -576,12 +592,21 @@ const submit = (): void => {
                             backgroundColor: 'var(--brand-primary)',
                             color: 'var(--brand-primary-foreground)',
                         }"
-                        :disabled="form.processing"
+                        :disabled="form.processing || restaurant.isOpen === false"
                     >
                         {{ form.processing ? 'Placing order...' : 'Place order' }}
                     </button>
 
-                    <p class="mt-3 text-center text-xs text-muted-foreground">
+                    <p
+                        v-if="restaurant.isOpen === false"
+                        class="mt-3 text-center text-xs text-amber-700"
+                    >
+                        We're currently closed. {{ restaurant.nextOpenLabel }}.
+                    </p>
+                    <p
+                        v-else
+                        class="mt-3 text-center text-xs text-muted-foreground"
+                    >
                         By placing this order you confirm the details above.
                     </p>
                 </div>

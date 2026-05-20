@@ -147,7 +147,21 @@ phone: string | null,
 taxRatePercent: number,
 deliveryFeeCents: number,
 isActive: boolean,
+timezone: string,
+isOpen: boolean,
+nextOpenLabel: string | null,
+hoursByDay: {
+opensAt: string,
+closesAt: string,
+position: number,
+}[][],
 createdAt: string | null,
+};
+export type RestaurantHourData = {
+dayOfWeek: number,
+opensAt: string,
+closesAt: string,
+position: number,
 };
 }
 namespace Enums {

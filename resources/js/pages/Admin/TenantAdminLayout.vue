@@ -46,6 +46,12 @@ defineProps<{
                 <Link :href="`/${restaurant.subdomain}/menu`" class="hover:text-foreground">Menu</Link>
                 <Link :href="`/${restaurant.subdomain}/orders`" class="hover:text-foreground">Orders</Link>
                 <Link
+                    :href="`/${restaurant.subdomain}/hours`"
+                    class="hover:text-foreground"
+                >
+                    Hours
+                </Link>
+                <Link
                     :href="`/${restaurant.subdomain}/settings`"
                     class="hover:text-foreground"
                 >
