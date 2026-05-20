@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Mail;
 
 class OrderTransition
 {
+    public function __construct(protected LoyaltyService $loyalty) {}
+
     public function apply(
         Order $order,
         OrderStatus $toStatus,
@@ -39,6 +41,10 @@ class OrderTransition
 
             $order->status = $toStatus;
             $order->save();
+
+            if ($toStatus === OrderStatus::Completed) {
+                $this->loyalty->awardForOrder($order);
+            }
         });
 
         $order->loadMissing(['items', 'restaurant']);

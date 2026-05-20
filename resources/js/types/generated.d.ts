@@ -1,5 +1,14 @@
 declare namespace App {
 namespace Data {
+export type AccountSummaryData = {
+userName: string,
+userEmail: string,
+userPhone: string | null,
+orderCount: number,
+addressCount: number,
+loyaltyPoints: number,
+defaultAddress: App.Data.AddressData | null,
+};
 export type AddressData = {
 id: number,
 label: string | null,
@@ -101,6 +110,7 @@ taxCents: number,
 tipCents: number,
 deliveryFeeCents: number,
 totalCents: number,
+awardedLoyaltyPoints: number,
 notes: string | null,
 placedAt: string | null,
 items: App.Data.OrderItemData[],

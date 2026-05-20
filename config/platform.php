@@ -48,6 +48,19 @@ return [
     | Curated list of timezones offered when creating a restaurant.
     |
     */
+    /*
+    |---------------------------------------------------------------------------
+    | Loyalty
+    |---------------------------------------------------------------------------
+    |
+    | How many loyalty points a customer earns per whole dollar of order
+    | subtotal when the order is marked completed.
+    |
+    */
+    'loyalty' => [
+        'points_per_dollar' => 1,
+    ],
+
     'timezones' => [
         'America/New_York',
         'America/Chicago',

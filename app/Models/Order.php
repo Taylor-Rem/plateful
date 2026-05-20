@@ -30,6 +30,7 @@ class Order extends Model
             'delivery_fee_cents' => 'integer',
             'application_fee_cents' => 'integer',
             'total_cents' => 'integer',
+            'awarded_loyalty_points' => 'integer',
             'delivery_address' => 'array',
         ];
     }

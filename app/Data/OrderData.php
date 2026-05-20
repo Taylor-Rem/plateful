@@ -25,6 +25,7 @@ class OrderData extends Data
         public int $tipCents,
         public int $deliveryFeeCents,
         public int $totalCents,
+        public int $awardedLoyaltyPoints,
         public ?string $notes,
         public ?string $placedAt,
         #[DataCollectionOf(OrderItemData::class)]
@@ -50,6 +51,7 @@ class OrderData extends Data
             tipCents: (int) $order->tip_cents,
             deliveryFeeCents: (int) $order->delivery_fee_cents,
             totalCents: (int) $order->total_cents,
+            awardedLoyaltyPoints: (int) ($order->awarded_loyalty_points ?? 0),
             notes: $order->notes,
             placedAt: $order->placed_at?->toIso8601String(),
             items: $order->items
