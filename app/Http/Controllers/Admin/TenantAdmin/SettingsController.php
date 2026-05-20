@@ -34,7 +34,14 @@ class SettingsController extends Controller
             'secondary_color' => $validated['secondary_color'] ?? null,
             'email' => $validated['email'] ?? $restaurant->email,
             'phone' => $validated['phone'] ?? null,
+            'tax_rate_percent' => $validated['tax_rate_percent'] ?? 0,
         ]);
+
+        if ($request->filled('delivery_fee')) {
+            $restaurant->delivery_fee_cents = (int) round(((float) $request->input('delivery_fee')) * 100);
+        } elseif ($request->exists('delivery_fee')) {
+            $restaurant->delivery_fee_cents = 0;
+        }
 
         if ($request->boolean('remove_logo') && $restaurant->logo_path) {
             $images->deleteVariants($restaurant->logo_path);

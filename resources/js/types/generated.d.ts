@@ -1,5 +1,77 @@
 declare namespace App {
 namespace Data {
+export type AccountSummaryData = {
+userName: string,
+userEmail: string,
+userPhone: string | null,
+orderCount: number,
+addressCount: number,
+loyaltyPoints: number,
+defaultAddress: App.Data.AddressData | null,
+};
+export type AddressData = {
+id: number,
+label: string | null,
+street: string,
+street2: string | null,
+city: string,
+state: string,
+postalCode: string,
+country: string,
+instructions: string | null,
+isDefault: boolean,
+};
+export type AdminUserData = {
+id: number,
+name: string,
+email: string,
+};
+export type CartData = {
+id: number,
+itemCount: number,
+subtotalCents: number,
+items: App.Data.CartItemData[],
+};
+export type CartItemData = {
+id: number,
+menuItemId: number,
+menuItemName: string,
+imageThumbUrl: string | null,
+quantity: number,
+unitPriceCents: number,
+lineTotalCents: number,
+selectionSummary: string,
+selectionGroups: {
+groupName: string,
+selectionNames: string[],
+}[],
+isAvailable: boolean,
+};
+export type ItemTemplateData = {
+id: number,
+name: string,
+description: string | null,
+isActive: boolean,
+position: number,
+groups: App.Data.ItemTemplateGroupData[],
+};
+export type ItemTemplateGroupData = {
+id: number,
+name: string,
+minSelections: number,
+maxSelections: number | null,
+position: number,
+isSingleSelect: boolean,
+isRequired: boolean,
+options: App.Data.ItemTemplateOptionData[],
+};
+export type ItemTemplateOptionData = {
+id: number,
+name: string,
+priceDeltaCents: number,
+isAvailable: boolean,
+position: number,
+};
 export type MenuCategoryData = {
 id: number,
 name: string,
@@ -20,20 +92,60 @@ imageMediumUrl: string | null,
 imageThumbUrl: string | null,
 isAvailable: boolean,
 position: number,
-modifiers: App.Data.MenuItemModifierData[],
+itemTemplateId: number | null,
+template: App.Data.ItemTemplateData | null,
+defaultSelectionIds: number[],
 };
-export type MenuItemModifierData = {
+export type OrderData = {
+id: number,
+number: string,
+status: string,
+type: string,
+customerName: string,
+customerEmail: string,
+customerPhone: string | null,
+deliveryAddress: Record<string, any> | null,
+subtotalCents: number,
+taxCents: number,
+tipCents: number,
+deliveryFeeCents: number,
+totalCents: number,
+awardedLoyaltyPoints: number,
+notes: string | null,
+placedAt: string | null,
+items: App.Data.OrderItemData[],
+};
+export type OrderEventData = {
+id: number,
+fromStatus: string | null,
+toStatus: string,
+occurredAt: string,
+userName: string | null,
+note: string | null,
+};
+export type OrderItemData = {
 id: number,
 name: string,
-groupLabel: string | null,
-priceDeltaCents: number,
-isDefault: boolean,
-position: number,
+quantity: number,
+unitPriceCents: number,
+subtotalCents: number,
+modifierSummary: string,
+modifierGroups: {
+groupName: string,
+selectionNames: string[],
+}[],
+};
+export type PendingInvitationData = {
+id: number,
+email: string,
+expiresAt: string | null,
+invitedByName: string | null,
 };
 export type RestaurantData = {
 id: number,
 name: string,
 subdomain: string,
+customDomain: string | null,
 description: string | null,
 logoUrl: string | null,
 logoMediumUrl: string | null,
@@ -42,6 +154,24 @@ primaryColor: string | null,
 secondaryColor: string | null,
 email: string | null,
 phone: string | null,
+taxRatePercent: number,
+deliveryFeeCents: number,
+isActive: boolean,
+timezone: string,
+isOpen: boolean,
+nextOpenLabel: string | null,
+hoursByDay: {
+opensAt: string,
+closesAt: string,
+position: number,
+}[][],
+createdAt: string | null,
+};
+export type RestaurantHourData = {
+dayOfWeek: number,
+opensAt: string,
+closesAt: string,
+position: number,
 };
 }
 namespace Enums {

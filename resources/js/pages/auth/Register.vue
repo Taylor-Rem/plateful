@@ -62,6 +62,19 @@ defineOptions({
             </div>
 
             <div class="grid gap-2">
+                <Label for="phone">Phone (optional)</Label>
+                <Input
+                    id="phone"
+                    type="tel"
+                    :tabindex="3"
+                    autocomplete="tel"
+                    name="phone"
+                    placeholder="(555) 123-4567"
+                />
+                <InputError :message="errors.phone" />
+            </div>
+
+            <div class="grid gap-2">
                 <Label for="password">Password</Label>
                 <PasswordInput
                     id="password"

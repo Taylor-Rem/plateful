@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\ItemTemplate;
 use App\Tenancy\CurrentTenant;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,15 +23,16 @@ class MenuItemStoreRequest extends FormRequest
             $data['price_cents'] = (int) round(((float) $this->input('price')) * 100);
         }
 
-        $modifiers = $this->input('modifiers');
-        if (is_array($modifiers)) {
-            $data['modifiers'] = array_values(array_map(function ($m) {
-                if (is_array($m) && array_key_exists('price_delta', $m)) {
-                    $m['price_delta_cents'] = (int) round(((float) $m['price_delta']) * 100);
-                }
+        $ids = $this->input('default_selection_ids');
+        if (is_array($ids)) {
+            $data['default_selection_ids'] = array_values(array_map(
+                fn ($v) => (int) $v,
+                array_filter($ids, fn ($v) => $v !== null && $v !== ''),
+            ));
+        }
 
-                return $m;
-            }, $modifiers));
+        if ($this->input('item_template_id') === '' || $this->input('item_template_id') === 'null') {
+            $data['item_template_id'] = null;
         }
 
         if ($data !== []) {
@@ -62,12 +65,76 @@ class MenuItemStoreRequest extends FormRequest
             'is_available' => ['boolean'],
             'image' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
             'remove_image' => ['nullable', 'boolean'],
-            'modifiers' => ['nullable', 'array'],
-            'modifiers.*.id' => ['nullable', 'integer'],
-            'modifiers.*.name' => ['required_with:modifiers', 'string', 'max:255'],
-            'modifiers.*.group_label' => ['nullable', 'string', 'max:255'],
-            'modifiers.*.price_delta' => ['required_with:modifiers', 'numeric', 'between:-999.99,999.99'],
-            'modifiers.*.is_default' => ['boolean'],
+            'item_template_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('item_templates', 'id')->where(fn ($q) => $q->where('restaurant_id', $tenantId)),
+            ],
+            'default_selection_ids' => ['nullable', 'array'],
+            'default_selection_ids.*' => ['integer'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            $templateId = $this->input('item_template_id');
+            $rawSelections = $this->input('default_selection_ids', []);
+            $selections = is_array($rawSelections)
+                ? array_values(array_filter(array_map('intval', $rawSelections)))
+                : [];
+
+            if ($templateId === null || $templateId === '') {
+                if (! empty($selections)) {
+                    $v->errors()->add('default_selection_ids', 'Default selections require a template.');
+                }
+
+                return;
+            }
+
+            $template = ItemTemplate::with('groups.options')->find($templateId);
+            if (! $template) {
+                return;
+            }
+
+            $allOwnedOptionIds = [];
+            foreach ($template->groups as $group) {
+                foreach ($group->options as $opt) {
+                    $allOwnedOptionIds[$opt->id] = $group->id;
+                }
+            }
+
+            // Any selected option must belong to this template.
+            foreach ($selections as $optId) {
+                if (! array_key_exists($optId, $allOwnedOptionIds)) {
+                    $v->errors()->add(
+                        'default_selection_ids',
+                        'Default selections include an option that does not belong to the chosen template.',
+                    );
+
+                    return;
+                }
+            }
+
+            foreach ($template->groups as $group) {
+                $countInGroup = collect($selections)
+                    ->filter(fn ($id) => ($allOwnedOptionIds[$id] ?? null) === $group->id)
+                    ->count();
+
+                if ($countInGroup < $group->min_selections) {
+                    $v->errors()->add(
+                        'default_selection_ids',
+                        "Group \"{$group->name}\" requires at least {$group->min_selections} default selection(s).",
+                    );
+                }
+
+                if ($group->max_selections !== null && $countInGroup > $group->max_selections) {
+                    $v->errors()->add(
+                        'default_selection_ids',
+                        "Group \"{$group->name}\" allows at most {$group->max_selections} default selection(s).",
+                    );
+                }
+            }
+        });
     }
 }

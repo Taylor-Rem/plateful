@@ -2,7 +2,6 @@
 
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
-use App\Models\MenuItemModifier;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Restaurant;
@@ -164,7 +163,7 @@ test('reorder categories updates positions', function () {
         ->and($b->fresh()->position)->toBe(2);
 });
 
-test('admin can create item with modifiers and price in dollars converts to cents', function () {
+test('admin can create item and price in dollars converts to cents', function () {
     $r = menuRestaurant('marcos');
     $admin = attachAdmin($r);
     $cat = makeCategory($r);
@@ -175,51 +174,13 @@ test('admin can create item with modifiers and price in dollars converts to cent
             'menu_category_id' => $cat->id,
             'price' => '12.99',
             'is_available' => true,
-            'modifiers' => [
-                ['name' => 'Small', 'group_label' => 'Size', 'price_delta' => '-1.50', 'is_default' => false],
-                ['name' => 'Large', 'group_label' => 'Size', 'price_delta' => '2.00', 'is_default' => true],
-            ],
         ])
         ->assertRedirect();
 
     $item = MenuItem::withoutTenantScope()->where('restaurant_id', $r->id)->first();
     expect($item)->not->toBeNull()
         ->and($item->price_cents)->toBe(1299)
-        ->and($item->modifiers()->count())->toBe(2);
-
-    $mods = $item->modifiers()->orderBy('position')->get();
-    expect($mods[0]->price_delta_cents)->toBe(-150)
-        ->and($mods[1]->price_delta_cents)->toBe(200);
-});
-
-test('editing an item replaces modifiers', function () {
-    $r = menuRestaurant('marcos');
-    $admin = attachAdmin($r);
-    $cat = makeCategory($r);
-    $item = makeItem($cat);
-    $oldMod = MenuItemModifier::create([
-        'menu_item_id' => $item->id,
-        'name' => 'OldMod',
-        'price_delta_cents' => 0,
-        'position' => 0,
-    ]);
-
-    $this->actingAs($admin)
-        ->put(MENU_ADMIN_BASE."/marcos/menu/items/{$item->id}", [
-            'name' => 'New Name',
-            'menu_category_id' => $cat->id,
-            'price' => '15.00',
-            'is_available' => true,
-            'modifiers' => [
-                ['name' => 'NewMod', 'price_delta' => '1.00', 'is_default' => false],
-            ],
-        ])
-        ->assertRedirect();
-
-    expect(MenuItemModifier::find($oldMod->id))->toBeNull()
-        ->and($item->fresh()->modifiers()->count())->toBe(1)
-        ->and($item->fresh()->modifiers()->first()->name)->toBe('NewMod')
-        ->and($item->fresh()->name)->toBe('New Name');
+        ->and($item->item_template_id)->toBeNull();
 });
 
 test('toggling item unavailable hides it from storefront', function () {
@@ -309,7 +270,7 @@ test('item reorder updates positions within a category', function () {
 });
 
 test('super admin cannot act on item belonging to another restaurant', function () {
-    $marcos = menuRestaurant('marcos');
+    menuRestaurant('marcos');
     $other = menuRestaurant('other');
     $superAdmin = User::factory()->superAdmin()->create();
 

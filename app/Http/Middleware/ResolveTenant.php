@@ -8,6 +8,7 @@ use App\Tenancy\CurrentTenant;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\View;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -34,6 +35,14 @@ class ResolveTenant
 
         if (! $restaurant) {
             throw new NotFoundHttpException;
+        }
+
+        if (! $restaurant->is_active) {
+            return Inertia::render('Storefront/Unavailable', [
+                'restaurantName' => $restaurant->name,
+            ])
+                ->toResponse($request)
+                ->setStatusCode(503);
         }
 
         $this->currentTenant->set($restaurant);

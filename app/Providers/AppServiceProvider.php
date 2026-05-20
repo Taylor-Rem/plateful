@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Listeners\MergeGuestCartOnLogin;
+use App\Models\ItemTemplate;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Restaurant;
@@ -9,9 +11,12 @@ use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
 use App\Tenancy\CurrentTenant;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -32,6 +37,8 @@ class AppServiceProvider extends ServiceProvider
 
         Restaurant::observe(RestaurantObserver::class);
         MenuItem::observe(MenuItemObserver::class);
+
+        Event::listen(Login::class, MergeGuestCartOnLogin::class);
 
         Route::bind('restaurant', function ($value) {
             $restaurant = Restaurant::query()->where('subdomain', $value)->first();
@@ -59,6 +66,22 @@ class AppServiceProvider extends ServiceProvider
             return $category;
         });
 
+        Route::bind('template', function ($value) {
+            $restaurant = request()->route('restaurant');
+            $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : null;
+
+            $template = ItemTemplate::withoutTenantScope()
+                ->when($restaurantId, fn ($q) => $q->where('restaurant_id', $restaurantId))
+                ->where('id', $value)
+                ->first();
+
+            if (! $template || ($restaurantId && $template->restaurant_id !== $restaurantId)) {
+                throw new NotFoundHttpException;
+            }
+
+            return $template;
+        });
+
         Route::bind('item', function ($value) {
             $restaurant = request()->route('restaurant');
             $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : null;
@@ -82,6 +105,10 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        if (app()->isProduction()) {
+            URL::forceScheme('https');
+        }
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

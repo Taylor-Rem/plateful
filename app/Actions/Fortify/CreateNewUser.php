@@ -38,6 +38,7 @@ class CreateNewUser implements CreatesNewUsers
 
         Validator::make($input, [
             ...$this->profileRules(),
+            'phone' => ['nullable', 'string', 'max:32'],
             'password' => $this->passwordRules(),
         ])->validate();
 
@@ -45,6 +46,7 @@ class CreateNewUser implements CreatesNewUsers
             'restaurant_id' => $tenant->id(),
             'name' => $input['name'],
             'email' => $input['email'],
+            'phone' => $input['phone'] ?? null,
             'password' => $input['password'],
             'role' => UserRole::Customer,
         ]);

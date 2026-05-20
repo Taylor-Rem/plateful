@@ -3,7 +3,6 @@
 namespace App\Data;
 
 use App\Models\MenuItem;
-use Spatie\LaravelData\Attributes\DataCollectionOf;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
@@ -22,13 +21,16 @@ class MenuItemData extends Data
         public ?string $imageThumbUrl,
         public bool $isAvailable,
         public int $position,
-        #[DataCollectionOf(MenuItemModifierData::class)]
-        /** @var array<int, MenuItemModifierData> */
-        public array $modifiers,
+        public ?int $itemTemplateId,
+        public ?ItemTemplateData $template,
+        /** @var array<int, int> */
+        public array $defaultSelectionIds,
     ) {}
 
     public static function fromModel(MenuItem $item): self
     {
+        $template = $item->relationLoaded('template') ? $item->template : $item->template;
+
         return new self(
             id: $item->id,
             menuCategoryId: $item->menu_category_id,
@@ -41,8 +43,11 @@ class MenuItemData extends Data
             imageThumbUrl: $item->imageThumbUrl(),
             isAvailable: $item->is_available,
             position: $item->position,
-            modifiers: $item->modifiers
-                ->map(fn ($m) => MenuItemModifierData::fromModel($m))
+            itemTemplateId: $item->item_template_id,
+            template: $template ? ItemTemplateData::fromModel($template) : null,
+            defaultSelectionIds: $item->defaultSelections
+                ->map(fn ($o) => (int) $o->id)
+                ->values()
                 ->all(),
         );
     }

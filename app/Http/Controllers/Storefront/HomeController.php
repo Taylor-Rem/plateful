@@ -23,9 +23,8 @@ class HomeController extends Controller
                 'items' => function ($q): void {
                     $q->where('is_available', true)->orderBy('position');
                 },
-                'items.modifiers' => function ($q): void {
-                    $q->orderBy('position');
-                },
+                'items.template.groups.options',
+                'items.defaultSelections',
             ])
             ->get()
             ->filter(fn ($c) => $c->items->isNotEmpty())

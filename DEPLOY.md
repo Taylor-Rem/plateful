@@ -1,0 +1,221 @@
+# Deploying Plateful to Laravel Cloud
+
+This guide walks through a fresh deploy of Plateful to Laravel Cloud (Starter tier) with Resend for transactional email.
+
+Plateful is a multi-tenant SaaS:
+- **Platform admin** lives on `admin.<primary-domain>`
+- **Each restaurant** lives on `<subdomain>.<primary-domain>` (and optionally a custom domain)
+
+Laravel Cloud handles SSL, wildcard subdomains, the database, object storage, scheduler, and queue runner.
+
+---
+
+## Prerequisites
+
+- GitHub repo for this project pushed to a remote you control.
+- Accounts: **Laravel Cloud** (`https://cloud.laravel.com`) and **Resend** (`https://resend.com`).
+- A domain you want to use eventually (optional — Cloud gives you `your-app.laravel.cloud` for free).
+
+---
+
+## Step 1: Sign up & install CLIs
+
+1. Create a Laravel Cloud account and connect your GitHub.
+2. (Optional but recommended) Install the Laravel Cloud CLI: `composer global require laravel/cloud-cli` — useful for `cloud ssh`, `cloud env:pull`, etc.
+3. Create a Resend account, confirm your email, and (later) verify the sending domain you want to use for `MAIL_FROM_ADDRESS`.
+
+---
+
+## Step 2: Configure Resend
+
+1. In the Resend dashboard, create an **API key** with "Sending access" → copy it. You'll paste this into Cloud as `RESEND_API_KEY` in Step 5.
+2. Add and verify your sending domain (e.g. `mail.your-domain.com`). Until DNS is verified you can only send from `onboarding@resend.dev` to your own verified address — fine for the very first smoke test, not for production.
+
+---
+
+## Step 3: Push the repo
+
+Make sure your local `main` is committed and pushed:
+
+```bash
+git status
+git push origin main
+```
+
+`composer.lock` and `package-lock.json` must be committed (they are).
+
+---
+
+## Step 4: Create the Laravel Cloud project
+
+1. In Cloud, **New Project** → connect the GitHub repo.
+2. Region: pick the one closest to your users (e.g. `us-east-1`).
+3. Plan: **Starter**.
+4. When asked about resources to provision, accept the defaults:
+   - **Postgres database** (serverless) — Cloud will auto-inject `DB_*` env vars.
+   - **Object storage** bucket — Cloud will auto-inject `AWS_*` env vars (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_BUCKET`, `AWS_DEFAULT_REGION`, `AWS_URL`).
+5. **Build command:** `composer install --no-dev --optimize-autoloader && npm ci && npm run build`
+6. **Deploy command (post-deploy hook):** `php artisan migrate --force && php artisan storage:link && php artisan config:cache && php artisan route:cache && php artisan view:cache`
+   - **Important:** never use `migrate:fresh` or `db:seed` in production. Plateful has real photo data; only forward-only migrations are safe.
+7. **Scheduler:** enable it. Cloud will run `schedule:run` every minute. Currently nothing is scheduled, but enabling it now means cron jobs added later "just work."
+8. **Queue worker:** on Starter, the queue runs against the database. Either:
+   - Enable Cloud's in-process queue worker (recommended if available on Starter), or
+   - Leave `QUEUE_CONNECTION=database` and skip the worker for now — sync-style behavior is fine until you add jobs that must run async.
+
+---
+
+## Step 5: Set environment variables in Cloud
+
+In the project **Environment** tab, set the following. Anything marked *auto* is injected by Cloud — do **not** set it manually.
+
+### App
+
+| Key | Value |
+|---|---|
+| `APP_NAME` | `Plateful` |
+| `APP_ENV` | `production` |
+| `APP_KEY` | Click "Generate" in Cloud (or `php artisan key:generate --show` locally) |
+| `APP_DEBUG` | `false` |
+| `APP_URL` | `https://your-app.laravel.cloud` (whatever Cloud assigns you — see Step 6) |
+| `APP_LOCALE` | `en` |
+| `APP_FALLBACK_LOCALE` | `en` |
+| `BCRYPT_ROUNDS` | `12` |
+| `LOG_CHANNEL` | `stderr` |
+| `LOG_LEVEL` | `info` |
+
+### Database (all auto-injected — verify they appear)
+
+| Key | Source |
+|---|---|
+| `DB_CONNECTION` | set to `pgsql` |
+| `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | *auto* (Cloud Postgres) |
+
+### Sessions / cache / queue (Starter, no Redis)
+
+| Key | Value |
+|---|---|
+| `SESSION_DRIVER` | `database` |
+| `SESSION_LIFETIME` | `120` |
+| `SESSION_DOMAIN` | `null` (leave unset — see "Multi-tenant cookies" in Troubleshooting) |
+| `CACHE_STORE` | `database` |
+| `QUEUE_CONNECTION` | `database` |
+| `BROADCAST_CONNECTION` | `log` |
+
+On Growth+ with Redis/KV available, switch all three to `redis`.
+
+### Mail (Resend)
+
+| Key | Value |
+|---|---|
+| `MAIL_MAILER` | `resend` |
+| `MAIL_FROM_ADDRESS` | `hello@your-verified-domain.com` |
+| `MAIL_FROM_NAME` | `Plateful` |
+| `RESEND_API_KEY` | the key from Step 2 |
+
+### Storage (restaurant assets → Cloud object storage)
+
+| Key | Value |
+|---|---|
+| `FILESYSTEM_DISK` | `local` |
+| `FILESYSTEM_RESTAURANT_ASSETS_DRIVER` | `s3` |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_BUCKET`, `AWS_DEFAULT_REGION`, `AWS_URL` | *auto* (Cloud object storage) |
+| `AWS_USE_PATH_STYLE_ENDPOINT` | `false` (or whatever Cloud's docs recommend) |
+
+The `restaurant_assets` disk in `config/filesystems.php` already falls back to `AWS_*` when the `RESTAURANT_ASSETS_*` overrides aren't set, so this is all you need.
+
+### Platform / tenancy
+
+| Key | Value |
+|---|---|
+| `PLATFORM_PRIMARY_DOMAIN` | the bare host Cloud assigned, e.g. `your-app.laravel.cloud` |
+| `PLATFORM_ADMIN_SUBDOMAIN` | `admin` |
+
+---
+
+## Step 6: First deploy
+
+1. Trigger the first deploy (push to `main` or click "Deploy" in Cloud).
+2. The build command installs PHP deps without dev, then builds the Vite bundle.
+3. The post-deploy hook runs migrations and caches config/routes/views.
+4. When it goes green, note the URL Cloud assigned (e.g. `https://app-abc123.laravel.cloud`). Update `APP_URL` and `PLATFORM_PRIMARY_DOMAIN` if they don't match, and redeploy.
+
+---
+
+## Step 7: Configure wildcard subdomain routing
+
+Plateful needs Cloud to route **both** `admin.<primary>` and **all** `*.<primary>` subdomains to the same app:
+
+1. In Cloud → **Domains**, add:
+   - `<primary>` (e.g. `your-app.laravel.cloud`)
+   - `*.<primary>` (wildcard)
+2. Verify both resolve and serve the app over HTTPS.
+
+If you're using Cloud's default `*.laravel.cloud` subdomain, wildcard subdomains under your project hostname should work automatically — confirm in their dashboard.
+
+---
+
+## Step 8: Create the super admin
+
+Open Cloud's web console (or `cloud ssh` if available) and run:
+
+```bash
+php artisan plateful:create-super-admin --email=you@example.com --name="Your Name"
+```
+
+You'll be prompted for a password (min 12 chars). The command is idempotent: it errors clearly if the email already exists. It creates a user with `role=admin`, `is_super_admin=true`, `restaurant_id=null`, and a verified email.
+
+---
+
+## Step 9: Smoke-test the deployment
+
+1. Visit `https://admin.<primary>` → you should see the admin login.
+2. Log in with the super admin you just created.
+3. Visit `https://<some-existing-restaurant-subdomain>.<primary>` → storefront should render with theming and images served from Cloud object storage.
+4. Trigger a transactional email (e.g. password reset) → check the Resend dashboard "Emails" tab to confirm delivery.
+5. Place a test order on the storefront → confirm it lands in the admin orders list.
+
+---
+
+## Step 10: Point a real domain at it (when ready)
+
+1. In Cloud → **Domains**, add your apex (e.g. `plateful.app`) and `*.plateful.app`.
+2. Add the CNAME / A records Cloud shows you at your DNS provider.
+3. Wait for cert issuance (Cloud handles Let's Encrypt automatically).
+4. Update env vars:
+   - `APP_URL=https://plateful.app`
+   - `PLATFORM_PRIMARY_DOMAIN=plateful.app`
+5. Redeploy.
+
+---
+
+## Troubleshooting
+
+### Multi-tenant session cookies
+We deliberately leave `SESSION_DOMAIN=null` so each tenant subdomain (`admin.X`, `marcos.X`, `bobs.X`) gets its own cookie scope. **Do not** set it to `.<primary>` — that would let a customer logged in on `marcos.X` see their session on `bobs.X`.
+
+### "Mixed content" warnings or http URLs in pages
+`AppServiceProvider` calls `URL::forceScheme('https')` in production, and the app trusts all proxies via `bootstrap/app.php`. If you still see `http://` URLs, confirm `APP_ENV=production` and `APP_URL` starts with `https://`, then `php artisan config:clear`.
+
+### Image URLs broken
+Check `Storage::disk('restaurant_assets')->url('some/path.jpg')` in Cloud's `php artisan tinker`. It should return an HTTPS URL pointing at the Cloud object storage bucket (or `AWS_URL` if you set a custom CDN). The accessors `MenuItem::image_url` and `Restaurant::logo_url` use this disk and don't hardcode anything.
+
+### "Unable to locate file in Vite manifest"
+The build step didn't run, or `public/build` wasn't deployed. Re-check the build command in Cloud and redeploy.
+
+### Migrations failing on first deploy
+Cloud runs `migrate --force`. If a column already exists from a partial deploy, fix it via a fresh migration — **never** `migrate:fresh` (would wipe restaurant photos and orders).
+
+### Resend rejecting mail
+Until your sending domain is verified, you can only send to addresses in your Resend account. Verify DNS records in Resend, then retry.
+
+### Logs
+`LOG_CHANNEL=stderr` sends logs to stdout/stderr which Cloud captures in the **Logs** tab.
+
+---
+
+## Consider adding later
+
+- **Error monitoring**: Sentry or Bugsnag — both have first-party Laravel SDKs and are a one-package install plus an env var.
+- **Stripe billing**: Cashier is already installed but unused. When you're ready to charge restaurants, wire up `Billable` on `User` or `Restaurant` and configure Stripe.
+- **Custom queue worker**: as background work grows, move from `database` queue + sync to a dedicated Cloud queue worker on Growth.
+- **Backups**: Cloud Postgres is managed but verify the backup policy on Starter and set up an off-Cloud DB snapshot routine if needed.

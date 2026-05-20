@@ -10,11 +10,12 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['name', 'email', 'password', 'restaurant_id', 'role', 'is_super_admin'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'restaurant_id', 'role', 'is_super_admin'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -43,6 +44,11 @@ class User extends Authenticatable
     public function restaurants(): BelongsToMany
     {
         return $this->belongsToMany(Restaurant::class, 'restaurant_user')->withTimestamps();
+    }
+
+    public function addresses(): HasMany
+    {
+        return $this->hasMany(Address::class);
     }
 
     public function isSuperAdmin(): bool
