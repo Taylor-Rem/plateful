@@ -37,10 +37,12 @@ function sanitizeSubdomain(value: string): string {
     return value.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-');
 }
 
-function onSubdomainInput(event: Event) {
-    const target = event.target as HTMLInputElement;
-    form.subdomain = sanitizeSubdomain(target.value);
-}
+const subdomainModel = computed({
+    get: () => form.subdomain,
+    set: (value: string) => {
+        form.subdomain = sanitizeSubdomain(value);
+    },
+});
 
 const subdomainReserved = computed(() =>
     props.reservedSubdomains.includes(form.subdomain.toLowerCase()),
@@ -88,8 +90,7 @@ function submit() {
                             <Label for="subdomain">Subdomain</Label>
                             <Input
                                 id="subdomain"
-                                :value="form.subdomain"
-                                @input="onSubdomainInput"
+                                v-model="subdomainModel"
                                 required
                                 placeholder="marcos"
                             />
