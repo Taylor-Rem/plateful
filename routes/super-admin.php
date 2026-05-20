@@ -39,6 +39,8 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             Route::delete('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'destroy'])->name('items.destroy');
 
             Route::get('/orders', [TenantAdmin\OrdersController::class, 'index'])->name('orders.index');
+            Route::get('/orders/{order:number}', [TenantAdmin\OrdersController::class, 'show'])->name('orders.show');
+            Route::post('/orders/{order:number}/transitions', [TenantAdmin\OrdersController::class, 'transition'])->name('orders.transition');
             Route::get('/settings', [TenantAdmin\SettingsController::class, 'edit'])->name('settings.edit');
             Route::put('/settings', [TenantAdmin\SettingsController::class, 'update'])->name('settings.update');
             Route::post('/invitations', [TenantAdmin\InvitationController::class, 'store'])->name('invitations.store');

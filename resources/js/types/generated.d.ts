@@ -100,6 +100,14 @@ notes: string | null,
 placedAt: string | null,
 items: App.Data.OrderItemData[],
 };
+export type OrderEventData = {
+id: number,
+fromStatus: string | null,
+toStatus: string,
+occurredAt: string,
+userName: string | null,
+note: string | null,
+};
 export type OrderItemData = {
 id: number,
 name: string,
