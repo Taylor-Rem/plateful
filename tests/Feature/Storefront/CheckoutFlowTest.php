@@ -112,6 +112,31 @@ test('placing a delivery order computes delivery fee and snapshots address', fun
     ]);
 });
 
+test('placing an order writes an initial pending order_event', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
+        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],
+    ]);
+    $cookie = cartCookieFrom($first);
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'pickup',
+            'tip_preset' => '0',
+        ]);
+
+    $order = Order::first();
+    expect($order)->not->toBeNull();
+    $events = $order->events()->orderBy('id')->get();
+    expect($events)->toHaveCount(1);
+    expect($events->first()->from_status)->toBeNull();
+    expect($events->first()->to_status->value)->toBe('pending');
+});
+
 test('after placing an order the cart is empty on the next page load', function () {
     $f = cartFixture();
     $r = $f['restaurant'];

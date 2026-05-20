@@ -11,6 +11,7 @@ use App\Models\Address;
 use App\Models\Cart;
 use App\Models\ItemTemplateOption;
 use App\Models\Order;
+use App\Models\OrderEvent;
 use App\Models\OrderItem;
 use App\Models\Restaurant;
 use App\Models\User;
@@ -86,6 +87,15 @@ class OrderPlacement
                 $deliveryAddress,
                 $confirmationToken,
             );
+
+            OrderEvent::create([
+                'order_id' => $order->id,
+                'from_status' => null,
+                'to_status' => OrderStatus::Pending->value,
+                'occurred_at' => $order->placed_at ?? now(),
+                'user_id' => $user?->id,
+                'note' => null,
+            ]);
 
             foreach ($cart->items as $line) {
                 OrderItem::create([

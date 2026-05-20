@@ -26,6 +26,16 @@ class RestaurantSettingsRequest extends FormRequest
             'logo' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
             'remove_logo' => ['nullable', 'boolean'],
             'tax_rate_percent' => ['nullable', 'numeric', 'between:0,30'],
+            'delivery_fee' => ['nullable', 'numeric', 'between:0,500'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('delivery_fee') && $this->input('delivery_fee') !== null && $this->input('delivery_fee') !== '') {
+            $this->merge([
+                'delivery_fee_cents' => (int) round(((float) $this->input('delivery_fee')) * 100),
+            ]);
+        }
     }
 }
