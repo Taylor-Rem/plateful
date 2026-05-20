@@ -9,6 +9,15 @@ defineProps<{
 
 <template>
     <div class="min-h-screen bg-background text-foreground">
+        <div
+            v-if="restaurant.isActive === false"
+            class="border-b border-yellow-300 bg-yellow-100 text-yellow-900"
+        >
+            <div class="mx-auto max-w-5xl px-6 py-3 text-sm">
+                <strong class="font-semibold">This restaurant is currently deactivated.</strong>
+                Customers cannot place orders. Contact your platform administrator to reactivate.
+            </div>
+        </div>
         <header class="border-b border-border bg-card">
             <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
                 <div class="flex items-center gap-4">

@@ -62,3 +62,13 @@ test('unknown host returns 404', function () {
 
     $response->assertNotFound();
 });
+
+test('deactivated tenant subdomain returns 503 with Unavailable component', function () {
+    makeRestaurant(['subdomain' => 'sleeping', 'is_active' => false]);
+
+    $response = $this->get('http://sleeping.plateful.test/');
+
+    expect($response->status())->toBe(503);
+    $response->assertInertia(fn ($page) => $page->component('Storefront/Unavailable'));
+    expect(app(CurrentTenant::class)->check())->toBeFalse();
+});

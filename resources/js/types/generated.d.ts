@@ -12,6 +12,11 @@ country: string,
 instructions: string | null,
 isDefault: boolean,
 };
+export type AdminUserData = {
+id: number,
+name: string,
+email: string,
+};
 export type CartData = {
 id: number,
 itemCount: number,
@@ -120,10 +125,17 @@ groupName: string,
 selectionNames: string[],
 }[],
 };
+export type PendingInvitationData = {
+id: number,
+email: string,
+expiresAt: string | null,
+invitedByName: string | null,
+};
 export type RestaurantData = {
 id: number,
 name: string,
 subdomain: string,
+customDomain: string | null,
 description: string | null,
 logoUrl: string | null,
 logoMediumUrl: string | null,
@@ -134,6 +146,8 @@ email: string | null,
 phone: string | null,
 taxRatePercent: number,
 deliveryFeeCents: number,
+isActive: boolean,
+createdAt: string | null,
 };
 }
 namespace Enums {

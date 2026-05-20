@@ -13,6 +13,7 @@ class RestaurantData extends Data
         public int $id,
         public string $name,
         public string $subdomain,
+        public ?string $customDomain,
         public ?string $description,
         public ?string $logoUrl,
         public ?string $logoMediumUrl,
@@ -23,6 +24,8 @@ class RestaurantData extends Data
         public ?string $phone,
         public float $taxRatePercent,
         public int $deliveryFeeCents,
+        public bool $isActive,
+        public ?string $createdAt,
     ) {}
 
     public static function fromModel(Restaurant $restaurant): self
@@ -31,6 +34,7 @@ class RestaurantData extends Data
             id: $restaurant->id,
             name: $restaurant->name,
             subdomain: $restaurant->subdomain,
+            customDomain: $restaurant->custom_domain,
             description: $restaurant->description,
             logoUrl: $restaurant->logoUrl(),
             logoMediumUrl: $restaurant->logoMediumUrl(),
@@ -41,6 +45,8 @@ class RestaurantData extends Data
             phone: $restaurant->phone,
             taxRatePercent: (float) $restaurant->tax_rate_percent,
             deliveryFeeCents: (int) $restaurant->delivery_fee_cents,
+            isActive: (bool) $restaurant->is_active,
+            createdAt: $restaurant->created_at?->toIso8601String(),
         );
     }
 }
