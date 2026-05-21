@@ -60,6 +60,14 @@ class Restaurant extends Model
         return Storage::disk(RestaurantImageService::DISK)->url($path);
     }
 
+    public function publicUrl(string $scheme = 'https'): string
+    {
+        $host = $this->custom_domain
+            ?: $this->subdomain.'.'.config('platform.primary_domain');
+
+        return $scheme.'://'.$host;
+    }
+
     public function menuCategories(): HasMany
     {
         return $this->hasMany(MenuCategory::class);
