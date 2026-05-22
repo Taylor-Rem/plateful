@@ -167,6 +167,7 @@ closesAt: string,
 position: number,
 }[][],
 createdAt: string | null,
+publicUrl: string,
 };
 export type RestaurantHourData = {
 dayOfWeek: number,

@@ -47,7 +47,7 @@ test('new users can register on a tenant host', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect('/dashboard');
+    $response->assertRedirect('/');
 
     $user = User::query()->where('email', 'test@example.com')->first();
     expect($user)->not->toBeNull();
