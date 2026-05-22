@@ -3,6 +3,7 @@
 namespace App\Data;
 
 use App\Models\Restaurant;
+use Illuminate\Support\Facades\Request;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
@@ -33,6 +34,7 @@ class RestaurantData extends Data
         public ?string $nextOpenLabel,
         public array $hoursByDay,
         public ?string $createdAt,
+        public string $publicUrl,
     ) {}
 
     public static function fromModel(Restaurant $restaurant): self
@@ -77,6 +79,7 @@ class RestaurantData extends Data
             nextOpenLabel: $restaurant->formatNextOpenAt(),
             hoursByDay: $hoursByDay,
             createdAt: $restaurant->created_at?->toIso8601String(),
+            publicUrl: $restaurant->publicUrl(Request::getScheme() ?: 'https'),
         );
     }
 }
