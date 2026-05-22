@@ -50,7 +50,7 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect('/dashboard');
+    $response->assertRedirect('/');
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {
