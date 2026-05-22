@@ -2,6 +2,7 @@
 
 namespace App\Data;
 
+use App\Enums\RestaurantRole;
 use App\Models\AdminInvitation;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
@@ -14,6 +15,7 @@ class PendingInvitationData extends Data
         public string $email,
         public ?string $expiresAt,
         public ?string $invitedByName,
+        public RestaurantRole $role,
     ) {}
 
     public static function fromModel(AdminInvitation $invitation): self
@@ -23,6 +25,7 @@ class PendingInvitationData extends Data
             email: $invitation->email,
             expiresAt: $invitation->expires_at?->toIso8601String(),
             invitedByName: $invitation->invitedBy?->name,
+            role: $invitation->role ?? RestaurantRole::Admin,
         );
     }
 }

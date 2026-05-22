@@ -140,6 +140,7 @@ id: number,
 email: string,
 expiresAt: string | null,
 invitedByName: string | null,
+role: App.Enums.RestaurantRole,
 };
 export type RestaurantData = {
 id: number,
@@ -173,10 +174,17 @@ opensAt: string,
 closesAt: string,
 position: number,
 };
+export type RestaurantMemberData = {
+id: number,
+name: string,
+email: string,
+role: App.Enums.RestaurantRole,
+};
 }
 namespace Enums {
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type OrderType = 'delivery' | 'pickup';
+export type RestaurantRole = 'admin' | 'staff';
 export type UserRole = 'customer' | 'admin';
 }
 }

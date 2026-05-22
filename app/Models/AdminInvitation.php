@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RestaurantRole;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,7 @@ class AdminInvitation extends Model
     protected $fillable = [
         'email',
         'restaurant_id',
+        'role',
         'as_super_admin',
         'token',
         'invited_by_user_id',
@@ -26,6 +28,7 @@ class AdminInvitation extends Model
             'expires_at' => 'datetime',
             'accepted_at' => 'datetime',
             'as_super_admin' => 'bool',
+            'role' => RestaurantRole::class,
         ];
     }
 

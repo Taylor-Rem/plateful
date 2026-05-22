@@ -50,7 +50,20 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
             'cart' => fn () => $this->resolveCart(),
+            'currentRestaurantRole' => fn () => $this->resolveCurrentRestaurantRole($request),
         ];
+    }
+
+    protected function resolveCurrentRestaurantRole(Request $request): ?string
+    {
+        $tenant = app(CurrentTenant::class)->get();
+        $user = $request->user();
+
+        if (! $tenant || ! $user) {
+            return null;
+        }
+
+        return $user->roleAt($tenant)?->value;
     }
 
     protected function resolveCart(): ?CartData

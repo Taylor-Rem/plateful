@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,9 @@ const props = defineProps<{
 const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 const base = computed(() => `/${props.restaurant.subdomain}`);
+
+const page = usePage<{ currentRestaurantRole: string | null }>();
+const isAdmin = computed(() => page.props.currentRestaurantRole === 'admin');
 
 const localCategories = ref<App.Data.MenuCategoryData[]>([...props.categories]);
 
@@ -74,6 +77,7 @@ const submitCategory = (): void => {
             preserveScroll: true,
             onSuccess: () => {
                 showCategoryModal.value = false;
+                refreshLocal();
             },
         });
     } else {
@@ -82,6 +86,7 @@ const submitCategory = (): void => {
             onSuccess: () => {
                 showCategoryModal.value = false;
                 categoryForm.reset();
+                refreshLocal();
             },
         });
     }
@@ -94,14 +99,20 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
     if (!confirm(`Delete category "${category.name}"?`)) {
         return;
     }
-    router.delete(`${base.value}/menu/categories/${category.id}`, { preserveScroll: true });
+    router.delete(`${base.value}/menu/categories/${category.id}`, {
+        preserveScroll: true,
+        onSuccess: refreshLocal,
+    });
 };
 
 const deleteItem = (item: App.Data.MenuItemData): void => {
     if (!confirm(`Delete item "${item.name}"?`)) {
         return;
     }
-    router.delete(`${base.value}/menu/items/${item.id}`, { preserveScroll: true });
+    router.delete(`${base.value}/menu/items/${item.id}`, {
+        preserveScroll: true,
+        onSuccess: refreshLocal,
+    });
 };
 </script>
 
@@ -111,7 +122,7 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
 
         <div class="flex items-center justify-between">
             <h2 class="text-2xl font-semibold text-foreground">Menu</h2>
-            <div class="flex items-center gap-2">
+            <div v-if="isAdmin" class="flex items-center gap-2">
                 <Link
                     :href="`${base}/menu/items/create`"
                     class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -129,8 +140,10 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
 
         <div v-if="localCategories.length === 0" class="mt-12 rounded-lg border border-dashed border-border bg-card p-10 text-center">
             <h3 class="text-base font-medium text-foreground">No categories yet</h3>
-            <p class="mt-1 text-sm text-muted-foreground">Create your first category to start building the menu.</p>
-            <Button class="mt-4" @click="openCreateCategory">
+            <p class="mt-1 text-sm text-muted-foreground">
+                {{ isAdmin ? 'Create your first category to start building the menu.' : 'No menu items have been added yet.' }}
+            </p>
+            <Button v-if="isAdmin" class="mt-4" @click="openCreateCategory">
                 <Plus class="size-4" /> Add category
             </Button>
         </div>
@@ -150,13 +163,13 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
             >
                 <header class="flex items-center justify-between border-b border-border px-4 py-3">
                     <div class="flex items-center gap-2">
-                        <button class="category-handle cursor-grab text-muted-foreground hover:text-foreground" type="button" aria-label="Drag category">
+                        <button v-if="isAdmin" class="category-handle cursor-grab text-muted-foreground hover:text-foreground" type="button" aria-label="Drag category">
                             <GripVertical class="size-4" />
                         </button>
                         <h3 class="text-lg font-medium text-foreground">{{ category.name }}</h3>
                         <span class="text-xs text-muted-foreground">{{ category.items.length }} item<span v-if="category.items.length !== 1">s</span></span>
                     </div>
-                    <div class="flex items-center gap-1">
+                    <div v-if="isAdmin" class="flex items-center gap-1">
                         <button
                             class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                             type="button"
@@ -196,7 +209,7 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                         class="flex items-center justify-between gap-4 px-4 py-2.5 text-sm"
                     >
                         <div class="flex min-w-0 items-center gap-2">
-                            <button class="item-handle cursor-grab text-muted-foreground hover:text-foreground" type="button" aria-label="Drag item">
+                            <button v-if="isAdmin" class="item-handle cursor-grab text-muted-foreground hover:text-foreground" type="button" aria-label="Drag item">
                                 <GripVertical class="size-4" />
                             </button>
                             <img
@@ -218,21 +231,23 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="text-foreground">{{ formatPrice(item.priceCents) }}</span>
-                            <Link
-                                :href="`${base}/menu/items/${item.id}/edit`"
-                                class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                aria-label="Edit item"
-                            >
-                                <Pencil class="size-4" />
-                            </Link>
-                            <button
-                                class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive"
-                                type="button"
-                                aria-label="Delete item"
-                                @click="deleteItem(item)"
-                            >
-                                <Trash2 class="size-4" />
-                            </button>
+                            <template v-if="isAdmin">
+                                <Link
+                                    :href="`${base}/menu/items/${item.id}/edit`"
+                                    class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                    aria-label="Edit item"
+                                >
+                                    <Pencil class="size-4" />
+                                </Link>
+                                <button
+                                    class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive"
+                                    type="button"
+                                    aria-label="Delete item"
+                                    @click="deleteItem(item)"
+                                >
+                                    <Trash2 class="size-4" />
+                                </button>
+                            </template>
                         </div>
                     </div>
                 </VueDraggable>
