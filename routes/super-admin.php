@@ -26,6 +26,9 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
 
             Route::get('/kitchen', [TenantAdmin\KitchenController::class, 'index'])->name('kitchen.index');
 
+            // Available to staff too: toggling stock availability is a daily operations task.
+            Route::post('/menu/items/{item}/availability', [TenantAdmin\MenuItemController::class, 'toggleAvailability'])->name('items.toggleAvailability');
+
             Route::get('/hours', [TenantAdmin\HoursController::class, 'edit'])->name('hours.edit');
             Route::put('/hours', [TenantAdmin\HoursController::class, 'update'])->name('hours.update');
 

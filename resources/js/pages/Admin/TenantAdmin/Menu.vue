@@ -105,6 +105,14 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
     });
 };
 
+const toggleAvailability = (item: App.Data.MenuItemData): void => {
+    router.post(
+        `${base.value}/menu/items/${item.id}/availability`,
+        {},
+        { preserveScroll: true, preserveState: true, onSuccess: refreshLocal },
+    );
+};
+
 const deleteItem = (item: App.Data.MenuItemData): void => {
     if (!confirm(`Delete item "${item.name}"?`)) {
         return;
@@ -224,12 +232,19 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                                 class="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary"
                                 :title="`Template: ${item.template.name}`"
                             >Configurable</span>
-                            <span
-                                v-if="!item.isAvailable"
-                                class="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
-                            >Unavailable</span>
                         </div>
                         <div class="flex items-center gap-3">
+                            <button
+                                type="button"
+                                class="rounded-md px-2 py-1 text-xs font-medium transition-colors"
+                                :class="item.isAvailable
+                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900'
+                                    : 'bg-muted text-muted-foreground hover:bg-accent'"
+                                :title="item.isAvailable ? 'In stock — click to mark unavailable' : 'Unavailable — click to mark in stock'"
+                                @click="toggleAvailability(item)"
+                            >
+                                {{ item.isAvailable ? 'In stock' : '86\'d' }}
+                            </button>
                             <span class="text-foreground">{{ formatPrice(item.priceCents) }}</span>
                             <template v-if="isAdmin">
                                 <Link
