@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Enums\TipRecipient;
 use App\Exceptions\InvalidCheckoutException;
 use App\Mail\OrderConfirmationToCustomer;
 use App\Mail\OrderNotificationToRestaurant;
@@ -60,6 +61,7 @@ class OrderPlacement
         $taxCents = (int) round($subtotalCents * $taxRate / 100);
         $deliveryFeeCents = $type === OrderType::Delivery ? (int) $restaurant->delivery_fee_cents : 0;
         $tipCents = max(0, (int) ($data['tip_cents'] ?? 0));
+        $tipRecipient = TipRecipient::forOrder($restaurant, $type);
         $totalCents = $subtotalCents + $taxCents + $deliveryFeeCents + $tipCents;
 
         $deliveryAddress = null;
@@ -80,7 +82,7 @@ class OrderPlacement
 
         $order = DB::transaction(function () use (
             $cart, $restaurant, $user, $data, $type,
-            $subtotalCents, $taxCents, $deliveryFeeCents, $tipCents, $totalCents,
+            $subtotalCents, $taxCents, $deliveryFeeCents, $tipCents, $tipRecipient, $totalCents,
             $deliveryAddress, $confirmationToken
         ) {
             $order = $this->createOrderWithUniqueNumber(
@@ -92,6 +94,7 @@ class OrderPlacement
                 $taxCents,
                 $deliveryFeeCents,
                 $tipCents,
+                $tipRecipient,
                 $totalCents,
                 $deliveryAddress,
                 $confirmationToken,
@@ -226,6 +229,7 @@ class OrderPlacement
         int $taxCents,
         int $deliveryFeeCents,
         int $tipCents,
+        TipRecipient $tipRecipient,
         int $totalCents,
         ?array $deliveryAddress,
         string $confirmationToken,
@@ -260,6 +264,7 @@ class OrderPlacement
                     'subtotal_cents' => $subtotalCents,
                     'tax_cents' => $taxCents,
                     'tip_cents' => $tipCents,
+                    'tip_recipient' => $tipRecipient,
                     'delivery_fee_cents' => $deliveryFeeCents,
                     'application_fee_cents' => 0,
                     'total_cents' => $totalCents,
