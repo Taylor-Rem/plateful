@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
+import { computed } from 'vue';
 
 defineProps<{
     restaurant: App.Data.RestaurantData;
 }>();
+
+const page = usePage<{ currentRestaurantRole: string | null }>();
+const isAdmin = computed(() => page.props.currentRestaurantRole === 'admin');
 </script>
 
 <template>
@@ -45,18 +49,27 @@ defineProps<{
                 </Link>
                 <Link :href="`/${restaurant.subdomain}/menu`" class="hover:text-foreground">Menu</Link>
                 <Link :href="`/${restaurant.subdomain}/orders`" class="hover:text-foreground">Orders</Link>
+                <Link :href="`/${restaurant.subdomain}/kitchen`" class="hover:text-foreground">Kitchen</Link>
                 <Link
                     :href="`/${restaurant.subdomain}/hours`"
                     class="hover:text-foreground"
                 >
                     Hours
                 </Link>
-                <Link
-                    :href="`/${restaurant.subdomain}/settings`"
-                    class="hover:text-foreground"
-                >
-                    Settings
-                </Link>
+                <template v-if="isAdmin">
+                    <Link
+                        :href="`/${restaurant.subdomain}/members`"
+                        class="hover:text-foreground"
+                    >
+                        Team
+                    </Link>
+                    <Link
+                        :href="`/${restaurant.subdomain}/settings`"
+                        class="hover:text-foreground"
+                    >
+                        Settings
+                    </Link>
+                </template>
             </nav>
         </header>
         <main class="mx-auto max-w-5xl px-6 py-8">

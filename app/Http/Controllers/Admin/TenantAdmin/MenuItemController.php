@@ -129,6 +129,19 @@ class MenuItemController extends Controller
         return back()->with('success', "Deleted \"{$name}\".");
     }
 
+    public function toggleAvailability(Restaurant $restaurant, MenuItem $item): RedirectResponse
+    {
+        if ($item->restaurant_id !== $restaurant->id) {
+            abort(404);
+        }
+
+        $item->update(['is_available' => ! $item->is_available]);
+
+        $state = $item->is_available ? 'available' : 'unavailable';
+
+        return back()->with('success', "\"{$item->name}\" marked {$state}.");
+    }
+
     public function reorder(MenuItemReorderRequest $request, Restaurant $restaurant): Response
     {
         $categoryId = (int) $request->validated('category_id');

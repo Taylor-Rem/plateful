@@ -16,36 +16,53 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
         Route::get('/', AdminHomeController::class)->name('admin.home');
 
         Route::prefix('{restaurant}')->middleware('admin.restaurant')->name('admin.restaurant.')->group(function () {
+            // Routes available to any restaurant member (admin OR staff)
             Route::get('/dashboard', TenantAdmin\DashboardController::class)->name('dashboard');
             Route::get('/menu', [TenantAdmin\MenuController::class, 'index'])->name('menu.index');
-
-            Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
-            Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
-            Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');
-            Route::delete('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'destroy'])->name('categories.destroy');
-
-            Route::get('/menu/templates', [TenantAdmin\ItemTemplateController::class, 'index'])->name('templates.index');
-            Route::get('/menu/templates/create', [TenantAdmin\ItemTemplateController::class, 'create'])->name('templates.create');
-            Route::post('/menu/templates', [TenantAdmin\ItemTemplateController::class, 'store'])->name('templates.store');
-            Route::get('/menu/templates/{template}/edit', [TenantAdmin\ItemTemplateController::class, 'edit'])->name('templates.edit');
-            Route::put('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'update'])->name('templates.update');
-            Route::delete('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'destroy'])->name('templates.destroy');
-
-            Route::get('/menu/items/create', [TenantAdmin\MenuItemController::class, 'create'])->name('items.create');
-            Route::post('/menu/items', [TenantAdmin\MenuItemController::class, 'store'])->name('items.store');
-            Route::post('/menu/items/reorder', [TenantAdmin\MenuItemController::class, 'reorder'])->name('items.reorder');
-            Route::get('/menu/items/{item}/edit', [TenantAdmin\MenuItemController::class, 'edit'])->name('items.edit');
-            Route::put('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'update'])->name('items.update');
-            Route::delete('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'destroy'])->name('items.destroy');
 
             Route::get('/orders', [TenantAdmin\OrdersController::class, 'index'])->name('orders.index');
             Route::get('/orders/{order:number}', [TenantAdmin\OrdersController::class, 'show'])->name('orders.show');
             Route::post('/orders/{order:number}/transitions', [TenantAdmin\OrdersController::class, 'transition'])->name('orders.transition');
-            Route::get('/settings', [TenantAdmin\SettingsController::class, 'edit'])->name('settings.edit');
-            Route::put('/settings', [TenantAdmin\SettingsController::class, 'update'])->name('settings.update');
+
+            Route::get('/kitchen', [TenantAdmin\KitchenController::class, 'index'])->name('kitchen.index');
+
+            // Available to staff too: toggling stock availability is a daily operations task.
+            Route::post('/menu/items/{item}/availability', [TenantAdmin\MenuItemController::class, 'toggleAvailability'])->name('items.toggleAvailability');
+
             Route::get('/hours', [TenantAdmin\HoursController::class, 'edit'])->name('hours.edit');
             Route::put('/hours', [TenantAdmin\HoursController::class, 'update'])->name('hours.update');
-            Route::post('/invitations', [TenantAdmin\InvitationController::class, 'store'])->name('invitations.store');
+
+            // Routes restricted to restaurant admins
+            Route::middleware('admin.restaurant.admin')->group(function () {
+                Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
+                Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
+                Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');
+                Route::delete('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'destroy'])->name('categories.destroy');
+
+                Route::get('/menu/templates', [TenantAdmin\ItemTemplateController::class, 'index'])->name('templates.index');
+                Route::get('/menu/templates/create', [TenantAdmin\ItemTemplateController::class, 'create'])->name('templates.create');
+                Route::post('/menu/templates', [TenantAdmin\ItemTemplateController::class, 'store'])->name('templates.store');
+                Route::get('/menu/templates/{template}/edit', [TenantAdmin\ItemTemplateController::class, 'edit'])->name('templates.edit');
+                Route::put('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'update'])->name('templates.update');
+                Route::delete('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'destroy'])->name('templates.destroy');
+
+                Route::get('/menu/items/create', [TenantAdmin\MenuItemController::class, 'create'])->name('items.create');
+                Route::post('/menu/items', [TenantAdmin\MenuItemController::class, 'store'])->name('items.store');
+                Route::post('/menu/items/reorder', [TenantAdmin\MenuItemController::class, 'reorder'])->name('items.reorder');
+                Route::get('/menu/items/{item}/edit', [TenantAdmin\MenuItemController::class, 'edit'])->name('items.edit');
+                Route::put('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'update'])->name('items.update');
+                Route::delete('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'destroy'])->name('items.destroy');
+
+                Route::get('/settings', [TenantAdmin\SettingsController::class, 'edit'])->name('settings.edit');
+                Route::put('/settings', [TenantAdmin\SettingsController::class, 'update'])->name('settings.update');
+
+                Route::get('/members', [TenantAdmin\MembersController::class, 'index'])->name('members.index');
+                Route::put('/members/{member}', [TenantAdmin\MembersController::class, 'update'])->name('members.update');
+                Route::delete('/members/{member}', [TenantAdmin\MembersController::class, 'destroy'])->name('members.destroy');
+
+                Route::post('/invitations', [TenantAdmin\InvitationController::class, 'store'])->name('invitations.store');
+                Route::delete('/invitations/{invitation}', [TenantAdmin\InvitationController::class, 'destroy'])->name('invitations.destroy');
+            });
         });
 
         Route::prefix('super')->middleware('super')->name('admin.super.')->group(function () {

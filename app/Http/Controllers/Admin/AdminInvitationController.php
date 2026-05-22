@@ -44,6 +44,7 @@ class AdminInvitationController extends Controller
                 'email' => $invitation->email,
                 'restaurantName' => $invitation->restaurant?->name,
                 'asSuperAdmin' => $invitation->as_super_admin,
+                'role' => $invitation->role?->value,
             ],
             'error' => null,
         ]);
@@ -73,7 +74,9 @@ class AdminInvitationController extends Controller
             ]);
 
             if ($invitation->restaurant_id) {
-                $user->restaurants()->attach($invitation->restaurant_id);
+                $user->restaurants()->attach($invitation->restaurant_id, [
+                    'role' => $invitation->role?->value ?? 'admin',
+                ]);
             }
 
             $invitation->forceFill([

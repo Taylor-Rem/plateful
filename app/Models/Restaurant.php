@@ -88,9 +88,21 @@ class Restaurant extends Model
         return $this->hasMany(User::class);
     }
 
+    public function members(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'restaurant_user')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
     public function admins(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'restaurant_user')->withTimestamps();
+        return $this->members()->wherePivot('role', 'admin');
+    }
+
+    public function staff(): BelongsToMany
+    {
+        return $this->members()->wherePivot('role', 'staff');
     }
 
     public function hours(): HasMany

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\RestaurantRole;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -43,7 +44,9 @@ class User extends Authenticatable
 
     public function restaurants(): BelongsToMany
     {
-        return $this->belongsToMany(Restaurant::class, 'restaurant_user')->withTimestamps();
+        return $this->belongsToMany(Restaurant::class, 'restaurant_user')
+            ->withPivot('role')
+            ->withTimestamps();
     }
 
     public function addresses(): HasMany
@@ -75,6 +78,35 @@ class User extends Authenticatable
         $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : $restaurant;
 
         return $this->restaurants()->where('restaurants.id', $restaurantId)->exists();
+    }
+
+    public function roleAt(Restaurant|int $restaurant): ?RestaurantRole
+    {
+        if ($this->isSuperAdmin()) {
+            return RestaurantRole::Admin;
+        }
+
+        $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : $restaurant;
+
+        $pivot = $this->restaurants()
+            ->where('restaurants.id', $restaurantId)
+            ->first()?->pivot;
+
+        if (! $pivot) {
+            return null;
+        }
+
+        return RestaurantRole::tryFrom((string) $pivot->role);
+    }
+
+    public function isRestaurantAdminAt(Restaurant|int $restaurant): bool
+    {
+        return $this->roleAt($restaurant) === RestaurantRole::Admin;
+    }
+
+    public function isRestaurantStaffAt(Restaurant|int $restaurant): bool
+    {
+        return $this->roleAt($restaurant) === RestaurantRole::Staff;
     }
 
     /**
