@@ -49,6 +49,7 @@ const isAdmin = computed(() => page.props.currentRestaurantRole === 'admin');
                 </Link>
                 <Link :href="`/${restaurant.subdomain}/menu`" class="hover:text-foreground">Menu</Link>
                 <Link :href="`/${restaurant.subdomain}/orders`" class="hover:text-foreground">Orders</Link>
+                <Link :href="`/${restaurant.subdomain}/kitchen`" class="hover:text-foreground">Kitchen</Link>
                 <Link
                     :href="`/${restaurant.subdomain}/hours`"
                     class="hover:text-foreground"

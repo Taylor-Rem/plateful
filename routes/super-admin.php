@@ -24,6 +24,8 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             Route::get('/orders/{order:number}', [TenantAdmin\OrdersController::class, 'show'])->name('orders.show');
             Route::post('/orders/{order:number}/transitions', [TenantAdmin\OrdersController::class, 'transition'])->name('orders.transition');
 
+            Route::get('/kitchen', [TenantAdmin\KitchenController::class, 'index'])->name('kitchen.index');
+
             Route::get('/hours', [TenantAdmin\HoursController::class, 'edit'])->name('hours.edit');
             Route::put('/hours', [TenantAdmin\HoursController::class, 'update'])->name('hours.update');
 
