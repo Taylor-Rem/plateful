@@ -2,6 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\AutoCancelRefundMode;
+use App\Enums\DeliveryFallbackAction;
+use App\Enums\DeliveryFeeStrategy;
+use App\Enums\DeliveryMode;
+use App\Enums\SelfDeliveryTipRecipient;
 use App\Services\RestaurantImageService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,6 +29,14 @@ class Restaurant extends Model
             'application_fee_percent' => 'decimal:2',
             'tax_rate_percent' => 'decimal:2',
             'delivery_fee_cents' => 'integer',
+            'delivery_enabled' => 'boolean',
+            'delivery_mode' => DeliveryMode::class,
+            'delivery_provider_priority' => 'array',
+            'delivery_fee_strategy' => DeliveryFeeStrategy::class,
+            'customer_delivery_fee_cents_max' => 'integer',
+            'self_delivery_tip_recipient' => SelfDeliveryTipRecipient::class,
+            'delivery_fallback_action' => DeliveryFallbackAction::class,
+            'auto_cancel_refund_mode' => AutoCancelRefundMode::class,
         ];
     }
 
