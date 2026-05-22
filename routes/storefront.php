@@ -35,8 +35,6 @@ Route::middleware('tenant')->group(function () {
         ->name('storefront.orders.show');
 
     Route::middleware('auth')->group(function () {
-        Route::inertia('dashboard', 'Dashboard')->name('dashboard');
-
         Route::redirect('settings', '/settings/profile');
         Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
