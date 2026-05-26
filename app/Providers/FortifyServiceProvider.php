@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
-use App\Enums\UserRole;
 use App\Models\User;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -65,23 +64,27 @@ class FortifyServiceProvider extends ServiceProvider
             $password = (string) $request->input('password');
 
             if ($this->isAdminHost($request)) {
+                // Admin host: any user who is super admin OR a member of any
+                // restaurant via restaurant_user pivot. Tenant scoping (which
+                // restaurant they can manage) is enforced downstream.
                 $user = User::query()
                     ->where('email', $email)
-                    ->where('role', UserRole::Admin)
-                    ->whereNull('restaurant_id')
+                    ->where(function ($q) {
+                        $q->where('is_super_admin', true)
+                            ->orWhereHas('restaurants');
+                    })
                     ->first();
             } else {
+                // Tenant host: any Plateful account. The tenant context only
+                // affects what they see (orders, loyalty), not whether they
+                // can log in. This is the "Shopify pattern" — one account
+                // works at every Plateful restaurant.
                 $tenant = app(CurrentTenant::class);
-                $query = User::query()->where('email', $email)
-                    ->where('role', UserRole::Customer);
-
-                if ($tenant->check()) {
-                    $query->where('restaurant_id', $tenant->id());
-                } else {
+                if (! $tenant->check()) {
                     return null;
                 }
 
-                $user = $query->first();
+                $user = User::query()->where('email', $email)->first();
             }
 
             if ($user && Hash::check($password, $user->password)) {
@@ -132,8 +135,11 @@ class FortifyServiceProvider extends ServiceProvider
                 abort(404);
             }
 
+            $tenant = app(CurrentTenant::class)->get();
+
             return Inertia::render('auth/Register', [
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
+                'restaurantName' => $tenant?->name,
             ]);
         });
 

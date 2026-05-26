@@ -15,6 +15,7 @@ use App\Models\Order;
 use App\Models\OrderEvent;
 use App\Models\OrderItem;
 use App\Models\Restaurant;
+use App\Models\RestaurantCustomer;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -119,6 +120,10 @@ class OrderPlacement
                     'modifiers' => $line->modifiers,
                     'subtotal_cents' => (int) $line->unit_price_cents * (int) $line->quantity,
                 ]);
+            }
+
+            if ($user) {
+                $this->upsertRestaurantCustomer($user, $restaurant, $order);
             }
 
             if ($user && ! empty($data['save_address']) && $type === OrderType::Delivery && $deliveryAddress) {
@@ -281,6 +286,40 @@ class OrderPlacement
                 }
             }
         }
+    }
+
+    /**
+     * Maintain the restaurant_customer pivot counters when an order is placed
+     * by an authenticated user. Decision D: denormalized counters.
+     */
+    protected function upsertRestaurantCustomer(User $user, Restaurant $restaurant, Order $order): void
+    {
+        $pivot = RestaurantCustomer::query()
+            ->where('user_id', $user->id)
+            ->where('restaurant_id', $restaurant->id)
+            ->lockForUpdate()
+            ->first();
+
+        $now = now();
+
+        if ($pivot) {
+            $pivot->first_ordered_at ??= $now;
+            $pivot->last_ordered_at = $now;
+            $pivot->total_orders = (int) $pivot->total_orders + 1;
+            $pivot->total_spent_cents = (int) $pivot->total_spent_cents + (int) $order->total_cents;
+            $pivot->save();
+
+            return;
+        }
+
+        RestaurantCustomer::create([
+            'user_id' => $user->id,
+            'restaurant_id' => $restaurant->id,
+            'first_ordered_at' => $now,
+            'last_ordered_at' => $now,
+            'total_orders' => 1,
+            'total_spent_cents' => (int) $order->total_cents,
+        ]);
     }
 
     protected function isUniqueViolation(QueryException $e): bool

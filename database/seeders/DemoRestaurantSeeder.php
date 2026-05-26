@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Enums\UserRole;
 use App\Models\ItemTemplate;
 use App\Models\ItemTemplateGroup;
 use App\Models\ItemTemplateOption;
@@ -39,24 +38,20 @@ class DemoRestaurantSeeder extends Seeder
         ]);
 
         $owner = User::create([
-            'restaurant_id' => null,
             'is_super_admin' => false,
             'name' => 'Marco Rossi',
             'email' => 'owner@marcos.test',
             'password' => Hash::make('password'),
-            'role' => UserRole::Admin,
             'email_verified_at' => now(),
         ]);
 
-        $owner->restaurants()->attach($restaurant->id);
+        $owner->restaurants()->attach($restaurant->id, ['role' => 'admin']);
 
         User::create([
-            'restaurant_id' => null,
             'is_super_admin' => true,
             'name' => 'Platform Admin',
             'email' => 'admin@plateful.test',
             'password' => Hash::make('password'),
-            'role' => UserRole::Admin,
             'email_verified_at' => now(),
         ]);
 

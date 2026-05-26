@@ -2,7 +2,6 @@
 
 namespace App\Listeners;
 
-use App\Enums\UserRole;
 use App\Models\Cart;
 use App\Models\User;
 use App\Services\CartManager;
@@ -21,7 +20,7 @@ class MergeGuestCartOnLogin
     public function handle(Login $event): void
     {
         $user = $event->user;
-        if (! $user instanceof User || $user->role !== UserRole::Customer) {
+        if (! $user instanceof User) {
             return;
         }
 

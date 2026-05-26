@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Concerns\PasswordValidationRules;
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\AdminInvitation;
 use App\Models\User;
@@ -68,8 +67,6 @@ class AdminInvitationController extends Controller
                 'name' => $request->input('name'),
                 'email' => $invitation->email,
                 'password' => $request->input('password'),
-                'role' => UserRole::Admin,
-                'restaurant_id' => null,
                 'is_super_admin' => $invitation->as_super_admin,
             ]);
 

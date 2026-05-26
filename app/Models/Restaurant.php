@@ -96,9 +96,15 @@ class Restaurant extends Model
         return $this->hasMany(Order::class);
     }
 
-    public function users(): HasMany
+    /**
+     * Users who have a customer relationship with this restaurant
+     * (ordered from or signed up at it).
+     */
+    public function customers(): BelongsToMany
     {
-        return $this->hasMany(User::class);
+        return $this->belongsToMany(User::class, 'restaurant_customer')
+            ->withPivot(['first_ordered_at', 'last_ordered_at', 'total_orders', 'total_spent_cents'])
+            ->withTimestamps();
     }
 
     public function members(): BelongsToMany
