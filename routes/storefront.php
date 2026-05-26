@@ -4,6 +4,7 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Storefront\Account\AddressesController;
 use App\Http\Controllers\Storefront\Account\LoyaltyController;
+use App\Http\Controllers\Storefront\Account\MyPlatefulController;
 use App\Http\Controllers\Storefront\Account\OrdersController as AccountOrdersController;
 use App\Http\Controllers\Storefront\Account\PasswordController as AccountPasswordController;
 use App\Http\Controllers\Storefront\Account\ProfileController as AccountProfileController;
@@ -53,6 +54,8 @@ Route::middleware('tenant')->group(function () {
             Route::delete('/addresses/{address}', [AddressesController::class, 'destroy'])->name('addresses.destroy');
 
             Route::get('/loyalty', [LoyaltyController::class, 'show'])->name('loyalty.show');
+
+            Route::get('/my-plateful', [MyPlatefulController::class, 'show'])->name('myPlateful.show');
 
             Route::get('/profile', [AccountProfileController::class, 'edit'])->name('profile.edit');
             Route::patch('/profile', [AccountProfileController::class, 'update'])->name('profile.update');

@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\Address;
 use App\Models\Restaurant;
 use App\Models\User;
@@ -24,9 +23,9 @@ function addrR(string $sub = 'marcos'): Restaurant
 function addrU(Restaurant $r, string $email = 'c@c.test'): User
 {
     return User::create([
-        'restaurant_id' => $r->id, 'name' => 'C', 'email' => $email,
+        'name' => 'C', 'email' => $email,
         'password' => Hash::make('password'),
-        'role' => UserRole::Customer, 'is_super_admin' => false,
+        'is_super_admin' => false,
     ]);
 }
 

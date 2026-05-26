@@ -108,6 +108,7 @@ deliveryAddress: Record<string, any> | null,
 subtotalCents: number,
 taxCents: number,
 tipCents: number,
+tipRecipient: string,
 deliveryFeeCents: number,
 totalCents: number,
 awardedLoyaltyPoints: number,
@@ -183,9 +184,17 @@ role: App.Enums.RestaurantRole,
 };
 }
 namespace Enums {
+export type AutoCancelRefundMode = 'auto' | 'manual';
+export type DeliveryFallbackAction = 'try_next_provider' | 'hold_for_owner' | 'auto_cancel_refund';
+export type DeliveryFeeStrategy = 'pass_through' | 'absorb' | 'split';
+export type DeliveryMode = 'self' | 'third_party';
+export type DeliveryProviderName = 'self' | 'doordash' | 'uber';
+export type DeliveryStatus = 'pending' | 'driver_assigned' | 'picked_up' | 'delivered' | 'cancelled' | 'failed';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type OrderType = 'delivery' | 'pickup';
 export type RestaurantRole = 'admin' | 'staff';
+export type SelfDeliveryTipRecipient = 'driver' | 'pool' | 'split_50_50';
+export type TipRecipient = 'pool' | 'driver' | 'split';
 export type UserRole = 'customer' | 'admin';
 }
 }

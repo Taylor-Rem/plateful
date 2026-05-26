@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\DeliveryProviderName;
 use App\Listeners\MergeGuestCartOnLogin;
 use App\Models\ItemTemplate;
 use App\Models\MenuCategory;
@@ -9,6 +10,8 @@ use App\Models\MenuItem;
 use App\Models\Restaurant;
 use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
+use App\Services\Delivery\DeliveryDispatcher;
+use App\Services\Delivery\SelfDeliveryProvider;
 use App\Tenancy\CurrentTenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
@@ -26,6 +29,12 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(CurrentTenant::class);
+
+        $this->app->singleton(DeliveryDispatcher::class, function ($app): DeliveryDispatcher {
+            return new DeliveryDispatcher([
+                DeliveryProviderName::Self->value => $app->make(SelfDeliveryProvider::class),
+            ]);
+        });
     }
 
     /**

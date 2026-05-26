@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin\SuperAdmin;
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Restaurant;
 use App\Models\User;
@@ -13,8 +12,14 @@ class AdminsController extends Controller
 {
     public function index(): Response
     {
+        // An "admin" is any user who is super admin OR a member of a restaurant
+        // via the restaurant_user pivot. (Customers who have only ordered are
+        // not admins and are excluded.)
         $admins = User::query()
-            ->where('role', UserRole::Admin)
+            ->where(function ($q) {
+                $q->where('is_super_admin', true)
+                    ->orWhereHas('restaurants');
+            })
             ->with('restaurants:id,name,subdomain')
             ->orderBy('name')
             ->get()

@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Storefront\CheckoutController;
 use App\Models\Order;
 use App\Models\Restaurant;
@@ -71,10 +70,8 @@ test('logged-in user can view their own order', function () {
     $r = $f['restaurant'];
 
     $user = User::create([
-        'restaurant_id' => $r->id,
         'name' => 'C', 'email' => 'c@c.test',
         'password' => Hash::make('pwd'),
-        'role' => UserRole::Customer,
         'is_super_admin' => false,
     ]);
 
@@ -107,10 +104,8 @@ test('different user gets 404', function () {
     $order = placeGuestOrder($this, $f, $cookie);
 
     $stranger = User::create([
-        'restaurant_id' => $r->id,
         'name' => 'S', 'email' => 's@s.test',
         'password' => Hash::make('pwd'),
-        'role' => UserRole::Customer,
         'is_super_admin' => false,
     ]);
 

@@ -5,8 +5,8 @@ namespace App\Enums;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 #[TypeScript]
-enum UserRole: string
+enum DeliveryMode: string
 {
-    case Customer = 'customer';
-    case Admin = 'admin';
+    case SelfDelivery = 'self';
+    case ThirdParty = 'third_party';
 }

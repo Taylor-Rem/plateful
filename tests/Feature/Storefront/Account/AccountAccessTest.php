@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\Restaurant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,10 +24,8 @@ function accAccessR(string $sub = 'marcos'): Restaurant
 function accAccessU(Restaurant $r, string $email = 'c@c.test'): User
 {
     return User::create([
-        'restaurant_id' => $r->id,
         'name' => 'C', 'email' => $email,
         'password' => Hash::make('password'),
-        'role' => UserRole::Customer,
         'is_super_admin' => false,
     ]);
 }

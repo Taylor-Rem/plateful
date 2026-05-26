@@ -34,7 +34,7 @@ class CartManager
         }
 
         $user = $this->request->user();
-        if ($user instanceof User && $user->role?->value === 'customer') {
+        if ($user instanceof User) {
             $cart = Cart::query()
                 ->where('restaurant_id', $tenantId)
                 ->where('user_id', $user->id)
@@ -68,7 +68,7 @@ class CartManager
         if ($cart === null) {
             $tenantId = $this->tenant->id();
             $user = $this->request->user();
-            $userId = ($user instanceof User && $user->role?->value === 'customer') ? $user->id : null;
+            $userId = ($user instanceof User) ? $user->id : null;
 
             $cart = new Cart;
             $cart->restaurant_id = $tenantId;

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Enums\TipRecipient;
 use App\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +23,7 @@ class Order extends Model
         return [
             'status' => OrderStatus::class,
             'type' => OrderType::class,
+            'tip_recipient' => TipRecipient::class,
             'placed_at' => 'datetime',
             'pickup_ready_at' => 'datetime',
             'subtotal_cents' => 'integer',
@@ -63,5 +65,10 @@ class Order extends Model
     public function events(): HasMany
     {
         return $this->hasMany(OrderEvent::class);
+    }
+
+    public function deliveryAssignment(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryAssignment::class);
     }
 }

@@ -3,20 +3,18 @@
 namespace App\Models;
 
 use App\Enums\RestaurantRole;
-use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'restaurant_id', 'role', 'is_super_admin'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'is_super_admin'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,21 +30,34 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
-            'role' => UserRole::class,
             'is_super_admin' => 'bool',
         ];
     }
 
-    public function restaurant(): BelongsTo
-    {
-        return $this->belongsTo(Restaurant::class);
-    }
-
+    /**
+     * Restaurants the user is an admin/staff member of (admin-side pivot).
+     */
     public function restaurants(): BelongsToMany
     {
         return $this->belongsToMany(Restaurant::class, 'restaurant_user')
             ->withPivot('role')
             ->withTimestamps();
+    }
+
+    /**
+     * Restaurants the user has a customer relationship with (ordered from
+     * or signed up at). Distinct from `restaurants()` which is admin-side.
+     */
+    public function customerRestaurants(): BelongsToMany
+    {
+        return $this->belongsToMany(Restaurant::class, 'restaurant_customer')
+            ->withPivot(['first_ordered_at', 'last_ordered_at', 'total_orders', 'total_spent_cents'])
+            ->withTimestamps();
+    }
+
+    public function restaurantCustomers(): HasMany
+    {
+        return $this->hasMany(RestaurantCustomer::class);
     }
 
     public function addresses(): HasMany
@@ -59,14 +70,13 @@ class User extends Authenticatable
         return $this->is_super_admin;
     }
 
+    /**
+     * True if this user has any platform-admin capability — either super admin
+     * or a member of at least one restaurant's staff/admin pivot.
+     */
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::Admin;
-    }
-
-    public function isCustomer(): bool
-    {
-        return $this->role === UserRole::Customer;
+        return $this->isSuperAdmin() || $this->restaurants()->exists();
     }
 
     public function canAccessRestaurant(Restaurant|int $restaurant): bool

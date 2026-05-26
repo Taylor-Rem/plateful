@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -52,9 +51,7 @@ class CreateSuperAdminCommand extends Command
         $user->name = $name;
         $user->email = $email;
         $user->password = Hash::make($password);
-        $user->role = UserRole::Admin;
         $user->is_super_admin = true;
-        $user->restaurant_id = null;
         $user->email_verified_at = now();
         $user->save();
 

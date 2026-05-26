@@ -10,8 +10,9 @@ import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 
-defineProps<{
+const props = defineProps<{
     passwordRules: string;
+    restaurantName?: string | null;
 }>();
 
 defineOptions({
@@ -24,6 +25,14 @@ defineOptions({
 
 <template>
     <Head title="Register" />
+
+    <p
+        v-if="props.restaurantName"
+        class="-mt-3 mb-2 text-center text-xs text-muted-foreground"
+        data-test="plateful-account-subtitle"
+    >
+        You'll get a Plateful account that works at every Plateful restaurant.
+    </p>
 
     <Form
         v-bind="store.form()"

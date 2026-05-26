@@ -1,7 +1,6 @@
 <?php
 
 use App\Data\RestaurantData;
-use App\Enums\UserRole;
 use App\Models\Restaurant;
 use App\Models\RestaurantHour;
 use App\Models\User;
@@ -30,15 +29,13 @@ function hoursRestaurant(): Restaurant
 function hoursAdmin(Restaurant $r): User
 {
     $u = User::create([
-        'restaurant_id' => null,
         'is_super_admin' => false,
         'name' => 'Owner',
         'email' => 'admin@m.test',
         'password' => Hash::make('password'),
-        'role' => UserRole::Admin,
         'email_verified_at' => now(),
     ]);
-    $u->restaurants()->attach($r->id);
+    $u->restaurants()->attach($r->id, ['role' => 'admin']);
 
     return $u;
 }

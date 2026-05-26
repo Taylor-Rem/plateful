@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\AdminInvitation;
 use App\Models\Restaurant;
 use App\Models\User;
@@ -58,7 +57,6 @@ test('accepting a valid invitation creates a user with pivot and logs them in', 
 
     $user = User::query()->where('email', 'new@example.com')->first();
     expect($user)->not->toBeNull();
-    expect($user->role)->toBe(UserRole::Admin);
     expect($user->is_super_admin)->toBeFalse();
     expect($user->restaurants()->where('restaurants.id', $restaurant->id)->exists())->toBeTrue();
 

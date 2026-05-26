@@ -40,6 +40,16 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
 - Check for existing components to reuse before writing a new one.
 
+## Account Model
+
+Plateful uses **platform-wide accounts** (Shopify pattern). One `users` row per email globally; no `users.restaurant_id` and no `users.role` column. A user's relationship to a restaurant is captured by pivot tables, not by columns on `users`:
+
+- **`restaurant_user`** — admin-side membership pivot with `role` (`Admin` | `Staff` from `RestaurantRole`). Gates access to `admin.plateful.test/{subdomain}/...` routes. `User::isAdmin()` returns true if `is_super_admin` OR any row exists in this pivot.
+- **`restaurant_customer`** — customer-side relationship pivot with denormalized counters (`first_ordered_at`, `last_ordered_at`, `total_orders`, `total_spent_cents`). Created at signup on a tenant storefront and on first order at a new restaurant; counters maintained by `OrderPlacement::upsertRestaurantCustomer()`.
+- **`loyalty_points`** — points balance keyed on `(user_id, restaurant_id)`. Independent per restaurant.
+
+Auth branches by host: admin host requires `is_super_admin` OR a `restaurant_user` row; tenant host accepts any Plateful account (the same account works at every restaurant — tenant context only scopes what they see, not whether they can log in). Email is globally unique on `users`.
+
 ## Verification Scripts
 
 - Do not create verification scripts or tinker when tests cover that functionality and prove they work. Unit and feature tests are more important.

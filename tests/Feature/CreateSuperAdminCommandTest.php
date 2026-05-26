@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\User;
 
 it('creates a super admin with the right fields', function () {
@@ -14,8 +13,6 @@ it('creates a super admin with the right fields', function () {
 
     expect($user)->not->toBeNull()
         ->and($user->is_super_admin)->toBeTrue()
-        ->and($user->role)->toBe(UserRole::Admin)
-        ->and($user->restaurant_id)->toBeNull()
         ->and($user->email_verified_at)->not->toBeNull();
 });
 

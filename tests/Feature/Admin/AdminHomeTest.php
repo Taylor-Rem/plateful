@@ -57,11 +57,14 @@ test('admin with multiple restaurants sees the picker', function () {
         ->has('restaurants', 2));
 });
 
-test('admin with no restaurants sees no-access page', function () {
-    $admin = User::factory()->admin()->create();
+test('a user with no restaurant_user pivot and not super_admin is forbidden on admin host', function () {
+    // Under the platform-wide-accounts model, "admin" status is conferred only
+    // by membership in the restaurant_user pivot or by is_super_admin.
+    // A bare User row (formerly role=Admin/restaurant_id=null) is just a
+    // plain Plateful customer and cannot access admin routes.
+    $user = User::factory()->create();
 
-    $response = $this->actingAs($admin)->get(HOME_ADMIN_BASE.'/');
+    $response = $this->actingAs($user)->get(HOME_ADMIN_BASE.'/');
 
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page->component('Admin/NoAccess'));
+    $response->assertForbidden();
 });
