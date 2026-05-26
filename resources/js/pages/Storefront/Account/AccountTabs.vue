@@ -6,6 +6,7 @@ import {
     ReceiptText,
     MapPin,
     Sparkles,
+    Store,
     User,
     KeyRound,
     LogOut,
@@ -17,6 +18,7 @@ defineProps<{
         | 'orders'
         | 'addresses'
         | 'loyalty'
+        | 'myPlateful'
         | 'profile'
         | 'password';
 }>();
@@ -35,6 +37,12 @@ const tabs = computed(() => [
         label: 'Loyalty',
         href: '/account/loyalty',
         icon: Sparkles,
+    },
+    {
+        key: 'myPlateful',
+        label: 'My Plateful',
+        href: '/account/my-plateful',
+        icon: Store,
     },
     {
         key: 'profile',
