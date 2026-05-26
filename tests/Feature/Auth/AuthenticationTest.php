@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\Restaurant;
+use App\Models\RestaurantCustomer;
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
@@ -21,10 +21,14 @@ function makeTenantRestaurant(): Restaurant
 
 function makeTenantCustomer(Restaurant $restaurant, array $attrs = []): User
 {
-    return User::factory()->create(array_merge([
+    $user = User::factory()->create($attrs);
+
+    RestaurantCustomer::create([
+        'user_id' => $user->id,
         'restaurant_id' => $restaurant->id,
-        'role' => UserRole::Customer,
-    ], $attrs));
+    ]);
+
+    return $user;
 }
 
 function tenantBase(Restaurant $restaurant): string
@@ -62,9 +66,10 @@ test('users with two factor enabled are redirected to two factor challenge', fun
     ]);
 
     $restaurant = makeTenantRestaurant();
-    $user = User::factory()->withTwoFactor()->create([
+    $user = User::factory()->withTwoFactor()->create();
+    RestaurantCustomer::create([
+        'user_id' => $user->id,
         'restaurant_id' => $restaurant->id,
-        'role' => UserRole::Customer,
     ]);
 
     $response = $this->post(tenantBase($restaurant).'/login', [
@@ -112,4 +117,43 @@ test('users are rate limited', function () {
     ]);
 
     $response->assertTooManyRequests();
+});
+
+test('a Plateful account signed up at one restaurant can log in at another', function () {
+    $marcos = Restaurant::create([
+        'name' => 'Marco', 'subdomain' => 'marcos', 'email' => 'm@m.test',
+        'street' => '1', 'city' => 'NY', 'state' => 'NY', 'postal_code' => '10001',
+    ]);
+    $bobs = Restaurant::create([
+        'name' => 'Bob', 'subdomain' => 'bobs', 'email' => 'b@b.test',
+        'street' => '1', 'city' => 'NY', 'state' => 'NY', 'postal_code' => '10001',
+    ]);
+
+    // User exists with a pivot only at marcos.
+    $user = makeTenantCustomer($marcos, ['email' => 'shared@example.test']);
+
+    // Logging into bobs storefront should succeed — one Plateful account works
+    // at every Plateful restaurant.
+    $response = $this->post(tenantBase($bobs).'/login', [
+        'email' => 'shared@example.test',
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticatedAs($user);
+    $response->assertRedirect('/');
+});
+
+test('an admin user with no order history can still log into a tenant storefront', function () {
+    $restaurant = makeTenantRestaurant();
+
+    $admin = User::factory()->admin()->create();
+    $admin->restaurants()->attach($restaurant->id, ['role' => 'admin']);
+
+    $response = $this->post(tenantBase($restaurant).'/login', [
+        'email' => $admin->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticatedAs($admin);
+    $response->assertRedirect('/');
 });

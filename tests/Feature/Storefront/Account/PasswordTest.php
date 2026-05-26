@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\Restaurant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,9 +22,9 @@ function pwR(): Restaurant
 function pwU(Restaurant $r, string $password = 'password'): User
 {
     return User::create([
-        'restaurant_id' => $r->id, 'name' => 'C', 'email' => 'c@c.test',
+        'name' => 'C', 'email' => 'c@c.test',
         'password' => Hash::make($password),
-        'role' => UserRole::Customer, 'is_super_admin' => false,
+        'is_super_admin' => false,
     ]);
 }
 

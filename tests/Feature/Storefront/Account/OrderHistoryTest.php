@@ -2,7 +2,6 @@
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
-use App\Enums\UserRole;
 use App\Models\Order;
 use App\Models\Restaurant;
 use App\Models\User;
@@ -28,10 +27,8 @@ function ohR(string $sub = 'marcos'): Restaurant
 function ohU(Restaurant $r, string $email = 'c@c.test'): User
 {
     return User::create([
-        'restaurant_id' => $r->id,
         'name' => 'C', 'email' => $email,
         'password' => Hash::make('password'),
-        'role' => UserRole::Customer,
         'is_super_admin' => false,
     ]);
 }

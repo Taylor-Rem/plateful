@@ -2,7 +2,6 @@
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
-use App\Enums\UserRole;
 use App\Models\LoyaltyPoints;
 use App\Models\Order;
 use App\Models\Restaurant;
@@ -27,9 +26,9 @@ function loyR(string $sub = 'marcos'): Restaurant
 function loyU(Restaurant $r): User
 {
     return User::create([
-        'restaurant_id' => $r->id, 'name' => 'C', 'email' => 'c@c.test',
+        'name' => 'C', 'email' => 'c@c.test',
         'password' => Hash::make('password'),
-        'role' => UserRole::Customer, 'is_super_admin' => false,
+        'is_super_admin' => false,
     ]);
 }
 

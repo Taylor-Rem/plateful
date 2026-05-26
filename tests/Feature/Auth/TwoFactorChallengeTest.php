@@ -1,7 +1,7 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\Restaurant;
+use App\Models\RestaurantCustomer;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
@@ -41,9 +41,10 @@ test('two factor challenge can be rendered', function () {
     $restaurant = tfRestaurant();
     $base = "http://{$restaurant->subdomain}.plateful.test";
 
-    $user = User::factory()->withTwoFactor()->create([
+    $user = User::factory()->withTwoFactor()->create();
+    RestaurantCustomer::create([
+        'user_id' => $user->id,
         'restaurant_id' => $restaurant->id,
-        'role' => UserRole::Customer,
     ]);
 
     $this->post("{$base}/login", [

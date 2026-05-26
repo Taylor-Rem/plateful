@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Restaurant;
@@ -20,13 +19,13 @@ require_once __DIR__.'/CartTestHelpers.php';
 
 function makeCustomer(Restaurant $r, string $email): User
 {
+    // Tenant scoping is no longer on the User row — this is a global account.
+    // The $r argument is kept for callsite readability.
     return User::create([
-        'restaurant_id' => $r->id,
         'is_super_admin' => false,
         'name' => 'Cust '.$email,
         'email' => $email,
         'password' => Hash::make('password'),
-        'role' => UserRole::Customer,
         'email_verified_at' => now(),
     ]);
 }
@@ -102,26 +101,20 @@ test('guest items merge by signature into existing user cart', function () {
     expect($userCart->items()->first()->quantity)->toBe(3);
 });
 
-test('cart on other restaurant is untouched when logging in', function () {
+test('cart on a different tenant is untouched when logging in', function () {
+    // Under platform-wide accounts: one user, one set of credentials, with
+    // separate carts at each tenant. Logging in on Marco's must not merge
+    // or wipe their cart at Bob's.
     $a = cartFixture('marcos');
     $b = cartFixture('bobs');
 
-    $userA = makeCustomer($a['restaurant'], 'shared@m.test');
+    $user = makeCustomer($a['restaurant'], 'shared@m.test');
 
     // User already has a cart on bobs (different tenant).
     app(CurrentTenant::class)->set($b['restaurant']);
-    $userBobs = User::create([
-        'restaurant_id' => $b['restaurant']->id,
-        'is_super_admin' => false,
-        'name' => 'Bobs User',
-        'email' => 'shared@m.test',
-        'password' => Hash::make('password'),
-        'role' => UserRole::Customer,
-        'email_verified_at' => now(),
-    ]);
     $bobsCart = Cart::create([
         'restaurant_id' => $b['restaurant']->id,
-        'user_id' => $userBobs->id,
+        'user_id' => $user->id,
         'token' => 'bobs-cart',
         'expires_at' => now()->addDays(30),
     ]);

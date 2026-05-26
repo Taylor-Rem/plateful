@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\Restaurant;
 use App\Models\User;
 
@@ -31,25 +30,25 @@ test('super admin can log in on admin host', function () {
     $response->assertRedirect('/');
 });
 
-test('admin login fails on a tenant host', function () {
+test('restaurant admin (pivot member) can log in on a tenant host', function () {
+    // Under the platform-wide-accounts model, any Plateful account can log in
+    // at any tenant storefront — admin status doesn't gate tenant login.
     $restaurant = loginRestaurant();
     $admin = User::factory()->admin()->create();
-    $admin->restaurants()->attach($restaurant->id);
+    $admin->restaurants()->attach($restaurant->id, ['role' => 'admin']);
 
-    $this->post("http://{$restaurant->subdomain}.plateful.test/login", [
+    $response = $this->post("http://{$restaurant->subdomain}.plateful.test/login", [
         'email' => $admin->email,
         'password' => 'password',
     ]);
 
-    $this->assertGuest();
+    $this->assertAuthenticatedAs($admin);
+    $response->assertRedirect('/');
 });
 
-test('customer login fails on admin host', function () {
-    $restaurant = loginRestaurant();
-    $customer = User::factory()->create([
-        'restaurant_id' => $restaurant->id,
-        'role' => UserRole::Customer,
-    ]);
+test('a plain customer (no restaurant_user pivot, not super admin) cannot log in on admin host', function () {
+    // Admin host requires either is_super_admin OR membership in restaurant_user.
+    $customer = User::factory()->create();
 
     $this->post(ADMIN_BASE.'/login', [
         'email' => $customer->email,

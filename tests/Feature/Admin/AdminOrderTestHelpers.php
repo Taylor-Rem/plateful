@@ -2,7 +2,6 @@
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
-use App\Enums\UserRole;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Restaurant;
@@ -29,15 +28,13 @@ if (! function_exists('adminForRestaurant')) {
     function adminForRestaurant(Restaurant $r, string $email = 'owner@m.test'): User
     {
         $u = User::create([
-            'restaurant_id' => null,
             'is_super_admin' => false,
             'name' => 'Owner',
             'email' => $email,
             'password' => Hash::make('password'),
-            'role' => UserRole::Admin,
             'email_verified_at' => now(),
         ]);
-        $u->restaurants()->attach($r->id);
+        $u->restaurants()->attach($r->id, ['role' => 'admin']);
 
         return $u;
     }

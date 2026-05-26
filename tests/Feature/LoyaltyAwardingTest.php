@@ -2,7 +2,6 @@
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
-use App\Enums\UserRole;
 use App\Models\LoyaltyPoints;
 use App\Models\Order;
 use App\Models\Restaurant;
@@ -29,9 +28,9 @@ function loyaltyR(string $sub = 'marcos'): Restaurant
 function loyaltyU(Restaurant $r, string $email = 'c@c.test'): User
 {
     return User::create([
-        'restaurant_id' => $r->id, 'name' => 'C', 'email' => $email,
+        'name' => 'C', 'email' => $email,
         'password' => Hash::make('password'),
-        'role' => UserRole::Customer, 'is_super_admin' => false,
+        'is_super_admin' => false,
     ]);
 }
 

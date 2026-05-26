@@ -213,7 +213,7 @@ test('deleting an item preserves order history snapshot', function () {
     $cat = makeCategory($r);
     $item = makeItem($cat, ['name' => 'Margherita', 'price_cents' => 1399]);
 
-    $customer = User::factory()->create(['restaurant_id' => $r->id]);
+    $customer = User::factory()->create();
 
     $order = Order::withoutTenantScope()->create([
         'restaurant_id' => $r->id,
