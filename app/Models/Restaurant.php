@@ -6,9 +6,11 @@ use App\Enums\AutoCancelRefundMode;
 use App\Enums\DeliveryFallbackAction;
 use App\Enums\DeliveryFeeStrategy;
 use App\Enums\DeliveryMode;
+use App\Enums\RestaurantStatus;
 use App\Enums\SelfDeliveryTipRecipient;
 use App\Services\RestaurantImageService;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -26,6 +28,10 @@ class Restaurant extends Model
     {
         return [
             'is_active' => 'boolean',
+            'status' => RestaurantStatus::class,
+            'approved_at' => 'datetime',
+            'suspended_at' => 'datetime',
+            'onboarding_completed_at' => 'datetime',
             'application_fee_percent' => 'decimal:2',
             'tax_rate_percent' => 'decimal:2',
             'delivery_fee_cents' => 'integer',
@@ -38,6 +44,22 @@ class Restaurant extends Model
             'delivery_fallback_action' => DeliveryFallbackAction::class,
             'auto_cancel_refund_mode' => AutoCancelRefundMode::class,
         ];
+    }
+
+    /**
+     * Restaurants that are eligible to appear on the public diner homepage:
+     * fully active in the lifecycle AND not toggled offline by the owner.
+     */
+    public function scopePublic(Builder $query): Builder
+    {
+        return $query
+            ->where('status', RestaurantStatus::Active)
+            ->where('is_active', true);
+    }
+
+    public function isLive(): bool
+    {
+        return $this->status === RestaurantStatus::Active && (bool) $this->is_active;
     }
 
     public function logoUrl(): ?string

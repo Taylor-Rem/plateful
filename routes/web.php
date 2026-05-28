@@ -10,7 +10,7 @@ Route::domain(config('platform.primary_domain'))->group(function () {
         $scheme = $request->getScheme();
 
         $restaurants = Restaurant::query()
-            ->where('is_active', true)
+            ->public()
             ->orderBy('name')
             ->get()
             ->map(fn (Restaurant $restaurant) => [
