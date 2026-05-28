@@ -67,7 +67,7 @@ class OwnerSignupController extends Controller
 
         $notifyTo = config('platform.admin_notification_email') ?: config('mail.from.address');
         if ($notifyTo) {
-            Mail::to($notifyTo)->send(new RestaurantSignupSubmittedMail($signup));
+            Mail::to($notifyTo)->queue(new RestaurantSignupSubmittedMail($signup));
         }
 
         return redirect()->route('owner-signup.pending');

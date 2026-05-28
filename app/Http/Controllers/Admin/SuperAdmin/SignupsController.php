@@ -113,7 +113,7 @@ class SignupsController extends Controller
             return $restaurant;
         });
 
-        Mail::to($signup->user->email)->send(new RestaurantSignupApprovedMail($signup->fresh(['restaurant', 'user'])));
+        Mail::to($signup->user->email)->queue(new RestaurantSignupApprovedMail($signup->fresh(['restaurant', 'user'])));
 
         return redirect()
             ->route('admin.super.signups.show', $signup)
@@ -137,7 +137,7 @@ class SignupsController extends Controller
             'reviewed_by_user_id' => $request->user()->id,
         ]);
 
-        Mail::to($signup->user->email)->send(new RestaurantSignupRejectedMail($signup->fresh('user')));
+        Mail::to($signup->user->email)->queue(new RestaurantSignupRejectedMail($signup->fresh('user')));
 
         return redirect()
             ->route('admin.super.signups.show', $signup)
