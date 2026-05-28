@@ -47,12 +47,15 @@ class OrdersController extends Controller
             ->values()
             ->all();
 
+        $rawCounts = Order::query()
+            ->where('restaurant_id', $restaurant->id)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         $statusCounts = [];
         foreach (OrderStatus::cases() as $case) {
-            $statusCounts[$case->value] = Order::query()
-                ->where('restaurant_id', $restaurant->id)
-                ->where('status', $case->value)
-                ->count();
+            $statusCounts[$case->value] = (int) ($rawCounts[$case->value] ?? 0);
         }
 
         return Inertia::render('Admin/TenantAdmin/Orders/Index', [
