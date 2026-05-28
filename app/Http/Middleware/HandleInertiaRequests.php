@@ -43,6 +43,7 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                'canEditMenu' => fn () => $this->resolveCanEditMenu($request),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
@@ -52,6 +53,22 @@ class HandleInertiaRequests extends Middleware
             'cart' => fn () => $this->resolveCart(),
             'currentRestaurantRole' => fn () => $this->resolveCurrentRestaurantRole($request),
         ];
+    }
+
+    /**
+     * True when the current user can edit menu content on the current tenant
+     * storefront (restaurant Admin or super admin). False off the storefront.
+     */
+    protected function resolveCanEditMenu(Request $request): bool
+    {
+        $tenant = app(CurrentTenant::class)->get();
+        $user = $request->user();
+
+        if (! $tenant || ! $user) {
+            return false;
+        }
+
+        return $user->isSuperAdmin() || $user->isRestaurantAdminAt($tenant);
     }
 
     protected function resolveCurrentRestaurantRole(Request $request): ?string
