@@ -5,6 +5,15 @@ _Scope: Broad sweep of the codebase to flag the highest-impact deviations from L
 
 ## Status Updates
 
+- **2026-05-28 (later)** — Pass A landed. All High-severity items addressed, partials from prior pass closed:
+  - **#1 (Queue mail)** — done. All three signup mail call sites use `->queue()`. Note: the three Mailables already implement `ShouldQueue`, so this was a clarity/consistency fix more than a behavior fix.
+  - **#2 (Policies)** — done. Added `OrderPolicy` (storefront `view` rule) and `MemberPolicy` (self-removal rule). `MenuItemPolicy` already landed in the prior pass.
+  - **#3 (Compound index)** — done. New migration adds `(restaurant_id, status)` to `orders`.
+  - **#4 (Status counts N+1)** — done. `OrdersController::index` now uses a single `groupBy('status')` query, filling zeros from the enum.
+  - **#5 ($fillable)** — done. `Restaurant` now uses explicit `$fillable`. Stripe/Cashier columns (`stripe_id`, `stripe_account_id`, `pm_*`, `application_fee_percent`) and `logo_path` are intentionally excluded — they're assigned via property writes from trusted paths only.
+  - **#6 (Order modifier validation)** — done. `OrderPlacement::validateCartLines` now rejects orders where: the menu item's template was removed after cart-add, an option no longer belongs to the current template / group, per-group min/max changed since cart-add, or the option price delta changed (cart's stored unit price would be stale). New `PlaceOrderModifierIntegrityTest` covers all four cases.
+  - **#10 (OrderController inline auth)** — done. Storefront `OrderController::show` now delegates to `OrderPolicy::view` via `Gate::allows`.
+
 - **2026-05-28** — Storefront menu-editing migration landed alongside partial fixes:
   - **#2 (Policies)** — partial. Added `MenuItemPolicy` and `AuthorizesRequests` on base `Controller`. `MemberPolicy`, `OrderPolicy` still outstanding (#10 still open).
   - **#5 ($fillable)** — partial. `MenuItem` switched to explicit `$fillable`. `Restaurant` still uses `$guarded = []`.
@@ -21,6 +30,8 @@ The codebase demonstrates generally solid architectural discipline: consistent u
 ## High-Severity Findings
 
 ### 1. Synchronous Mail Sending During Request Cycle
+
+**Status:** Addressed (2026-05-28). Mailables already implemented `ShouldQueue`, so behavior was already async; switched the call sites to `->queue()` for consistency.
 
 **Severity:** High
 **Category:** Queue/Job Usage
@@ -39,7 +50,7 @@ The codebase demonstrates generally solid architectural discipline: consistent u
 
 ### 2. No Policy/Authorization Pattern for Tenant-Scoped Resources
 
-**Status:** Partially addressed (2026-05-28) — `MenuItemPolicy` added; `MemberPolicy` and `OrderPolicy` still pending.
+**Status:** Addressed (2026-05-28) — `MenuItemPolicy`, `OrderPolicy`, and `MemberPolicy` all in place.
 
 **Severity:** High
 **Category:** Authorization Gaps
@@ -58,6 +69,8 @@ The codebase demonstrates generally solid architectural discipline: consistent u
 
 ### 3. Missing Compound Index on `orders.(restaurant_id, status)`
 
+**Status:** Addressed (2026-05-28).
+
 **Severity:** High
 **Category:** Migration / Schema Smells
 **Locations:** `database/migrations/2026_05_18_170004_create_orders_tables.php:17`
@@ -71,6 +84,8 @@ The codebase demonstrates generally solid architectural discipline: consistent u
 ---
 
 ### 4. Order Status Counts via N+1 Loop
+
+**Status:** Addressed (2026-05-28).
 
 **Severity:** High
 **Category:** N+1 Queries
@@ -88,7 +103,7 @@ The codebase demonstrates generally solid architectural discipline: consistent u
 
 ### 5. Loose `$guarded = []` on Restaurant and MenuItem Models
 
-**Status:** Partially addressed (2026-05-28) — `MenuItem` now uses explicit `$fillable`. `Restaurant` still open.
+**Status:** Addressed (2026-05-28). Both models on explicit `$fillable`.
 
 **Severity:** Medium
 **Category:** Mass-Assignment & Fillable Hygiene
@@ -105,6 +120,8 @@ The codebase demonstrates generally solid architectural discipline: consistent u
 ---
 
 ### 6. Unvalidated Modifiers JSON on Order Items
+
+**Status:** Addressed (2026-05-28). Defer remaining "value-object cast" suggestion to a later pass — outside Pass A scope.
 
 **Severity:** Medium-High
 **Category:** Data Integrity
@@ -165,6 +182,8 @@ The codebase demonstrates generally solid architectural discipline: consistent u
 ---
 
 ### 10. Inline Order Authorization Will Get Duplicated
+
+**Status:** Addressed (2026-05-28) via `OrderPolicy::view`.
 
 **Severity:** Medium
 **Category:** Authorization Gaps
