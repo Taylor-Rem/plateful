@@ -23,7 +23,52 @@ class Restaurant extends Model
 {
     use Billable, HasFactory;
 
-    protected $guarded = [];
+    /**
+     * Mass-assignable columns. Sensitive Stripe / Cashier fields
+     * (stripe_id, stripe_account_id, pm_*, application_fee_percent),
+     * file paths (logo_path), and delivery-feature toggles are intentionally
+     * excluded — they're assigned via direct property writes from trusted
+     * code paths only.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'subdomain',
+        'custom_domain',
+        'description',
+        'email',
+        'phone',
+        'street',
+        'street2',
+        'city',
+        'state',
+        'postal_code',
+        'country',
+        'timezone',
+        'primary_color',
+        'secondary_color',
+        'is_active',
+        'status',
+        'approved_at',
+        'approved_by_user_id',
+        'suspended_at',
+        'suspension_reason',
+        'onboarding_completed_at',
+        'pending_custom_domain',
+        'custom_domain_requested_at',
+        'trial_ends_at',
+        'tax_rate_percent',
+        'delivery_fee_cents',
+        'delivery_enabled',
+        'delivery_mode',
+        'delivery_provider_priority',
+        'delivery_fee_strategy',
+        'customer_delivery_fee_cents_max',
+        'self_delivery_tip_recipient',
+        'delivery_fallback_action',
+        'auto_cancel_refund_mode',
+    ];
 
     protected function casts(): array
     {
