@@ -51,6 +51,7 @@ class Restaurant extends Model
         'hero_tagline',
         'hero_cta_label',
         'hero_cta_url',
+        'about_body',
         'is_active',
         'status',
         'approved_at',
@@ -136,6 +137,16 @@ class Restaurant extends Model
     public function heroImageMediumUrl(): ?string
     {
         return $this->variantUrl($this->hero_image_path, 'medium');
+    }
+
+    public function aboutImageUrl(): ?string
+    {
+        return $this->variantUrl($this->about_image_path, null);
+    }
+
+    public function aboutImageMediumUrl(): ?string
+    {
+        return $this->variantUrl($this->about_image_path, 'medium');
     }
 
     protected function variantUrl(?string $basePath, ?string $variant): ?string

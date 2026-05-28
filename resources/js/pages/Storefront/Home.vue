@@ -9,6 +9,9 @@ import MenuItemEditDrawer from '@/pages/Storefront/components/MenuItemEditDrawer
 import MenuItemDeleteDialog from '@/pages/Storefront/components/MenuItemDeleteDialog.vue';
 import HeroSection from '@/pages/Storefront/components/HeroSection.vue';
 import HeroEditDrawer from '@/pages/Storefront/components/HeroEditDrawer.vue';
+import AboutSection from '@/pages/Storefront/components/AboutSection.vue';
+import AboutEditDrawer from '@/pages/Storefront/components/AboutEditDrawer.vue';
+import LocationSection from '@/pages/Storefront/components/LocationSection.vue';
 
 type BrandPalette = {
     primary: string;
@@ -59,6 +62,7 @@ const editingItem = ref<App.Data.MenuItemData | null>(null);
 const deleteDialogOpen = ref(false);
 const deleteTarget = ref<App.Data.MenuItemData | null>(null);
 const heroDrawerOpen = ref(false);
+const aboutDrawerOpen = ref(false);
 
 const openCreate = (): void => {
     editingItem.value = null;
@@ -152,6 +156,12 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             @edit-hero="heroDrawerOpen = true"
         />
 
+        <AboutSection
+            :restaurant="restaurant"
+            :edit-mode="canEditMenu && editMode"
+            @edit-about="aboutDrawerOpen = true"
+        />
+
         <main id="menu" class="mx-auto max-w-5xl px-6 py-10 scroll-mt-16">
             <section
                 v-for="category in categories"
@@ -240,6 +250,8 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             </section>
         </main>
 
+        <LocationSection :restaurant="restaurant" />
+
         <ItemConfiguratorModal
             v-if="activeItem"
             v-model:open="configuratorOpen"
@@ -261,6 +273,10 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             />
             <HeroEditDrawer
                 v-model:open="heroDrawerOpen"
+                :restaurant="restaurant"
+            />
+            <AboutEditDrawer
+                v-model:open="aboutDrawerOpen"
                 :restaurant="restaurant"
             />
         </template>

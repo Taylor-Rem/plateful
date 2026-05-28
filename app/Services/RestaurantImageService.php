@@ -29,6 +29,10 @@ class RestaurantImageService
 
     public const HERO_THUMB = 400;
 
+    public const ABOUT_MEDIUM = 800;
+
+    public const ABOUT_THUMB = 300;
+
     public const ORIGINAL_CAP = 2000;
 
     public const WEBP_QUALITY = 85;
@@ -68,6 +72,24 @@ class RestaurantImageService
             "restaurants/{$restaurant->id}/hero",
             self::HERO_MEDIUM,
             self::HERO_THUMB,
+        );
+
+        if ($previous && $previous !== $path) {
+            $this->deleteVariants($previous);
+        }
+
+        return $path;
+    }
+
+    public function storeAboutImage(Restaurant $restaurant, UploadedFile $file): string
+    {
+        $previous = $restaurant->about_image_path;
+
+        $path = $this->processAndStore(
+            $file,
+            "restaurants/{$restaurant->id}/about",
+            self::ABOUT_MEDIUM,
+            self::ABOUT_THUMB,
         );
 
         if ($previous && $previous !== $path) {
