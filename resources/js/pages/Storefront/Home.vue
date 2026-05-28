@@ -7,6 +7,8 @@ import ItemConfiguratorModal from '@/pages/Storefront/components/ItemConfigurato
 import AdminBar from '@/pages/Storefront/components/AdminBar.vue';
 import MenuItemEditDrawer from '@/pages/Storefront/components/MenuItemEditDrawer.vue';
 import MenuItemDeleteDialog from '@/pages/Storefront/components/MenuItemDeleteDialog.vue';
+import HeroSection from '@/pages/Storefront/components/HeroSection.vue';
+import HeroEditDrawer from '@/pages/Storefront/components/HeroEditDrawer.vue';
 
 type BrandPalette = {
     primary: string;
@@ -56,6 +58,7 @@ const drawerOpen = ref(false);
 const editingItem = ref<App.Data.MenuItemData | null>(null);
 const deleteDialogOpen = ref(false);
 const deleteTarget = ref<App.Data.MenuItemData | null>(null);
+const heroDrawerOpen = ref(false);
 
 const openCreate = (): void => {
     editingItem.value = null;
@@ -143,33 +146,11 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             </div>
         </div>
 
-        <section
-            class="px-6 py-12"
-            :style="{
-                backgroundColor: 'var(--brand-primary)',
-                color: 'var(--brand-primary-foreground)',
-            }"
-        >
-            <div class="mx-auto flex max-w-5xl items-center gap-5">
-                <img
-                    v-if="restaurant.logoMediumUrl"
-                    :src="restaurant.logoMediumUrl"
-                    :alt="`${restaurant.name} logo`"
-                    class="size-20 shrink-0 rounded-lg bg-white object-contain p-1"
-                />
-                <div>
-                    <h1
-                        class="text-4xl font-bold tracking-tight"
-                        :style="{ color: 'var(--brand-primary-foreground)' }"
-                    >
-                        {{ restaurant.name }}
-                    </h1>
-                    <p v-if="restaurant.description" class="mt-2 text-base opacity-90">
-                        {{ restaurant.description }}
-                    </p>
-                </div>
-            </div>
-        </section>
+        <HeroSection
+            :restaurant="restaurant"
+            :edit-mode="canEditMenu && editMode"
+            @edit-hero="heroDrawerOpen = true"
+        />
 
         <main id="menu" class="mx-auto max-w-5xl px-6 py-10 scroll-mt-16">
             <section
@@ -277,6 +258,10 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             <MenuItemDeleteDialog
                 v-model:open="deleteDialogOpen"
                 :item="deleteTarget"
+            />
+            <HeroEditDrawer
+                v-model:open="heroDrawerOpen"
+                :restaurant="restaurant"
             />
         </template>
     </div>

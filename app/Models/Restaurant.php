@@ -48,6 +48,9 @@ class Restaurant extends Model
         'timezone',
         'primary_color',
         'secondary_color',
+        'hero_tagline',
+        'hero_cta_label',
+        'hero_cta_url',
         'is_active',
         'status',
         'approved_at',
@@ -123,6 +126,16 @@ class Restaurant extends Model
     public function logoThumbUrl(): ?string
     {
         return $this->variantUrl($this->logo_path, 'thumb');
+    }
+
+    public function heroImageUrl(): ?string
+    {
+        return $this->variantUrl($this->hero_image_path, null);
+    }
+
+    public function heroImageMediumUrl(): ?string
+    {
+        return $this->variantUrl($this->hero_image_path, 'medium');
     }
 
     protected function variantUrl(?string $basePath, ?string $variant): ?string

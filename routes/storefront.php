@@ -10,6 +10,7 @@ use App\Http\Controllers\Storefront\Account\PasswordController as AccountPasswor
 use App\Http\Controllers\Storefront\Account\ProfileController as AccountProfileController;
 use App\Http\Controllers\Storefront\AccountController;
 use App\Http\Controllers\Storefront\Admin\MenuItemController as AdminMenuItemController;
+use App\Http\Controllers\Storefront\Admin\SiteController as AdminSiteController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\HomeController;
@@ -42,6 +43,10 @@ Route::middleware('tenant')->group(function () {
         Route::post('items', [AdminMenuItemController::class, 'store'])->name('items.store');
         Route::put('items/{menuItem}', [AdminMenuItemController::class, 'update'])->name('items.update');
         Route::delete('items/{menuItem}', [AdminMenuItemController::class, 'destroy'])->name('items.destroy');
+    });
+
+    Route::middleware('auth')->prefix('admin/site')->name('storefront.admin.site.')->group(function () {
+        Route::post('hero', [AdminSiteController::class, 'updateHero'])->name('hero.update');
     });
 
     Route::middleware('auth')->group(function () {

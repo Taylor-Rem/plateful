@@ -44,6 +44,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 'canEditMenu' => fn () => $this->resolveCanEditMenu($request),
+                'canEditSite' => fn () => $this->resolveCanEditMenu($request),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
