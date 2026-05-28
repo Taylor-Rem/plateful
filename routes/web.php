@@ -26,6 +26,7 @@ Route::domain(config('platform.primary_domain'))->group(function () {
         return Inertia::render('Welcome', [
             'adminUrl' => $scheme.'://admin.'.config('platform.primary_domain'),
             'restaurants' => $restaurants,
+            'authUserName' => $request->user()?->name,
         ]);
     })->name('home');
 

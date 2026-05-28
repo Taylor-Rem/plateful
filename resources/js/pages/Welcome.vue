@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import { landing as forRestaurantsLanding } from '@/actions/App/Http/Controllers/OwnerSignupController';
 
 type RestaurantSummary = {
     name: string;
@@ -11,358 +13,151 @@ type RestaurantSummary = {
     url: string;
 };
 
-defineProps<{
+const props = defineProps<{
     adminUrl: string;
     restaurants: RestaurantSummary[];
+    authUserName: string | null;
 }>();
 
-const features = [
-    {
-        title: 'Branded online ordering',
-        description:
-            'Give every restaurant its own storefront with menus, cart, checkout, and order tracking — on your subdomain or a custom domain.',
-    },
-    {
-        title: 'Menus that stay in sync',
-        description:
-            'Categories, items, modifiers, and templates managed from one admin. Updates ship instantly to every channel.',
-    },
-    {
-        title: 'Hours and availability',
-        description:
-            'Per-location hours with closed-state enforcement so customers never place an order you can’t fulfil.',
-    },
-    {
-        title: 'Loyalty built in',
-        description:
-            'Customers earn points on every completed order — no third-party integration, no extra fees.',
-    },
-    {
-        title: 'Multi-staff admin',
-        description:
-            'Invite managers and staff per restaurant with the right scope. Super admins manage the whole platform.',
-    },
-    {
-        title: 'Stripe payments',
-        description:
-            'Backed by Stripe with subscription billing for restaurants and secure checkout for diners.',
-    },
-];
+const query = ref('');
 
-const steps = [
-    {
-        number: '01',
-        title: 'Tell us about your restaurant',
-        description:
-            'Pick a subdomain, set your timezone, and we’ll spin up your storefront.',
-    },
-    {
-        number: '02',
-        title: 'Build your menu',
-        description:
-            'Add categories and items in minutes. Reuse templates across locations.',
-    },
-    {
-        number: '03',
-        title: 'Start taking orders',
-        description:
-            'Share your link, take orders, and watch loyalty points add up automatically.',
-    },
-];
+const filteredRestaurants = computed(() => {
+    const q = query.value.trim().toLowerCase();
+    if (!q) return props.restaurants;
+    return props.restaurants.filter((r) => {
+        return (
+            r.name.toLowerCase().includes(q) ||
+            r.city.toLowerCase().includes(q) ||
+            r.state.toLowerCase().includes(q) ||
+            (r.description ?? '').toLowerCase().includes(q)
+        );
+    });
+});
 </script>
 
 <template>
-    <Head title="Plateful — Online ordering for modern restaurants">
-        <link rel="preconnect" href="https://rsms.me/" />
-        <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
-    </Head>
+    <Head title="Plateful — Order from local restaurants" />
 
-    <div
-        class="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]"
-    >
+    <div class="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
         <header class="border-b border-black/5 dark:border-white/10">
-            <div
-                class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5"
-            >
+            <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
                 <Link href="/" class="flex items-center gap-2">
-                    <AppLogoIcon
-                        class-name="h-7 w-7 text-[#f53003] dark:text-[#FF4433]"
-                    />
-                    <span class="text-lg font-semibold tracking-tight">
-                        Plateful
-                    </span>
+                    <AppLogoIcon class-name="h-7 w-7 text-[#f53003] dark:text-[#FF4433]" />
+                    <span class="text-lg font-semibold tracking-tight">Plateful</span>
                 </Link>
 
                 <nav class="flex items-center gap-2 text-sm">
                     <a
-                        href="#features"
-                        class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
-                    >
-                        Features
-                    </a>
-                    <a
-                        href="#how-it-works"
-                        class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
-                    >
-                        How it works
-                    </a>
-                    <a
-                        v-if="restaurants.length"
                         href="#restaurants"
                         class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
                     >
                         Restaurants
                     </a>
                     <a
-                        :href="adminUrl"
-                        class="rounded-sm border border-transparent px-4 py-1.5 hover:border-[#19140035] dark:hover:border-[#3E3E3A]"
+                        href="#how-loyalty-works"
+                        class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
                     >
-                        Admin console
+                        How loyalty works
                     </a>
-                    <a
-                        href="#get-started"
-                        class="rounded-sm border border-black bg-[#1b1b18] px-4 py-1.5 text-white hover:bg-black dark:border-[#eeeeec] dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:bg-white"
+                    <Link
+                        :href="forRestaurantsLanding()"
+                        class="hidden rounded-md border border-[#19140035] px-3 py-1.5 hover:bg-black/5 sm:inline-block dark:border-[#3E3E3A] dark:hover:bg-white/5"
+                        data-test="for-restaurants-link"
                     >
-                        Get started
-                    </a>
+                        For restaurants
+                    </Link>
                 </nav>
             </div>
         </header>
 
         <main>
-            <section class="relative overflow-hidden">
-                <div
-                    class="mx-auto max-w-6xl px-6 py-20 lg:grid lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-28"
-                >
+            <section class="mx-auto max-w-6xl px-6 py-20 sm:py-24">
+                <div class="grid items-center gap-12 lg:grid-cols-[1.2fr_1fr]">
                     <div>
                         <span
                             class="inline-flex items-center rounded-full border border-[#f53003]/20 bg-[#fff2f2] px-3 py-1 text-xs font-medium text-[#f53003] dark:border-[#FF4433]/30 dark:bg-[#1D0002] dark:text-[#FF4433]"
                         >
-                            Online ordering, reimagined
+                            Order direct. No middlemen.
                         </span>
-                        <h1
-                            class="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl"
-                        >
-                            Run your restaurant.
-                            <span class="text-[#f53003] dark:text-[#FF4433]">
-                                We’ll handle the ordering.
-                            </span>
+                        <h1 class="mt-5 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+                            Find the restaurants
+                            <span class="text-[#f53003] dark:text-[#FF4433]">you love.</span>
                         </h1>
-                        <p
-                            class="mt-6 max-w-xl text-lg text-[#706f6c] dark:text-[#A1A09A]"
-                        >
-                            Plateful is a hosted online ordering platform built
-                            for independent restaurants. Branded storefront,
-                            menu management, loyalty, and Stripe payments —
-                            without per-order fees from a marketplace.
+                        <p class="mt-5 max-w-xl text-lg text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
+                            Plateful is direct online ordering for independent restaurants. Order from any restaurant on Plateful with one account — and earn loyalty points everywhere you go.
                         </p>
-                        <div class="mt-8 flex flex-wrap items-center gap-3">
-                            <a
-                                href="#get-started"
-                                class="inline-flex items-center rounded-sm border border-black bg-[#1b1b18] px-6 py-3 text-sm font-medium text-white hover:bg-black dark:border-[#eeeeec] dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:bg-white"
-                            >
-                                Get started
-                            </a>
-                            <a
-                                href="#features"
-                                class="inline-flex items-center rounded-sm border border-[#19140035] px-6 py-3 text-sm font-medium hover:border-[#1915014a] dark:border-[#3E3E3A] dark:hover:border-[#62605b]"
-                            >
-                                See what’s included
-                            </a>
-                        </div>
+
+                        <form @submit.prevent class="mt-8 flex max-w-lg items-center gap-2">
+                            <label class="sr-only" for="restaurant-search">Search restaurants</label>
+                            <input
+                                id="restaurant-search"
+                                v-model="query"
+                                type="search"
+                                placeholder="Search by name, city, or cuisine"
+                                class="w-full rounded-md border border-[#19140035] bg-white px-4 py-2.5 text-sm placeholder:text-[#1b1b18]/40 dark:border-[#3E3E3A] dark:bg-white/5 dark:placeholder:text-[#EDEDEC]/40"
+                                data-test="restaurant-search-input"
+                            />
+                        </form>
                     </div>
 
-                    <div class="relative mt-16 lg:mt-0">
-                        <div
-                            class="aspect-[4/3] w-full rounded-2xl bg-gradient-to-br from-[#fff2f2] via-white to-[#fde6d3] p-6 shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.08)] dark:from-[#1D0002] dark:via-[#161615] dark:to-[#1f0f00] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]"
-                        >
-                            <div
-                                class="flex h-full flex-col rounded-xl bg-white p-5 shadow-sm dark:bg-[#161615]"
-                            >
-                                <div
-                                    class="flex items-center justify-between border-b border-black/5 pb-3 dark:border-white/10"
-                                >
-                                    <div class="flex items-center gap-2">
-                                        <span
-                                            class="h-2.5 w-2.5 rounded-full bg-[#f53003]"
-                                        />
-                                        <span class="text-sm font-medium">
-                                            northside-cafe.plateful.app
-                                        </span>
-                                    </div>
-                                    <span
-                                        class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                                    >
-                                        Open
-                                    </span>
-                                </div>
-                                <div class="mt-4 grid flex-1 grid-cols-2 gap-3">
-                                    <div
-                                        v-for="item in [
-                                            {
-                                                name: 'Pancake Stack',
-                                                price: '$12',
-                                                tag: 'Breakfast',
-                                            },
-                                            {
-                                                name: 'Breakfast Burrito',
-                                                price: '$11',
-                                                tag: 'Breakfast',
-                                            },
-                                            {
-                                                name: 'Iced Latte',
-                                                price: '$5',
-                                                tag: 'Drinks',
-                                            },
-                                            {
-                                                name: 'Avocado Toast',
-                                                price: '$10',
-                                                tag: 'Brunch',
-                                            },
-                                        ]"
-                                        :key="item.name"
-                                        class="flex flex-col justify-between rounded-lg border border-black/5 p-3 text-sm dark:border-white/10"
-                                    >
-                                        <div>
-                                            <p class="font-medium">
-                                                {{ item.name }}
-                                            </p>
-                                            <p
-                                                class="text-xs text-[#706f6c] dark:text-[#A1A09A]"
-                                            >
-                                                {{ item.tag }}
-                                            </p>
-                                        </div>
-                                        <div class="mt-3 flex items-center justify-between">
-                                            <span class="text-sm font-semibold">
-                                                {{ item.price }}
-                                            </span>
-                                            <span
-                                                class="rounded-sm bg-[#1b1b18] px-2 py-0.5 text-xs text-white dark:bg-[#eeeeec] dark:text-[#1C1C1A]"
-                                            >
-                                                Add
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+                        <p class="text-xs font-medium uppercase tracking-wide text-[#1b1b18]/60 dark:text-[#EDEDEC]/60">One account, every restaurant</p>
+                        <p class="mt-3 text-sm">
+                            Sign up at any Plateful restaurant and your account works at all of them. Saved addresses, payment methods, and a single rewards profile across the platform.
+                        </p>
+
+                        <p v-if="authUserName" class="mt-4 rounded-md bg-[#fff2f2] px-3 py-2 text-xs text-[#1b1b18] dark:bg-[#1D0002] dark:text-[#EDEDEC]" data-test="auth-greeting">
+                            Welcome back, {{ authUserName }}.
+                        </p>
                     </div>
                 </div>
             </section>
 
             <section
-                id="features"
-                class="border-t border-black/5 bg-white py-20 dark:border-white/10 dark:bg-[#0f0f0e]"
-            >
-                <div class="mx-auto max-w-6xl px-6">
-                    <div class="max-w-2xl">
-                        <h2
-                            class="text-3xl font-semibold tracking-tight sm:text-4xl"
-                        >
-                            Everything you need to take orders online
-                        </h2>
-                        <p
-                            class="mt-4 text-[#706f6c] dark:text-[#A1A09A]"
-                        >
-                            No plugins, no patchwork. Plateful gives you a
-                            storefront, admin, and payments — all in one place.
-                        </p>
-                    </div>
-                    <div
-                        class="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
-                    >
-                        <div
-                            v-for="feature in features"
-                            :key="feature.title"
-                            class="rounded-lg border border-black/5 p-6 dark:border-white/10"
-                        >
-                            <h3 class="text-base font-semibold">
-                                {{ feature.title }}
-                            </h3>
-                            <p
-                                class="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]"
-                            >
-                                {{ feature.description }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section
-                id="how-it-works"
-                class="border-t border-black/5 py-20 dark:border-white/10"
-            >
-                <div class="mx-auto max-w-6xl px-6">
-                    <div class="max-w-2xl">
-                        <h2
-                            class="text-3xl font-semibold tracking-tight sm:text-4xl"
-                        >
-                            Live in three steps
-                        </h2>
-                        <p
-                            class="mt-4 text-[#706f6c] dark:text-[#A1A09A]"
-                        >
-                            Most restaurants are taking orders the same day.
-                        </p>
-                    </div>
-                    <div
-                        class="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3"
-                    >
-                        <div
-                            v-for="step in steps"
-                            :key="step.number"
-                            class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]"
-                        >
-                            <span
-                                class="text-sm font-semibold text-[#f53003] dark:text-[#FF4433]"
-                            >
-                                {{ step.number }}
-                            </span>
-                            <h3 class="mt-3 text-lg font-semibold">
-                                {{ step.title }}
-                            </h3>
-                            <p
-                                class="mt-2 text-sm text-[#706f6c] dark:text-[#A1A09A]"
-                            >
-                                {{ step.description }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section
-                v-if="restaurants.length"
                 id="restaurants"
                 class="border-t border-black/5 bg-white py-20 dark:border-white/10 dark:bg-[#0f0f0e]"
             >
                 <div class="mx-auto max-w-6xl px-6">
-                    <div class="max-w-2xl">
-                        <h2
-                            class="text-3xl font-semibold tracking-tight sm:text-4xl"
-                        >
-                            Restaurants on Plateful
-                        </h2>
-                        <p class="mt-4 text-[#706f6c] dark:text-[#A1A09A]">
-                            Browse the restaurants taking orders through
-                            Plateful and head straight to their storefront.
-                        </p>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <h2 class="text-3xl font-semibold tracking-tight">
+                                Restaurants on Plateful
+                            </h2>
+                            <p class="mt-2 text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
+                                {{ filteredRestaurants.length }} {{ filteredRestaurants.length === 1 ? 'place' : 'places' }} to order from
+                            </p>
+                        </div>
                     </div>
+
                     <div
-                        class="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                        v-if="filteredRestaurants.length === 0"
+                        class="mt-10 rounded-lg border border-dashed border-black/10 bg-white p-10 text-center text-sm text-[#1b1b18]/60 dark:border-white/10 dark:bg-white/5 dark:text-[#EDEDEC]/60"
+                        data-test="no-restaurants"
+                    >
+                        <template v-if="restaurants.length === 0">
+                            No restaurants on Plateful just yet. Are you a restaurant owner?
+                            <Link :href="forRestaurantsLanding()" class="font-medium text-[#f53003] underline-offset-4 hover:underline dark:text-[#FF4433]">
+                                Apply to join
+                            </Link>.
+                        </template>
+                        <template v-else>
+                            No matches for "{{ query }}".
+                        </template>
+                    </div>
+
+                    <div
+                        v-else
+                        class="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                        data-test="restaurant-grid"
                     >
                         <a
-                            v-for="restaurant in restaurants"
+                            v-for="restaurant in filteredRestaurants"
                             :key="restaurant.url"
                             :href="restaurant.url"
                             class="group flex flex-col rounded-lg border border-black/5 bg-white p-6 transition hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-[#161615] dark:hover:border-white/30"
                         >
                             <div class="flex items-center gap-4">
-                                <div
-                                    class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#fff2f2] dark:bg-[#1D0002]"
-                                >
+                                <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#fff2f2] dark:bg-[#1D0002]">
                                     <img
                                         v-if="restaurant.logoUrl"
                                         :src="restaurant.logoUrl"
@@ -377,27 +172,21 @@ const steps = [
                                     </span>
                                 </div>
                                 <div class="min-w-0">
-                                    <h3
-                                        class="truncate text-base font-semibold group-hover:text-[#f53003] dark:group-hover:text-[#FF4433]"
-                                    >
+                                    <h3 class="truncate text-base font-semibold group-hover:text-[#f53003] dark:group-hover:text-[#FF4433]">
                                         {{ restaurant.name }}
                                     </h3>
-                                    <p
-                                        class="text-sm text-[#706f6c] dark:text-[#A1A09A]"
-                                    >
-                                        {{ restaurant.city }}, {{ restaurant.state }}
+                                    <p class="text-sm text-[#1b1b18]/60 dark:text-[#EDEDEC]/60">
+                                        {{ restaurant.city }}<span v-if="restaurant.state">, {{ restaurant.state }}</span>
                                     </p>
                                 </div>
                             </div>
                             <p
                                 v-if="restaurant.description"
-                                class="mt-4 line-clamp-3 text-sm text-[#706f6c] dark:text-[#A1A09A]"
+                                class="mt-4 line-clamp-3 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70"
                             >
                                 {{ restaurant.description }}
                             </p>
-                            <span
-                                class="mt-4 inline-flex items-center text-sm font-medium text-[#f53003] dark:text-[#FF4433]"
-                            >
+                            <span class="mt-4 inline-flex items-center text-sm font-medium text-[#f53003] dark:text-[#FF4433]">
                                 Order now →
                             </span>
                         </a>
@@ -405,63 +194,64 @@ const steps = [
                 </div>
             </section>
 
-            <section
-                id="get-started"
-                class="border-t border-black/5 bg-[#1b1b18] py-20 text-white dark:border-white/10 dark:bg-[#161615]"
-            >
-                <div
-                    class="mx-auto flex max-w-4xl flex-col items-center px-6 text-center"
-                >
-                    <h2 class="text-3xl font-semibold tracking-tight sm:text-4xl">
-                        Ready to bring your restaurant online?
-                    </h2>
-                    <p class="mt-4 max-w-xl text-white/70">
-                        Tell us a little about your restaurant and we’ll get
-                        your storefront set up.
-                    </p>
-                    <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
-                        <a
-                            href="mailto:hello@plateful.app?subject=I%27d%20like%20to%20get%20started%20with%20Plateful"
-                            class="inline-flex items-center rounded-sm bg-[#f53003] px-6 py-3 text-sm font-medium text-white hover:bg-[#d92900]"
-                        >
-                            Request access
-                        </a>
-                        <a
-                            :href="adminUrl"
-                            class="inline-flex items-center rounded-sm border border-white/30 px-6 py-3 text-sm font-medium text-white hover:border-white/60"
-                        >
-                            Go to admin console
-                        </a>
+            <section id="how-loyalty-works" class="border-t border-black/5 py-20 dark:border-white/10">
+                <div class="mx-auto max-w-6xl px-6">
+                    <h2 class="text-3xl font-semibold tracking-tight">How loyalty works on Plateful</h2>
+                    <div class="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]">
+                            <span class="text-sm font-mono text-[#f53003] dark:text-[#FF4433]">01</span>
+                            <h3 class="mt-3 text-lg font-semibold">Order from any restaurant</h3>
+                            <p class="mt-2 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
+                                Sign up once at any Plateful restaurant. The same account works everywhere on the platform.
+                            </p>
+                        </div>
+                        <div class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]">
+                            <span class="text-sm font-mono text-[#f53003] dark:text-[#FF4433]">02</span>
+                            <h3 class="mt-3 text-lg font-semibold">Earn points automatically</h3>
+                            <p class="mt-2 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
+                                Every completed order earns loyalty points with that restaurant. No app, no card, no friction.
+                            </p>
+                        </div>
+                        <div class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]">
+                            <span class="text-sm font-mono text-[#f53003] dark:text-[#FF4433]">03</span>
+                            <h3 class="mt-3 text-lg font-semibold">Redeem at the place you earned it</h3>
+                            <p class="mt-2 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
+                                Points are kept per restaurant — your local cafe's rewards stay with your local cafe.
+                            </p>
+                        </div>
                     </div>
+                </div>
+            </section>
+
+            <section class="border-t border-black/5 bg-[#1b1b18] py-16 text-white dark:border-white/10 dark:bg-[#161615]">
+                <div class="mx-auto flex max-w-4xl flex-col items-center px-6 text-center">
+                    <h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">
+                        Own a restaurant?
+                    </h2>
+                    <p class="mt-3 max-w-xl text-white/70">
+                        Get your own branded ordering site, take orders direct, and keep loyalty in-house. Apply in a couple of minutes.
+                    </p>
+                    <Link
+                        :href="forRestaurantsLanding()"
+                        class="mt-6 inline-flex items-center rounded-md bg-[#f53003] px-6 py-3 text-sm font-medium text-white hover:bg-[#d92900]"
+                        data-test="footer-for-restaurants-cta"
+                    >
+                        Learn more →
+                    </Link>
                 </div>
             </section>
         </main>
 
-        <footer
-            class="border-t border-black/5 py-10 text-sm text-[#706f6c] dark:border-white/10 dark:text-[#A1A09A]"
-        >
-            <div
-                class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row"
-            >
+        <footer class="border-t border-black/5 py-10 text-sm text-[#1b1b18]/60 dark:border-white/10 dark:text-[#EDEDEC]/60">
+            <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row">
                 <div class="flex items-center gap-2">
-                    <AppLogoIcon
-                        class-name="h-5 w-5 text-[#f53003] dark:text-[#FF4433]"
-                    />
+                    <AppLogoIcon class-name="h-5 w-5 text-[#f53003] dark:text-[#FF4433]" />
                     <span>© {{ new Date().getFullYear() }} Plateful</span>
                 </div>
                 <div class="flex items-center gap-5">
-                    <a href="#features" class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]">
-                        Features
-                    </a>
-                    <a href="#how-it-works" class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]">
-                        How it works
-                    </a>
-                    <a
-                        href="mailto:hello@plateful.app"
-                        class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                    >
-                        Contact
-                    </a>
+                    <a href="#restaurants" class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]">Restaurants</a>
+                    <Link :href="forRestaurantsLanding()" class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]">For restaurants</Link>
+                    <a :href="adminUrl" class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]">Admin</a>
                 </div>
             </div>
         </footer>
