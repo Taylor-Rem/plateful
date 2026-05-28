@@ -33,9 +33,12 @@ it('links an approved signup to the created restaurant and reviewer', function (
         ->and($signup->reviewer->is($reviewer))->toBeTrue();
 });
 
-it('enforces unique proposed_subdomain', function () {
+it('allows multiple rows with the same proposed_subdomain at the DB layer', function () {
+    // Uniqueness is enforced in OwnerSignupRequest (only against pending
+    // signups + active restaurants). The DB stays permissive so a rejected
+    // subdomain can be reclaimed later.
     RestaurantSignup::factory()->create(['proposed_subdomain' => 'pizzajoint']);
 
-    expect(fn () => RestaurantSignup::factory()->create(['proposed_subdomain' => 'pizzajoint']))
-        ->toThrow(QueryException::class);
+    expect(fn () => RestaurantSignup::factory()->rejected()->create(['proposed_subdomain' => 'pizzajoint']))
+        ->not->toThrow(QueryException::class);
 });

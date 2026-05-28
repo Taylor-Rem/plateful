@@ -6,6 +6,17 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Admin Notification Email
+    |---------------------------------------------------------------------------
+    |
+    | Where platform notifications (new restaurant signups, etc.) are sent.
+    | Falls back to the configured mail "from" address.
+    |
+    */
+    'admin_notification_email' => env('PLATFORM_ADMIN_NOTIFICATION_EMAIL'),
+
+    /*
+    |---------------------------------------------------------------------------
     | Reserved Subdomains
     |---------------------------------------------------------------------------
     |
