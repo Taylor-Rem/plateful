@@ -16,7 +16,23 @@ class MenuItem extends Model
 {
     use BelongsToTenant, HasFactory;
 
-    protected $guarded = [];
+    /**
+     * Mass-assignable columns. Excludes `id`, timestamps, and `image_path`
+     * (managed via RestaurantImageService).
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'restaurant_id',
+        'menu_category_id',
+        'item_template_id',
+        'name',
+        'slug',
+        'description',
+        'price_cents',
+        'is_available',
+        'position',
+    ];
 
     protected function casts(): array
     {
