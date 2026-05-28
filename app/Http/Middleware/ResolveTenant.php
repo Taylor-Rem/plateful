@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\RestaurantStatus;
 use App\Models\Restaurant;
 use App\Support\BrandColors;
 use App\Tenancy\CurrentTenant;
@@ -37,7 +38,13 @@ class ResolveTenant
             throw new NotFoundHttpException;
         }
 
-        if (! $restaurant->is_active) {
+        // Suspended (eg billing lapsed) and approved-but-not-yet-live
+        // restaurants also serve the Unavailable page. The owner toggle
+        // `is_active = false` continues to work too.
+        $isStorefrontLive = $restaurant->is_active
+            && $restaurant->status === RestaurantStatus::Active;
+
+        if (! $isStorefrontLive) {
             return Inertia::render('Storefront/Unavailable', [
                 'restaurantName' => $restaurant->name,
             ])

@@ -38,6 +38,10 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::post('/onboarding/custom-domain', [TenantAdmin\OnboardingController::class, 'requestCustomDomain'])->name('onboarding.customDomain');
                 Route::post('/onboarding/go-live', [TenantAdmin\OnboardingController::class, 'goLive'])->name('onboarding.goLive');
 
+                Route::get('/billing', [TenantAdmin\BillingController::class, 'show'])->name('billing.show');
+                Route::post('/billing/checkout', [TenantAdmin\BillingController::class, 'checkout'])->name('billing.checkout');
+                Route::post('/billing/portal', [TenantAdmin\BillingController::class, 'portal'])->name('billing.portal');
+
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
                 Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');

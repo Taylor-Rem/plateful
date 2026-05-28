@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Cashier\Cashier;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AppServiceProvider extends ServiceProvider
@@ -43,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Plateful subscriptions are billed per restaurant, not per user.
+        Cashier::useCustomerModel(Restaurant::class);
 
         Restaurant::observe(RestaurantObserver::class);
         MenuItem::observe(MenuItemObserver::class);

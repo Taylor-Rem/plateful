@@ -17,10 +17,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Laravel\Cashier\Billable;
 
 class Restaurant extends Model
 {
-    use HasFactory;
+    use Billable, HasFactory;
 
     protected $guarded = [];
 
@@ -33,6 +34,7 @@ class Restaurant extends Model
             'suspended_at' => 'datetime',
             'onboarding_completed_at' => 'datetime',
             'custom_domain_requested_at' => 'datetime',
+            'trial_ends_at' => 'datetime',
             'application_fee_percent' => 'decimal:2',
             'tax_rate_percent' => 'decimal:2',
             'delivery_fee_cents' => 'integer',

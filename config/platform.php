@@ -17,6 +17,22 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Billing
+    |---------------------------------------------------------------------------
+    |
+    | Free trial granted when a restaurant is approved, plus the Stripe price
+    | id used for the (single, for now) Plateful subscription plan. Set the
+    | price id from the Stripe dashboard via env.
+    |
+    */
+    'billing' => [
+        'trial_days' => env('PLATFORM_TRIAL_DAYS', 14),
+        'stripe_price' => env('PLATFORM_STRIPE_PRICE'),
+        'subscription_type' => 'default',
+    ],
+
+    /*
+    |---------------------------------------------------------------------------
     | Reserved Subdomains
     |---------------------------------------------------------------------------
     |
