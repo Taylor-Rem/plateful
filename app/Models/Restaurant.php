@@ -32,6 +32,7 @@ class Restaurant extends Model
             'approved_at' => 'datetime',
             'suspended_at' => 'datetime',
             'onboarding_completed_at' => 'datetime',
+            'custom_domain_requested_at' => 'datetime',
             'application_fee_percent' => 'decimal:2',
             'tax_rate_percent' => 'decimal:2',
             'delivery_fee_cents' => 'integer',
