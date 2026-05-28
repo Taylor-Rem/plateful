@@ -9,6 +9,7 @@ use App\Http\Controllers\Storefront\Account\OrdersController as AccountOrdersCon
 use App\Http\Controllers\Storefront\Account\PasswordController as AccountPasswordController;
 use App\Http\Controllers\Storefront\Account\ProfileController as AccountProfileController;
 use App\Http\Controllers\Storefront\AccountController;
+use App\Http\Controllers\Storefront\Admin\MenuItemController as AdminMenuItemController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\HomeController;
@@ -34,6 +35,14 @@ Route::middleware('tenant')->group(function () {
     Route::get('orders/{number}', [OrderController::class, 'show'])
         ->where('number', '[A-Za-z0-9-]+')
         ->name('storefront.orders.show');
+
+    // Admin-only menu editing on the storefront. The policy gates per-action;
+    // unauthenticated users hit auth middleware first.
+    Route::middleware('auth')->prefix('admin/menu')->name('storefront.admin.menu.')->group(function () {
+        Route::post('items', [AdminMenuItemController::class, 'store'])->name('items.store');
+        Route::put('items/{menuItem}', [AdminMenuItemController::class, 'update'])->name('items.update');
+        Route::delete('items/{menuItem}', [AdminMenuItemController::class, 'destroy'])->name('items.destroy');
+    });
 
     Route::middleware('auth')->group(function () {
         Route::redirect('settings', '/settings/profile');
