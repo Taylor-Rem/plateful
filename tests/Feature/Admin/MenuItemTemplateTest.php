@@ -8,8 +8,6 @@ use App\Models\MenuItem;
 use App\Models\Restaurant;
 use App\Models\User;
 
-const MIT_BASE = 'http://admin.plateful.test';
-
 function mitRestaurant(string $sub): Restaurant
 {
     return Restaurant::create([
@@ -85,7 +83,7 @@ test('creating an item with valid default selections works', function () {
     $bundle = mitPizzaTemplate($r);
 
     $this->actingAs($admin)
-        ->post(MIT_BASE.'/marcos/menu/items', [
+        ->post('http://marcos.plateful.test/admin/menu/items', [
             'name' => 'Pepperoni Pizza',
             'menu_category_id' => $cat->id,
             'price' => '14.00',
@@ -110,7 +108,7 @@ test('defaults violating min_selections fail with group-named message', function
 
     // Size requires 1; provide 0 defaults from Size.
     $response = $this->actingAs($admin)
-        ->post(MIT_BASE.'/marcos/menu/items', [
+        ->post('http://marcos.plateful.test/admin/menu/items', [
             'name' => 'Bad Pizza',
             'menu_category_id' => $cat->id,
             'price' => '10.00',
@@ -132,7 +130,7 @@ test('defaults exceeding max_selections fail', function () {
 
     // Size is 1-of-1; sending 2 size options exceeds max.
     $this->actingAs($admin)
-        ->post(MIT_BASE.'/marcos/menu/items', [
+        ->post('http://marcos.plateful.test/admin/menu/items', [
             'name' => 'Pizza',
             'menu_category_id' => $cat->id,
             'price' => '14.00',
@@ -172,7 +170,7 @@ test('defaults referencing options from another template fail', function () {
     ]);
 
     $this->actingAs($admin)
-        ->post(MIT_BASE.'/marcos/menu/items', [
+        ->post('http://marcos.plateful.test/admin/menu/items', [
             'name' => 'Pizza',
             'menu_category_id' => $cat->id,
             'price' => '14.00',
@@ -224,7 +222,7 @@ test('switching an item to a different template clears old default selections', 
     ]);
 
     $this->actingAs($admin)
-        ->put(MIT_BASE."/marcos/menu/items/{$item->id}", [
+        ->put("http://marcos.plateful.test/admin/menu/items/{$item->id}", [
             'name' => 'Salad Bowl',
             'menu_category_id' => $cat->id,
             'price' => '9.00',

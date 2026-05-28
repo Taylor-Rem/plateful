@@ -26,9 +26,6 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
 
             Route::get('/kitchen', [TenantAdmin\KitchenController::class, 'index'])->name('kitchen.index');
 
-            // Available to staff too: toggling stock availability is a daily operations task.
-            Route::post('/menu/items/{item}/availability', [TenantAdmin\MenuItemController::class, 'toggleAvailability'])->name('items.toggleAvailability');
-
             Route::get('/hours', [TenantAdmin\HoursController::class, 'edit'])->name('hours.edit');
             Route::put('/hours', [TenantAdmin\HoursController::class, 'update'])->name('hours.update');
 
@@ -53,13 +50,6 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::get('/menu/templates/{template}/edit', [TenantAdmin\ItemTemplateController::class, 'edit'])->name('templates.edit');
                 Route::put('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'update'])->name('templates.update');
                 Route::delete('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'destroy'])->name('templates.destroy');
-
-                Route::get('/menu/items/create', [TenantAdmin\MenuItemController::class, 'create'])->name('items.create');
-                Route::post('/menu/items', [TenantAdmin\MenuItemController::class, 'store'])->name('items.store');
-                Route::post('/menu/items/reorder', [TenantAdmin\MenuItemController::class, 'reorder'])->name('items.reorder');
-                Route::get('/menu/items/{item}/edit', [TenantAdmin\MenuItemController::class, 'edit'])->name('items.edit');
-                Route::put('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'update'])->name('items.update');
-                Route::delete('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'destroy'])->name('items.destroy');
 
                 Route::get('/settings', [TenantAdmin\SettingsController::class, 'edit'])->name('settings.edit');
                 Route::put('/settings', [TenantAdmin\SettingsController::class, 'update'])->name('settings.update');

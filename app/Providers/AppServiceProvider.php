@@ -95,21 +95,6 @@ class AppServiceProvider extends ServiceProvider
             return $template;
         });
 
-        Route::bind('item', function ($value) {
-            $restaurant = request()->route('restaurant');
-            $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : null;
-
-            $item = MenuItem::withoutTenantScope()
-                ->when($restaurantId, fn ($q) => $q->where('restaurant_id', $restaurantId))
-                ->where('id', $value)
-                ->first();
-
-            if (! $item || ($restaurantId && $item->restaurant_id !== $restaurantId)) {
-                throw new NotFoundHttpException;
-            }
-
-            return $item;
-        });
     }
 
     /**
