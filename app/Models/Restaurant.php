@@ -225,6 +225,13 @@ class Restaurant extends Model
             ->orderBy('position');
     }
 
+    public function photos(): HasMany
+    {
+        return $this->hasMany(RestaurantPhoto::class)
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
     /**
      * Is this restaurant currently open at the given moment (or now())?
      * Restaurants with NO hour rows configured are treated as always open

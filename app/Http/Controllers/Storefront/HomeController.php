@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Storefront;
 use App\Data\ItemTemplateData;
 use App\Data\MenuCategoryData;
 use App\Data\RestaurantData;
+use App\Data\RestaurantPhotoData;
 use App\Http\Controllers\Controller;
 use App\Models\ItemTemplate;
 use App\Models\Restaurant;
@@ -42,9 +43,15 @@ class HomeController extends Controller
             ->map(fn ($c) => MenuCategoryData::fromModel($c))
             ->all();
 
+        $photos = $restaurant->photos()
+            ->get()
+            ->map(fn ($p) => RestaurantPhotoData::fromModel($p))
+            ->all();
+
         return Inertia::render('Storefront/Home', [
             'restaurant' => RestaurantData::fromModel($restaurant),
             'categories' => $categories,
+            'photos' => $photos,
             'brand' => BrandColors::paletteFor(
                 $restaurant->primary_color,
                 $restaurant->secondary_color,

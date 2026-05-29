@@ -10,6 +10,7 @@ use App\Http\Controllers\Storefront\Account\PasswordController as AccountPasswor
 use App\Http\Controllers\Storefront\Account\ProfileController as AccountProfileController;
 use App\Http\Controllers\Storefront\AccountController;
 use App\Http\Controllers\Storefront\Admin\MenuItemController as AdminMenuItemController;
+use App\Http\Controllers\Storefront\Admin\PhotoController as AdminPhotoController;
 use App\Http\Controllers\Storefront\Admin\SiteController as AdminSiteController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
@@ -48,6 +49,11 @@ Route::middleware('tenant')->group(function () {
     Route::middleware('auth')->prefix('admin/site')->name('storefront.admin.site.')->group(function () {
         Route::post('hero', [AdminSiteController::class, 'updateHero'])->name('hero.update');
         Route::post('about', [AdminSiteController::class, 'updateAbout'])->name('about.update');
+
+        Route::post('photos', [AdminPhotoController::class, 'store'])->name('photos.store');
+        Route::post('photos/reorder', [AdminPhotoController::class, 'reorder'])->name('photos.reorder');
+        Route::patch('photos/{photo}', [AdminPhotoController::class, 'update'])->name('photos.update');
+        Route::delete('photos/{photo}', [AdminPhotoController::class, 'destroy'])->name('photos.destroy');
     });
 
     Route::middleware('auth')->group(function () {

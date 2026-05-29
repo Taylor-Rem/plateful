@@ -12,6 +12,8 @@ import HeroEditDrawer from '@/pages/Storefront/components/HeroEditDrawer.vue';
 import AboutSection from '@/pages/Storefront/components/AboutSection.vue';
 import AboutEditDrawer from '@/pages/Storefront/components/AboutEditDrawer.vue';
 import LocationSection from '@/pages/Storefront/components/LocationSection.vue';
+import GallerySection from '@/pages/Storefront/components/GallerySection.vue';
+import GalleryManagerDrawer from '@/pages/Storefront/components/GalleryManagerDrawer.vue';
 
 type BrandPalette = {
     primary: string;
@@ -28,6 +30,7 @@ type EditorPayload = {
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     categories: App.Data.MenuCategoryData[];
+    photos: App.Data.RestaurantPhotoData[];
     brand: BrandPalette;
     editor: EditorPayload | null;
 }>();
@@ -63,6 +66,7 @@ const deleteDialogOpen = ref(false);
 const deleteTarget = ref<App.Data.MenuItemData | null>(null);
 const heroDrawerOpen = ref(false);
 const aboutDrawerOpen = ref(false);
+const galleryDrawerOpen = ref(false);
 
 const openCreate = (): void => {
     editingItem.value = null;
@@ -160,6 +164,12 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             :restaurant="restaurant"
             :edit-mode="canEditMenu && editMode"
             @edit-about="aboutDrawerOpen = true"
+        />
+
+        <GallerySection
+            :photos="photos"
+            :edit-mode="canEditMenu && editMode"
+            @edit-gallery="galleryDrawerOpen = true"
         />
 
         <main id="menu" class="mx-auto max-w-5xl px-6 py-10 scroll-mt-16">
@@ -278,6 +288,10 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             <AboutEditDrawer
                 v-model:open="aboutDrawerOpen"
                 :restaurant="restaurant"
+            />
+            <GalleryManagerDrawer
+                v-model:open="galleryDrawerOpen"
+                :photos="photos"
             />
         </template>
     </div>

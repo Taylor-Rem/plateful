@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\MenuItem;
 use App\Models\Restaurant;
+use App\Models\RestaurantPhoto;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -32,6 +33,10 @@ class RestaurantImageService
     public const ABOUT_MEDIUM = 800;
 
     public const ABOUT_THUMB = 300;
+
+    public const GALLERY_MEDIUM = 1000;
+
+    public const GALLERY_THUMB = 300;
 
     public const ORIGINAL_CAP = 2000;
 
@@ -97,6 +102,30 @@ class RestaurantImageService
         }
 
         return $path;
+    }
+
+    public function storeGalleryPhoto(RestaurantPhoto $photo, UploadedFile $file): string
+    {
+        $previous = $photo->image_path;
+
+        $path = $this->processAndStore(
+            $file,
+            "restaurants/{$photo->restaurant_id}/gallery/{$photo->id}",
+            self::GALLERY_MEDIUM,
+            self::GALLERY_THUMB,
+        );
+
+        if ($previous && $previous !== $path) {
+            $this->deleteVariants($previous);
+        }
+
+        return $path;
+    }
+
+    public function deleteDirectoryForGalleryPhoto(RestaurantPhoto $photo): void
+    {
+        Storage::disk(self::DISK)
+            ->deleteDirectory("restaurants/{$photo->restaurant_id}/gallery/{$photo->id}");
     }
 
     public function storeMenuItemImage(MenuItem $item, UploadedFile $file): string
