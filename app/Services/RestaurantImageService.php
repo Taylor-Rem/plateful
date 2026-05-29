@@ -210,11 +210,13 @@ class RestaurantImageService
         $mediumPath = "{$directory}/{$uuid}-medium.webp";
         $thumbPath = "{$directory}/{$uuid}-thumb.webp";
 
-        $sourcePath = $file->getRealPath();
+        $image = $this->manager->decodePath($file->getRealPath());
 
-        $disk->put($basePath, $this->resizeToWebp($this->manager->decodePath($sourcePath), self::ORIGINAL_CAP));
-        $disk->put($mediumPath, $this->resizeToWebp($this->manager->decodePath($sourcePath), $mediumMax));
-        $disk->put($thumbPath, $this->resizeToWebp($this->manager->decodePath($sourcePath), $thumbMax));
+        $disk->put($basePath, $this->resizeToWebp($image, self::ORIGINAL_CAP));
+        $disk->put($mediumPath, $this->resizeToWebp($image, $mediumMax));
+        $disk->put($thumbPath, $this->resizeToWebp($image, $thumbMax));
+
+        unset($image);
 
         return $basePath;
     }
