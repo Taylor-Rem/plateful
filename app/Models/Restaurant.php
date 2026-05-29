@@ -17,18 +17,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Laravel\Cashier\Billable;
 
 class Restaurant extends Model
 {
-    use Billable, HasFactory;
+    use HasFactory;
 
     /**
-     * Mass-assignable columns. Sensitive Stripe / Cashier fields
-     * (stripe_id, stripe_account_id, pm_*, application_fee_percent),
-     * file paths (logo_path), and delivery-feature toggles are intentionally
-     * excluded — they're assigned via direct property writes from trusted
-     * code paths only.
+     * Mass-assignable columns. Sensitive Stripe fields
+     * (stripe_account_id, application_fee_percent), file paths (logo_path),
+     * and delivery-feature toggles are intentionally excluded — they're
+     * assigned via direct property writes from trusted code paths only.
      *
      * @var array<int, string>
      */
@@ -62,7 +60,6 @@ class Restaurant extends Model
         'onboarding_completed_at',
         'pending_custom_domain',
         'custom_domain_requested_at',
-        'trial_ends_at',
         'tax_rate_percent',
         'delivery_fee_cents',
         'delivery_enabled',
@@ -84,7 +81,6 @@ class Restaurant extends Model
             'suspended_at' => 'datetime',
             'onboarding_completed_at' => 'datetime',
             'custom_domain_requested_at' => 'datetime',
-            'trial_ends_at' => 'datetime',
             'application_fee_percent' => 'decimal:2',
             'tax_rate_percent' => 'decimal:2',
             'delivery_fee_cents' => 'integer',
