@@ -167,6 +167,61 @@ class Restaurant extends Model
         return Storage::disk(RestaurantImageService::DISK)->url($path);
     }
 
+    /**
+     * Page title for the storefront. Used in <title> and og:title.
+     */
+    public function seoTitle(): string
+    {
+        return $this->name;
+    }
+
+    /**
+     * Up to ~160 chars of plain text describing the restaurant.
+     * Picks the most specific available source: hero tagline → about body →
+     * generic description. Used in <meta name="description"> and og:description.
+     */
+    public function seoDescription(): ?string
+    {
+        $candidates = [
+            $this->hero_tagline,
+            $this->about_body,
+            $this->description,
+        ];
+
+        foreach ($candidates as $candidate) {
+            $clean = trim((string) $candidate);
+            if ($clean === '') {
+                continue;
+            }
+
+            // Collapse whitespace and cap to 160 chars.
+            $clean = preg_replace('/\s+/', ' ', $clean) ?? '';
+
+            return mb_strlen($clean) > 160
+                ? rtrim(mb_substr($clean, 0, 157)).'…'
+                : $clean;
+        }
+
+        return null;
+    }
+
+    /**
+     * Open Graph image URL: hero → first gallery photo → logo. Null if none.
+     */
+    public function ogImageUrl(): ?string
+    {
+        if ($url = $this->heroImageUrl()) {
+            return $url;
+        }
+
+        $photo = $this->photos()->first();
+        if ($photo && ($url = $photo->imageUrl())) {
+            return $url;
+        }
+
+        return $this->logoUrl();
+    }
+
     public function publicUrl(string $scheme = 'https'): string
     {
         $host = $this->custom_domain

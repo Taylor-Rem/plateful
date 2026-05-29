@@ -59,6 +59,14 @@ class ResolveTenant
             $restaurant->secondary_color,
         ));
 
+        View::share('tenantSeo', [
+            'title' => $restaurant->seoTitle(),
+            'description' => $restaurant->seoDescription(),
+            'ogImage' => $restaurant->ogImageUrl(),
+            'url' => $restaurant->publicUrl($request->getScheme() ?: 'https'),
+            'siteName' => $restaurant->name,
+        ]);
+
         return $next($request);
     }
 }

@@ -6,6 +6,34 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        @isset($tenantSeo)
+            @if ($tenantSeo['description'])
+                <meta name="description" content="{{ $tenantSeo['description'] }}">
+            @endif
+
+            {{-- Open Graph (Facebook, iMessage, LinkedIn, Slack, Discord, …) --}}
+            <meta property="og:type" content="restaurant">
+            <meta property="og:site_name" content="{{ $tenantSeo['siteName'] }}">
+            <meta property="og:title" content="{{ $tenantSeo['title'] }}">
+            @if ($tenantSeo['description'])
+                <meta property="og:description" content="{{ $tenantSeo['description'] }}">
+            @endif
+            <meta property="og:url" content="{{ $tenantSeo['url'] }}">
+            @if ($tenantSeo['ogImage'])
+                <meta property="og:image" content="{{ $tenantSeo['ogImage'] }}">
+            @endif
+
+            {{-- Twitter Card --}}
+            <meta name="twitter:card" content="{{ $tenantSeo['ogImage'] ? 'summary_large_image' : 'summary' }}">
+            <meta name="twitter:title" content="{{ $tenantSeo['title'] }}">
+            @if ($tenantSeo['description'])
+                <meta name="twitter:description" content="{{ $tenantSeo['description'] }}">
+            @endif
+            @if ($tenantSeo['ogImage'])
+                <meta name="twitter:image" content="{{ $tenantSeo['ogImage'] }}">
+            @endif
+        @endisset
+
         {{-- Inline script to detect system dark mode preference and apply it immediately.
              Tenant storefronts opt out entirely — they always render in light mode. --}}
         <script>
@@ -58,9 +86,8 @@
         @fonts
 
         @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])
-        <x-inertia::head>
-            <title>{{ config('app.name', 'Laravel') }}</title>
-        </x-inertia::head>
+        <title>{{ $tenantSeo['title'] ?? config('app.name', 'Laravel') }}</title>
+        <x-inertia::head />
     </head>
     <body class="font-sans antialiased">
         <x-inertia::app />
