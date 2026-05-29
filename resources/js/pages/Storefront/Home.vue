@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import { computed, inject, ref, type Ref } from 'vue';
-import { Clock, UtensilsCrossed } from 'lucide-vue-next';
+import { Clock } from 'lucide-vue-next';
 import HeroSection from '@/pages/Storefront/components/HeroSection.vue';
 import HeroEditDrawer from '@/pages/Storefront/components/HeroEditDrawer.vue';
+import QuickInfoBand from '@/pages/Storefront/components/QuickInfoBand.vue';
+import FeaturedItemsSection from '@/pages/Storefront/components/FeaturedItemsSection.vue';
 import AboutSection from '@/pages/Storefront/components/AboutSection.vue';
 import AboutEditDrawer from '@/pages/Storefront/components/AboutEditDrawer.vue';
 import LocationSection from '@/pages/Storefront/components/LocationSection.vue';
@@ -20,6 +22,7 @@ type BrandPalette = {
 defineProps<{
     restaurant: App.Data.RestaurantData;
     photos: App.Data.RestaurantPhotoData[];
+    featuredItems: App.Data.MenuItemData[];
     brand: BrandPalette;
 }>();
 
@@ -57,19 +60,9 @@ const galleryDrawerOpen = ref(false);
             @edit-hero="heroDrawerOpen = true"
         />
 
-        <section class="mx-auto max-w-5xl px-6 py-10 text-center">
-            <Link
-                href="/menu"
-                class="inline-flex items-center justify-center gap-2 rounded-md px-6 py-3 text-base font-semibold shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                :style="{
-                    backgroundColor: 'var(--brand-primary)',
-                    color: 'var(--brand-primary-foreground)',
-                }"
-            >
-                <UtensilsCrossed class="size-5" />
-                View the full menu
-            </Link>
-        </section>
+        <QuickInfoBand :restaurant="restaurant" />
+
+        <FeaturedItemsSection :items="featuredItems" />
 
         <AboutSection
             :restaurant="restaurant"

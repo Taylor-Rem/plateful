@@ -214,6 +214,7 @@ class DemoRestaurantSeeder extends Seeder
                 'description' => $desc,
                 'price_cents' => $baseDisplay + $deltaSum,
                 'is_available' => true,
+                'is_featured' => in_array($name, ['Margherita Pizza', 'Pepperoni Pizza', 'Meat Lovers Pizza'], true),
                 'position' => $itemIdx,
             ]);
 
@@ -246,6 +247,7 @@ class DemoRestaurantSeeder extends Seeder
                     'description' => $desc,
                     'price_cents' => $price,
                     'is_available' => true,
+                    'is_featured' => $name === 'Garlic Knots',
                     'position' => $itemPos++,
                 ]);
             }

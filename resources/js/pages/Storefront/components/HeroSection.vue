@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Clock, MapPin, Pencil } from 'lucide-vue-next';
+import { Clock, ImagePlus, MapPin, Pencil } from 'lucide-vue-next';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -11,6 +11,8 @@ const emit = defineEmits<{
     (e: 'edit-hero'): void;
 }>();
 
+const hasImage = computed(() => Boolean(props.restaurant.heroImageUrl));
+
 const ctaLabel = computed(() => props.restaurant.heroCtaLabel?.trim() || 'Order online');
 const ctaHref = computed(() => props.restaurant.heroCtaUrl?.trim() || '/menu');
 
@@ -20,42 +22,59 @@ const addressLine = computed(() => {
     return parts.join(', ');
 });
 
-const onEditClick = (): void => {
-    if (props.editMode) {
-        emit('edit-hero');
-    }
-};
+// When the hero has an image, content sits on a dark scrim → white text + brand CTA.
+// When there's no image, the section IS the brand color → text uses the brand-foreground
+// CSS var and the CTA inverts (foreground bg + primary text) so it visibly stands out
+// against the brand-color background.
+const sectionStyle = computed(() =>
+    hasImage.value
+        ? {}
+        : {
+              backgroundColor: 'var(--brand-primary)',
+              color: 'var(--brand-primary-foreground)',
+          },
+);
+
+const ctaStyle = computed(() =>
+    hasImage.value
+        ? {
+              backgroundColor: 'var(--brand-primary)',
+              color: 'var(--brand-primary-foreground)',
+          }
+        : {
+              backgroundColor: 'var(--brand-primary-foreground)',
+              color: 'var(--brand-primary)',
+          },
+);
 </script>
 
 <template>
-    <section
-        class="relative isolate overflow-hidden"
-        :class="{ 'cursor-pointer group/hero': editMode }"
-        :style="restaurant.heroImageUrl ? {} : { backgroundColor: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)' }"
-        @click="onEditClick"
-    >
+    <section class="relative isolate overflow-hidden" :style="sectionStyle">
         <img
-            v-if="restaurant.heroImageUrl"
-            :src="restaurant.heroImageUrl"
+            v-if="hasImage"
+            :src="restaurant.heroImageUrl ?? ''"
             :alt="restaurant.name"
             class="absolute inset-0 -z-10 size-full object-cover"
         />
         <div
-            v-if="restaurant.heroImageUrl"
+            v-if="hasImage"
             class="absolute inset-0 -z-10 bg-gradient-to-b from-black/30 via-black/40 to-black/70"
             aria-hidden="true"
         />
 
-        <span
+        <button
             v-if="editMode"
-            class="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full bg-card/95 px-2 py-1 text-xs font-medium text-foreground shadow-sm opacity-90 group-hover/hero:opacity-100"
+            type="button"
+            class="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-card/95 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-card"
+            aria-label="Edit hero"
+            @click="emit('edit-hero')"
         >
             <Pencil class="size-3.5" /> Edit hero
-        </span>
+        </button>
 
         <div
             class="mx-auto flex max-w-5xl flex-col gap-5 px-6 py-20 sm:py-28"
-            :class="restaurant.heroImageUrl ? 'text-white' : ''"
+            :class="hasImage ? 'text-white' : ''"
         >
             <div class="flex items-center gap-4">
                 <img
@@ -82,34 +101,50 @@ const onEditClick = (): void => {
                 {{ restaurant.description }}
             </p>
 
-            <div class="flex flex-wrap items-center gap-4 text-sm opacity-95">
-                <span class="inline-flex items-center gap-1.5">
+            <div class="flex flex-wrap items-center gap-3 text-sm">
+                <span
+                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1"
+                    :class="hasImage
+                        ? 'bg-black/40 text-white ring-white/20 backdrop-blur'
+                        : 'bg-black/10 ring-black/10'"
+                >
                     <span
-                        class="size-2 rounded-full"
+                        class="size-2.5 rounded-full"
                         :class="restaurant.isOpen ? 'bg-emerald-400' : 'bg-rose-400'"
                         aria-hidden="true"
                     />
-                    <Clock class="size-4" />
-                    <span>{{ restaurant.openStatusLabel ?? (restaurant.isOpen ? 'Open now' : 'Closed') }}</span>
+                    <Clock class="size-3.5" />
+                    {{ restaurant.openStatusLabel ?? (restaurant.isOpen ? 'Open now' : 'Closed') }}
                 </span>
-                <span v-if="addressLine" class="inline-flex items-center gap-1.5">
-                    <MapPin class="size-4" />
+                <span
+                    v-if="addressLine"
+                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1"
+                    :class="hasImage
+                        ? 'bg-black/40 text-white ring-white/20 backdrop-blur'
+                        : 'bg-black/10 ring-black/10'"
+                >
+                    <MapPin class="size-3.5" />
                     {{ addressLine }}
                 </span>
             </div>
 
-            <div>
+            <div class="flex flex-wrap items-center gap-3">
                 <a
                     :href="ctaHref"
                     class="inline-flex items-center justify-center rounded-md px-5 py-3 text-base font-semibold shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                    :style="{
-                        backgroundColor: 'var(--brand-primary)',
-                        color: 'var(--brand-primary-foreground)',
-                    }"
+                    :style="ctaStyle"
                     @click.stop
                 >
                     {{ ctaLabel }}
                 </a>
+                <button
+                    v-if="editMode && !hasImage"
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-md border border-current/40 px-4 py-2.5 text-sm font-medium opacity-90 hover:opacity-100"
+                    @click="emit('edit-hero')"
+                >
+                    <ImagePlus class="size-4" /> Add a hero image
+                </button>
             </div>
         </div>
     </section>

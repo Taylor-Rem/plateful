@@ -63,6 +63,7 @@ class MenuItemStoreRequest extends FormRequest
                 Rule::exists('menu_categories', 'id')->where(fn ($q) => $q->where('restaurant_id', $tenantId)),
             ],
             'is_available' => ['boolean'],
+            'is_featured' => ['boolean'],
             'image' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
             'remove_image' => ['nullable', 'boolean'],
             'item_template_id' => [
