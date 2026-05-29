@@ -152,10 +152,23 @@ description: string | null,
 logoUrl: string | null,
 logoMediumUrl: string | null,
 logoThumbUrl: string | null,
+heroImageUrl: string | null,
+heroImageMediumUrl: string | null,
+heroTagline: string | null,
+heroCtaLabel: string | null,
+heroCtaUrl: string | null,
+aboutBody: string | null,
+aboutImageUrl: string | null,
+aboutImageMediumUrl: string | null,
 primaryColor: string | null,
 secondaryColor: string | null,
 email: string | null,
 phone: string | null,
+street: string | null,
+street2: string | null,
+city: string | null,
+state: string | null,
+postalCode: string | null,
 taxRatePercent: number,
 deliveryFeeCents: number,
 isActive: boolean,
@@ -182,6 +195,14 @@ name: string,
 email: string,
 role: App.Enums.RestaurantRole,
 };
+export type RestaurantPhotoData = {
+id: number,
+caption: string | null,
+position: number,
+imageUrl: string | null,
+imageMediumUrl: string | null,
+imageThumbUrl: string | null,
+};
 }
 namespace Enums {
 export type AutoCancelRefundMode = 'auto' | 'manual';
@@ -193,8 +214,8 @@ export type DeliveryStatus = 'pending' | 'driver_assigned' | 'picked_up' | 'deli
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type OrderType = 'delivery' | 'pickup';
 export type RestaurantRole = 'admin' | 'staff';
+export type RestaurantStatus = 'pending_review' | 'approved' | 'active' | 'suspended';
 export type SelfDeliveryTipRecipient = 'driver' | 'pool' | 'split_50_50';
 export type TipRecipient = 'pool' | 'driver' | 'split';
-export type UserRole = 'customer' | 'admin';
 }
 }
