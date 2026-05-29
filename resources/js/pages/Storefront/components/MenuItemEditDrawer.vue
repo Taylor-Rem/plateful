@@ -33,6 +33,7 @@ const buildInitial = () => ({
     item_template_id: props.item?.itemTemplateId ?? null,
     price: props.item ? (props.item.priceCents / 100).toFixed(2) : '',
     is_available: props.item ? props.item.isAvailable : true,
+    is_featured: props.item ? props.item.isFeatured : false,
     image: null as File | null,
     remove_image: false as boolean,
     default_selection_ids: [...(props.item?.defaultSelectionIds ?? [])] as number[],
@@ -277,6 +278,10 @@ const submit = (): void => {
                 <label class="flex items-center gap-2 text-sm text-foreground">
                     <Checkbox v-model="form.is_available" />
                     Available on storefront
+                </label>
+                <label class="flex items-center gap-2 text-sm text-foreground">
+                    <Checkbox v-model="form.is_featured" />
+                    Feature on home page
                 </label>
 
                 <SheetFooter class="flex-row items-center justify-between gap-2 pt-2">

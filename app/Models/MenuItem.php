@@ -31,6 +31,7 @@ class MenuItem extends Model
         'description',
         'price_cents',
         'is_available',
+        'is_featured',
         'position',
     ];
 
@@ -38,6 +39,7 @@ class MenuItem extends Model
     {
         return [
             'is_available' => 'boolean',
+            'is_featured' => 'boolean',
             'price_cents' => 'integer',
             'position' => 'integer',
         ];

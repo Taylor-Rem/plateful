@@ -42,6 +42,7 @@ class MenuItemController extends Controller
                 'description' => $validated['description'] ?? null,
                 'price_cents' => (int) $request->input('price_cents'),
                 'is_available' => (bool) ($validated['is_available'] ?? true),
+                'is_featured' => (bool) ($validated['is_featured'] ?? false),
                 'position' => $position,
             ]);
 
@@ -77,6 +78,7 @@ class MenuItemController extends Controller
                 'description' => $validated['description'] ?? null,
                 'price_cents' => (int) $request->input('price_cents'),
                 'is_available' => (bool) ($validated['is_available'] ?? false),
+                'is_featured' => (bool) ($validated['is_featured'] ?? false),
             ]);
 
             if ($newTemplateId !== $previousTemplateId) {

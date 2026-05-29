@@ -97,10 +97,17 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
                         <Link
                             v-if="link.kind === 'link'"
                             :href="link.href"
-                            class="rounded-md px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
-                            :class="{ 'bg-muted/60': isActive(link) }"
+                            class="relative rounded-md px-3 py-1.5 text-sm font-medium text-foreground transition hover:bg-muted"
+                            :class="{ 'font-semibold': isActive(link) }"
+                            :style="isActive(link) ? { color: 'var(--brand-primary)' } : {}"
                         >
                             {{ link.label }}
+                            <span
+                                v-if="isActive(link)"
+                                class="absolute inset-x-3 -bottom-px h-0.5 rounded-full"
+                                :style="{ backgroundColor: 'var(--brand-primary)' }"
+                                aria-hidden="true"
+                            />
                         </Link>
                         <a
                             v-else
