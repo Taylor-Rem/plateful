@@ -63,7 +63,7 @@ test('storefront response includes template and defaultSelectionIds for configur
     ]);
     $item->defaultSelections()->sync([$medium->id]);
 
-    $this->get('http://marcos.plateful.test/')
+    $this->get('http://marcos.plateful.test/menu')
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('categories.0.items.0.name', 'Margherita')
@@ -94,7 +94,7 @@ test('items with no template have template null', function () {
         'position' => 0,
     ]);
 
-    $this->get('http://marcos.plateful.test/')
+    $this->get('http://marcos.plateful.test/menu')
         ->assertInertia(fn ($page) => $page
             ->where('categories.0.items.0.name', 'Soda')
             ->where('categories.0.items.0.template', null)
@@ -122,6 +122,6 @@ test('templateless items still appear in the storefront', function () {
         'position' => 0,
     ]);
 
-    $this->get('http://marcos.plateful.test/')
+    $this->get('http://marcos.plateful.test/menu')
         ->assertInertia(fn ($page) => $page->has('categories.0.items.0'));
 });

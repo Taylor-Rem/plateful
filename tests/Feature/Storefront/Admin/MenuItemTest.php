@@ -226,7 +226,7 @@ test('home renders canEditMenu and editor payload for admin but not for customer
     smiCategory($r);
 
     $this->actingAs($admin)
-        ->get("http://{$r->subdomain}.plateful.test/")
+        ->get("http://{$r->subdomain}.plateful.test/menu")
         ->assertInertia(fn ($page) => $page
             ->where('auth.canEditMenu', true)
             ->has('editor.categories')
@@ -236,7 +236,7 @@ test('home renders canEditMenu and editor payload for admin but not for customer
     auth()->logout();
     $customer = User::factory()->create();
     $this->actingAs($customer)
-        ->get("http://{$r->subdomain}.plateful.test/")
+        ->get("http://{$r->subdomain}.plateful.test/menu")
         ->assertInertia(fn ($page) => $page
             ->where('auth.canEditMenu', false)
             ->where('editor', null)
@@ -253,12 +253,12 @@ test('home shows unavailable items to admin but hides them from customers', func
     smiItem($cat, ['name' => 'Hidden', 'is_available' => false, 'slug' => 'hidden-'.uniqid()]);
 
     $this->actingAs($admin)
-        ->get("http://{$r->subdomain}.plateful.test/")
+        ->get("http://{$r->subdomain}.plateful.test/menu")
         ->assertInertia(fn ($page) => $page->has('categories.0.items', 2));
 
     auth()->logout();
 
-    $this->get("http://{$r->subdomain}.plateful.test/")
+    $this->get("http://{$r->subdomain}.plateful.test/menu")
         ->assertInertia(fn ($page) => $page
             ->has('categories.0.items', 1)
             ->where('categories.0.items.0.name', 'Available')

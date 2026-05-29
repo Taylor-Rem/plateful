@@ -12,7 +12,7 @@ const emit = defineEmits<{
 }>();
 
 const ctaLabel = computed(() => props.restaurant.heroCtaLabel?.trim() || 'Order online');
-const ctaHref = computed(() => props.restaurant.heroCtaUrl?.trim() || '#menu');
+const ctaHref = computed(() => props.restaurant.heroCtaUrl?.trim() || '/menu');
 
 const addressLine = computed(() => {
     const r = props.restaurant;

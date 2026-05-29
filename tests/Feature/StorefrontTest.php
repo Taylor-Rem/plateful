@@ -35,11 +35,11 @@ test('storefront home renders Inertia page for a tenant', function () {
         'price_cents' => 1399,
     ]);
 
-    $response = $this->get('http://marcos.plateful.test/');
+    $response = $this->get('http://marcos.plateful.test/menu');
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->component('Storefront/Home')
+        ->component('Storefront/Menu')
         ->where('restaurant.name', "Marco's Pizza")
         ->where('restaurant.subdomain', 'marcos')
         ->has('categories.0.items.0')
@@ -111,7 +111,7 @@ test('storefront omits unavailable items and empty categories, ordered by positi
         'position' => 0,
     ]);
 
-    $response = $this->get('http://marcos.plateful.test/');
+    $response = $this->get('http://marcos.plateful.test/menu');
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
