@@ -36,6 +36,14 @@ function addHours(Restaurant $r): void
     ]);
 }
 
+function markStripeReady(Restaurant $r): void
+{
+    $r->forceFill([
+        'stripe_account_id' => 'acct_test',
+        'stripe_account_status' => Restaurant::STRIPE_ENABLED,
+    ])->save();
+}
+
 function addMenuItem(Restaurant $r): MenuItem
 {
     $cat = MenuCategory::create([
@@ -75,6 +83,7 @@ it('marks hours and menu steps complete once the data exists', function () {
     [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
     addHours($restaurant);
     addMenuItem($restaurant);
+    markStripeReady($restaurant);
 
     $this->actingAs($owner)
         ->get(ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
@@ -140,10 +149,27 @@ it('refuses to go live when required steps are incomplete', function () {
     expect($restaurant->fresh()->status)->toBe(RestaurantStatus::Approved);
 });
 
+it('refuses to go live without Stripe connected even when hours and menu exist', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+    addHours($restaurant);
+    addMenuItem($restaurant);
+
+    $this->actingAs($owner)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
+        ->assertInertia(fn ($page) => $page->where('canGoLive', false));
+
+    $this->actingAs($owner)
+        ->post(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/go-live")
+        ->assertSessionHasErrors('go_live');
+
+    expect($restaurant->fresh()->status)->toBe(RestaurantStatus::Approved);
+});
+
 it('goes live when required steps are complete and appears on the diner homepage', function () {
     [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
     addHours($restaurant);
     addMenuItem($restaurant);
+    markStripeReady($restaurant);
 
     $this->actingAs($owner)
         ->post(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/go-live")
@@ -162,6 +188,7 @@ it('cannot go live a second time', function () {
     [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
     addHours($restaurant);
     addMenuItem($restaurant);
+    markStripeReady($restaurant);
 
     $this->actingAs($owner)->post(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/go-live");
 

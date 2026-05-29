@@ -14,6 +14,7 @@ type Step = {
     href: string;
     complete: boolean;
     required: boolean;
+    stripeStatus?: string | null;
 };
 
 const props = defineProps<{
@@ -36,6 +37,11 @@ const props = defineProps<{
 const goLiveForm = useForm({});
 function goLive() {
     goLiveForm.post(`/${props.restaurant.subdomain}/onboarding/go-live`);
+}
+
+const stripeForm = useForm({});
+function connectStripe() {
+    stripeForm.post(`/${props.restaurant.subdomain}/onboarding/stripe/connect`);
 }
 
 const showDomain = ref(false);
@@ -120,7 +126,28 @@ function submitDomain() {
                             <p class="mt-1 text-sm text-muted-foreground">{{ step.description }}</p>
                         </div>
                     </div>
+                    <template v-if="step.key === 'stripe'">
+                        <a
+                            v-if="step.complete"
+                            :href="`/${restaurant.subdomain}/onboarding/stripe/dashboard`"
+                            class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
+                        >
+                            Manage on Stripe
+                            <ExternalLink class="size-3.5" />
+                        </a>
+                        <Button
+                            v-else
+                            type="button"
+                            size="sm"
+                            :disabled="stripeForm.processing"
+                            @click="connectStripe"
+                            data-test="connect-stripe-button"
+                        >
+                            {{ step.stripeStatus === 'pending' ? 'Continue setup' : 'Connect Stripe' }}
+                        </Button>
+                    </template>
                     <a
+                        v-else
                         :href="step.href"
                         class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
                     >

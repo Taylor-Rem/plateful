@@ -95,7 +95,6 @@ class OnboardingController extends Controller
         $hasHours = $restaurant->hours()->exists();
         $hasMenuItem = $restaurant->menuItems()->exists();
         $hasBranding = filled($restaurant->logo_path) || filled($restaurant->description);
-        $hasStripe = filled($restaurant->stripe_account_id);
 
         return [
             [
@@ -125,12 +124,26 @@ class OnboardingController extends Controller
             [
                 'key' => 'stripe',
                 'title' => 'Connect Stripe',
-                'description' => 'Required to take payments. Connect from Settings.',
-                'href' => "/{$restaurant->subdomain}/settings",
-                'complete' => $hasStripe,
-                'required' => false,
+                'description' => $this->stripeStepDescription($restaurant),
+                'href' => "/{$restaurant->subdomain}/onboarding",
+                'complete' => $restaurant->isStripeReady(),
+                'required' => true,
+                'stripeStatus' => $restaurant->stripe_account_status,
             ],
         ];
+    }
+
+    /**
+     * Status-aware copy for the Stripe onboarding step.
+     */
+    private function stripeStepDescription(Restaurant $restaurant): string
+    {
+        return match ($restaurant->stripe_account_status) {
+            Restaurant::STRIPE_ENABLED => 'Connected — you can take payments.',
+            Restaurant::STRIPE_RESTRICTED => 'Stripe needs more information before you can take payments.',
+            Restaurant::STRIPE_PENDING => 'Onboarding started. Finish it on Stripe to take payments.',
+            default => 'Required to take payments. Plateful takes a 1% fee per order.',
+        };
     }
 
     private function canGoLive(Restaurant $restaurant): bool
