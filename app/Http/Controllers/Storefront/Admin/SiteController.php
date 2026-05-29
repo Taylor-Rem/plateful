@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Storefront\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AboutUpdateRequest;
 use App\Http\Requests\Admin\HeroUpdateRequest;
+use App\Http\Requests\Admin\SocialUpdateRequest;
+use App\Models\Restaurant;
 use App\Services\RestaurantImageService;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Http\RedirectResponse;
@@ -72,5 +74,30 @@ class SiteController extends Controller
         });
 
         return back()->with('success', 'About updated.');
+    }
+
+    public function updateSocial(
+        SocialUpdateRequest $request,
+        CurrentTenant $tenant,
+    ): RedirectResponse {
+        $restaurant = $tenant->get();
+        $this->authorize('updateSite', $restaurant);
+
+        $raw = $request->validated()['social_links'] ?? [];
+
+        // Whitelist to known platforms and drop blanks.
+        $clean = [];
+        foreach (Restaurant::SOCIAL_PLATFORMS as $platform) {
+            $value = isset($raw[$platform]) ? trim((string) $raw[$platform]) : '';
+            if ($value !== '') {
+                $clean[$platform] = $value;
+            }
+        }
+
+        $restaurant->update([
+            'social_links' => $clean === [] ? null : $clean,
+        ]);
+
+        return back()->with('success', 'Social links updated.');
     }
 }

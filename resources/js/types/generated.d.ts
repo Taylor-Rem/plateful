@@ -175,6 +175,8 @@ isActive: boolean,
 timezone: string,
 isOpen: boolean,
 nextOpenLabel: string | null,
+openStatusLabel: string | null,
+socialLinks: Record<string, string>,
 hoursByDay: {
 opensAt: string,
 closesAt: string,

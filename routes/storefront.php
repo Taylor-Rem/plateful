@@ -49,6 +49,7 @@ Route::middleware('tenant')->group(function () {
     Route::middleware('auth')->prefix('admin/site')->name('storefront.admin.site.')->group(function () {
         Route::post('hero', [AdminSiteController::class, 'updateHero'])->name('hero.update');
         Route::post('about', [AdminSiteController::class, 'updateAbout'])->name('about.update');
+        Route::post('social', [AdminSiteController::class, 'updateSocial'])->name('social.update');
 
         Route::post('photos', [AdminPhotoController::class, 'store'])->name('photos.store');
         Route::post('photos/reorder', [AdminPhotoController::class, 'reorder'])->name('photos.reorder');

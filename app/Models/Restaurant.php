@@ -52,6 +52,7 @@ class Restaurant extends Model
         'hero_cta_label',
         'hero_cta_url',
         'about_body',
+        'social_links',
         'is_active',
         'status',
         'approved_at',
@@ -95,7 +96,36 @@ class Restaurant extends Model
             'self_delivery_tip_recipient' => SelfDeliveryTipRecipient::class,
             'delivery_fallback_action' => DeliveryFallbackAction::class,
             'auto_cancel_refund_mode' => AutoCancelRefundMode::class,
+            'social_links' => 'array',
         ];
+    }
+
+    /**
+     * Supported social-link platform keys. Other keys submitted to the
+     * social endpoint are silently dropped.
+     *
+     * @var array<int, string>
+     */
+    public const SOCIAL_PLATFORMS = ['instagram', 'facebook', 'twitter', 'tiktok', 'youtube', 'website'];
+
+    /**
+     * Returns the configured social URLs keyed by platform. Empty/null
+     * values are stripped. Platforms not present are absent from the map.
+     *
+     * @return array<string, string>
+     */
+    public function socialUrls(): array
+    {
+        $raw = is_array($this->social_links) ? $this->social_links : [];
+        $out = [];
+        foreach (self::SOCIAL_PLATFORMS as $platform) {
+            $url = isset($raw[$platform]) ? trim((string) $raw[$platform]) : '';
+            if ($url !== '') {
+                $out[$platform] = $url;
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -384,6 +414,82 @@ class Restaurant extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Returns the closing time of the currently-active hours window at
+     * `$when`, or null when closed / always-open (no hours configured).
+     */
+    public function currentWindowClosesAt(?CarbonImmutable $when = null): ?CarbonImmutable
+    {
+        $tz = $this->timezone ?: 'America/New_York';
+        $moment = ($when ?? CarbonImmutable::now())->setTimezone($tz);
+
+        $all = $this->hours()->get();
+        if ($all->isEmpty()) {
+            return null;
+        }
+
+        $todayDow = (int) $moment->dayOfWeek;
+        $yesterdayDow = ($todayDow + 6) % 7;
+        $time = $moment->format('H:i:s');
+
+        foreach ($all->where('day_of_week', $todayDow) as $h) {
+            $opens = $h->opens_at;
+            $closes = $h->closes_at;
+
+            if ($closes > $opens && $time >= $opens && $time < $closes) {
+                [$hh, $mm, $ss] = array_pad(explode(':', $closes), 3, '00');
+
+                return $moment->setTime((int) $hh, (int) $mm, (int) $ss);
+            }
+            if ($closes <= $opens && $time >= $opens) {
+                // Window crosses midnight; closes_at refers to next day.
+                [$hh, $mm, $ss] = array_pad(explode(':', $closes), 3, '00');
+
+                return $moment->addDay()->setTime((int) $hh, (int) $mm, (int) $ss);
+            }
+        }
+
+        foreach ($all->where('day_of_week', $yesterdayDow) as $h) {
+            $opens = $h->opens_at;
+            $closes = $h->closes_at;
+
+            if ($closes <= $opens && $time < $closes) {
+                [$hh, $mm, $ss] = array_pad(explode(':', $closes), 3, '00');
+
+                return $moment->setTime((int) $hh, (int) $mm, (int) $ss);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Single human-friendly status label combining open + next-open logic.
+     * Examples: "Open until 9 PM", "Opens at 11 AM today",
+     * "Opens tomorrow at 11 AM", "Opens Monday at 11 AM". Null when no
+     * hours are configured (always-open fallback).
+     */
+    public function formatOpenStatus(?CarbonImmutable $when = null): ?string
+    {
+        $tz = $this->timezone ?: 'America/New_York';
+        $moment = ($when ?? CarbonImmutable::now())->setTimezone($tz);
+
+        if (! $this->hours()->exists()) {
+            return null;
+        }
+
+        if ($this->isOpenAt($moment)) {
+            $closes = $this->currentWindowClosesAt($moment);
+            if (! $closes) {
+                return 'Open now';
+            }
+
+            return 'Open until '.$closes->format('g:i A');
+        }
+
+        return $this->formatNextOpenAt($moment);
     }
 
     /**

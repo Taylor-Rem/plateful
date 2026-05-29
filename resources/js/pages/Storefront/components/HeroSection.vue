@@ -90,8 +90,7 @@ const onEditClick = (): void => {
                         aria-hidden="true"
                     />
                     <Clock class="size-4" />
-                    <span v-if="restaurant.isOpen">Open now</span>
-                    <span v-else>{{ restaurant.nextOpenLabel ?? 'Closed' }}</span>
+                    <span>{{ restaurant.openStatusLabel ?? (restaurant.isOpen ? 'Open now' : 'Closed') }}</span>
                 </span>
                 <span v-if="addressLine" class="inline-flex items-center gap-1.5">
                     <MapPin class="size-4" />

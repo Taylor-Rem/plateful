@@ -14,6 +14,8 @@ import AboutEditDrawer from '@/pages/Storefront/components/AboutEditDrawer.vue';
 import LocationSection from '@/pages/Storefront/components/LocationSection.vue';
 import GallerySection from '@/pages/Storefront/components/GallerySection.vue';
 import GalleryManagerDrawer from '@/pages/Storefront/components/GalleryManagerDrawer.vue';
+import Footer from '@/pages/Storefront/components/Footer.vue';
+import SocialLinksEditDrawer from '@/pages/Storefront/components/SocialLinksEditDrawer.vue';
 
 type BrandPalette = {
     primary: string;
@@ -67,6 +69,7 @@ const deleteTarget = ref<App.Data.MenuItemData | null>(null);
 const heroDrawerOpen = ref(false);
 const aboutDrawerOpen = ref(false);
 const galleryDrawerOpen = ref(false);
+const socialDrawerOpen = ref(false);
 
 const openCreate = (): void => {
     editingItem.value = null;
@@ -262,6 +265,12 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
 
         <LocationSection :restaurant="restaurant" />
 
+        <Footer
+            :restaurant="restaurant"
+            :edit-mode="canEditMenu && editMode"
+            @edit-social="socialDrawerOpen = true"
+        />
+
         <ItemConfiguratorModal
             v-if="activeItem"
             v-model:open="configuratorOpen"
@@ -292,6 +301,10 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             <GalleryManagerDrawer
                 v-model:open="galleryDrawerOpen"
                 :photos="photos"
+            />
+            <SocialLinksEditDrawer
+                v-model:open="socialDrawerOpen"
+                :restaurant="restaurant"
             />
         </template>
     </div>

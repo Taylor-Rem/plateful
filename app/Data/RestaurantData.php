@@ -45,6 +45,9 @@ class RestaurantData extends Data
         public string $timezone,
         public bool $isOpen,
         public ?string $nextOpenLabel,
+        public ?string $openStatusLabel,
+        /** @var array<string, string> */
+        public array $socialLinks,
         public array $hoursByDay,
         public ?string $createdAt,
         public string $publicUrl,
@@ -103,6 +106,8 @@ class RestaurantData extends Data
             timezone: (string) ($restaurant->timezone ?: 'America/New_York'),
             isOpen: $restaurant->isOpenAt(),
             nextOpenLabel: $restaurant->formatNextOpenAt(),
+            openStatusLabel: $restaurant->formatOpenStatus(),
+            socialLinks: $restaurant->socialUrls(),
             hoursByDay: $hoursByDay,
             createdAt: $restaurant->created_at?->toIso8601String(),
             publicUrl: $restaurant->publicUrl(Request::getScheme() ?: 'https'),
