@@ -15,11 +15,13 @@ use App\Http\Controllers\Storefront\Admin\SiteController as AdminSiteController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\HomeController;
+use App\Http\Controllers\Storefront\MenuController;
 use App\Http\Controllers\Storefront\OrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('tenant')->group(function () {
     Route::get('/', HomeController::class)->name('storefront.home');
+    Route::get('/menu', MenuController::class)->name('storefront.menu');
 
     Route::post('cart/items/{menuItem}', [CartController::class, 'addItem'])
         ->name('storefront.cart.add');
