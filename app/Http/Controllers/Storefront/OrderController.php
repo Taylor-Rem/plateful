@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Support\BrandColors;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,13 +27,9 @@ class OrderController extends Controller
 
         abort_if(! $order, 404);
 
-        $user = $request->user();
         $cookieToken = $request->cookie(CheckoutController::RECENT_ORDER_COOKIE);
 
-        $canView = ($user && $order->user_id === $user->id)
-            || ($order->confirmation_token && $cookieToken === $order->confirmation_token);
-
-        abort_if(! $canView, 404);
+        abort_if(! Gate::allows('view', [$order, $cookieToken]), 404);
 
         return Inertia::render('Storefront/OrderConfirmation', [
             'restaurant' => RestaurantData::fromModel($restaurant),

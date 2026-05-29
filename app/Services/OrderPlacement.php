@@ -174,45 +174,90 @@ class OrderPlacement
             }
 
             $modifiers = $line->modifiers;
-            if (is_array($modifiers) && isset($modifiers['groups'])) {
-                $optionIds = [];
-                foreach ($modifiers['groups'] as $g) {
-                    foreach ($g['selections'] ?? [] as $sel) {
-                        if (isset($sel['option_id'])) {
-                            $optionIds[] = (int) $sel['option_id'];
-                        }
+            $hasModifiers = is_array($modifiers) && isset($modifiers['groups']);
+
+            // Modifiers were captured but the item no longer has a template —
+            // the configurator has been removed since cart-add. Stale data.
+            if ($hasModifiers && $menuItem->item_template_id === null) {
+                $errors["items.$idx"][] = '"'.$menuItem->name.'" no longer has the customization options you selected. Please re-add it.';
+
+                continue;
+            }
+
+            if (! $hasModifiers) {
+                continue;
+            }
+
+            $optionIds = [];
+            foreach ($modifiers['groups'] as $g) {
+                foreach ($g['selections'] ?? [] as $sel) {
+                    if (isset($sel['option_id'])) {
+                        $optionIds[] = (int) $sel['option_id'];
                     }
                 }
+            }
 
-                if ($optionIds === []) {
-                    continue;
+            if ($optionIds === []) {
+                continue;
+            }
+
+            $options = ItemTemplateOption::query()
+                ->whereIn('id', $optionIds)
+                ->get()
+                ->keyBy('id');
+
+            // Build the option-id → group-id map for the *current* template.
+            $optionToGroup = [];
+            $groups = $menuItem->template?->groups ?? collect();
+            foreach ($groups as $group) {
+                foreach ($group->options as $opt) {
+                    $optionToGroup[$opt->id] = $group;
                 }
+            }
 
-                $options = ItemTemplateOption::query()
-                    ->whereIn('id', $optionIds)
-                    ->get()
-                    ->keyBy('id');
-
-                $templateId = $menuItem->item_template_id;
-                $validIds = collect();
-                if ($templateId && $menuItem->template) {
-                    foreach ($menuItem->template->groups as $group) {
-                        foreach ($group->options as $opt) {
-                            $validIds->put($opt->id, $opt);
-                        }
-                    }
+            $invalidOption = false;
+            foreach ($optionIds as $oid) {
+                if (! isset($options[$oid]) || ! isset($optionToGroup[$oid])) {
+                    $errors["items.$idx"][] = 'A previously selected option for "'.$menuItem->name.'" is no longer available.';
+                    $invalidOption = true;
+                    break;
                 }
+                if (! (bool) $options[$oid]->is_available) {
+                    $errors["items.$idx"][] = 'A selected option for "'.$menuItem->name.'" is no longer available.';
+                    $invalidOption = true;
+                    break;
+                }
+            }
 
+            if ($invalidOption) {
+                continue;
+            }
+
+            // Per-group min/max may have tightened since the cart was built.
+            foreach ($groups as $group) {
+                $countInGroup = 0;
                 foreach ($optionIds as $oid) {
-                    if (! isset($options[$oid]) || ! $validIds->has($oid)) {
-                        $errors["items.$idx"][] = 'A previously selected option for "'.$menuItem->name.'" is no longer available.';
-                        break;
-                    }
-                    if (! (bool) $options[$oid]->is_available) {
-                        $errors["items.$idx"][] = 'A selected option for "'.$menuItem->name.'" is no longer available.';
-                        break;
+                    if (isset($optionToGroup[$oid]) && $optionToGroup[$oid]->id === $group->id) {
+                        $countInGroup++;
                     }
                 }
+
+                $min = (int) ($group->min_selections ?? 0);
+                $max = $group->max_selections === null ? null : (int) $group->max_selections;
+
+                if ($countInGroup < $min || ($max !== null && $countInGroup > $max)) {
+                    $errors["items.$idx"][] = '"'.$menuItem->name.'" needs to be reconfigured — its options have changed since you added it.';
+
+                    continue 2;
+                }
+            }
+
+            // Defence-in-depth: recompute the unit price from the current
+            // template + selections and reject if the cart's stored price has
+            // gone stale (option deltas changed after cart-add).
+            $expectedPriceCents = $menuItem->priceForSelectionsCents($optionIds);
+            if ($expectedPriceCents !== (int) $line->unit_price_cents) {
+                $errors["items.$idx"][] = 'The price of "'.$menuItem->name.'" has changed since you added it. Please re-add it to checkout.';
             }
         }
 

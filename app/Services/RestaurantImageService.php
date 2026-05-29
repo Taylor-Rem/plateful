@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\MenuItem;
 use App\Models\Restaurant;
+use App\Models\RestaurantPhoto;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -24,6 +25,18 @@ class RestaurantImageService
     public const LOGO_MEDIUM = 400;
 
     public const LOGO_THUMB = 100;
+
+    public const HERO_MEDIUM = 1200;
+
+    public const HERO_THUMB = 400;
+
+    public const ABOUT_MEDIUM = 800;
+
+    public const ABOUT_THUMB = 300;
+
+    public const GALLERY_MEDIUM = 1000;
+
+    public const GALLERY_THUMB = 300;
 
     public const ORIGINAL_CAP = 2000;
 
@@ -53,6 +66,66 @@ class RestaurantImageService
         }
 
         return $path;
+    }
+
+    public function storeHeroImage(Restaurant $restaurant, UploadedFile $file): string
+    {
+        $previous = $restaurant->hero_image_path;
+
+        $path = $this->processAndStore(
+            $file,
+            "restaurants/{$restaurant->id}/hero",
+            self::HERO_MEDIUM,
+            self::HERO_THUMB,
+        );
+
+        if ($previous && $previous !== $path) {
+            $this->deleteVariants($previous);
+        }
+
+        return $path;
+    }
+
+    public function storeAboutImage(Restaurant $restaurant, UploadedFile $file): string
+    {
+        $previous = $restaurant->about_image_path;
+
+        $path = $this->processAndStore(
+            $file,
+            "restaurants/{$restaurant->id}/about",
+            self::ABOUT_MEDIUM,
+            self::ABOUT_THUMB,
+        );
+
+        if ($previous && $previous !== $path) {
+            $this->deleteVariants($previous);
+        }
+
+        return $path;
+    }
+
+    public function storeGalleryPhoto(RestaurantPhoto $photo, UploadedFile $file): string
+    {
+        $previous = $photo->image_path;
+
+        $path = $this->processAndStore(
+            $file,
+            "restaurants/{$photo->restaurant_id}/gallery/{$photo->id}",
+            self::GALLERY_MEDIUM,
+            self::GALLERY_THUMB,
+        );
+
+        if ($previous && $previous !== $path) {
+            $this->deleteVariants($previous);
+        }
+
+        return $path;
+    }
+
+    public function deleteDirectoryForGalleryPhoto(RestaurantPhoto $photo): void
+    {
+        Storage::disk(self::DISK)
+            ->deleteDirectory("restaurants/{$photo->restaurant_id}/gallery/{$photo->id}");
     }
 
     public function storeMenuItemImage(MenuItem $item, UploadedFile $file): string
@@ -137,11 +210,13 @@ class RestaurantImageService
         $mediumPath = "{$directory}/{$uuid}-medium.webp";
         $thumbPath = "{$directory}/{$uuid}-thumb.webp";
 
-        $sourcePath = $file->getRealPath();
+        $image = $this->manager->decodePath($file->getRealPath());
 
-        $disk->put($basePath, $this->resizeToWebp($this->manager->decodePath($sourcePath), self::ORIGINAL_CAP));
-        $disk->put($mediumPath, $this->resizeToWebp($this->manager->decodePath($sourcePath), $mediumMax));
-        $disk->put($thumbPath, $this->resizeToWebp($this->manager->decodePath($sourcePath), $thumbMax));
+        $disk->put($basePath, $this->resizeToWebp($image, self::ORIGINAL_CAP));
+        $disk->put($mediumPath, $this->resizeToWebp($image, $mediumMax));
+        $disk->put($thumbPath, $this->resizeToWebp($image, $thumbMax));
+
+        unset($image);
 
         return $basePath;
     }

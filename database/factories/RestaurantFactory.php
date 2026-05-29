@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\RestaurantStatus;
 use App\Models\Restaurant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -37,6 +38,7 @@ class RestaurantFactory extends Factory
             'country' => 'US',
             'timezone' => 'America/New_York',
             'is_active' => true,
+            'status' => RestaurantStatus::Active,
             'tax_rate_percent' => 0,
             'delivery_fee_cents' => 0,
         ];
@@ -45,5 +47,29 @@ class RestaurantFactory extends Factory
     public function inactive(): static
     {
         return $this->state(fn () => ['is_active' => false]);
+    }
+
+    public function pendingReview(): static
+    {
+        return $this->state(fn () => [
+            'status' => RestaurantStatus::PendingReview,
+            'approved_at' => null,
+        ]);
+    }
+
+    public function approved(): static
+    {
+        return $this->state(fn () => [
+            'status' => RestaurantStatus::Approved,
+            'approved_at' => now(),
+        ]);
+    }
+
+    public function suspended(): static
+    {
+        return $this->state(fn () => [
+            'status' => RestaurantStatus::Suspended,
+            'suspended_at' => now(),
+        ]);
     }
 }

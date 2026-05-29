@@ -9,6 +9,9 @@ use App\Http\Controllers\Storefront\Account\OrdersController as AccountOrdersCon
 use App\Http\Controllers\Storefront\Account\PasswordController as AccountPasswordController;
 use App\Http\Controllers\Storefront\Account\ProfileController as AccountProfileController;
 use App\Http\Controllers\Storefront\AccountController;
+use App\Http\Controllers\Storefront\Admin\MenuItemController as AdminMenuItemController;
+use App\Http\Controllers\Storefront\Admin\PhotoController as AdminPhotoController;
+use App\Http\Controllers\Storefront\Admin\SiteController as AdminSiteController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\HomeController;
@@ -34,6 +37,25 @@ Route::middleware('tenant')->group(function () {
     Route::get('orders/{number}', [OrderController::class, 'show'])
         ->where('number', '[A-Za-z0-9-]+')
         ->name('storefront.orders.show');
+
+    // Admin-only menu editing on the storefront. The policy gates per-action;
+    // unauthenticated users hit auth middleware first.
+    Route::middleware('auth')->prefix('admin/menu')->name('storefront.admin.menu.')->group(function () {
+        Route::post('items', [AdminMenuItemController::class, 'store'])->name('items.store');
+        Route::put('items/{menuItem}', [AdminMenuItemController::class, 'update'])->name('items.update');
+        Route::delete('items/{menuItem}', [AdminMenuItemController::class, 'destroy'])->name('items.destroy');
+    });
+
+    Route::middleware('auth')->prefix('admin/site')->name('storefront.admin.site.')->group(function () {
+        Route::post('hero', [AdminSiteController::class, 'updateHero'])->name('hero.update');
+        Route::post('about', [AdminSiteController::class, 'updateAbout'])->name('about.update');
+        Route::post('social', [AdminSiteController::class, 'updateSocial'])->name('social.update');
+
+        Route::post('photos', [AdminPhotoController::class, 'store'])->name('photos.store');
+        Route::post('photos/reorder', [AdminPhotoController::class, 'reorder'])->name('photos.reorder');
+        Route::patch('photos/{photo}', [AdminPhotoController::class, 'update'])->name('photos.update');
+        Route::delete('photos/{photo}', [AdminPhotoController::class, 'destroy'])->name('photos.destroy');
+    });
 
     Route::middleware('auth')->group(function () {
         Route::redirect('settings', '/settings/profile');

@@ -8,7 +8,10 @@ use App\Services\RestaurantImageService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
-const ITEM_IMG_ADMIN_BASE = 'http://admin.plateful.test';
+function itemImageBase(Restaurant $r): string
+{
+    return "http://{$r->subdomain}.plateful.test/admin/menu";
+}
 
 beforeEach(function () {
     Storage::fake('restaurant_assets');
@@ -52,7 +55,7 @@ test('admin can create an item with an image and all 3 webp variants are written
     $cat = itemImageCategory($r);
 
     test()->actingAs($admin)
-        ->post(ITEM_IMG_ADMIN_BASE."/{$r->subdomain}/menu/items", [
+        ->post(itemImageBase($r).'/items', [
             'name' => 'Margherita',
             'menu_category_id' => $cat->id,
             'price' => '13.99',
@@ -78,7 +81,7 @@ test('replacing an item image deletes the previous variants', function () {
     $cat = itemImageCategory($r);
 
     test()->actingAs($admin)
-        ->post(ITEM_IMG_ADMIN_BASE."/{$r->subdomain}/menu/items", [
+        ->post(itemImageBase($r).'/items', [
             'name' => 'First',
             'menu_category_id' => $cat->id,
             'price' => '10.00',
@@ -90,7 +93,7 @@ test('replacing an item image deletes the previous variants', function () {
     $oldVariants = app(RestaurantImageService::class)->variantPaths($item->image_path);
 
     test()->actingAs($admin)
-        ->put(ITEM_IMG_ADMIN_BASE."/{$r->subdomain}/menu/items/{$item->id}", [
+        ->put(itemImageBase($r)."/items/{$item->id}", [
             'name' => 'First',
             'menu_category_id' => $cat->id,
             'price' => '10.00',
@@ -115,7 +118,7 @@ test('remove_image clears the column and deletes variants', function () {
     $cat = itemImageCategory($r);
 
     test()->actingAs($admin)
-        ->post(ITEM_IMG_ADMIN_BASE."/{$r->subdomain}/menu/items", [
+        ->post(itemImageBase($r).'/items', [
             'name' => 'Foo',
             'menu_category_id' => $cat->id,
             'price' => '10.00',
@@ -127,7 +130,7 @@ test('remove_image clears the column and deletes variants', function () {
     $variants = app(RestaurantImageService::class)->variantPaths($item->image_path);
 
     test()->actingAs($admin)
-        ->put(ITEM_IMG_ADMIN_BASE."/{$r->subdomain}/menu/items/{$item->id}", [
+        ->put(itemImageBase($r)."/items/{$item->id}", [
             'name' => 'Foo',
             'menu_category_id' => $cat->id,
             'price' => '10.00',
@@ -148,7 +151,7 @@ test('oversize and wrong-type uploads are rejected for item image', function () 
     $cat = itemImageCategory($r);
 
     test()->actingAs($admin)
-        ->post(ITEM_IMG_ADMIN_BASE."/{$r->subdomain}/menu/items", [
+        ->post(itemImageBase($r).'/items', [
             'name' => 'Big',
             'menu_category_id' => $cat->id,
             'price' => '10.00',
@@ -157,7 +160,7 @@ test('oversize and wrong-type uploads are rejected for item image', function () 
         ])->assertSessionHasErrors('image');
 
     test()->actingAs($admin)
-        ->post(ITEM_IMG_ADMIN_BASE."/{$r->subdomain}/menu/items", [
+        ->post(itemImageBase($r).'/items', [
             'name' => 'Wrong',
             'menu_category_id' => $cat->id,
             'price' => '10.00',
@@ -172,7 +175,7 @@ test('png upload is converted to webp', function () {
     $cat = itemImageCategory($r);
 
     test()->actingAs($admin)
-        ->post(ITEM_IMG_ADMIN_BASE."/{$r->subdomain}/menu/items", [
+        ->post(itemImageBase($r).'/items', [
             'name' => 'PNG',
             'menu_category_id' => $cat->id,
             'price' => '10.00',
@@ -190,7 +193,7 @@ test('deleting a menu item removes its image directory', function () {
     $cat = itemImageCategory($r);
 
     test()->actingAs($admin)
-        ->post(ITEM_IMG_ADMIN_BASE."/{$r->subdomain}/menu/items", [
+        ->post(itemImageBase($r).'/items', [
             'name' => 'Toss',
             'menu_category_id' => $cat->id,
             'price' => '10.00',

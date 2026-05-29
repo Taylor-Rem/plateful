@@ -26,14 +26,19 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
 
             Route::get('/kitchen', [TenantAdmin\KitchenController::class, 'index'])->name('kitchen.index');
 
-            // Available to staff too: toggling stock availability is a daily operations task.
-            Route::post('/menu/items/{item}/availability', [TenantAdmin\MenuItemController::class, 'toggleAvailability'])->name('items.toggleAvailability');
-
             Route::get('/hours', [TenantAdmin\HoursController::class, 'edit'])->name('hours.edit');
             Route::put('/hours', [TenantAdmin\HoursController::class, 'update'])->name('hours.update');
 
             // Routes restricted to restaurant admins
             Route::middleware('admin.restaurant.admin')->group(function () {
+                Route::get('/onboarding', [TenantAdmin\OnboardingController::class, 'show'])->name('onboarding.show');
+                Route::post('/onboarding/custom-domain', [TenantAdmin\OnboardingController::class, 'requestCustomDomain'])->name('onboarding.customDomain');
+                Route::post('/onboarding/go-live', [TenantAdmin\OnboardingController::class, 'goLive'])->name('onboarding.goLive');
+
+                Route::get('/billing', [TenantAdmin\BillingController::class, 'show'])->name('billing.show');
+                Route::post('/billing/checkout', [TenantAdmin\BillingController::class, 'checkout'])->name('billing.checkout');
+                Route::post('/billing/portal', [TenantAdmin\BillingController::class, 'portal'])->name('billing.portal');
+
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
                 Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');
@@ -45,13 +50,6 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::get('/menu/templates/{template}/edit', [TenantAdmin\ItemTemplateController::class, 'edit'])->name('templates.edit');
                 Route::put('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'update'])->name('templates.update');
                 Route::delete('/menu/templates/{template}', [TenantAdmin\ItemTemplateController::class, 'destroy'])->name('templates.destroy');
-
-                Route::get('/menu/items/create', [TenantAdmin\MenuItemController::class, 'create'])->name('items.create');
-                Route::post('/menu/items', [TenantAdmin\MenuItemController::class, 'store'])->name('items.store');
-                Route::post('/menu/items/reorder', [TenantAdmin\MenuItemController::class, 'reorder'])->name('items.reorder');
-                Route::get('/menu/items/{item}/edit', [TenantAdmin\MenuItemController::class, 'edit'])->name('items.edit');
-                Route::put('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'update'])->name('items.update');
-                Route::delete('/menu/items/{item}', [TenantAdmin\MenuItemController::class, 'destroy'])->name('items.destroy');
 
                 Route::get('/settings', [TenantAdmin\SettingsController::class, 'edit'])->name('settings.edit');
                 Route::put('/settings', [TenantAdmin\SettingsController::class, 'update'])->name('settings.update');
@@ -75,6 +73,11 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
 
             Route::get('/admins', [SuperAdmin\AdminsController::class, 'index'])->name('admins.index');
             Route::post('/admins/invitations', [SuperAdmin\InvitationController::class, 'store'])->name('admins.invitations.store');
+
+            Route::get('/signups', [SuperAdmin\SignupsController::class, 'index'])->name('signups.index');
+            Route::get('/signups/{signup}', [SuperAdmin\SignupsController::class, 'show'])->name('signups.show');
+            Route::post('/signups/{signup}/approve', [SuperAdmin\SignupsController::class, 'approve'])->name('signups.approve');
+            Route::post('/signups/{signup}/reject', [SuperAdmin\SignupsController::class, 'reject'])->name('signups.reject');
         });
     });
 });

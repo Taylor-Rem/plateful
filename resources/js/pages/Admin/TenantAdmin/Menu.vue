@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import InputError from '@/components/InputError.vue';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { GripVertical, Pencil, Trash2, Plus } from 'lucide-vue-next';
+import { GripVertical, Pencil, Trash2, Plus, ExternalLink } from 'lucide-vue-next';
 import { VueDraggable } from 'vue-draggable-plus';
 import { computed, ref } from 'vue';
 
@@ -19,12 +19,18 @@ const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 const base = computed(() => `/${props.restaurant.subdomain}`);
 
+const storefrontUrl = computed(() => {
+    // Storefront lives on the tenant host. Subdomain-first; the link works for
+    // both subdomain and custom-domain tenants because relative paths resolve
+    // against the tenant host once the admin clicks through.
+    return `//${props.restaurant.subdomain}.${window.location.host.replace(/^admin\./, '')}/`;
+});
+
 const page = usePage<{ currentRestaurantRole: string | null }>();
 const isAdmin = computed(() => page.props.currentRestaurantRole === 'admin');
 
 const localCategories = ref<App.Data.MenuCategoryData[]>([...props.categories]);
 
-// Keep local state in sync if the server re-renders with new data
 const refreshLocal = (): void => {
     localCategories.value = [...props.categories];
 };
@@ -34,15 +40,6 @@ const onCategoryDragEnd = (): void => {
     router.post(
         `${base.value}/menu/categories/reorder`,
         { ids },
-        { preserveScroll: true, preserveState: true, onSuccess: refreshLocal },
-    );
-};
-
-const onItemDragEnd = (category: App.Data.MenuCategoryData): void => {
-    const ids = category.items.map((i) => i.id);
-    router.post(
-        `${base.value}/menu/items/reorder`,
-        { category_id: category.id, ids },
         { preserveScroll: true, preserveState: true, onSuccess: refreshLocal },
     );
 };
@@ -104,24 +101,6 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
         onSuccess: refreshLocal,
     });
 };
-
-const toggleAvailability = (item: App.Data.MenuItemData): void => {
-    router.post(
-        `${base.value}/menu/items/${item.id}/availability`,
-        {},
-        { preserveScroll: true, preserveState: true, onSuccess: refreshLocal },
-    );
-};
-
-const deleteItem = (item: App.Data.MenuItemData): void => {
-    if (!confirm(`Delete item "${item.name}"?`)) {
-        return;
-    }
-    router.delete(`${base.value}/menu/items/${item.id}`, {
-        preserveScroll: true,
-        onSuccess: refreshLocal,
-    });
-};
 </script>
 
 <template>
@@ -131,12 +110,11 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
         <div class="flex items-center justify-between">
             <h2 class="text-2xl font-semibold text-foreground">Menu</h2>
             <div v-if="isAdmin" class="flex items-center gap-2">
-                <Link
-                    :href="`${base}/menu/items/create`"
-                    class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                >
-                    <Plus class="size-4" /> Add item
-                </Link>
+                <Button as-child variant="default">
+                    <a :href="storefrontUrl" target="_blank" rel="noopener" class="gap-1">
+                        <ExternalLink class="size-4" /> Edit items on storefront
+                    </a>
+                </Button>
                 <Button variant="outline" @click="openCreateCategory">
                     <Plus class="size-4" /> Add category
                 </Button>
@@ -145,6 +123,11 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                 </Button>
             </div>
         </div>
+
+        <p class="mt-2 text-sm text-muted-foreground">
+            Menu item editing now lives on your storefront, so you can see changes the way customers do.
+            Categories and templates are still managed here.
+        </p>
 
         <div v-if="localCategories.length === 0" class="mt-12 rounded-lg border border-dashed border-border bg-card p-10 text-center">
             <h3 class="text-base font-medium text-foreground">No categories yet</h3>
@@ -203,23 +186,13 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                     No items yet.
                 </div>
 
-                <VueDraggable
-                    v-else
-                    v-model="category.items"
-                    :animation="150"
-                    handle=".item-handle"
-                    class="divide-y divide-border"
-                    @end="onItemDragEnd(category)"
-                >
-                    <div
+                <ul v-else class="divide-y divide-border">
+                    <li
                         v-for="item in category.items"
                         :key="item.id"
                         class="flex items-center justify-between gap-4 px-4 py-2.5 text-sm"
                     >
                         <div class="flex min-w-0 items-center gap-2">
-                            <button v-if="isAdmin" class="item-handle cursor-grab text-muted-foreground hover:text-foreground" type="button" aria-label="Drag item">
-                                <GripVertical class="size-4" />
-                            </button>
                             <img
                                 v-if="item.imageThumbUrl"
                                 :src="item.imageThumbUrl"
@@ -232,40 +205,14 @@ const deleteItem = (item: App.Data.MenuItemData): void => {
                                 class="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary"
                                 :title="`Template: ${item.template.name}`"
                             >Configurable</span>
+                            <span
+                                v-if="!item.isAvailable"
+                                class="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+                            >Unavailable</span>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <button
-                                type="button"
-                                class="rounded-md px-2 py-1 text-xs font-medium transition-colors"
-                                :class="item.isAvailable
-                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900'
-                                    : 'bg-muted text-muted-foreground hover:bg-accent'"
-                                :title="item.isAvailable ? 'In stock — click to mark unavailable' : 'Unavailable — click to mark in stock'"
-                                @click="toggleAvailability(item)"
-                            >
-                                {{ item.isAvailable ? 'In stock' : '86\'d' }}
-                            </button>
-                            <span class="text-foreground">{{ formatPrice(item.priceCents) }}</span>
-                            <template v-if="isAdmin">
-                                <Link
-                                    :href="`${base}/menu/items/${item.id}/edit`"
-                                    class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                    aria-label="Edit item"
-                                >
-                                    <Pencil class="size-4" />
-                                </Link>
-                                <button
-                                    class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive"
-                                    type="button"
-                                    aria-label="Delete item"
-                                    @click="deleteItem(item)"
-                                >
-                                    <Trash2 class="size-4" />
-                                </button>
-                            </template>
-                        </div>
-                    </div>
-                </VueDraggable>
+                        <span class="text-foreground">{{ formatPrice(item.priceCents) }}</span>
+                    </li>
+                </ul>
             </section>
         </VueDraggable>
 

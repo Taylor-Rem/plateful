@@ -1,9 +1,21 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue-sonner';
-import { ref } from 'vue';
-import { Clock } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
+import { Clock, Pencil, Plus } from 'lucide-vue-next';
 import ItemConfiguratorModal from '@/pages/Storefront/components/ItemConfiguratorModal.vue';
+import AdminBar from '@/pages/Storefront/components/AdminBar.vue';
+import MenuItemEditDrawer from '@/pages/Storefront/components/MenuItemEditDrawer.vue';
+import MenuItemDeleteDialog from '@/pages/Storefront/components/MenuItemDeleteDialog.vue';
+import HeroSection from '@/pages/Storefront/components/HeroSection.vue';
+import HeroEditDrawer from '@/pages/Storefront/components/HeroEditDrawer.vue';
+import AboutSection from '@/pages/Storefront/components/AboutSection.vue';
+import AboutEditDrawer from '@/pages/Storefront/components/AboutEditDrawer.vue';
+import LocationSection from '@/pages/Storefront/components/LocationSection.vue';
+import GallerySection from '@/pages/Storefront/components/GallerySection.vue';
+import GalleryManagerDrawer from '@/pages/Storefront/components/GalleryManagerDrawer.vue';
+import Footer from '@/pages/Storefront/components/Footer.vue';
+import SocialLinksEditDrawer from '@/pages/Storefront/components/SocialLinksEditDrawer.vue';
 
 type BrandPalette = {
     primary: string;
@@ -12,19 +24,74 @@ type BrandPalette = {
     secondaryForeground: string;
 };
 
-defineProps<{
+type EditorPayload = {
+    categories: Array<{ id: number; name: string }>;
+    templates: App.Data.ItemTemplateData[];
+};
+
+const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     categories: App.Data.MenuCategoryData[];
+    photos: App.Data.RestaurantPhotoData[];
     brand: BrandPalette;
+    editor: EditorPayload | null;
 }>();
 
-const formatPrice = (cents: number): string =>
-    `$${(cents / 100).toFixed(2)}`;
+const page = usePage<{ auth?: { canEditMenu?: boolean } }>();
+const canEditMenu = computed(() => Boolean(page.props.auth?.canEditMenu) && props.editor !== null);
+
+const EDIT_MODE_KEY = 'plateful:storefront:editMode';
+const editMode = ref(false);
+
+onMounted(() => {
+    if (canEditMenu.value && typeof window !== 'undefined') {
+        editMode.value = window.localStorage.getItem(EDIT_MODE_KEY) === '1';
+    }
+});
+
+const setEditMode = (value: boolean): void => {
+    editMode.value = value;
+    if (typeof window !== 'undefined') {
+        window.localStorage.setItem(EDIT_MODE_KEY, value ? '1' : '0');
+    }
+};
+
+const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 const configuratorOpen = ref(false);
 const activeItem = ref<App.Data.MenuItemData | null>(null);
 
+// Editor state
+const drawerOpen = ref(false);
+const editingItem = ref<App.Data.MenuItemData | null>(null);
+const deleteDialogOpen = ref(false);
+const deleteTarget = ref<App.Data.MenuItemData | null>(null);
+const heroDrawerOpen = ref(false);
+const aboutDrawerOpen = ref(false);
+const galleryDrawerOpen = ref(false);
+const socialDrawerOpen = ref(false);
+
+const openCreate = (): void => {
+    editingItem.value = null;
+    drawerOpen.value = true;
+};
+
+const openEdit = (item: App.Data.MenuItemData): void => {
+    editingItem.value = item;
+    drawerOpen.value = true;
+};
+
+const onDeleteRequested = (item: App.Data.MenuItemData): void => {
+    drawerOpen.value = false;
+    deleteTarget.value = item;
+    deleteDialogOpen.value = true;
+};
+
 const onItemClick = (item: App.Data.MenuItemData): void => {
+    if (editMode.value) {
+        openEdit(item);
+        return;
+    }
     if (item.template) {
         activeItem.value = item;
         configuratorOpen.value = true;
@@ -70,6 +137,13 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
     <div>
         <Head :title="restaurant.name" />
 
+        <AdminBar
+            v-if="canEditMenu"
+            :edit-mode="editMode"
+            @update:edit-mode="setEditMode"
+            @add-item="openCreate"
+        />
+
         <div
             v-if="restaurant.isOpen === false"
             class="border-b border-amber-300 bg-amber-100 text-amber-900"
@@ -83,33 +157,23 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             </div>
         </div>
 
-        <section
-            class="px-6 py-12"
-            :style="{
-                backgroundColor: 'var(--brand-primary)',
-                color: 'var(--brand-primary-foreground)',
-            }"
-        >
-            <div class="mx-auto flex max-w-5xl items-center gap-5">
-                <img
-                    v-if="restaurant.logoMediumUrl"
-                    :src="restaurant.logoMediumUrl"
-                    :alt="`${restaurant.name} logo`"
-                    class="size-20 shrink-0 rounded-lg bg-white object-contain p-1"
-                />
-                <div>
-                    <h1
-                        class="text-4xl font-bold tracking-tight"
-                        :style="{ color: 'var(--brand-primary-foreground)' }"
-                    >
-                        {{ restaurant.name }}
-                    </h1>
-                    <p v-if="restaurant.description" class="mt-2 text-base opacity-90">
-                        {{ restaurant.description }}
-                    </p>
-                </div>
-            </div>
-        </section>
+        <HeroSection
+            :restaurant="restaurant"
+            :edit-mode="canEditMenu && editMode"
+            @edit-hero="heroDrawerOpen = true"
+        />
+
+        <AboutSection
+            :restaurant="restaurant"
+            :edit-mode="canEditMenu && editMode"
+            @edit-about="aboutDrawerOpen = true"
+        />
+
+        <GallerySection
+            :photos="photos"
+            :edit-mode="canEditMenu && editMode"
+            @edit-gallery="galleryDrawerOpen = true"
+        />
 
         <main id="menu" class="mx-auto max-w-5xl px-6 py-10 scroll-mt-16">
             <section
@@ -127,13 +191,27 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
                     <li
                         v-for="item in category.items"
                         :key="item.id"
-                        class="cursor-pointer overflow-hidden rounded-lg border border-border bg-card text-left shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        class="group relative cursor-pointer overflow-hidden rounded-lg border border-border bg-card text-left shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        :class="{ 'opacity-60': editMode && !item.isAvailable }"
                         tabindex="0"
                         role="button"
                         @click="onItemClick(item)"
                         @keydown.enter.prevent="onItemClick(item)"
                         @keydown.space.prevent="onItemClick(item)"
                     >
+                        <span
+                            v-if="editMode && !item.isAvailable"
+                            class="absolute right-2 top-2 z-10 rounded bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-900"
+                        >
+                            Unavailable
+                        </span>
+                        <span
+                            v-if="editMode"
+                            class="absolute left-2 top-2 z-10 rounded-full bg-card/90 p-1 text-muted-foreground shadow-sm"
+                            aria-hidden="true"
+                        >
+                            <Pencil class="size-3.5" />
+                        </span>
                         <div
                             v-if="item.imageMediumUrl"
                             class="aspect-[4/3] w-full overflow-hidden bg-muted"
@@ -170,9 +248,28 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
                             </span>
                         </div>
                     </li>
+                    <li
+                        v-if="editMode"
+                        class="flex min-h-32 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 text-sm text-muted-foreground transition hover:border-primary hover:text-foreground"
+                        tabindex="0"
+                        role="button"
+                        @click="openCreate"
+                        @keydown.enter.prevent="openCreate"
+                        @keydown.space.prevent="openCreate"
+                    >
+                        <Plus class="mr-1 size-4" /> Add item
+                    </li>
                 </ul>
             </section>
         </main>
+
+        <LocationSection :restaurant="restaurant" />
+
+        <Footer
+            :restaurant="restaurant"
+            :edit-mode="canEditMenu && editMode"
+            @edit-social="socialDrawerOpen = true"
+        />
 
         <ItemConfiguratorModal
             v-if="activeItem"
@@ -180,5 +277,35 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             :item="activeItem"
             @add-to-cart="onAddToCart"
         />
+
+        <template v-if="canEditMenu && editor">
+            <MenuItemEditDrawer
+                v-model:open="drawerOpen"
+                :item="editingItem"
+                :categories="editor.categories"
+                :templates="editor.templates"
+                @delete-requested="onDeleteRequested"
+            />
+            <MenuItemDeleteDialog
+                v-model:open="deleteDialogOpen"
+                :item="deleteTarget"
+            />
+            <HeroEditDrawer
+                v-model:open="heroDrawerOpen"
+                :restaurant="restaurant"
+            />
+            <AboutEditDrawer
+                v-model:open="aboutDrawerOpen"
+                :restaurant="restaurant"
+            />
+            <GalleryManagerDrawer
+                v-model:open="galleryDrawerOpen"
+                :photos="photos"
+            />
+            <SocialLinksEditDrawer
+                v-model:open="socialDrawerOpen"
+                :restaurant="restaurant"
+            />
+        </template>
     </div>
 </template>

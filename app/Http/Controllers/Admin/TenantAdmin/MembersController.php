@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminInvitation;
 use App\Models\Restaurant;
 use App\Models\User;
+use App\Policies\MemberPolicy;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -72,7 +73,10 @@ class MembersController extends Controller
 
     public function destroy(Request $request, Restaurant $restaurant, User $member): RedirectResponse
     {
-        if ($member->id === $request->user()->id) {
+        // Policy is invoked directly rather than via Gate because both actor
+        // and target are App\Models\User — Laravel's auto-discovery would
+        // route to a (non-existent) UserPolicy, never MemberPolicy.
+        if (! (new MemberPolicy)->delete($request->user(), $member)) {
             throw ValidationException::withMessages([
                 'member' => 'You cannot remove yourself.',
             ]);

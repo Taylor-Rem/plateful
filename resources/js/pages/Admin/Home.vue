@@ -5,6 +5,7 @@ import AppearanceTabs from '@/components/AppearanceTabs.vue';
 defineProps<{
     restaurants: App.Data.RestaurantData[];
     isSuperAdmin: boolean;
+    pendingSignupsCount?: number;
 }>();
 </script>
 
@@ -43,6 +44,26 @@ defineProps<{
                     <span class="text-xs font-medium uppercase tracking-wide text-primary">Platform</span>
                     <span class="mt-2 text-lg font-semibold text-foreground">Manage platform</span>
                     <span class="mt-1 text-sm text-muted-foreground">Restaurants, admins, invitations</span>
+                    <span class="mt-4 text-sm font-medium text-primary">Open →</span>
+                </Link>
+
+                <Link
+                    v-if="isSuperAdmin"
+                    href="/super/signups"
+                    class="flex flex-col rounded-lg border border-primary/30 bg-primary/5 p-5 shadow-sm transition hover:border-primary/60"
+                    data-test="signups-link"
+                >
+                    <span class="text-xs font-medium uppercase tracking-wide text-primary">Platform</span>
+                    <span class="mt-2 text-lg font-semibold text-foreground">
+                        Restaurant signups
+                        <span
+                            v-if="pendingSignupsCount && pendingSignupsCount > 0"
+                            class="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 align-middle text-xs font-medium text-amber-800"
+                        >
+                            {{ pendingSignupsCount }} pending
+                        </span>
+                    </span>
+                    <span class="mt-1 text-sm text-muted-foreground">Review self-serve applications</span>
                     <span class="mt-4 text-sm font-medium text-primary">Open →</span>
                 </Link>
 

@@ -6,6 +6,33 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Admin Notification Email
+    |---------------------------------------------------------------------------
+    |
+    | Where platform notifications (new restaurant signups, etc.) are sent.
+    | Falls back to the configured mail "from" address.
+    |
+    */
+    'admin_notification_email' => env('PLATFORM_ADMIN_NOTIFICATION_EMAIL'),
+
+    /*
+    |---------------------------------------------------------------------------
+    | Billing
+    |---------------------------------------------------------------------------
+    |
+    | Free trial granted when a restaurant is approved, plus the Stripe price
+    | id used for the (single, for now) Plateful subscription plan. Set the
+    | price id from the Stripe dashboard via env.
+    |
+    */
+    'billing' => [
+        'trial_days' => env('PLATFORM_TRIAL_DAYS', 14),
+        'stripe_price' => env('PLATFORM_STRIPE_PRICE'),
+        'subscription_type' => 'default',
+    ],
+
+    /*
+    |---------------------------------------------------------------------------
     | Reserved Subdomains
     |---------------------------------------------------------------------------
     |

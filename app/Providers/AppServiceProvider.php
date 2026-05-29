@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Cashier\Cashier;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AppServiceProvider extends ServiceProvider
@@ -43,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Plateful subscriptions are billed per restaurant, not per user.
+        Cashier::useCustomerModel(Restaurant::class);
 
         Restaurant::observe(RestaurantObserver::class);
         MenuItem::observe(MenuItemObserver::class);
@@ -91,21 +95,6 @@ class AppServiceProvider extends ServiceProvider
             return $template;
         });
 
-        Route::bind('item', function ($value) {
-            $restaurant = request()->route('restaurant');
-            $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : null;
-
-            $item = MenuItem::withoutTenantScope()
-                ->when($restaurantId, fn ($q) => $q->where('restaurant_id', $restaurantId))
-                ->where('id', $value)
-                ->first();
-
-            if (! $item || ($restaurantId && $item->restaurant_id !== $restaurantId)) {
-                throw new NotFoundHttpException;
-            }
-
-            return $item;
-        });
     }
 
     /**
