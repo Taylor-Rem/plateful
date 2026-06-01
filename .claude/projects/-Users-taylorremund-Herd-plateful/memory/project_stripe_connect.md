@@ -17,6 +17,10 @@ Key decision: **Connect onboarding lives in the ADMIN CONSOLE** (grafted onto th
 
 Test note: storefront checkout tests use `tests/Feature/Storefront/CheckoutTestHelpers.php` (`fakeCheckoutSession()` + `payLatestCheckout()`); `cartFixture()` is now Stripe-ready. KNOWN PRE-EXISTING FAILURE (not Phase 3): `MenuPageTest` "nav Menu link" asserts raw built markup and needs the Vite dev server / hot mode running (`npm run dev`); proven via git-stash. Phase 3 is verified by tests only — no real Stripe round-trip yet (no keys in .env).
 
-Phase 4 (Payouts view in admin console) and Phase 5 (sales copy) remain.
+**Phase 4 done** — `PayoutsController` + `Admin/TenantAdmin/Payouts.vue` at `admin.plateful.test/{subdomain}/payouts` (admin-only via `admin.restaurant.admin`). Lists connected-account payouts (`StripeConnectService::listPayouts`) + YTD Plateful fees (sum of `application_fee_cents` for this year's non-refunded orders). "Update bank info" → Express dashboard. Nav link added to `TenantAdminLayout.vue` (admin-only).
+
+**Phase 5 done** — `ForRestaurants/Landing.vue` leads with "1% per order. That's it.", adds a `#pricing` comparison table + "1% forever" copy, drops the "free trial" line. Tidied stale "billing" comments in `RestaurantStatus`/`ResolveTenant`.
+
+ALL 5 PHASES COMPLETE. Suite 466/466 green. Still no real Stripe round-trip (mocked; needs test keys + `stripe listen`). New top-level Vue pages need a `public/build/manifest.json` stub (gitignored) for headless render tests since the local Vite build can't run (Node 18).
 
 Conventions for this work: [[feedback_clarify_before_code]], [[feedback_no_auto_commits]]. NOTE: `composer require/remove` triggers `boost:update`, which strips the custom "Account Model" section out of `CLAUDE.md` — re-add it after any composer dependency change.

@@ -6,6 +6,8 @@ use App\Models\Order;
 use App\Models\Restaurant;
 use Stripe\Account;
 use Stripe\Checkout\Session;
+use Stripe\Collection;
+use Stripe\Payout;
 use Stripe\Refund;
 use Stripe\StripeClient;
 
@@ -49,6 +51,20 @@ class StripeConnectService
             'stripe_account' => $restaurant->stripe_account_id,
             'idempotency_key' => $idempotencyKey,
         ]);
+    }
+
+    /**
+     * List recent payouts on the restaurant's connected account.
+     *
+     * @param  array<string, mixed>  $params  e.g. ['limit' => 20, 'starting_after' => 'po_…']
+     * @return Collection<Payout>
+     */
+    public function listPayouts(Restaurant $restaurant, array $params = []): Collection
+    {
+        return $this->stripe->payouts->all(
+            $params,
+            ['stripe_account' => $restaurant->stripe_account_id],
+        );
     }
 
     public function retrieveCheckoutSession(Restaurant $restaurant, string $sessionId): Session

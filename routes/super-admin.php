@@ -45,6 +45,8 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::get('/onboarding/stripe/refresh', [TenantAdmin\StripeConnectController::class, 'refresh'])->name('onboarding.stripe.refresh');
                 Route::get('/onboarding/stripe/dashboard', [TenantAdmin\StripeConnectController::class, 'dashboard'])->name('onboarding.stripe.dashboard');
 
+                Route::get('/payouts', [TenantAdmin\PayoutsController::class, 'index'])->name('payouts.index');
+
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
                 Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');

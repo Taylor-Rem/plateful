@@ -38,9 +38,8 @@ class ResolveTenant
             throw new NotFoundHttpException;
         }
 
-        // Suspended (eg billing lapsed) and approved-but-not-yet-live
-        // restaurants also serve the Unavailable page. The owner toggle
-        // `is_active = false` continues to work too.
+        // Suspended and approved-but-not-yet-live restaurants also serve the
+        // Unavailable page. The owner toggle `is_active = false` works too.
         $isStorefrontLive = $restaurant->is_active
             && $restaurant->status === RestaurantStatus::Active;
 

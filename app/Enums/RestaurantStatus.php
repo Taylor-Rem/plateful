@@ -15,7 +15,7 @@ enum RestaurantStatus: string
 
     /**
      * Approved by the platform. Owner can complete onboarding (menu, hours,
-     * Stripe, billing). Still not visible on the public diner homepage.
+     * Stripe Connect). Still not visible on the public diner homepage.
      */
     case Approved = 'approved';
 
@@ -26,8 +26,8 @@ enum RestaurantStatus: string
     case Active = 'active';
 
     /**
-     * Temporarily disabled by the platform (billing lapse, ToS violation,
-     * etc.). Storefront returns 503 and the owner sees a reactivation banner.
+     * Temporarily disabled by the platform (ToS violation, payment-account
+     * issue, etc.). Storefront returns 503 and the owner sees a reactivation banner.
      */
     case Suspended = 'suspended';
 
