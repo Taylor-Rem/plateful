@@ -10,10 +10,12 @@ use App\Mail\OrderConfirmationToCustomer;
 use App\Mail\OrderNotificationToRestaurant;
 use App\Models\Address;
 use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\ItemTemplateOption;
 use App\Models\Order;
 use App\Models\OrderEvent;
 use App\Models\OrderItem;
+use App\Models\PendingCheckout;
 use App\Models\Restaurant;
 use App\Models\RestaurantCustomer;
 use App\Models\User;
@@ -27,11 +29,14 @@ class OrderPlacement
     public function __construct(protected CartManager $carts) {}
 
     /**
-     * Place an order from the given cart.
+     * Validate a cart + checkout input and build a serializable snapshot of
+     * the order to be placed. Does NOT write the order — that happens in
+     * {@see materialize()} once payment has succeeded.
      *
      * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
      */
-    public function place(Cart $cart, Restaurant $restaurant, array $data, ?User $user): Order
+    public function prepare(Cart $cart, Restaurant $restaurant, array $data, ?User $user): array
     {
         $cart->loadMissing(['items.menuItem.template.groups.options']);
 
@@ -53,8 +58,18 @@ class OrderPlacement
         $this->validateCartLines($cart);
 
         $subtotalCents = 0;
+        $items = [];
         foreach ($cart->items as $line) {
-            $subtotalCents += (int) $line->unit_price_cents * (int) $line->quantity;
+            $lineSubtotal = (int) $line->unit_price_cents * (int) $line->quantity;
+            $subtotalCents += $lineSubtotal;
+            $items[] = [
+                'menu_item_id' => $line->menu_item_id,
+                'name' => $line->menuItem?->name ?? 'Item',
+                'unit_price_cents' => (int) $line->unit_price_cents,
+                'quantity' => (int) $line->quantity,
+                'modifiers' => $line->modifiers,
+                'subtotal_cents' => $lineSubtotal,
+            ];
         }
 
         $type = OrderType::from($data['type']);
@@ -64,6 +79,10 @@ class OrderPlacement
         $tipCents = max(0, (int) ($data['tip_cents'] ?? 0));
         $tipRecipient = TipRecipient::forOrder($restaurant, $type);
         $totalCents = $subtotalCents + $taxCents + $deliveryFeeCents + $tipCents;
+
+        // The application fee is 1% of the FOOD SUBTOTAL only — not tax, tip,
+        // or delivery (those are pass-through and don't belong to Plateful).
+        $applicationFeeCents = (int) floor($subtotalCents * (float) $restaurant->application_fee_percent / 100);
 
         $deliveryAddress = null;
         if ($type === OrderType::Delivery) {
@@ -79,27 +98,92 @@ class OrderPlacement
             ];
         }
 
-        $confirmationToken = Str::random(64);
+        $addressId = null;
+        if ($user && isset($data['address_id'])) {
+            $candidate = Address::query()
+                ->where('id', (int) $data['address_id'])
+                ->where('user_id', $user->id)
+                ->first();
+            if ($candidate) {
+                $addressId = $candidate->id;
+            }
+        }
 
-        $order = DB::transaction(function () use (
-            $cart, $restaurant, $user, $data, $type,
-            $subtotalCents, $taxCents, $deliveryFeeCents, $tipCents, $tipRecipient, $totalCents,
-            $deliveryAddress, $confirmationToken
-        ) {
-            $order = $this->createOrderWithUniqueNumber(
-                $restaurant,
-                $user,
-                $data,
-                $type,
-                $subtotalCents,
-                $taxCents,
-                $deliveryFeeCents,
-                $tipCents,
-                $tipRecipient,
-                $totalCents,
-                $deliveryAddress,
-                $confirmationToken,
-            );
+        return [
+            'restaurant_id' => $restaurant->id,
+            'cart_id' => $cart->id,
+            'user_id' => $user?->id,
+            'customer_name' => (string) $data['customer_name'],
+            'customer_email' => (string) $data['customer_email'],
+            'customer_phone' => isset($data['customer_phone']) ? (string) $data['customer_phone'] : null,
+            'type' => $type->value,
+            'delivery_address' => $deliveryAddress,
+            'address_id' => $addressId,
+            'save_address' => ! empty($data['save_address']),
+            'tip_cents' => $tipCents,
+            'tip_recipient' => $tipRecipient->value,
+            'subtotal_cents' => $subtotalCents,
+            'tax_cents' => $taxCents,
+            'delivery_fee_cents' => $deliveryFeeCents,
+            'application_fee_cents' => $applicationFeeCents,
+            'total_cents' => $totalCents,
+            'confirmation_token' => Str::random(64),
+            'notes' => $data['notes'] ?? null,
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * Place an order synchronously from a cart (no Stripe). Retained for
+     * internal/test use; the customer-facing flow uses prepare() +
+     * Checkout + completeCheckout().
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function place(Cart $cart, Restaurant $restaurant, array $data, ?User $user): Order
+    {
+        return $this->materialize($this->prepare($cart, $restaurant, $data, $user), [], $user);
+    }
+
+    /**
+     * Materialize a paid checkout snapshot into a real Order. Idempotent on
+     * the Stripe Checkout Session id — a duplicate webhook + return won't
+     * create two orders.
+     *
+     * @param  array<string, mixed>  $payment  ['stripe_checkout_session_id'?, 'stripe_payment_intent_id'?]
+     */
+    public function completeCheckout(PendingCheckout $pending, array $payment): Order
+    {
+        $order = $this->materialize($pending->payload, $payment, $pending->user);
+
+        if ($pending->status !== PendingCheckout::STATUS_CONSUMED) {
+            $pending->update(['status' => PendingCheckout::STATUS_CONSUMED]);
+        }
+
+        return $order;
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @param  array<string, mixed>  $payment
+     */
+    public function materialize(array $snapshot, array $payment, ?User $user): Order
+    {
+        $sessionId = $payment['stripe_checkout_session_id'] ?? null;
+
+        if ($sessionId) {
+            $existing = Order::withoutTenantScope()
+                ->where('stripe_checkout_session_id', $sessionId)
+                ->first();
+            if ($existing) {
+                return $existing;
+            }
+        }
+
+        $restaurant = Restaurant::query()->findOrFail($snapshot['restaurant_id']);
+
+        $order = DB::transaction(function () use ($snapshot, $payment, $user, $restaurant) {
+            $order = $this->createOrderWithUniqueNumber($snapshot, $payment, $restaurant);
 
             OrderEvent::create([
                 'order_id' => $order->id,
@@ -110,15 +194,15 @@ class OrderPlacement
                 'note' => null,
             ]);
 
-            foreach ($cart->items as $line) {
+            foreach ($snapshot['items'] as $line) {
                 OrderItem::create([
                     'order_id' => $order->id,
-                    'menu_item_id' => $line->menu_item_id,
-                    'name' => $line->menuItem?->name ?? 'Item',
-                    'unit_price_cents' => (int) $line->unit_price_cents,
-                    'quantity' => (int) $line->quantity,
-                    'modifiers' => $line->modifiers,
-                    'subtotal_cents' => (int) $line->unit_price_cents * (int) $line->quantity,
+                    'menu_item_id' => $line['menu_item_id'],
+                    'name' => $line['name'],
+                    'unit_price_cents' => (int) $line['unit_price_cents'],
+                    'quantity' => (int) $line['quantity'],
+                    'modifiers' => $line['modifiers'],
+                    'subtotal_cents' => (int) $line['subtotal_cents'],
                 ]);
             }
 
@@ -126,17 +210,20 @@ class OrderPlacement
                 $this->upsertRestaurantCustomer($user, $restaurant, $order);
             }
 
-            if ($user && ! empty($data['save_address']) && $type === OrderType::Delivery && $deliveryAddress) {
+            if ($user && ! empty($snapshot['save_address'])
+                && $snapshot['type'] === OrderType::Delivery->value
+                && $snapshot['delivery_address']) {
                 try {
+                    $addr = $snapshot['delivery_address'];
                     Address::create([
                         'user_id' => $user->id,
-                        'street' => $deliveryAddress['street'],
-                        'street2' => $deliveryAddress['street2'],
-                        'city' => $deliveryAddress['city'],
-                        'state' => $deliveryAddress['state'],
-                        'postal_code' => $deliveryAddress['postal_code'],
-                        'country' => $deliveryAddress['country'] ?: 'US',
-                        'instructions' => $deliveryAddress['instructions'],
+                        'street' => $addr['street'],
+                        'street2' => $addr['street2'] ?? null,
+                        'city' => $addr['city'],
+                        'state' => $addr['state'],
+                        'postal_code' => $addr['postal_code'],
+                        'country' => ($addr['country'] ?? 'US') ?: 'US',
+                        'instructions' => $addr['instructions'] ?? null,
                         'is_default' => false,
                     ]);
                 } catch (\Throwable $e) {
@@ -144,7 +231,7 @@ class OrderPlacement
                 }
             }
 
-            $cart->items()->delete();
+            CartItem::query()->where('cart_id', $snapshot['cart_id'])->delete();
 
             return $order;
         });
@@ -267,34 +354,11 @@ class OrderPlacement
     }
 
     /**
-     * @param  array<string, mixed>  $data
-     * @param  array<string, mixed>|null  $deliveryAddress
+     * @param  array<string, mixed>  $snapshot
+     * @param  array<string, mixed>  $payment
      */
-    protected function createOrderWithUniqueNumber(
-        Restaurant $restaurant,
-        ?User $user,
-        array $data,
-        OrderType $type,
-        int $subtotalCents,
-        int $taxCents,
-        int $deliveryFeeCents,
-        int $tipCents,
-        TipRecipient $tipRecipient,
-        int $totalCents,
-        ?array $deliveryAddress,
-        string $confirmationToken,
-    ): Order {
-        $addressId = null;
-        if ($user && isset($data['address_id'])) {
-            $candidate = Address::query()
-                ->where('id', (int) $data['address_id'])
-                ->where('user_id', $user->id)
-                ->first();
-            if ($candidate) {
-                $addressId = $candidate->id;
-            }
-        }
-
+    protected function createOrderWithUniqueNumber(array $snapshot, array $payment, Restaurant $restaurant): Order
+    {
         $attempts = 0;
         while (true) {
             $attempts++;
@@ -302,31 +366,37 @@ class OrderPlacement
             try {
                 return Order::create([
                     'restaurant_id' => $restaurant->id,
-                    'user_id' => $user?->id,
-                    'address_id' => $addressId,
-                    'customer_name' => (string) $data['customer_name'],
-                    'customer_email' => (string) $data['customer_email'],
-                    'customer_phone' => isset($data['customer_phone']) ? (string) $data['customer_phone'] : null,
-                    'delivery_address' => $deliveryAddress,
+                    'user_id' => $snapshot['user_id'] ?? null,
+                    'address_id' => $snapshot['address_id'] ?? null,
+                    'customer_name' => (string) $snapshot['customer_name'],
+                    'customer_email' => (string) $snapshot['customer_email'],
+                    'customer_phone' => $snapshot['customer_phone'] ?? null,
+                    'delivery_address' => $snapshot['delivery_address'] ?? null,
                     'number' => $number,
                     'status' => OrderStatus::Pending,
-                    'type' => $type,
-                    'subtotal_cents' => $subtotalCents,
-                    'tax_cents' => $taxCents,
-                    'tip_cents' => $tipCents,
-                    'tip_recipient' => $tipRecipient,
-                    'delivery_fee_cents' => $deliveryFeeCents,
-                    'application_fee_cents' => 0,
-                    'total_cents' => $totalCents,
-                    'notes' => $data['notes'] ?? null,
+                    'type' => OrderType::from($snapshot['type']),
+                    'subtotal_cents' => (int) $snapshot['subtotal_cents'],
+                    'tax_cents' => (int) $snapshot['tax_cents'],
+                    'tip_cents' => (int) $snapshot['tip_cents'],
+                    'tip_recipient' => TipRecipient::from($snapshot['tip_recipient']),
+                    'delivery_fee_cents' => (int) $snapshot['delivery_fee_cents'],
+                    'application_fee_cents' => (int) $snapshot['application_fee_cents'],
+                    'total_cents' => (int) $snapshot['total_cents'],
+                    'stripe_payment_intent_id' => $payment['stripe_payment_intent_id'] ?? null,
+                    'stripe_checkout_session_id' => $payment['stripe_checkout_session_id'] ?? null,
+                    'notes' => $snapshot['notes'] ?? null,
                     'placed_at' => now(),
-                    'confirmation_token' => $confirmationToken,
+                    'confirmation_token' => $snapshot['confirmation_token'],
                 ]);
             } catch (QueryException $e) {
-                if ($attempts >= 10) {
-                    throw $e;
+                // A clash on the unique session id means the order was already
+                // created (concurrent webhook + return) — return it.
+                if ($this->isSessionViolation($e) && ! empty($payment['stripe_checkout_session_id'])) {
+                    return Order::withoutTenantScope()
+                        ->where('stripe_checkout_session_id', $payment['stripe_checkout_session_id'])
+                        ->firstOrFail();
                 }
-                if (! $this->isUniqueViolation($e)) {
+                if ($attempts >= 10 || ! $this->isUniqueViolation($e)) {
                     throw $e;
                 }
             }
@@ -372,5 +442,10 @@ class OrderPlacement
         return $e->getCode() === '23505'
             || str_contains((string) $e->getMessage(), 'orders_number_unique')
             || str_contains((string) $e->getMessage(), 'UNIQUE constraint');
+    }
+
+    protected function isSessionViolation(QueryException $e): bool
+    {
+        return str_contains((string) $e->getMessage(), 'stripe_checkout_session_id');
     }
 }

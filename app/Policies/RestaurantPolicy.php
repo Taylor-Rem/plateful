@@ -19,4 +19,17 @@ class RestaurantPolicy
 
         return $user->isRestaurantAdminAt($restaurant);
     }
+
+    /**
+     * Manage the restaurant's Stripe Connect account (onboarding, dashboard
+     * link). Granted to super admins and restaurant Admins.
+     */
+    public function manageStripe(User $user, Restaurant $restaurant): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $user->isRestaurantAdminAt($restaurant);
+    }
 }

@@ -58,6 +58,12 @@ const isAdmin = computed(() => page.props.currentRestaurantRole === 'admin');
                 </Link>
                 <template v-if="isAdmin">
                     <Link
+                        :href="`/${restaurant.subdomain}/payouts`"
+                        class="hover:text-foreground"
+                    >
+                        Payouts
+                    </Link>
+                    <Link
                         :href="`/${restaurant.subdomain}/members`"
                         class="hover:text-foreground"
                     >

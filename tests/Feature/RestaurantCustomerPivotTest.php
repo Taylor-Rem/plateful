@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 
 require_once __DIR__.'/Storefront/CartTestHelpers.php';
+require_once __DIR__.'/Storefront/CheckoutTestHelpers.php';
 
 uses(RefreshDatabase::class);
 
@@ -58,6 +59,7 @@ test('placing a first order creates a pivot row and sets counters', function () 
         ]);
     $cookie = cartCookieFrom($first);
 
+    fakeCheckoutSession();
     $this->actingAs($user)
         ->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
@@ -65,6 +67,7 @@ test('placing a first order creates a pivot row and sets counters', function () 
             'customer_email' => 'bob@example.test',
             'type' => 'pickup',
         ]);
+    payLatestCheckout();
 
     $pivot = RestaurantCustomer::query()
         ->where('user_id', $user->id)
@@ -93,6 +96,7 @@ test('subsequent orders increment counters on the same pivot row', function () {
     ]);
 
     // Two consecutive orders.
+    fakeCheckoutSession();
     for ($i = 0; $i < 2; $i++) {
         $first = $this->actingAs($user)
             ->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
@@ -107,6 +111,7 @@ test('subsequent orders increment counters on the same pivot row', function () {
                 'customer_email' => 'carla@example.test',
                 'type' => 'pickup',
             ]);
+        payLatestCheckout();
     }
 
     expect(RestaurantCustomer::count())->toBe(1);
@@ -123,6 +128,7 @@ test('a customer ordering at two different restaurants has two independent pivot
         'password' => Hash::make('password'), 'is_super_admin' => false,
     ]);
 
+    fakeCheckoutSession();
     foreach ([$a, $b] as $fx) {
         $r = $fx['restaurant'];
         $first = $this->actingAs($user)
@@ -138,6 +144,7 @@ test('a customer ordering at two different restaurants has two independent pivot
                 'customer_email' => 'dana@example.test',
                 'type' => 'pickup',
             ]);
+        payLatestCheckout();
 
         // Clear tenant state between requests so the next fixture's tenant is fresh.
         app(CurrentTenant::class)->clear();

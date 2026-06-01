@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 
 require_once __DIR__.'/CartTestHelpers.php';
+require_once __DIR__.'/CheckoutTestHelpers.php';
 
 uses(RefreshDatabase::class);
 
@@ -276,12 +277,14 @@ test('after placing an order, the cart is empty', function () {
 
     expect(CartItem::count())->toBe(1);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
             'customer_email' => 'a@a.test',
             'type' => 'pickup',
         ]);
+    payLatestCheckout();
 
     expect(CartItem::count())->toBe(0);
 });

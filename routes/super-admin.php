@@ -4,9 +4,14 @@ use App\Http\Controllers\Admin\AdminHomeController;
 use App\Http\Controllers\Admin\AdminInvitationController;
 use App\Http\Controllers\Admin\SuperAdmin;
 use App\Http\Controllers\Admin\TenantAdmin;
+use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
+    // Stripe Connect webhooks. Public (no auth), CSRF-exempt via
+    // bootstrap/app.php, signature-verified in the controller.
+    Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
+
     Route::middleware('guest')->group(function () {
         Route::get('/invitations/{token}', [AdminInvitationController::class, 'show'])->name('admin.invitations.show');
         Route::post('/invitations/{token}', [AdminInvitationController::class, 'accept'])->name('admin.invitations.accept');
@@ -35,9 +40,12 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::post('/onboarding/custom-domain', [TenantAdmin\OnboardingController::class, 'requestCustomDomain'])->name('onboarding.customDomain');
                 Route::post('/onboarding/go-live', [TenantAdmin\OnboardingController::class, 'goLive'])->name('onboarding.goLive');
 
-                Route::get('/billing', [TenantAdmin\BillingController::class, 'show'])->name('billing.show');
-                Route::post('/billing/checkout', [TenantAdmin\BillingController::class, 'checkout'])->name('billing.checkout');
-                Route::post('/billing/portal', [TenantAdmin\BillingController::class, 'portal'])->name('billing.portal');
+                Route::post('/onboarding/stripe/connect', [TenantAdmin\StripeConnectController::class, 'start'])->name('onboarding.stripe.connect');
+                Route::get('/onboarding/stripe/return', [TenantAdmin\StripeConnectController::class, 'return'])->name('onboarding.stripe.return');
+                Route::get('/onboarding/stripe/refresh', [TenantAdmin\StripeConnectController::class, 'refresh'])->name('onboarding.stripe.refresh');
+                Route::get('/onboarding/stripe/dashboard', [TenantAdmin\StripeConnectController::class, 'dashboard'])->name('onboarding.stripe.dashboard');
+
+                Route::get('/payouts', [TenantAdmin\PayoutsController::class, 'index'])->name('payouts.index');
 
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');

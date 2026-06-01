@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
-use Laravel\Cashier\Cashier;
+use Stripe\StripeClient;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AppServiceProvider extends ServiceProvider
@@ -30,6 +30,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(CurrentTenant::class);
+
+        $this->app->singleton(StripeClient::class, function (): StripeClient {
+            return new StripeClient((string) config('services.stripe.secret'));
+        });
 
         $this->app->singleton(DeliveryDispatcher::class, function ($app): DeliveryDispatcher {
             return new DeliveryDispatcher([
@@ -44,9 +48,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
-
-        // Plateful subscriptions are billed per restaurant, not per user.
-        Cashier::useCustomerModel(Restaurant::class);
 
         Restaurant::observe(RestaurantObserver::class);
         MenuItem::observe(MenuItemObserver::class);

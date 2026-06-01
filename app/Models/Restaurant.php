@@ -17,18 +17,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Laravel\Cashier\Billable;
 
 class Restaurant extends Model
 {
-    use Billable, HasFactory;
+    use HasFactory;
 
     /**
-     * Mass-assignable columns. Sensitive Stripe / Cashier fields
-     * (stripe_id, stripe_account_id, pm_*, application_fee_percent),
-     * file paths (logo_path), and delivery-feature toggles are intentionally
-     * excluded — they're assigned via direct property writes from trusted
-     * code paths only.
+     * Mass-assignable columns. Sensitive Stripe fields
+     * (stripe_account_id, application_fee_percent), file paths (logo_path),
+     * and delivery-feature toggles are intentionally excluded — they're
+     * assigned via direct property writes from trusted code paths only.
      *
      * @var array<int, string>
      */
@@ -62,7 +60,6 @@ class Restaurant extends Model
         'onboarding_completed_at',
         'pending_custom_domain',
         'custom_domain_requested_at',
-        'trial_ends_at',
         'tax_rate_percent',
         'delivery_fee_cents',
         'delivery_enabled',
@@ -84,7 +81,6 @@ class Restaurant extends Model
             'suspended_at' => 'datetime',
             'onboarding_completed_at' => 'datetime',
             'custom_domain_requested_at' => 'datetime',
-            'trial_ends_at' => 'datetime',
             'application_fee_percent' => 'decimal:2',
             'tax_rate_percent' => 'decimal:2',
             'delivery_fee_cents' => 'integer',
@@ -107,6 +103,35 @@ class Restaurant extends Model
      * @var array<int, string>
      */
     public const SOCIAL_PLATFORMS = ['instagram', 'facebook', 'twitter', 'tiktok', 'youtube', 'website'];
+
+    /**
+     * Stripe Connect account status vocabulary stored in
+     * `stripe_account_status`. `pending` = account created but onboarding not
+     * finished; `enabled` = charges are live; `restricted` = Stripe disabled
+     * charges/payouts (e.g. more documentation needed).
+     */
+    public const STRIPE_PENDING = 'pending';
+
+    public const STRIPE_ENABLED = 'enabled';
+
+    public const STRIPE_RESTRICTED = 'restricted';
+
+    /**
+     * True once the connected account can actually accept charges. This is the
+     * gate for going live and for placing orders.
+     */
+    public function isStripeReady(): bool
+    {
+        return $this->stripe_account_status === self::STRIPE_ENABLED;
+    }
+
+    /**
+     * Has a Connect account been created for this restaurant yet?
+     */
+    public function hasStripeAccount(): bool
+    {
+        return filled($this->stripe_account_id);
+    }
 
     /**
      * Returns the configured social URLs keyed by platform. Empty/null

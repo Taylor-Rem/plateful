@@ -94,7 +94,6 @@ class SignupsController extends Controller
                 'status' => RestaurantStatus::Approved,
                 'approved_at' => now(),
                 'approved_by_user_id' => $request->user()->id,
-                'trial_ends_at' => now()->addDays((int) config('platform.billing.trial_days', 14)),
             ]);
 
             // Owner becomes a restaurant admin via the pivot — this is the

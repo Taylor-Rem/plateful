@@ -57,6 +57,14 @@ const steps = [
             'Add your menu, set hours, connect Stripe, and flip the switch. Your storefront goes live the same day.',
     },
 ];
+
+// What a single $25 order costs the restaurant on each service.
+const pricingRows: { service: string; cost: string; note: string; highlight?: boolean }[] = [
+    { service: 'DoorDash', cost: '$7.50', note: '~30% commission' },
+    { service: 'GloriaFood', cost: '$0.38–$0.50', note: 'card-processing add-ons' },
+    { service: 'ChowNow', cost: '$0', note: '+ $150/mo flat' },
+    { service: 'Plateful', cost: '$0.25', note: '1% — that’s it', highlight: true },
+];
 </script>
 
 <template>
@@ -72,6 +80,7 @@ const steps = [
 
                 <nav class="flex items-center gap-2 text-sm">
                     <a href="#features" class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]">Features</a>
+                    <a href="#pricing" class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]">Pricing</a>
                     <a href="#how-it-works" class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]">How it works</a>
                     <Link
                         :href="createSignup()"
@@ -89,10 +98,10 @@ const steps = [
                     <div>
                         <p class="mb-3 text-sm font-medium uppercase tracking-wide text-[#f53003] dark:text-[#FF4433]">For restaurants</p>
                         <h1 class="text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-                            Online ordering, set up by you, ready in a day.
+                            1% per order. That's it.
                         </h1>
                         <p class="mt-5 max-w-xl text-lg text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
-                            Plateful gives your restaurant a branded storefront, menu management, loyalty, and Stripe-backed checkout. Sign up today, go live this week.
+                            No subscription, no tiers, no minimums. You only pay when you make money. Plateful gives your restaurant a branded storefront, menu management, loyalty, and Stripe-backed checkout — go live this week.
                         </p>
                         <div class="mt-8 flex flex-wrap gap-3">
                             <Link
@@ -110,6 +119,7 @@ const steps = [
                     <div class="rounded-xl border border-black/5 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
                         <p class="text-sm font-medium uppercase tracking-wide text-[#1b1b18]/60 dark:text-[#EDEDEC]/60">What you get</p>
                         <ul class="mt-4 space-y-3 text-sm">
+                            <li>• <strong>1% per order</strong> — no subscription, ever</li>
                             <li>• A branded storefront on <code>your-name.plateful.fyi</code></li>
                             <li>• Custom-domain support (we set it up for you)</li>
                             <li>• Menu, hours, modifiers, and templates</li>
@@ -137,6 +147,46 @@ const steps = [
                 </div>
             </section>
 
+            <section id="pricing" class="mx-auto max-w-6xl px-6 py-20">
+                <div class="max-w-2xl">
+                    <h2 class="text-3xl font-semibold tracking-tight">1% per order. Forever.</h2>
+                    <p class="mt-4 text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
+                        We charge 1% of the food subtotal — not tax, not tips, not delivery fees. No monthly
+                        fee, no tiers, no minimums. It's a permanent commitment: the 1% base never changes.
+                    </p>
+                </div>
+
+                <div class="mt-10 overflow-hidden rounded-xl border border-black/5 dark:border-white/10">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-black/[0.02] text-xs uppercase tracking-wide text-[#1b1b18]/60 dark:bg-white/[0.02] dark:text-[#EDEDEC]/60">
+                            <tr>
+                                <th class="px-6 py-3 font-medium">Service</th>
+                                <th class="px-6 py-3 font-medium">Cost on a $25 order</th>
+                                <th class="px-6 py-3 font-medium"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="row in pricingRows"
+                                :key="row.service"
+                                class="border-t border-black/5 dark:border-white/10"
+                                :class="row.highlight ? 'bg-[#f53003]/[0.06] dark:bg-[#FF4433]/[0.08]' : ''"
+                            >
+                                <td class="px-6 py-3 font-medium" :class="row.highlight ? 'text-[#f53003] dark:text-[#FF4433]' : ''">
+                                    {{ row.service }}
+                                </td>
+                                <td class="px-6 py-3 font-semibold">{{ row.cost }}</td>
+                                <td class="px-6 py-3 text-[#1b1b18]/60 dark:text-[#EDEDEC]/60">{{ row.note }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="mt-4 text-xs text-[#1b1b18]/50 dark:text-[#EDEDEC]/50">
+                    Comparison is illustrative; third-party pricing varies by plan and region. Stripe's standard
+                    processing fees apply on every platform.
+                </p>
+            </section>
+
             <section id="how-it-works" class="mx-auto max-w-6xl px-6 py-20">
                 <h2 class="text-3xl font-semibold tracking-tight">How it works</h2>
                 <div class="mt-10 grid gap-8 sm:grid-cols-3">
@@ -151,7 +201,7 @@ const steps = [
             <section class="border-t border-black/5 py-20 dark:border-white/10">
                 <div class="mx-auto flex max-w-3xl flex-col items-center px-6 text-center">
                     <h2 class="text-3xl font-semibold tracking-tight">Ready to put your restaurant on Plateful?</h2>
-                    <p class="mt-4 text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">No card required to apply. Free trial when you're approved.</p>
+                    <p class="mt-4 text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">No card required to apply. Start free, pay only when you make money.</p>
                     <Link
                         :href="createSignup()"
                         class="mt-8 rounded-md bg-[#f53003] px-6 py-3 text-sm font-medium text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 require_once __DIR__.'/CartTestHelpers.php';
+require_once __DIR__.'/CheckoutTestHelpers.php';
 
 uses(RefreshDatabase::class);
 
@@ -94,6 +95,7 @@ test('pickup with address provided is accepted and address is ignored', function
     $r = $f['restaurant'];
     $cookie = addPepperoniLine($this, $f);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
@@ -108,7 +110,7 @@ test('pickup with address provided is accepted and address is ignored', function
             'tip_preset' => '0',
         ]);
 
-    $order = Order::first();
+    $order = payLatestCheckout();
     expect($order)->not->toBeNull();
     expect($order->type->value)->toBe('pickup');
     expect($order->delivery_address)->toBeNull();
@@ -139,6 +141,7 @@ test('tip preset 15 produces tip_cents equal to round of 15% of subtotal', funct
     $r = $f['restaurant'];
     $cookie = addPepperoniLine($this, $f);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
@@ -147,7 +150,7 @@ test('tip preset 15 produces tip_cents equal to round of 15% of subtotal', funct
             'tip_preset' => '15',
         ]);
 
-    $order = Order::first();
+    $order = payLatestCheckout();
     expect($order->tip_cents)->toBe((int) round(1400 * 0.15));
 });
 
@@ -156,6 +159,7 @@ test('tip preset custom with $5 produces tip_cents of 500', function () {
     $r = $f['restaurant'];
     $cookie = addPepperoniLine($this, $f);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
@@ -165,7 +169,7 @@ test('tip preset custom with $5 produces tip_cents of 500', function () {
             'tip_custom_cents' => 500,
         ]);
 
-    $order = Order::first();
+    $order = payLatestCheckout();
     expect($order->tip_cents)->toBe(500);
 });
 
@@ -175,6 +179,7 @@ test('tax_cents matches restaurant tax_rate_percent', function () {
     $r->update(['tax_rate_percent' => 8.875]);
     $cookie = addPepperoniLine($this, $f);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
@@ -182,7 +187,7 @@ test('tax_cents matches restaurant tax_rate_percent', function () {
             'type' => 'pickup',
         ]);
 
-    $order = Order::first();
+    $order = payLatestCheckout();
     expect($order->tax_cents)->toBe((int) round(1400 * 8.875 / 100));
 });
 
@@ -191,6 +196,7 @@ test('order number format matches expected pattern', function () {
     $r = $f['restaurant'];
     $cookie = addPepperoniLine($this, $f);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
@@ -198,7 +204,7 @@ test('order number format matches expected pattern', function () {
             'type' => 'pickup',
         ]);
 
-    expect(Order::first()->number)->toMatch('/^[A-Z]{3}-[A-Z0-9]{5}$/');
+    expect(payLatestCheckout()->number)->toMatch('/^[A-Z]{3}-[A-Z0-9]{5}$/');
 });
 
 test('order number collisions are retried until unique', function () {
@@ -229,6 +235,8 @@ test('order number collisions are retried until unique', function () {
         'placed_at' => now(),
     ]);
 
+    fakeCheckoutSession();
+
     // Force Str::random to return AAAAA the first 2 calls, then BBBBB.
     $calls = 0;
     Str::createRandomStringsUsing(function () use (&$calls) {
@@ -237,6 +245,7 @@ test('order number collisions are retried until unique', function () {
         return $calls <= 1 ? 'AAAAA' : 'BBBBB';
     });
 
+    $newOrder = null;
     try {
         $this->withCookie(CartManager::COOKIE_NAME, $cookie)
             ->post("http://{$r->subdomain}.plateful.test/orders", [
@@ -244,11 +253,11 @@ test('order number collisions are retried until unique', function () {
                 'customer_email' => 'a@a.test',
                 'type' => 'pickup',
             ]);
+        $newOrder = payLatestCheckout();
     } finally {
         Str::createRandomStringsNormally();
     }
 
-    $newOrder = Order::where('customer_name', 'A')->first();
     expect($newOrder)->not->toBeNull();
     expect($newOrder->number)->toBe('MAR-BBBBB');
     expect($calls)->toBeGreaterThanOrEqual(2);

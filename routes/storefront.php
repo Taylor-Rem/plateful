@@ -34,6 +34,8 @@ Route::middleware('tenant')->group(function () {
 
     Route::get('checkout', [CheckoutController::class, 'show'])
         ->name('storefront.checkout.show');
+    Route::get('checkout/return', [CheckoutController::class, 'paymentReturn'])
+        ->name('storefront.checkout.return');
     Route::post('orders', [CheckoutController::class, 'store'])
         ->name('storefront.orders.store');
     Route::get('orders/{number}', [OrderController::class, 'show'])

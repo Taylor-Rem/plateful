@@ -72,3 +72,15 @@ test('deactivated tenant subdomain returns 503 with Unavailable component', func
     $response->assertInertia(fn ($page) => $page->component('Storefront/Unavailable'));
     expect(app(CurrentTenant::class)->check())->toBeFalse();
 });
+
+test('suspended restaurants render an Unavailable page on the storefront host', function () {
+    Restaurant::factory()->suspended()->create(['subdomain' => 'gone', 'is_active' => true]);
+
+    $this->get('http://gone.plateful.test/')->assertStatus(503);
+});
+
+test('approved-but-not-live restaurants are NOT served on the storefront host', function () {
+    Restaurant::factory()->approved()->create(['subdomain' => 'soon', 'is_active' => true]);
+
+    $this->get('http://soon.plateful.test/')->assertStatus(503);
+});

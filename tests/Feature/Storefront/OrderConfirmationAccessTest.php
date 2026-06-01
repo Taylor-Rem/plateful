@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 
 require_once __DIR__.'/CartTestHelpers.php';
+require_once __DIR__.'/CheckoutTestHelpers.php';
 
 uses(RefreshDatabase::class);
 
@@ -21,6 +22,7 @@ beforeEach(function () {
 function placeGuestOrder($t, array $f, string $cookie): Order
 {
     $r = $f['restaurant'];
+    fakeCheckoutSession();
     $t->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'G',
@@ -28,7 +30,7 @@ function placeGuestOrder($t, array $f, string $cookie): Order
             'type' => 'pickup',
         ]);
 
-    return Order::latest('id')->first();
+    return payLatestCheckout();
 }
 
 function addLineCookie($t, array $f): string
@@ -81,6 +83,7 @@ test('logged-in user can view their own order', function () {
         ]);
     $cookie = cartCookieFrom($first);
 
+    fakeCheckoutSession();
     $this->actingAs($user)
         ->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
@@ -89,7 +92,7 @@ test('logged-in user can view their own order', function () {
             'type' => 'pickup',
         ]);
 
-    $order = Order::latest('id')->first();
+    $order = payLatestCheckout();
     expect($order->user_id)->toBe($user->id);
 
     $resp = $this->actingAs($user)

@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
 require_once __DIR__.'/CartTestHelpers.php';
+require_once __DIR__.'/CheckoutTestHelpers.php';
 
 uses(RefreshDatabase::class);
 
@@ -119,6 +120,7 @@ test('order placement succeeds when restaurant is explicitly open', function () 
     ]);
     $cookie = cartCookieFrom($first);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'Alice',
@@ -128,5 +130,6 @@ test('order placement succeeds when restaurant is explicitly open', function () 
         ])
         ->assertRedirect();
 
+    payLatestCheckout();
     expect(Order::count())->toBe(1);
 });

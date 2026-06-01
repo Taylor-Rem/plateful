@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        // Country the Express connected accounts are created under.
+        'connect_country' => env('STRIPE_CONNECT_COUNTRY', 'US'),
+    ],
+
 ];
