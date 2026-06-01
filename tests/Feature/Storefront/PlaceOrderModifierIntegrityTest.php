@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 
 require_once __DIR__.'/CartTestHelpers.php';
+require_once __DIR__.'/CheckoutTestHelpers.php';
 
 uses(RefreshDatabase::class);
 
@@ -90,7 +91,9 @@ test('checkout still succeeds when nothing has changed', function () {
     $f = cartFixture();
     $cookie = modAddPep($this, $f);
 
+    fakeCheckoutSession();
     modPlace($this, $f, $cookie);
+    payLatestCheckout();
 
     expect(Order::count())->toBe(1);
 });

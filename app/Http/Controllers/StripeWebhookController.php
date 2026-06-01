@@ -2,18 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PendingCheckout;
 use App\Models\Restaurant;
+use App\Services\OrderPlacement;
 use App\Services\Stripe\StripeConnectService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Stripe\Account;
+use Stripe\Checkout\Session;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook;
 use UnexpectedValueException;
 
 class StripeWebhookController extends Controller
 {
-    public function __construct(private StripeConnectService $connect) {}
+    public function __construct(
+        private StripeConnectService $connect,
+        private OrderPlacement $orders,
+    ) {}
 
     /**
      * Receive Stripe Connect webhooks. Currently only syncs connected-account
@@ -42,6 +48,23 @@ class StripeWebhookController extends Controller
 
                 if ($restaurant) {
                     $this->connect->syncAccountStatus($restaurant, $account);
+                }
+            }
+        }
+
+        if ($event->type === 'checkout.session.completed') {
+            $session = $event->data->object;
+
+            if ($session instanceof Session) {
+                $pending = PendingCheckout::query()
+                    ->where('stripe_checkout_session_id', $session->id)
+                    ->first();
+
+                if ($pending) {
+                    $this->orders->completeCheckout($pending, [
+                        'stripe_checkout_session_id' => $session->id,
+                        'stripe_payment_intent_id' => is_string($session->payment_intent) ? $session->payment_intent : null,
+                    ]);
                 }
             }
         }

@@ -33,6 +33,8 @@ class Order extends Model
             'application_fee_cents' => 'integer',
             'total_cents' => 'integer',
             'awarded_loyalty_points' => 'integer',
+            'refunded_at' => 'datetime',
+            'refunded_cents' => 'integer',
             'delivery_address' => 'array',
         ];
     }

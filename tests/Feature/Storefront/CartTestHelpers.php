@@ -50,6 +50,12 @@ if (! function_exists('cartFixture')) {
             'street' => '1', 'city' => 'NY', 'state' => 'NY', 'postal_code' => '1',
         ]);
 
+        // A live storefront has completed Stripe Connect onboarding.
+        $r->forceFill([
+            'stripe_account_id' => 'acct_fixture',
+            'stripe_account_status' => Restaurant::STRIPE_ENABLED,
+        ])->save();
+
         app(CurrentTenant::class)->set($r);
 
         $cat = MenuCategory::create([

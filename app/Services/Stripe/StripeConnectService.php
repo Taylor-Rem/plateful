@@ -2,13 +2,77 @@
 
 namespace App\Services\Stripe;
 
+use App\Models\Order;
 use App\Models\Restaurant;
 use Stripe\Account;
+use Stripe\Checkout\Session;
+use Stripe\Refund;
 use Stripe\StripeClient;
 
 class StripeConnectService
 {
     public function __construct(private StripeClient $stripe) {}
+
+    /**
+     * Create a Stripe-hosted Checkout Session as a DIRECT charge on the
+     * restaurant's connected account, taking Plateful's application fee.
+     *
+     * @param  array<string, string>  $urls  ['success_url', 'cancel_url']
+     */
+    public function createCheckoutSession(
+        Restaurant $restaurant,
+        int $totalCents,
+        int $applicationFeeCents,
+        string $customerEmail,
+        array $urls,
+        string $idempotencyKey,
+        int $pendingCheckoutId,
+    ): Session {
+        return $this->stripe->checkout->sessions->create([
+            'mode' => 'payment',
+            'line_items' => [[
+                'price_data' => [
+                    'currency' => 'usd',
+                    'product_data' => ['name' => 'Order at '.$restaurant->name],
+                    'unit_amount' => $totalCents,
+                ],
+                'quantity' => 1,
+            ]],
+            'payment_intent_data' => [
+                'application_fee_amount' => $applicationFeeCents,
+            ],
+            'customer_email' => $customerEmail,
+            'success_url' => $urls['success_url'],
+            'cancel_url' => $urls['cancel_url'],
+            'metadata' => ['pending_checkout_id' => (string) $pendingCheckoutId],
+        ], [
+            'stripe_account' => $restaurant->stripe_account_id,
+            'idempotency_key' => $idempotencyKey,
+        ]);
+    }
+
+    public function retrieveCheckoutSession(Restaurant $restaurant, string $sessionId): Session
+    {
+        return $this->stripe->checkout->sessions->retrieve(
+            $sessionId,
+            [],
+            ['stripe_account' => $restaurant->stripe_account_id],
+        );
+    }
+
+    /**
+     * Full refund of an order's charge, reversing Plateful's application fee
+     * so the restaurant gets the whole amount back.
+     */
+    public function refundOrder(Order $order): Refund
+    {
+        return $this->stripe->refunds->create([
+            'payment_intent' => $order->stripe_payment_intent_id,
+            'refund_application_fee' => true,
+        ], [
+            'stripe_account' => $order->restaurant->stripe_account_id,
+        ]);
+    }
 
     /**
      * Create an Express connected account for the restaurant and persist its

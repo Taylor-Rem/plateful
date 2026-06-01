@@ -140,33 +140,128 @@ Acceptance: a fresh restaurant can complete Connect onboarding entirely on
 the storefront, end up with `charges_enabled = true`, and pass the
 onboarding `canGoLive` check.
 
-## Phase 3 — Wire application fee into order placement
+## Phase 3 — Customer payments via Stripe Connect
 
-- Identify the order placement path. Current entry point is the
-  `OrderPlacement` service / `CheckoutController::store`. Trace where the
-  PaymentIntent is created (or where the charge is initiated).
-- When creating the PaymentIntent for an order, pass:
-  - `stripe_account: $restaurant->stripe_account_id` (the charge lives on
-    the connected account)
-  - `application_fee_amount: (int) floor($foodSubtotalCents * ($restaurant->application_fee_percent / 100))`
-- Fee base is **food subtotal only**:
-  - **Not** tax (pass-through to government)
-  - **Not** tip (goes entirely to restaurant/staff/driver)
-  - **Not** delivery fee (pays the driver or covers delivery cost)
-- Refunds must reverse the application fee: pass
-  `refund_application_fee: true` on refund creation so Plateful's cut
-  comes back to the restaurant too.
-- Reject order placement at the controller level if
-  `! $restaurant->isStripeReady()` (helper that checks
-  `charges_enabled === true`). This shouldn't happen in practice because
-  `canGoLive` enforces it, but it's a defense-in-depth check.
-- Tests:
-  - $25 subtotal + $2.06 tax + $5 tip → `application_fee_amount = 25` (not 32).
-  - $50 subtotal → `application_fee_amount = 50`.
-  - Restaurant with `application_fee_percent = 1.5` → fee scales correctly
-    (covers the case where an enterprise deal has a custom percent later).
-  - Refunds reverse the application fee.
-  - Order placement throws / 422s when the restaurant isn't Stripe-ready.
+> **This is the largest phase.** There is no payment flow today: orders are
+> written straight to the DB (`OrderPlacement::place`) with
+> `application_fee_cents = 0` and `CheckoutController::store` makes zero
+> Stripe calls. Phase 3 builds card collection, the charge, order
+> materialization, and refunds from scratch.
+
+### Locked decisions
+
+- **Direct charges** — the charge is created **on the restaurant's connected
+  account** (`Stripe-Account: acct_…`). The restaurant is merchant of record
+  and owns disputes/chargebacks; their name is on the customer's statement.
+  Plateful takes `application_fee_amount`.
+- **Stripe-hosted Checkout** (`mode: payment`) — redirect to Stripe's hosted
+  page. Minimal PCI scope; Stripe handles 3DS/wallets. No embedded card form.
+- **Pay-first** — no `orders` row exists until payment succeeds. The
+  prospective order is snapshotted in a `pending_checkouts` row and
+  materialized into a real `Order` once paid. No unpaid-order garbage.
+- **Refunds: full-refund-on-cancel by default, per-restaurant configurable**
+  via the existing `auto_cancel_refund_mode` enum (`Auto` = auto-refund the
+  full amount when an order is cancelled; `Manual` = restaurant issues
+  refunds themselves). Partial / line-item refunds deferred to a later phase.
+
+### Flow
+
+1. **`CheckoutController::store` (no longer calls `place()`):**
+   - Reuse the existing validation + totals logic. Refactor the validate +
+     compute-totals portion of `OrderPlacement::place()` into a shared
+     `prepare()` method returning a validated snapshot (resolved line
+     items w/ names+prices+modifiers, totals, type, address, customer
+     fields, tip) — used by both this step and materialization.
+   - Defense-in-depth guard: **422 if `! $restaurant->isStripeReady()`**
+     (`canGoLive` already enforces this, but check anyway).
+   - Fee: `applicationFeeCents = (int) floor($subtotalCents * $restaurant->application_fee_percent / 100)`.
+     **Fee base = food subtotal only** — NOT tax (gov pass-through), NOT tip
+     (restaurant/staff/driver), NOT delivery fee.
+   - Persist a `pending_checkouts` row (snapshot JSON, `restaurant_id`,
+     nullable `user_id`, `status = awaiting_payment`).
+   - Create a Checkout Session **on the connected account**
+     (`Stripe-Account` header), `mode: payment`, line items covering the
+     total, `payment_intent_data[application_fee_amount]`,
+     `metadata[pending_checkout_id]`, `success_url` + `cancel_url` back to
+     the storefront. Save the session id on the row. Use an **idempotency
+     key** to avoid duplicate sessions on double-submit.
+   - Redirect the customer to `session.url`.
+2. **Order materialization (idempotent), triggered by BOTH:**
+   - **Webhook `checkout.session.completed`** (source of truth) — extend the
+     existing `StripeWebhookController`. ⚠️ With direct charges these fire on
+     the **connected account**, so the endpoint must receive connected-account
+     events (`stripe listen --forward-connect-to` locally); resolve the
+     restaurant from `event.account` / session metadata.
+   - **`success_url` return handler** (for immediacy) — retrieve the session;
+     if paid, materialize now so the customer sees the order without waiting
+     on the webhook.
+   - Both call one `OrderPlacement::materializeFromPendingCheckout()`, guarded
+     by a **unique `orders.stripe_checkout_session_id`** so concurrent
+     webhook + return can't double-create. Inside a transaction: create the
+     `Order` (status `Pending` = new paid order awaiting kitchen confirm),
+     set `application_fee_cents`, `stripe_payment_intent_id`,
+     `stripe_charge_id`; create `OrderItems` from the snapshot; run the side
+     effects currently in `place()` (customer + restaurant emails,
+     `upsertRestaurantCustomer`, loyalty, save-address); **clear the cart**;
+     mark the pending row consumed.
+3. **Cart** clears only on successful materialization, so an abandoned or
+   cancelled payment leaves the cart intact for retry.
+4. **Cancel/abandon** → `cancel_url` returns to checkout, cart intact. A
+   scheduled command prunes stale `awaiting_payment` rows.
+
+### Refunds
+
+- Wire into `OrderTransition` on the transition to `Cancelled`: if the order
+  has a `stripe_payment_intent_id` and the restaurant's
+  `auto_cancel_refund_mode` is `Auto`, create a Stripe **Refund on the
+  connected account** with **`refund_application_fee: true`** (Plateful's 1%
+  returns to the restaurant too). Record `refunded_at` / `refunded_cents` on
+  the order.
+- `Manual` mode: no auto-refund; the restaurant refunds via their Express
+  dashboard.
+
+### Schema
+
+- New `pending_checkouts` table (snapshot JSON, restaurant_id, nullable
+  user_id, `stripe_checkout_session_id`, status, timestamps).
+- Add `stripe_checkout_session_id` (nullable, **unique**) and
+  `refunded_at` / `refunded_cents` to `orders`.
+  (`stripe_payment_intent_id` / `stripe_charge_id` / `stripe_transfer_id` /
+  `application_fee_cents` already exist.)
+
+### Service additions (`StripeConnectService`)
+
+- `createCheckoutSession(Restaurant, lineData, applicationFeeCents, urls): Session`
+  (on the connected account, with idempotency key).
+- `retrieveCheckoutSession(string $id): Session` (expand `payment_intent`).
+- `refundOrder(Order): Refund` (`refund_application_fee: true`, on the
+  connected account).
+
+### Tests
+
+- $25 subtotal + $2.06 tax + $5 tip → `application_fee_amount = 25` (not 32xx).
+- $50 subtotal → `50`. `application_fee_percent = 1.5` → scales (floor).
+- **No `orders` row** exists after session creation; order appears only after
+  payment.
+- `checkout.session.completed` materializes the order + fires emails / loyalty
+  / customer counters; **idempotent** on duplicate delivery (webhook + return).
+- Refund-on-cancel calls Stripe with `refund_application_fee: true`; respects
+  `auto_cancel_refund_mode`.
+- Checkout 422s when `! isStripeReady`.
+- All Stripe calls mocked (`checkout->sessions`, `refunds`); webhooks via the
+  existing signed-payload test pattern.
+
+### Sub-decisions (resolved)
+
+- **Snapshot store: dedicated `pending_checkouts` table** (durable/auditable).
+- **Single line item** on the Stripe-hosted page ("Order at {restaurant}" for
+  the order total); the fee is computed separately from the food subtotal.
+- **`success_url` eager-materializes + webhook backstop**, both idempotent on
+  `orders.stripe_checkout_session_id`.
+- **Refund: full refund on cancel, always** (whenever a cancelled order has a
+  captured payment) for this phase. Per-restaurant refund policy is a clean
+  follow-up — the existing `auto_cancel_refund_mode` enum is specifically
+  about delivery auto-cancellation and is intentionally NOT overloaded here.
 
 ## Phase 4 — Payouts view in admin console
 

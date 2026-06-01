@@ -15,6 +15,12 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
+    ->beforeEach(function () {
+        // Dummy Stripe credentials so the Stripe client / webhook signature
+        // verification can construct in tests without real keys.
+        config()->set('services.stripe.secret', 'sk_test_dummy');
+        config()->set('services.stripe.webhook_secret', 'whsec_test_dummy');
+    })
     ->use(RefreshDatabase::class)
     ->in('Feature');
 

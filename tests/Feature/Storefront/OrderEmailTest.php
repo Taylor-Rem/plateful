@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 
 require_once __DIR__.'/CartTestHelpers.php';
+require_once __DIR__.'/CheckoutTestHelpers.php';
 
 uses(RefreshDatabase::class);
 
@@ -24,12 +25,15 @@ test('customer confirmation mailable queued to customer email', function () {
     ]);
     $cookie = cartCookieFrom($first);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
             'customer_email' => 'customer@example.test',
             'type' => 'pickup',
         ]);
+
+    payLatestCheckout();
 
     Mail::assertQueued(OrderConfirmationToCustomer::class, function ($mail) {
         return $mail->hasTo('customer@example.test');
@@ -45,12 +49,15 @@ test('restaurant notification mailable queued to restaurant email', function () 
     ]);
     $cookie = cartCookieFrom($first);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
             'customer_email' => 'a@a.test',
             'type' => 'pickup',
         ]);
+
+    payLatestCheckout();
 
     Mail::assertQueued(OrderNotificationToRestaurant::class, function ($mail) use ($r) {
         return $mail->hasTo($r->email);
@@ -71,12 +78,15 @@ test('restaurant notification NOT queued when restaurant.email is null', functio
     ]);
     $cookie = cartCookieFrom($first);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
             'customer_email' => 'a@a.test',
             'type' => 'pickup',
         ]);
+
+    payLatestCheckout();
 
     Mail::assertQueued(OrderConfirmationToCustomer::class);
     Mail::assertNotQueued(OrderNotificationToRestaurant::class);

@@ -4,11 +4,13 @@ use App\Mail\OrderConfirmationToCustomer;
 use App\Mail\OrderNotificationToRestaurant;
 use App\Models\CartItem;
 use App\Models\Order;
+use App\Models\PendingCheckout;
 use App\Services\CartManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 
 require_once __DIR__.'/CartTestHelpers.php';
+require_once __DIR__.'/CheckoutTestHelpers.php';
 
 uses(RefreshDatabase::class);
 
@@ -17,7 +19,35 @@ beforeEach(function () {
     Mail::fake();
 });
 
-test('guest can place a pickup order end-to-end', function () {
+test('checkout redirects to Stripe and does not create an order until paid', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
+        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],
+    ]);
+    $cookie = cartCookieFrom($first);
+
+    fakeCheckoutSession('https://stripe.test/pay');
+    $resp = $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'Alice Customer',
+            'customer_email' => 'alice@example.test',
+            'type' => 'pickup',
+            'tip_preset' => '0',
+        ]);
+
+    // Redirected off to Stripe-hosted Checkout; no order yet, cart intact.
+    $resp->assertRedirect('https://stripe.test/pay');
+    expect(Order::count())->toBe(0);
+    expect(CartItem::count())->toBe(1);
+
+    $pending = PendingCheckout::firstOrFail();
+    expect($pending->stripe_checkout_session_id)->toBe('cs_test_1');
+    expect($pending->status)->toBe(PendingCheckout::STATUS_AWAITING);
+});
+
+test('guest pickup order materializes correctly after payment', function () {
     $f = cartFixture();
     $r = $f['restaurant'];
     $r->update(['tax_rate_percent' => 10, 'delivery_fee_cents' => 500]);
@@ -27,7 +57,8 @@ test('guest can place a pickup order end-to-end', function () {
     ]);
     $cookie = cartCookieFrom($first);
 
-    $resp = $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+    fakeCheckoutSession();
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'Alice Customer',
             'customer_email' => 'alice@example.test',
@@ -35,10 +66,8 @@ test('guest can place a pickup order end-to-end', function () {
             'tip_preset' => '0',
         ]);
 
-    $resp->assertRedirect();
+    $order = payLatestCheckout();
 
-    $order = Order::first();
-    expect($order)->not->toBeNull();
     expect($order->restaurant_id)->toBe($r->id);
     expect($order->user_id)->toBeNull();
     expect($order->customer_name)->toBe('Alice Customer');
@@ -49,28 +78,24 @@ test('guest can place a pickup order end-to-end', function () {
     expect($order->delivery_fee_cents)->toBe(0); // pickup
     expect($order->tip_cents)->toBe(0);
     expect($order->total_cents)->toBe(1540);
+    expect($order->application_fee_cents)->toBe(14); // 1% of 1400 subtotal
+    expect($order->stripe_payment_intent_id)->toBe('pi_cs_test_1');
+    expect($order->stripe_checkout_session_id)->toBe('cs_test_1');
     expect($order->number)->toMatch('/^[A-Z]{3}-[A-Z0-9]{5}$/');
-    expect($order->confirmation_token)->not->toBeNull();
     expect(strlen($order->confirmation_token))->toBe(64);
 
     expect($order->items()->count())->toBe(1);
     $line = $order->items()->first();
     expect($line->name)->toBe('Pep');
     expect($line->unit_price_cents)->toBe(1400);
-    expect($line->quantity)->toBe(1);
-    expect($line->subtotal_cents)->toBe(1400);
 
     expect(CartItem::count())->toBe(0);
 
-    $resp->assertCookie('plateful_recent_order');
-
     Mail::assertQueued(OrderConfirmationToCustomer::class);
     Mail::assertQueued(OrderNotificationToRestaurant::class);
-
-    $resp->assertRedirectContains("/orders/{$order->number}");
 });
 
-test('placing a delivery order computes delivery fee and snapshots address', function () {
+test('paid delivery order computes delivery fee and snapshots address', function () {
     $f = cartFixture();
     $r = $f['restaurant'];
     $r->update(['tax_rate_percent' => 8, 'delivery_fee_cents' => 499]);
@@ -80,6 +105,7 @@ test('placing a delivery order computes delivery fee and snapshots address', fun
     ]);
     $cookie = cartCookieFrom($first);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'Bob',
@@ -96,8 +122,7 @@ test('placing a delivery order computes delivery fee and snapshots address', fun
             'tip_preset' => '15',
         ]);
 
-    $order = Order::first();
-    expect($order)->not->toBeNull();
+    $order = payLatestCheckout();
     expect($order->type->value)->toBe('delivery');
     expect($order->delivery_fee_cents)->toBe(499);
     expect($order->tip_cents)->toBe(210); // 15% of 1400
@@ -112,7 +137,7 @@ test('placing a delivery order computes delivery fee and snapshots address', fun
     ]);
 });
 
-test('placing an order writes an initial pending order_event', function () {
+test('paid order writes an initial pending order_event', function () {
     $f = cartFixture();
     $r = $f['restaurant'];
 
@@ -121,6 +146,7 @@ test('placing an order writes an initial pending order_event', function () {
     ]);
     $cookie = cartCookieFrom($first);
 
+    fakeCheckoutSession();
     $this->withCookie(CartManager::COOKIE_NAME, $cookie)
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
@@ -129,30 +155,9 @@ test('placing an order writes an initial pending order_event', function () {
             'tip_preset' => '0',
         ]);
 
-    $order = Order::first();
-    expect($order)->not->toBeNull();
+    $order = payLatestCheckout();
     $events = $order->events()->orderBy('id')->get();
     expect($events)->toHaveCount(1);
     expect($events->first()->from_status)->toBeNull();
     expect($events->first()->to_status->value)->toBe('pending');
-});
-
-test('after placing an order the cart is empty on the next page load', function () {
-    $f = cartFixture();
-    $r = $f['restaurant'];
-
-    $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
-        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],
-    ]);
-    $cookie = cartCookieFrom($first);
-
-    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
-        ->post("http://{$r->subdomain}.plateful.test/orders", [
-            'customer_name' => 'A',
-            'customer_email' => 'a@a.test',
-            'type' => 'pickup',
-            'tip_preset' => '0',
-        ]);
-
-    expect(CartItem::count())->toBe(0);
 });

@@ -10,12 +10,16 @@ use App\Mail\OrderReadyForPickupToCustomer;
 use App\Models\Order;
 use App\Models\OrderEvent;
 use App\Models\User;
+use App\Services\Stripe\StripeConnectService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 class OrderTransition
 {
-    public function __construct(protected LoyaltyService $loyalty) {}
+    public function __construct(
+        protected LoyaltyService $loyalty,
+        protected StripeConnectService $connect,
+    ) {}
 
     public function apply(
         Order $order,
@@ -50,6 +54,8 @@ class OrderTransition
         $order->loadMissing(['items', 'restaurant']);
 
         if ($toStatus === OrderStatus::Cancelled) {
+            $this->refundOnCancel($order);
+
             Mail::to($order->customer_email)
                 ->queue(new OrderCancelledToCustomer($order, $note));
         } elseif ($toStatus === OrderStatus::Ready && $order->type === OrderType::Pickup) {
@@ -58,5 +64,26 @@ class OrderTransition
         }
 
         return $order;
+    }
+
+    /**
+     * Full refund (reversing Plateful's application fee) when a paid order is
+     * cancelled. Best-effort — a Stripe failure must not block the cancel.
+     */
+    protected function refundOnCancel(Order $order): void
+    {
+        if (! $order->stripe_payment_intent_id || $order->refunded_at) {
+            return;
+        }
+
+        try {
+            $this->connect->refundOrder($order);
+            $order->forceFill([
+                'refunded_at' => now(),
+                'refunded_cents' => (int) $order->total_cents,
+            ])->save();
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }
