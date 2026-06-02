@@ -99,7 +99,7 @@ it('maps Stripe readiness flags to the status vocabulary', function () {
 
 // --- start ----------------------------------------------------------------
 
-it('creates a connected account and redirects to the onboarding link', function () {
+it('creates a connected account and sends the owner to the onboarding link', function () {
     [$owner, $restaurant] = stripeOwnerAndRestaurant();
 
     $mock = mockConnect();
@@ -114,9 +114,13 @@ it('creates a connected account and redirects to the onboarding link', function 
         });
     $mock->shouldReceive('createAccountLink')->once()->andReturn('https://connect.stripe.test/setup');
 
+    // Inertia (XHR) requests can't follow an external 302; Inertia::location
+    // answers with a 409 + X-Inertia-Location so the client does a full visit.
     $this->actingAs($owner)
+        ->withHeaders(['X-Inertia' => 'true'])
         ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/connect")
-        ->assertRedirect('https://connect.stripe.test/setup');
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', 'https://connect.stripe.test/setup');
 
     expect($restaurant->fresh()->stripe_account_id)->toBe('acct_123');
 });
@@ -130,8 +134,25 @@ it('does not recreate the account when one already exists', function () {
     $mock->shouldReceive('createAccountLink')->once()->andReturn('https://connect.stripe.test/again');
 
     $this->actingAs($owner)
+        ->withHeaders(['X-Inertia' => 'true'])
         ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/connect")
-        ->assertRedirect('https://connect.stripe.test/again');
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', 'https://connect.stripe.test/again');
+});
+
+it('hands back a fresh onboarding link on refresh', function () {
+    [$owner, $restaurant] = stripeOwnerAndRestaurant();
+    $restaurant->forceFill(['stripe_account_id' => 'acct_refresh'])->save();
+
+    $mock = mockConnect();
+    $mock->shouldReceive('createExpressAccount')->never();
+    $mock->shouldReceive('createAccountLink')->once()->andReturn('https://connect.stripe.test/refresh');
+
+    // refresh is reached via Stripe's full-page redirect (not an Inertia XHR),
+    // so Inertia::location answers with a plain 302 to the fresh link.
+    $this->actingAs($owner)
+        ->get(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/refresh")
+        ->assertRedirect('https://connect.stripe.test/refresh');
 });
 
 it('blocks staff from starting Stripe onboarding', function () {
