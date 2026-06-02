@@ -5,15 +5,16 @@ currently shipped) to a pure per-order application-fee model (Stripe Connect
 Express, to be built). This document is the authoritative plan; the codebase
 still contains the older subscription wiring that Phase 1 removes.
 
-## Pricing decision (locked in)
+## Pricing decision
 
-**Plateful charges 1% per order. No subscription. No tiers. No minimums.**
+**Plateful charges 1% per order today. No subscription. No tiers. No minimums.**
 
 - Charged via Stripe Connect `application_fee_amount` at order time.
 - Fee base is the **food subtotal only** — not tax, not tip, not delivery fee.
   Those are pass-through dollars that don't belong to the restaurant.
-- This is a permanent commitment. Future premium add-ons (analytics,
-  marketing, integrations) can layer on top, but the 1% base never changes.
+- The 1% rate is stored per-restaurant (`application_fee_percent`) so pricing
+  can be adjusted later as operating costs evolve. Premium add-ons (analytics,
+  marketing, integrations) can also layer on top.
 
 Public-facing copy: _"1% per order. That's it. No subscription, no tiers,
 no minimums. You only pay when you make money."_
@@ -292,7 +293,7 @@ Replaces what was the Billing page. Lives in the admin console under
   dead references in views/controllers/copy/tests.
 - Add a short pricing section/page (`/for-restaurants#pricing` anchor or
   a dedicated `/for-restaurants/pricing` page — owner's call) showing the
-  comparison table and the "1% forever" commitment.
+  comparison table and the current 1% pricing.
 
 ---
 

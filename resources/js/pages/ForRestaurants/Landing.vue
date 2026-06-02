@@ -119,7 +119,7 @@ const pricingRows: { service: string; cost: string; note: string; highlight?: bo
                     <div class="rounded-xl border border-black/5 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
                         <p class="text-sm font-medium uppercase tracking-wide text-[#1b1b18]/60 dark:text-[#EDEDEC]/60">What you get</p>
                         <ul class="mt-4 space-y-3 text-sm">
-                            <li>• <strong>1% per order</strong> — no subscription, ever</li>
+                            <li>• <strong>1% per order</strong> — no subscription</li>
                             <li>• A branded storefront on <code>your-name.plateful.fyi</code></li>
                             <li>• Custom-domain support (we set it up for you)</li>
                             <li>• Menu, hours, modifiers, and templates</li>
@@ -149,10 +149,10 @@ const pricingRows: { service: string; cost: string; note: string; highlight?: bo
 
             <section id="pricing" class="mx-auto max-w-6xl px-6 py-20">
                 <div class="max-w-2xl">
-                    <h2 class="text-3xl font-semibold tracking-tight">1% per order. Forever.</h2>
+                    <h2 class="text-3xl font-semibold tracking-tight">1% per order. That's it.</h2>
                     <p class="mt-4 text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
                         We charge 1% of the food subtotal — not tax, not tips, not delivery fees. No monthly
-                        fee, no tiers, no minimums. It's a permanent commitment: the 1% base never changes.
+                        fee, no tiers, no minimums. Just a simple cut when you make a sale.
                     </p>
                 </div>
 
