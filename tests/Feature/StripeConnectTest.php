@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Stripe\StripeConnectService;
 use Mockery\MockInterface;
 use Stripe\Account;
+use Stripe\Service\AccountService;
 use Stripe\StripeClient;
 
 const STRIPE_ADMIN = 'http://admin.plateful.test';
@@ -43,6 +44,49 @@ function mockConnect(): MockInterface
 
     return $mock;
 }
+
+// --- Stripe-Notice suppression --------------------------------------------
+
+it('does not fail when a Stripe SDK call emits a Stripe-Notice warning', function () {
+    [, $restaurant] = stripeOwnerAndRestaurant();
+
+    $accounts = Mockery::mock(AccountService::class);
+    $accounts->shouldReceive('create')->once()->andReturnUsing(function () {
+        // stripe-php promotes a `Stripe-Notice` response header into this
+        // E_USER_WARNING, which Laravel turns into a fatal ErrorException.
+        trigger_error('We recommend building your integration using Accounts v2', E_USER_WARNING);
+
+        return Account::constructFrom(['id' => 'acct_notice']);
+    });
+
+    $stripe = Mockery::mock(StripeClient::class);
+    $stripe->shouldReceive('getService')->with('accounts')->andReturn($accounts);
+
+    $service = new StripeConnectService($stripe);
+
+    expect($service->createExpressAccount($restaurant))->toBe('acct_notice');
+    expect($restaurant->fresh()->stripe_account_id)->toBe('acct_notice');
+});
+
+it('leaves E_USER_WARNINGs raised outside a Stripe call fatal', function () {
+    [, $restaurant] = stripeOwnerAndRestaurant();
+
+    $accounts = Mockery::mock(AccountService::class);
+    $accounts->shouldReceive('create')->once()
+        ->andReturn(Account::constructFrom(['id' => 'acct_scoped']));
+
+    $stripe = Mockery::mock(StripeClient::class);
+    $stripe->shouldReceive('getService')->with('accounts')->andReturn($accounts);
+
+    $service = new StripeConnectService($stripe);
+
+    // The wrapped call must restore the prior handler, so a warning afterwards
+    // still becomes a fatal ErrorException.
+    $service->createExpressAccount($restaurant);
+
+    expect(fn () => trigger_error('not a stripe notice', E_USER_WARNING))
+        ->toThrow(ErrorException::class);
+});
 
 // --- statusFor mapping ----------------------------------------------------
 
