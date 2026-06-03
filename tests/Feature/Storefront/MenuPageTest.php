@@ -68,8 +68,10 @@ test('storefront markup includes nav with Menu link on every storefront page', f
     $r = menuPageRestaurant();
     menuPageCategoryWithItem($r);
 
-    $homeHtml = $this->get('http://marcos.plateful.test/')->getContent();
-    $menuHtml = $this->get('http://marcos.plateful.test/menu')->getContent();
+    // Normalize JSON-escaped slashes ("Storefront\/Home") so the check is
+    // robust regardless of json_encode's slash escaping.
+    $homeHtml = str_replace('\\/', '/', $this->get('http://marcos.plateful.test/')->getContent());
+    $menuHtml = str_replace('\\/', '/', $this->get('http://marcos.plateful.test/menu')->getContent());
 
     // Inertia ships the layout in JSON for the initial page; the layout
     // itself isn't rendered server-side. Smoke check: the data-page JSON

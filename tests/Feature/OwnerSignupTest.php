@@ -1,17 +1,11 @@
 <?php
 
-use App\Mail\RestaurantSignupSubmittedMail;
+use App\Enums\RestaurantStatus;
 use App\Models\Restaurant;
-use App\Models\RestaurantSignup;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
 
 const ROOT = 'http://plateful.test';
-
-beforeEach(function () {
-    Mail::fake();
-});
 
 /**
  * Minimal valid signup payload — individual tests can override fields.
@@ -30,7 +24,7 @@ function signupPayload(array $overrides = []): array
         'restaurant_name' => "Marco's Pizza",
         'subdomain' => 'marcos-pizza',
         'custom_domain' => null,
-        'cuisine_type' => 'Pizza',
+        'menu_preset' => null,
         'city' => 'Brooklyn',
         'state' => 'NY',
         'notes' => 'Excited to join.',
@@ -40,7 +34,34 @@ function signupPayload(array $overrides = []): array
 it('renders the owner marketing landing page on the root domain', function () {
     $this->get(ROOT.'/for-restaurants')
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('ForRestaurants/Landing'));
+        ->assertInertia(fn ($page) => $page
+            ->component('ForRestaurants/Landing')
+            ->where('authUserName', null)
+            ->where('hasAdminAccess', false)
+            ->where('adminUrl', 'http://admin.'.config('platform.primary_domain')));
+});
+
+it('tells the owner landing page when a signed-in user has admin access', function () {
+    $owner = User::factory()->create(['name' => 'Marco']);
+    Restaurant::factory()->create()->members()->attach($owner->id, [
+        'role' => \App\Enums\RestaurantRole::Admin->value,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(ROOT.'/for-restaurants')
+        ->assertInertia(fn ($page) => $page
+            ->where('authUserName', 'Marco')
+            ->where('hasAdminAccess', true));
+});
+
+it('greets a signed-in diner on the owner landing page without admin access', function () {
+    $diner = User::factory()->create(['name' => 'Dana']);
+
+    $this->actingAs($diner)
+        ->get(ROOT.'/for-restaurants')
+        ->assertInertia(fn ($page) => $page
+            ->where('authUserName', 'Dana')
+            ->where('hasAdminAccess', false));
 });
 
 it('renders the signup form with reserved subdomains', function () {
@@ -49,41 +70,34 @@ it('renders the signup form with reserved subdomains', function () {
         ->assertInertia(fn ($page) => $page
             ->component('ForRestaurants/Signup')
             ->where('primaryDomain', config('platform.primary_domain'))
-            ->has('reservedSubdomains'));
+            ->has('reservedSubdomains')
+            ->has('menuPresets'));
 });
 
-it('creates a user and a pending signup, logs in, and emails the platform', function () {
-    config()->set('platform.admin_notification_email', 'platform@example.com');
-
+it('self-serve signup creates the user and restaurant, grants admin, logs in, and redirects to onboarding', function () {
     $this->post(ROOT.'/for-restaurants/signup', signupPayload())
-        ->assertRedirect(ROOT.'/for-restaurants/pending');
+        ->assertRedirect('http://admin.plateful.test/marcos-pizza/onboarding');
 
     $user = User::where('email', 'marco@example.com')->first();
     expect($user)->not->toBeNull();
 
-    $signup = RestaurantSignup::where('user_id', $user->id)->first();
-    expect($signup)->not->toBeNull()
-        ->and($signup->status)->toBe(RestaurantSignup::STATUS_PENDING)
-        ->and($signup->proposed_name)->toBe("Marco's Pizza")
-        ->and($signup->proposed_subdomain)->toBe('marcos-pizza')
-        ->and($signup->restaurant_id)->toBeNull();
+    $restaurant = Restaurant::where('subdomain', 'marcos-pizza')->first();
+    expect($restaurant)->not->toBeNull()
+        ->and($restaurant->name)->toBe("Marco's Pizza")
+        ->and($restaurant->status)->toBe(RestaurantStatus::Approved)
+        ->and($restaurant->is_active)->toBeTrue()
+        ->and($restaurant->isLive())->toBeFalse();
+
+    // Owner gains admin access via the pivot the moment they sign up.
+    expect($user->fresh()->isRestaurantAdminAt($restaurant))->toBeTrue();
 
     expect(Auth::id())->toBe($user->id);
-
-    Mail::assertQueued(
-        RestaurantSignupSubmittedMail::class,
-        fn (RestaurantSignupSubmittedMail $mail) => $mail->hasTo('platform@example.com')
-            && $mail->signup->is($signup)
-    );
 });
 
-it('does NOT make the new owner a restaurant admin until approval', function () {
+it('a freshly signed-up restaurant is not visible on the public homepage', function () {
     $this->post(ROOT.'/for-restaurants/signup', signupPayload());
 
-    $user = User::where('email', 'marco@example.com')->first();
-
-    expect($user->isAdmin())->toBeFalse()
-        ->and($user->restaurants()->count())->toBe(0);
+    expect(Restaurant::query()->public()->count())->toBe(0);
 });
 
 it('rejects a subdomain that already belongs to an existing restaurant', function () {
@@ -95,28 +109,11 @@ it('rejects a subdomain that already belongs to an existing restaurant', functio
     expect(User::where('email', 'marco@example.com')->exists())->toBeFalse();
 });
 
-it('rejects a subdomain that is already claimed by another pending signup', function () {
-    RestaurantSignup::factory()->create([
-        'proposed_subdomain' => 'marcos-pizza',
-        'status' => RestaurantSignup::STATUS_PENDING,
-    ]);
-
-    $this->post(ROOT.'/for-restaurants/signup', signupPayload())
-        ->assertSessionHasErrors('subdomain');
-});
-
-it('allows reusing a subdomain that was previously rejected', function () {
-    RestaurantSignup::factory()->rejected()->create([
-        'proposed_subdomain' => 'marcos-pizza',
-    ]);
-
-    $this->post(ROOT.'/for-restaurants/signup', signupPayload())
-        ->assertRedirect(ROOT.'/for-restaurants/pending');
-});
-
 it('rejects reserved subdomains', function () {
     $this->post(ROOT.'/for-restaurants/signup', signupPayload(['subdomain' => 'admin']))
         ->assertSessionHasErrors('subdomain');
+
+    expect(Restaurant::query()->count())->toBe(0);
 });
 
 it('rejects signup when the email is already in use', function () {
@@ -124,6 +121,8 @@ it('rejects signup when the email is already in use', function () {
 
     $this->post(ROOT.'/for-restaurants/signup', signupPayload())
         ->assertSessionHasErrors('email');
+
+    expect(Restaurant::query()->count())->toBe(0);
 });
 
 it('requires password confirmation', function () {
@@ -132,18 +131,26 @@ it('requires password confirmation', function () {
     ]))->assertSessionHasErrors('password');
 });
 
-it('shows the signup summary on the pending page', function () {
-    $user = User::factory()->create();
-    $signup = RestaurantSignup::factory()->for($user)->create([
-        'proposed_name' => "Marco's Pizza",
-        'proposed_subdomain' => 'marcos-pizza',
-    ]);
+it('seeds a starter menu when a preset is chosen', function () {
+    $this->post(ROOT.'/for-restaurants/signup', signupPayload(['menu_preset' => 'mexican']));
 
-    $this->actingAs($user)
-        ->get(ROOT.'/for-restaurants/pending')
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('ForRestaurants/Pending')
-            ->where('signup.restaurantName', $signup->proposed_name)
-            ->where('signup.subdomain', $signup->proposed_subdomain));
+    $restaurant = Restaurant::where('subdomain', 'marcos-pizza')->first();
+
+    expect($restaurant->menuItems()->exists())->toBeTrue()
+        ->and($restaurant->menuCategories()->exists())->toBeTrue();
+});
+
+it('leaves the menu empty when no preset is chosen', function () {
+    $this->post(ROOT.'/for-restaurants/signup', signupPayload(['menu_preset' => null]));
+
+    $restaurant = Restaurant::where('subdomain', 'marcos-pizza')->first();
+
+    expect($restaurant->menuItems()->exists())->toBeFalse();
+});
+
+it('rejects an unknown menu preset', function () {
+    $this->post(ROOT.'/for-restaurants/signup', signupPayload(['menu_preset' => 'klingon']))
+        ->assertSessionHasErrors('menu_preset');
+
+    expect(Restaurant::query()->count())->toBe(0);
 });

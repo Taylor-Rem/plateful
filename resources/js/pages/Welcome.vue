@@ -17,6 +17,7 @@ const props = defineProps<{
     adminUrl: string;
     restaurants: RestaurantSummary[];
     authUserName: string | null;
+    hasAdminAccess: boolean;
 }>();
 
 const query = ref('');
@@ -66,6 +67,22 @@ const filteredRestaurants = computed(() => {
                     >
                         For restaurants
                     </Link>
+                    <a
+                        v-if="hasAdminAccess"
+                        :href="adminUrl"
+                        class="rounded-md bg-[#f53003] px-3 py-1.5 text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"
+                        data-test="nav-admin-console"
+                    >
+                        Admin console →
+                    </a>
+                    <a
+                        v-else-if="!authUserName"
+                        href="/login"
+                        class="px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
+                        data-test="nav-sign-in"
+                    >
+                        Sign in
+                    </a>
                 </nav>
             </div>
         </header>
@@ -137,7 +154,7 @@ const filteredRestaurants = computed(() => {
                         <template v-if="restaurants.length === 0">
                             No restaurants on Plateful just yet. Are you a restaurant owner?
                             <Link :href="forRestaurantsLanding()" class="font-medium text-[#f53003] underline-offset-4 hover:underline dark:text-[#FF4433]">
-                                Apply to join
+                                Get started
                             </Link>.
                         </template>
                         <template v-else>
@@ -229,7 +246,7 @@ const filteredRestaurants = computed(() => {
                         Own a restaurant?
                     </h2>
                     <p class="mt-3 max-w-xl text-white/70">
-                        Get your own branded ordering site, take orders direct, and keep loyalty in-house. Apply in a couple of minutes.
+                        Get your own branded ordering site, take orders direct, and keep loyalty in-house. Sign up in a couple of minutes.
                     </p>
                     <Link
                         :href="forRestaurantsLanding()"

@@ -82,11 +82,6 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
 
             Route::get('/admins', [SuperAdmin\AdminsController::class, 'index'])->name('admins.index');
             Route::post('/admins/invitations', [SuperAdmin\InvitationController::class, 'store'])->name('admins.invitations.store');
-
-            Route::get('/signups', [SuperAdmin\SignupsController::class, 'index'])->name('signups.index');
-            Route::get('/signups/{signup}', [SuperAdmin\SignupsController::class, 'show'])->name('signups.show');
-            Route::post('/signups/{signup}/approve', [SuperAdmin\SignupsController::class, 'approve'])->name('signups.approve');
-            Route::post('/signups/{signup}/reject', [SuperAdmin\SignupsController::class, 'reject'])->name('signups.reject');
         });
     });
 });

@@ -27,6 +27,7 @@ Route::domain(config('platform.primary_domain'))->group(function () {
             'adminUrl' => $scheme.'://admin.'.config('platform.primary_domain'),
             'restaurants' => $restaurants,
             'authUserName' => $request->user()?->name,
+            'hasAdminAccess' => (bool) $request->user()?->isAdmin(),
         ]);
     })->name('home');
 
@@ -46,6 +47,5 @@ Route::domain(config('platform.primary_domain'))->group(function () {
         Route::post('/signup', [OwnerSignupController::class, 'store'])
             ->middleware('throttle:6,1')
             ->name('store');
-        Route::get('/pending', [OwnerSignupController::class, 'pending'])->name('pending');
     });
 });
