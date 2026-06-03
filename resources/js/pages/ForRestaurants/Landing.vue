@@ -1,8 +1,19 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { create as createSignup } from '@/actions/App/Http/Controllers/OwnerSignupController';
 import { home } from '@/routes';
+
+const props = defineProps<{
+    authUserName: string | null;
+    hasAdminAccess: boolean;
+    adminUrl: string;
+}>();
+
+// Owners sign in on the admin host, so post-login `/` resolves to the admin
+// console (not the diner home).
+const signInUrl = computed(() => `${props.adminUrl}/login`);
 
 const features = [
     {
@@ -42,19 +53,19 @@ const steps = [
         number: '01',
         title: 'Sign up',
         description:
-            'Tell us about your restaurant and pick a subdomain. Takes about two minutes.',
+            'Tell us about your restaurant and pick a subdomain. Takes about two minutes — your account is ready instantly.',
     },
     {
         number: '02',
-        title: 'We review',
+        title: 'Set it up',
         description:
-            'A real human reviews your application within one business day. We email when you’re approved.',
+            'Add your menu — or start from a template — set your hours, and connect Stripe.',
     },
     {
         number: '03',
-        title: 'Build and go live',
+        title: 'Go live',
         description:
-            'Add your menu, set hours, connect Stripe, and flip the switch. Your storefront goes live the same day.',
+            'Flip the switch and start taking orders. Your storefront can be live the same day.',
     },
 ];
 
@@ -82,12 +93,35 @@ const pricingRows: { service: string; cost: string; note: string; highlight?: bo
                     <a href="#features" class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]">Features</a>
                     <a href="#pricing" class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]">Pricing</a>
                     <a href="#how-it-works" class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]">How it works</a>
-                    <Link
-                        :href="createSignup()"
-                        class="rounded-md bg-[#f53003] px-4 py-1.5 text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"
-                    >
-                        Get started
-                    </Link>
+
+                    <template v-if="hasAdminAccess">
+                        <span class="hidden px-2 text-[#1b1b18]/60 sm:inline-block dark:text-[#EDEDEC]/60" data-test="nav-greeting">
+                            Hi, {{ authUserName }}
+                        </span>
+                        <a
+                            :href="adminUrl"
+                            class="rounded-md bg-[#f53003] px-4 py-1.5 text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"
+                            data-test="nav-admin-console"
+                        >
+                            Admin console →
+                        </a>
+                    </template>
+                    <template v-else>
+                        <a
+                            v-if="!authUserName"
+                            :href="signInUrl"
+                            class="px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
+                            data-test="nav-sign-in"
+                        >
+                            Sign in
+                        </a>
+                        <Link
+                            :href="createSignup()"
+                            class="rounded-md bg-[#f53003] px-4 py-1.5 text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"
+                        >
+                            Get started
+                        </Link>
+                    </template>
                 </nav>
             </div>
         </header>
@@ -103,18 +137,31 @@ const pricingRows: { service: string; cost: string; note: string; highlight?: bo
                         <p class="mt-5 max-w-xl text-lg text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
                             No subscription, no tiers, no minimums. You only pay when you make money. Plateful gives your restaurant a branded storefront, menu management, loyalty, and Stripe-backed checkout — go live this week.
                         </p>
-                        <div class="mt-8 flex flex-wrap gap-3">
+                        <div class="mt-8 flex flex-wrap items-center gap-3">
+                            <a
+                                v-if="hasAdminAccess"
+                                :href="adminUrl"
+                                class="rounded-md bg-[#f53003] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"
+                                data-test="cta-dashboard"
+                            >
+                                Go to your dashboard →
+                            </a>
                             <Link
+                                v-else
                                 :href="createSignup()"
                                 class="rounded-md bg-[#f53003] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"
                                 data-test="cta-get-started"
                             >
-                                Start your application
+                                Get started
                             </Link>
                             <a href="#features" class="rounded-md border border-[#19140035] px-5 py-2.5 text-sm font-medium hover:bg-black/5 dark:border-[#3E3E3A] dark:hover:bg-white/5">
                                 See features
                             </a>
                         </div>
+                        <p v-if="!authUserName" class="mt-3 text-sm text-[#1b1b18]/60 dark:text-[#EDEDEC]/60">
+                            Already have an account?
+                            <a :href="signInUrl" class="font-medium text-[#f53003] underline-offset-4 hover:underline dark:text-[#FF4433]" data-test="hero-sign-in">Sign in</a>.
+                        </p>
                     </div>
                     <div class="rounded-xl border border-black/5 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
                         <p class="text-sm font-medium uppercase tracking-wide text-[#1b1b18]/60 dark:text-[#EDEDEC]/60">What you get</p>
@@ -201,12 +248,20 @@ const pricingRows: { service: string; cost: string; note: string; highlight?: bo
             <section class="border-t border-black/5 py-20 dark:border-white/10">
                 <div class="mx-auto flex max-w-3xl flex-col items-center px-6 text-center">
                     <h2 class="text-3xl font-semibold tracking-tight">Ready to put your restaurant on Plateful?</h2>
-                    <p class="mt-4 text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">No card required to apply. Start free, pay only when you make money.</p>
+                    <p class="mt-4 text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">No card required to sign up. Start free, pay only when you make money.</p>
+                    <a
+                        v-if="hasAdminAccess"
+                        :href="adminUrl"
+                        class="mt-8 rounded-md bg-[#f53003] px-6 py-3 text-sm font-medium text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"
+                    >
+                        Go to your dashboard →
+                    </a>
                     <Link
+                        v-else
                         :href="createSignup()"
                         class="mt-8 rounded-md bg-[#f53003] px-6 py-3 text-sm font-medium text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"
                     >
-                        Start your application
+                        Get started
                     </Link>
                 </div>
             </section>

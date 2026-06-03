@@ -27,6 +27,7 @@ Route::domain(config('platform.primary_domain'))->group(function () {
             'adminUrl' => $scheme.'://admin.'.config('platform.primary_domain'),
             'restaurants' => $restaurants,
             'authUserName' => $request->user()?->name,
+            'hasAdminAccess' => (bool) $request->user()?->isAdmin(),
         ]);
     })->name('home');
 

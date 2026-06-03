@@ -26,7 +26,20 @@ it('passes the authenticated user name when logged in', function () {
 
     $this->actingAs($user)
         ->get('http://plateful.test/')
-        ->assertInertia(fn ($page) => $page->where('authUserName', 'Marco'));
+        ->assertInertia(fn ($page) => $page
+            ->where('authUserName', 'Marco')
+            ->where('hasAdminAccess', false));
+});
+
+it('flags admin access on the diner homepage for an owner', function () {
+    $owner = User::factory()->create();
+    Restaurant::factory()->create()->members()->attach($owner->id, [
+        'role' => \App\Enums\RestaurantRole::Admin->value,
+    ]);
+
+    $this->actingAs($owner)
+        ->get('http://plateful.test/')
+        ->assertInertia(fn ($page) => $page->where('hasAdminAccess', true));
 });
 
 it('still renders when no restaurants are live yet', function () {

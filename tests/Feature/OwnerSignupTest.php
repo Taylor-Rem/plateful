@@ -24,7 +24,7 @@ function signupPayload(array $overrides = []): array
         'restaurant_name' => "Marco's Pizza",
         'subdomain' => 'marcos-pizza',
         'custom_domain' => null,
-        'cuisine_type' => 'Pizza',
+        'menu_preset' => null,
         'city' => 'Brooklyn',
         'state' => 'NY',
         'notes' => 'Excited to join.',
@@ -34,7 +34,34 @@ function signupPayload(array $overrides = []): array
 it('renders the owner marketing landing page on the root domain', function () {
     $this->get(ROOT.'/for-restaurants')
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('ForRestaurants/Landing'));
+        ->assertInertia(fn ($page) => $page
+            ->component('ForRestaurants/Landing')
+            ->where('authUserName', null)
+            ->where('hasAdminAccess', false)
+            ->where('adminUrl', 'http://admin.'.config('platform.primary_domain')));
+});
+
+it('tells the owner landing page when a signed-in user has admin access', function () {
+    $owner = User::factory()->create(['name' => 'Marco']);
+    Restaurant::factory()->create()->members()->attach($owner->id, [
+        'role' => \App\Enums\RestaurantRole::Admin->value,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(ROOT.'/for-restaurants')
+        ->assertInertia(fn ($page) => $page
+            ->where('authUserName', 'Marco')
+            ->where('hasAdminAccess', true));
+});
+
+it('greets a signed-in diner on the owner landing page without admin access', function () {
+    $diner = User::factory()->create(['name' => 'Dana']);
+
+    $this->actingAs($diner)
+        ->get(ROOT.'/for-restaurants')
+        ->assertInertia(fn ($page) => $page
+            ->where('authUserName', 'Dana')
+            ->where('hasAdminAccess', false));
 });
 
 it('renders the signup form with reserved subdomains', function () {
@@ -43,7 +70,8 @@ it('renders the signup form with reserved subdomains', function () {
         ->assertInertia(fn ($page) => $page
             ->component('ForRestaurants/Signup')
             ->where('primaryDomain', config('platform.primary_domain'))
-            ->has('reservedSubdomains'));
+            ->has('reservedSubdomains')
+            ->has('menuPresets'));
 });
 
 it('self-serve signup creates the user and restaurant, grants admin, logs in, and redirects to onboarding', function () {
@@ -101,4 +129,28 @@ it('requires password confirmation', function () {
     $this->post(ROOT.'/for-restaurants/signup', signupPayload([
         'password_confirmation' => 'something-else',
     ]))->assertSessionHasErrors('password');
+});
+
+it('seeds a starter menu when a preset is chosen', function () {
+    $this->post(ROOT.'/for-restaurants/signup', signupPayload(['menu_preset' => 'mexican']));
+
+    $restaurant = Restaurant::where('subdomain', 'marcos-pizza')->first();
+
+    expect($restaurant->menuItems()->exists())->toBeTrue()
+        ->and($restaurant->menuCategories()->exists())->toBeTrue();
+});
+
+it('leaves the menu empty when no preset is chosen', function () {
+    $this->post(ROOT.'/for-restaurants/signup', signupPayload(['menu_preset' => null]));
+
+    $restaurant = Restaurant::where('subdomain', 'marcos-pizza')->first();
+
+    expect($restaurant->menuItems()->exists())->toBeFalse();
+});
+
+it('rejects an unknown menu preset', function () {
+    $this->post(ROOT.'/for-restaurants/signup', signupPayload(['menu_preset' => 'klingon']))
+        ->assertSessionHasErrors('menu_preset');
+
+    expect(Restaurant::query()->count())->toBe(0);
 });

@@ -13,11 +13,12 @@ import { home } from '@/routes';
 defineProps<{
     reservedSubdomains: string[];
     primaryDomain: string;
+    menuPresets: { value: string; label: string }[];
 }>();
 </script>
 
 <template>
-    <Head title="Apply to Plateful" />
+    <Head title="Set up your restaurant" />
 
     <div class="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]">
         <header class="border-b border-black/5 dark:border-white/10">
@@ -30,9 +31,9 @@ defineProps<{
         </header>
 
         <main class="mx-auto max-w-3xl px-6 py-12">
-            <h1 class="text-3xl font-semibold tracking-tight">Apply for your restaurant</h1>
+            <h1 class="text-3xl font-semibold tracking-tight">Set up your restaurant</h1>
             <p class="mt-2 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
-                Tell us a bit about your restaurant. We review applications within one business day and email you when you're approved.
+                Tell us a bit about your restaurant and pick a subdomain. Next you'll add your menu, set your hours, and connect payments — then go live.
             </p>
 
             <Form
@@ -100,29 +101,39 @@ defineProps<{
                         <Label for="custom_domain">Custom domain (optional)</Label>
                         <Input id="custom_domain" type="text" name="custom_domain" placeholder="pizzajoint.com" />
                         <p class="text-xs text-[#1b1b18]/50 dark:text-[#EDEDEC]/50">
-                            We'll help you wire this up after approval.
+                            We'll help you wire this up after you sign up.
                         </p>
                         <InputError :message="errors.custom_domain" />
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div class="grid gap-2">
-                            <Label for="cuisine_type">Cuisine</Label>
-                            <Input id="cuisine_type" type="text" name="cuisine_type" placeholder="Pizza, Thai, Cafe, etc." />
-                            <InputError :message="errors.cuisine_type" />
-                        </div>
+                    <div class="grid gap-2">
+                        <Label for="menu_preset">Starter menu (optional)</Label>
+                        <select
+                            id="menu_preset"
+                            name="menu_preset"
+                            class="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                            <option value="">Start blank — I'll build my own</option>
+                            <option v-for="preset in menuPresets" :key="preset.value" :value="preset.value">
+                                {{ preset.label }}
+                            </option>
+                        </select>
+                        <p class="text-xs text-[#1b1b18]/50 dark:text-[#EDEDEC]/50">
+                            We'll prefill a sample menu you can rename, re-price, or delete later.
+                        </p>
+                        <InputError :message="errors.menu_preset" />
+                    </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="grid gap-2">
-                                <Label for="city">City</Label>
-                                <Input id="city" type="text" name="city" />
-                                <InputError :message="errors.city" />
-                            </div>
-                            <div class="grid gap-2">
-                                <Label for="state">State</Label>
-                                <Input id="state" type="text" name="state" maxlength="2" placeholder="NY" />
-                                <InputError :message="errors.state" />
-                            </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="grid gap-2">
+                            <Label for="city">City</Label>
+                            <Input id="city" type="text" name="city" />
+                            <InputError :message="errors.city" />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="state">State</Label>
+                            <Input id="state" type="text" name="state" maxlength="2" placeholder="NY" />
+                            <InputError :message="errors.state" />
                         </div>
                     </div>
 
@@ -140,7 +151,7 @@ defineProps<{
 
                 <Button type="submit" :disabled="processing" data-test="submit-signup-button">
                     <Spinner v-if="processing" />
-                    Submit application
+                    Create my restaurant
                 </Button>
             </Form>
         </main>
