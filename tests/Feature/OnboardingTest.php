@@ -95,6 +95,61 @@ it('marks hours and menu steps complete once the data exists', function () {
             ->where('steps.2.complete', true));
 });
 
+it('keeps the onboarding page accessible after the restaurant goes live', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+    addHours($restaurant);
+    addMenuItem($restaurant);
+    markStripeReady($restaurant);
+
+    $this->actingAs($owner)->post(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/go-live");
+    expect($restaurant->fresh()->isLive())->toBeTrue();
+
+    $this->actingAs($owner)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Admin/TenantAdmin/Onboarding')
+            ->where('restaurant.isLive', true));
+});
+
+it('exposes live and stripe status with the admin role so the setup nav can render for admins', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/dashboard")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('currentRestaurantRole', 'admin')
+            ->where('restaurant.isLive', false)
+            ->where('restaurant.isStripeReady', false));
+});
+
+it('marks once-live, stripe-ready restaurants as setup-complete for the admin nav', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+    addHours($restaurant);
+    addMenuItem($restaurant);
+    markStripeReady($restaurant);
+    $this->actingAs($owner)->post(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/go-live");
+
+    $this->actingAs($owner)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/dashboard")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('restaurant.isLive', true)
+            ->where('restaurant.isStripeReady', true));
+});
+
+it('marks staff with the staff role so the setup nav stays hidden for them', function () {
+    [, $restaurant] = makeOwnerAndApprovedRestaurant();
+    $staff = User::factory()->create();
+    $restaurant->members()->attach($staff->id, ['role' => RestaurantRole::Staff->value]);
+
+    $this->actingAs($staff)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/dashboard")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('currentRestaurantRole', 'staff'));
+});
+
 it('blocks non-admin members from the onboarding page', function () {
     [, $restaurant] = makeOwnerAndApprovedRestaurant();
     $staff = User::factory()->create();

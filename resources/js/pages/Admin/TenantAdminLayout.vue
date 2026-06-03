@@ -3,12 +3,14 @@ import { Link, usePage } from '@inertiajs/vue3';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { computed } from 'vue';
 
-defineProps<{
+const props = defineProps<{
     restaurant: App.Data.RestaurantData;
 }>();
 
 const page = usePage<{ currentRestaurantRole: string | null }>();
 const isAdmin = computed(() => page.props.currentRestaurantRole === 'admin');
+
+const setupComplete = computed(() => props.restaurant.isLive && props.restaurant.isStripeReady);
 </script>
 
 <template>
@@ -57,6 +59,18 @@ const isAdmin = computed(() => page.props.currentRestaurantRole === 'admin');
                     Hours
                 </Link>
                 <template v-if="isAdmin">
+                    <Link
+                        :href="`/${restaurant.subdomain}/onboarding`"
+                        class="inline-flex items-center gap-1.5 hover:text-foreground"
+                    >
+                        {{ setupComplete ? 'Setup' : 'Finish setup' }}
+                        <span
+                            v-if="!setupComplete"
+                            class="inline-block size-2 rounded-full bg-amber-500"
+                            aria-hidden="true"
+                            data-test="setup-attention-dot"
+                        />
+                    </Link>
                     <Link
                         :href="`/${restaurant.subdomain}/payouts`"
                         class="hover:text-foreground"
