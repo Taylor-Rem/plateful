@@ -1,17 +1,11 @@
 <?php
 
-use App\Mail\RestaurantSignupSubmittedMail;
+use App\Enums\RestaurantStatus;
 use App\Models\Restaurant;
-use App\Models\RestaurantSignup;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
 
 const ROOT = 'http://plateful.test';
-
-beforeEach(function () {
-    Mail::fake();
-});
 
 /**
  * Minimal valid signup payload — individual tests can override fields.
@@ -52,38 +46,30 @@ it('renders the signup form with reserved subdomains', function () {
             ->has('reservedSubdomains'));
 });
 
-it('creates a user and a pending signup, logs in, and emails the platform', function () {
-    config()->set('platform.admin_notification_email', 'platform@example.com');
-
+it('self-serve signup creates the user and restaurant, grants admin, logs in, and redirects to onboarding', function () {
     $this->post(ROOT.'/for-restaurants/signup', signupPayload())
-        ->assertRedirect(ROOT.'/for-restaurants/pending');
+        ->assertRedirect('http://admin.plateful.test/marcos-pizza/onboarding');
 
     $user = User::where('email', 'marco@example.com')->first();
     expect($user)->not->toBeNull();
 
-    $signup = RestaurantSignup::where('user_id', $user->id)->first();
-    expect($signup)->not->toBeNull()
-        ->and($signup->status)->toBe(RestaurantSignup::STATUS_PENDING)
-        ->and($signup->proposed_name)->toBe("Marco's Pizza")
-        ->and($signup->proposed_subdomain)->toBe('marcos-pizza')
-        ->and($signup->restaurant_id)->toBeNull();
+    $restaurant = Restaurant::where('subdomain', 'marcos-pizza')->first();
+    expect($restaurant)->not->toBeNull()
+        ->and($restaurant->name)->toBe("Marco's Pizza")
+        ->and($restaurant->status)->toBe(RestaurantStatus::Approved)
+        ->and($restaurant->is_active)->toBeTrue()
+        ->and($restaurant->isLive())->toBeFalse();
+
+    // Owner gains admin access via the pivot the moment they sign up.
+    expect($user->fresh()->isRestaurantAdminAt($restaurant))->toBeTrue();
 
     expect(Auth::id())->toBe($user->id);
-
-    Mail::assertQueued(
-        RestaurantSignupSubmittedMail::class,
-        fn (RestaurantSignupSubmittedMail $mail) => $mail->hasTo('platform@example.com')
-            && $mail->signup->is($signup)
-    );
 });
 
-it('does NOT make the new owner a restaurant admin until approval', function () {
+it('a freshly signed-up restaurant is not visible on the public homepage', function () {
     $this->post(ROOT.'/for-restaurants/signup', signupPayload());
 
-    $user = User::where('email', 'marco@example.com')->first();
-
-    expect($user->isAdmin())->toBeFalse()
-        ->and($user->restaurants()->count())->toBe(0);
+    expect(Restaurant::query()->public()->count())->toBe(0);
 });
 
 it('rejects a subdomain that already belongs to an existing restaurant', function () {
@@ -95,28 +81,11 @@ it('rejects a subdomain that already belongs to an existing restaurant', functio
     expect(User::where('email', 'marco@example.com')->exists())->toBeFalse();
 });
 
-it('rejects a subdomain that is already claimed by another pending signup', function () {
-    RestaurantSignup::factory()->create([
-        'proposed_subdomain' => 'marcos-pizza',
-        'status' => RestaurantSignup::STATUS_PENDING,
-    ]);
-
-    $this->post(ROOT.'/for-restaurants/signup', signupPayload())
-        ->assertSessionHasErrors('subdomain');
-});
-
-it('allows reusing a subdomain that was previously rejected', function () {
-    RestaurantSignup::factory()->rejected()->create([
-        'proposed_subdomain' => 'marcos-pizza',
-    ]);
-
-    $this->post(ROOT.'/for-restaurants/signup', signupPayload())
-        ->assertRedirect(ROOT.'/for-restaurants/pending');
-});
-
 it('rejects reserved subdomains', function () {
     $this->post(ROOT.'/for-restaurants/signup', signupPayload(['subdomain' => 'admin']))
         ->assertSessionHasErrors('subdomain');
+
+    expect(Restaurant::query()->count())->toBe(0);
 });
 
 it('rejects signup when the email is already in use', function () {
@@ -124,26 +93,12 @@ it('rejects signup when the email is already in use', function () {
 
     $this->post(ROOT.'/for-restaurants/signup', signupPayload())
         ->assertSessionHasErrors('email');
+
+    expect(Restaurant::query()->count())->toBe(0);
 });
 
 it('requires password confirmation', function () {
     $this->post(ROOT.'/for-restaurants/signup', signupPayload([
         'password_confirmation' => 'something-else',
     ]))->assertSessionHasErrors('password');
-});
-
-it('shows the signup summary on the pending page', function () {
-    $user = User::factory()->create();
-    $signup = RestaurantSignup::factory()->for($user)->create([
-        'proposed_name' => "Marco's Pizza",
-        'proposed_subdomain' => 'marcos-pizza',
-    ]);
-
-    $this->actingAs($user)
-        ->get(ROOT.'/for-restaurants/pending')
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('ForRestaurants/Pending')
-            ->where('signup.restaurantName', $signup->proposed_name)
-            ->where('signup.subdomain', $signup->proposed_subdomain));
 });

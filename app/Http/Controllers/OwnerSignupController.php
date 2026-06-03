@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RestaurantRole;
+use App\Enums\RestaurantStatus;
 use App\Http\Requests\OwnerSignupRequest;
-use App\Mail\RestaurantSignupSubmittedMail;
-use App\Models\RestaurantSignup;
+use App\Models\Restaurant;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,13 +35,16 @@ class OwnerSignupController extends Controller
     }
 
     /**
-     * Submit a new restaurant signup. Creates the user (as a Plateful account
-     * with no admin pivot yet) and a pending RestaurantSignup record. The
-     * platform reviews and approves in a later phase.
+     * Self-serve signup. Creates the owner's Plateful account and their
+     * restaurant in one transaction, grants them admin access via the
+     * restaurant_user pivot, logs them in, and drops them straight into the
+     * onboarding wizard. The restaurant is `approved` + `is_active` (it can be
+     * configured) but NOT live — go-live still requires Stripe Connect plus the
+     * required onboarding steps, so a dead signup costs the platform nothing.
      */
     public function store(OwnerSignupRequest $request): RedirectResponse
     {
-        $signup = DB::transaction(function () use ($request) {
+        [$user, $restaurant] = DB::transaction(function () use ($request) {
             $user = User::create([
                 'name' => $request->string('name')->trim()->toString(),
                 'email' => $request->string('email')->trim()->toString(),
@@ -50,49 +52,35 @@ class OwnerSignupController extends Controller
                 'password' => $request->string('password')->toString(),
             ]);
 
-            return RestaurantSignup::create([
-                'user_id' => $user->id,
-                'proposed_name' => $request->string('restaurant_name')->trim()->toString(),
-                'proposed_subdomain' => $request->string('subdomain')->toString(),
-                'proposed_custom_domain' => $request->input('custom_domain'),
-                'cuisine_type' => $request->input('cuisine_type'),
-                'city' => $request->input('city'),
-                'state' => $request->input('state'),
-                'notes' => $request->input('notes'),
-                'status' => RestaurantSignup::STATUS_PENDING,
+            $restaurant = Restaurant::create([
+                'name' => $request->string('restaurant_name')->trim()->toString(),
+                'subdomain' => $request->string('subdomain')->toString(),
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'street' => '',
+                'city' => $request->input('city') ?? '',
+                'state' => $request->input('state') ?? '',
+                'postal_code' => '',
+                'country' => 'US',
+                'timezone' => 'America/New_York',
+                'is_active' => true,
+                'status' => RestaurantStatus::Approved,
+                'approved_at' => now(),
             ]);
+
+            // Owner becomes a restaurant admin via the pivot — this is the
+            // moment they gain access to the admin console.
+            $restaurant->members()->attach($user->id, [
+                'role' => RestaurantRole::Admin->value,
+            ]);
+
+            return [$user, $restaurant];
         });
 
-        Auth::login($signup->user);
+        Auth::login($user);
 
-        $notifyTo = config('platform.admin_notification_email') ?: config('mail.from.address');
-        if ($notifyTo) {
-            Mail::to($notifyTo)->queue(new RestaurantSignupSubmittedMail($signup));
-        }
-
-        return redirect()->route('owner-signup.pending');
-    }
-
-    /**
-     * Post-signup landing showing "we're reviewing your application".
-     */
-    public function pending(Request $request): Response
-    {
-        $user = $request->user();
-
-        $signup = $user
-            ? RestaurantSignup::where('user_id', $user->id)
-                ->latest('id')
-                ->first()
-            : null;
-
-        return Inertia::render('ForRestaurants/Pending', [
-            'signup' => $signup ? [
-                'restaurantName' => $signup->proposed_name,
-                'subdomain' => $signup->proposed_subdomain,
-                'status' => $signup->status,
-                'submittedAt' => $signup->created_at?->toIso8601String(),
-            ] : null,
+        return redirect()->route('admin.restaurant.onboarding.show', [
+            'restaurant' => $restaurant->subdomain,
         ]);
     }
 }

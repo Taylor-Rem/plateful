@@ -46,6 +46,5 @@ Route::domain(config('platform.primary_domain'))->group(function () {
         Route::post('/signup', [OwnerSignupController::class, 'store'])
             ->middleware('throttle:6,1')
             ->name('store');
-        Route::get('/pending', [OwnerSignupController::class, 'pending'])->name('pending');
     });
 });
