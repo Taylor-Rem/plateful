@@ -72,6 +72,21 @@ class Restaurant extends Model
         'auto_cancel_refund_mode',
     ];
 
+    /**
+     * Apply the configured platform default fee rate when a restaurant is
+     * created, unless an explicit rate was provided. Existing restaurants are
+     * never touched here, so changing the platform default does not affect
+     * already-created restaurants (grandfathering).
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (Restaurant $restaurant): void {
+            if (! isset($restaurant->attributes['application_fee_percent'])) {
+                $restaurant->application_fee_percent = config('platform.default_application_fee_percent');
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [

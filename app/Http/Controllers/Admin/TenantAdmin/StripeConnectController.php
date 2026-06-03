@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Restaurant;
 use App\Services\Stripe\StripeConnectService;
 use Illuminate\Http\RedirectResponse;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 class StripeConnectController extends Controller
 {
@@ -15,7 +17,7 @@ class StripeConnectController extends Controller
      * Create the connected account if missing, then send the owner to a fresh
      * Stripe-hosted onboarding link.
      */
-    public function start(Restaurant $restaurant): RedirectResponse
+    public function start(Restaurant $restaurant): Response
     {
         $this->authorize('manageStripe', $restaurant);
 
@@ -23,7 +25,7 @@ class StripeConnectController extends Controller
             $this->connect->createExpressAccount($restaurant);
         }
 
-        return redirect()->away($this->onboardingLink($restaurant));
+        return Inertia::location($this->onboardingLink($restaurant));
     }
 
     /**
@@ -50,7 +52,7 @@ class StripeConnectController extends Controller
      * Stripe redirects here if the onboarding link expired or the owner
      * refreshed mid-flow. Hand back a freshly generated link.
      */
-    public function refresh(Restaurant $restaurant): RedirectResponse
+    public function refresh(Restaurant $restaurant): Response
     {
         $this->authorize('manageStripe', $restaurant);
 
@@ -58,13 +60,13 @@ class StripeConnectController extends Controller
             $this->connect->createExpressAccount($restaurant);
         }
 
-        return redirect()->away($this->onboardingLink($restaurant));
+        return Inertia::location($this->onboardingLink($restaurant));
     }
 
     /**
      * Send the owner to the Express Dashboard to update bank info.
      */
-    public function dashboard(Restaurant $restaurant): RedirectResponse
+    public function dashboard(Restaurant $restaurant): Response
     {
         $this->authorize('manageStripe', $restaurant);
 
@@ -72,7 +74,7 @@ class StripeConnectController extends Controller
             return back()->with('error', 'Connect Stripe before opening the dashboard.');
         }
 
-        return redirect()->away($this->connect->createDashboardLink($restaurant));
+        return Inertia::location($this->connect->createDashboardLink($restaurant));
     }
 
     private function onboardingLink(Restaurant $restaurant): string

@@ -6,6 +6,20 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Default Application Fee Percent
+    |---------------------------------------------------------------------------
+    |
+    | The platform fee rate (percent of the food subtotal) applied to a
+    | restaurant at CREATION time. Each restaurant keeps the rate it was
+    | created with — changing this value only governs future sign-ups and
+    | never alters an existing restaurant's stored rate (grandfathering).
+    | Per-restaurant overrides are set by super admins in the console.
+    |
+    */
+    'default_application_fee_percent' => (float) env('PLATFORM_DEFAULT_APPLICATION_FEE_PERCENT', 1.00),
+
+    /*
+    |---------------------------------------------------------------------------
     | Admin Notification Email
     |---------------------------------------------------------------------------
     |

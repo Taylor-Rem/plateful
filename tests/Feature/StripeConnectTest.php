@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\Stripe\StripeConnectService;
 use Mockery\MockInterface;
 use Stripe\Account;
+use Stripe\Service\AccountService;
 use Stripe\StripeClient;
 
 const STRIPE_ADMIN = 'http://admin.plateful.test';
@@ -44,6 +45,49 @@ function mockConnect(): MockInterface
     return $mock;
 }
 
+// --- Stripe-Notice suppression --------------------------------------------
+
+it('does not fail when a Stripe SDK call emits a Stripe-Notice warning', function () {
+    [, $restaurant] = stripeOwnerAndRestaurant();
+
+    $accounts = Mockery::mock(AccountService::class);
+    $accounts->shouldReceive('create')->once()->andReturnUsing(function () {
+        // stripe-php promotes a `Stripe-Notice` response header into this
+        // E_USER_WARNING, which Laravel turns into a fatal ErrorException.
+        trigger_error('We recommend building your integration using Accounts v2', E_USER_WARNING);
+
+        return Account::constructFrom(['id' => 'acct_notice']);
+    });
+
+    $stripe = Mockery::mock(StripeClient::class);
+    $stripe->shouldReceive('getService')->with('accounts')->andReturn($accounts);
+
+    $service = new StripeConnectService($stripe);
+
+    expect($service->createExpressAccount($restaurant))->toBe('acct_notice');
+    expect($restaurant->fresh()->stripe_account_id)->toBe('acct_notice');
+});
+
+it('leaves E_USER_WARNINGs raised outside a Stripe call fatal', function () {
+    [, $restaurant] = stripeOwnerAndRestaurant();
+
+    $accounts = Mockery::mock(AccountService::class);
+    $accounts->shouldReceive('create')->once()
+        ->andReturn(Account::constructFrom(['id' => 'acct_scoped']));
+
+    $stripe = Mockery::mock(StripeClient::class);
+    $stripe->shouldReceive('getService')->with('accounts')->andReturn($accounts);
+
+    $service = new StripeConnectService($stripe);
+
+    // The wrapped call must restore the prior handler, so a warning afterwards
+    // still becomes a fatal ErrorException.
+    $service->createExpressAccount($restaurant);
+
+    expect(fn () => trigger_error('not a stripe notice', E_USER_WARNING))
+        ->toThrow(ErrorException::class);
+});
+
 // --- statusFor mapping ----------------------------------------------------
 
 it('maps Stripe readiness flags to the status vocabulary', function () {
@@ -55,7 +99,7 @@ it('maps Stripe readiness flags to the status vocabulary', function () {
 
 // --- start ----------------------------------------------------------------
 
-it('creates a connected account and redirects to the onboarding link', function () {
+it('creates a connected account and sends the owner to the onboarding link', function () {
     [$owner, $restaurant] = stripeOwnerAndRestaurant();
 
     $mock = mockConnect();
@@ -70,9 +114,13 @@ it('creates a connected account and redirects to the onboarding link', function 
         });
     $mock->shouldReceive('createAccountLink')->once()->andReturn('https://connect.stripe.test/setup');
 
+    // Inertia (XHR) requests can't follow an external 302; Inertia::location
+    // answers with a 409 + X-Inertia-Location so the client does a full visit.
     $this->actingAs($owner)
+        ->withHeaders(['X-Inertia' => 'true'])
         ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/connect")
-        ->assertRedirect('https://connect.stripe.test/setup');
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', 'https://connect.stripe.test/setup');
 
     expect($restaurant->fresh()->stripe_account_id)->toBe('acct_123');
 });
@@ -86,8 +134,25 @@ it('does not recreate the account when one already exists', function () {
     $mock->shouldReceive('createAccountLink')->once()->andReturn('https://connect.stripe.test/again');
 
     $this->actingAs($owner)
+        ->withHeaders(['X-Inertia' => 'true'])
         ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/connect")
-        ->assertRedirect('https://connect.stripe.test/again');
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', 'https://connect.stripe.test/again');
+});
+
+it('hands back a fresh onboarding link on refresh', function () {
+    [$owner, $restaurant] = stripeOwnerAndRestaurant();
+    $restaurant->forceFill(['stripe_account_id' => 'acct_refresh'])->save();
+
+    $mock = mockConnect();
+    $mock->shouldReceive('createExpressAccount')->never();
+    $mock->shouldReceive('createAccountLink')->once()->andReturn('https://connect.stripe.test/refresh');
+
+    // refresh is reached via Stripe's full-page redirect (not an Inertia XHR),
+    // so Inertia::location answers with a plain 302 to the fresh link.
+    $this->actingAs($owner)
+        ->get(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/refresh")
+        ->assertRedirect('https://connect.stripe.test/refresh');
 });
 
 it('blocks staff from starting Stripe onboarding', function () {

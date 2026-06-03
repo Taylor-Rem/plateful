@@ -4,6 +4,7 @@ namespace App\Services\Stripe;
 
 use App\Models\Order;
 use App\Models\Restaurant;
+use Illuminate\Support\Facades\Log;
 use Stripe\Account;
 use Stripe\Checkout\Session;
 use Stripe\Collection;
@@ -30,7 +31,7 @@ class StripeConnectService
         string $idempotencyKey,
         int $pendingCheckoutId,
     ): Session {
-        return $this->stripe->checkout->sessions->create([
+        return $this->withSuppressedStripeNotices(fn () => $this->stripe->checkout->sessions->create([
             'mode' => 'payment',
             'line_items' => [[
                 'price_data' => [
@@ -50,7 +51,7 @@ class StripeConnectService
         ], [
             'stripe_account' => $restaurant->stripe_account_id,
             'idempotency_key' => $idempotencyKey,
-        ]);
+        ]));
     }
 
     /**
@@ -61,19 +62,19 @@ class StripeConnectService
      */
     public function listPayouts(Restaurant $restaurant, array $params = []): Collection
     {
-        return $this->stripe->payouts->all(
+        return $this->withSuppressedStripeNotices(fn () => $this->stripe->payouts->all(
             $params,
             ['stripe_account' => $restaurant->stripe_account_id],
-        );
+        ));
     }
 
     public function retrieveCheckoutSession(Restaurant $restaurant, string $sessionId): Session
     {
-        return $this->stripe->checkout->sessions->retrieve(
+        return $this->withSuppressedStripeNotices(fn () => $this->stripe->checkout->sessions->retrieve(
             $sessionId,
             [],
             ['stripe_account' => $restaurant->stripe_account_id],
-        );
+        ));
     }
 
     /**
@@ -82,12 +83,12 @@ class StripeConnectService
      */
     public function refundOrder(Order $order): Refund
     {
-        return $this->stripe->refunds->create([
+        return $this->withSuppressedStripeNotices(fn () => $this->stripe->refunds->create([
             'payment_intent' => $order->stripe_payment_intent_id,
             'refund_application_fee' => true,
         ], [
             'stripe_account' => $order->restaurant->stripe_account_id,
-        ]);
+        ]));
     }
 
     /**
@@ -96,7 +97,7 @@ class StripeConnectService
      */
     public function createExpressAccount(Restaurant $restaurant): string
     {
-        $account = $this->stripe->accounts->create([
+        $account = $this->withSuppressedStripeNotices(fn () => $this->stripe->accounts->create([
             'type' => 'express',
             'country' => (string) config('services.stripe.connect_country', 'US'),
             'email' => $restaurant->email,
@@ -111,7 +112,7 @@ class StripeConnectService
             'metadata' => [
                 'restaurant_id' => (string) $restaurant->id,
             ],
-        ]);
+        ]));
 
         $restaurant->forceFill([
             'stripe_account_id' => $account->id,
@@ -126,19 +127,19 @@ class StripeConnectService
      */
     public function createAccountLink(Restaurant $restaurant, string $returnUrl, string $refreshUrl): string
     {
-        $link = $this->stripe->accountLinks->create([
+        $link = $this->withSuppressedStripeNotices(fn () => $this->stripe->accountLinks->create([
             'account' => $restaurant->stripe_account_id,
             'return_url' => $returnUrl,
             'refresh_url' => $refreshUrl,
             'type' => 'account_onboarding',
-        ]);
+        ]));
 
         return $link->url;
     }
 
     public function retrieveAccount(string $stripeAccountId): Account
     {
-        return $this->stripe->accounts->retrieve($stripeAccountId);
+        return $this->withSuppressedStripeNotices(fn () => $this->stripe->accounts->retrieve($stripeAccountId));
     }
 
     /**
@@ -147,7 +148,7 @@ class StripeConnectService
      */
     public function createDashboardLink(Restaurant $restaurant): string
     {
-        $link = $this->stripe->accounts->createLoginLink($restaurant->stripe_account_id);
+        $link = $this->withSuppressedStripeNotices(fn () => $this->stripe->accounts->createLoginLink($restaurant->stripe_account_id));
 
         return $link->url;
     }
@@ -177,5 +178,33 @@ class StripeConnectService
             $detailsSubmitted => Restaurant::STRIPE_RESTRICTED,
             default => Restaurant::STRIPE_PENDING,
         };
+    }
+
+    /**
+     * Run a StripeClient SDK call with informational Stripe notices made
+     * non-fatal. stripe-php emits `Stripe-Notice` response headers (e.g. an
+     * Accounts v2 recommendation) via trigger_error(E_USER_WARNING), which
+     * Laravel's HandleExceptions would otherwise promote to a fatal
+     * ErrorException. We log the notice and swallow it, leaving every other
+     * error level — and anything raised outside this call — untouched.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $fn
+     * @return T
+     */
+    private function withSuppressedStripeNotices(callable $fn): mixed
+    {
+        set_error_handler(function (int $level, string $message): bool {
+            Log::warning('[stripe-notice] '.$message);
+
+            return true;
+        }, E_USER_WARNING);
+
+        try {
+            return $fn();
+        } finally {
+            restore_error_handler();
+        }
     }
 }

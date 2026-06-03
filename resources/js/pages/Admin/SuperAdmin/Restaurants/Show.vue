@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
 import { ref } from 'vue';
@@ -12,6 +12,16 @@ const props = defineProps<{
 
 const confirming = ref(false);
 const processing = ref(false);
+
+const feeForm = useForm({
+    application_fee_percent: props.restaurant.applicationFeePercent,
+});
+
+function saveFee() {
+    feeForm.put(`/super/restaurants/${props.restaurant.subdomain}/fee`, {
+        preserveScroll: true,
+    });
+}
 
 function formatDate(iso: string | null | undefined): string {
     if (!iso) return '—';
@@ -118,6 +128,51 @@ function activate() {
                         Open admin dashboard →
                     </a>
                 </div>
+            </section>
+
+            <section class="rounded-lg border border-border bg-card p-6">
+                <h2 class="text-base font-semibold text-foreground">Platform pricing</h2>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    The application fee Plateful takes from each order, charged on the food
+                    subtotal only. This restaurant keeps this rate unless you change it here.
+                </p>
+                <form class="mt-4 flex flex-wrap items-end gap-3" @submit.prevent="saveFee">
+                    <div>
+                        <label
+                            for="application_fee_percent"
+                            class="block text-xs font-medium text-muted-foreground"
+                        >
+                            Application fee (%)
+                        </label>
+                        <div class="mt-1 flex items-center gap-1">
+                            <input
+                                id="application_fee_percent"
+                                v-model="feeForm.application_fee_percent"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                class="w-28 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                            />
+                            <span class="text-sm text-muted-foreground">%</span>
+                        </div>
+                    </div>
+                    <Button type="submit" :disabled="feeForm.processing">
+                        {{ feeForm.processing ? 'Saving…' : 'Save fee' }}
+                    </Button>
+                    <p
+                        v-if="feeForm.recentlySuccessful"
+                        class="text-sm text-green-600"
+                    >
+                        Saved.
+                    </p>
+                </form>
+                <p
+                    v-if="feeForm.errors.application_fee_percent"
+                    class="mt-2 text-sm text-destructive"
+                >
+                    {{ feeForm.errors.application_fee_percent }}
+                </p>
             </section>
 
             <section class="rounded-lg border border-border bg-card p-6">

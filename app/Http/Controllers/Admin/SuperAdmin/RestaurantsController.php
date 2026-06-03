@@ -7,6 +7,7 @@ use App\Data\PendingInvitationData;
 use App\Data\RestaurantData;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SuperAdmin\StoreRestaurantRequest;
+use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantFeeRequest;
 use App\Mail\AdminInvitationMail;
 use App\Models\AdminInvitation;
 use App\Models\Restaurant;
@@ -106,6 +107,24 @@ class RestaurantsController extends Controller
             'admins' => $admins,
             'pendingInvitations' => $pendingInvitations,
         ]);
+    }
+
+    /**
+     * Set this restaurant's per-restaurant application fee rate (an override).
+     * This is PLATFORM pricing — gated to super admins by the `super`
+     * middleware — and only ever touches this single restaurant, so existing
+     * restaurants stay locked at their stored rate.
+     */
+    public function updateFee(UpdateRestaurantFeeRequest $request, Restaurant $restaurant): RedirectResponse
+    {
+        // application_fee_percent is intentionally not mass-assignable; set it
+        // explicitly from the validated input.
+        $restaurant->application_fee_percent = $request->validated()['application_fee_percent'];
+        $restaurant->save();
+
+        return redirect()
+            ->route('admin.super.restaurants.show', $restaurant)
+            ->with('success', "Updated {$restaurant->name}'s fee rate to {$restaurant->application_fee_percent}%.");
     }
 
     public function deactivate(Restaurant $restaurant): RedirectResponse
