@@ -8,7 +8,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    Storage::fake('restaurant_assets');
+    Storage::fake(RestaurantImageService::disk());
 });
 
 function photoRestaurant(string $sub = 'marcos'): Restaurant
@@ -75,7 +75,7 @@ test('admin can upload a photo with caption and variants are written', function 
         ->and($photo->image_path)->toStartWith("restaurants/{$r->id}/gallery/{$photo->id}/")
         ->and($photo->image_path)->toEndWith('.webp');
 
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     foreach (app(RestaurantImageService::class)->variantPaths($photo->image_path) as $variant) {
         expect($disk->exists($variant))->toBeTrue();
     }
@@ -160,7 +160,7 @@ test('admin can delete a photo and variants are removed', function () {
 
     expect(RestaurantPhoto::withoutTenantScope()->count())->toBe(0);
 
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     foreach ($variants as $v) {
         expect($disk->exists($v))->toBeFalse();
     }

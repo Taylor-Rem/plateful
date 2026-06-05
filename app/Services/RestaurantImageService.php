@@ -16,7 +16,15 @@ use Intervention\Image\Interfaces\ImageInterface;
 
 class RestaurantImageService
 {
-    public const DISK = 'restaurant_assets';
+    /**
+     * The filesystem disk used for all restaurant media. Resolves to the
+     * configured media disk, which defaults to the application's default
+     * disk (the bucket Laravel Cloud injects in production).
+     */
+    public static function disk(): string
+    {
+        return config('media.disk', config('filesystems.default'));
+    }
 
     public const MENU_ITEM_MEDIUM = 800;
 
@@ -124,7 +132,7 @@ class RestaurantImageService
 
     public function deleteDirectoryForGalleryPhoto(RestaurantPhoto $photo): void
     {
-        Storage::disk(self::DISK)
+        Storage::disk(self::disk())
             ->deleteDirectory("restaurants/{$photo->restaurant_id}/gallery/{$photo->id}");
     }
 
@@ -155,7 +163,7 @@ class RestaurantImageService
             return;
         }
 
-        $disk = Storage::disk(self::DISK);
+        $disk = Storage::disk(self::disk());
 
         foreach ($this->variantPaths($diskPath) as $variant) {
             if ($disk->exists($variant)) {
@@ -166,18 +174,18 @@ class RestaurantImageService
 
     public function deleteDirectoryForLogo(Restaurant $restaurant): void
     {
-        Storage::disk(self::DISK)->deleteDirectory("restaurants/{$restaurant->id}/logo");
+        Storage::disk(self::disk())->deleteDirectory("restaurants/{$restaurant->id}/logo");
     }
 
     public function deleteDirectoryForMenuItem(MenuItem $item): void
     {
-        Storage::disk(self::DISK)
+        Storage::disk(self::disk())
             ->deleteDirectory("restaurants/{$item->restaurant_id}/menu-items/{$item->id}");
     }
 
     public function deleteDirectoryForRestaurant(Restaurant $restaurant): void
     {
-        Storage::disk(self::DISK)->deleteDirectory("restaurants/{$restaurant->id}");
+        Storage::disk(self::disk())->deleteDirectory("restaurants/{$restaurant->id}");
     }
 
     /**
@@ -203,7 +211,7 @@ class RestaurantImageService
         int $mediumMax,
         int $thumbMax,
     ): string {
-        $disk = Storage::disk(self::DISK);
+        $disk = Storage::disk(self::disk());
         $uuid = (string) Str::uuid();
 
         $basePath = "{$directory}/{$uuid}.webp";
@@ -212,9 +220,9 @@ class RestaurantImageService
 
         $image = $this->manager->decodePath($file->getRealPath());
 
-        $disk->put($basePath, $this->resizeToWebp($image, self::ORIGINAL_CAP));
-        $disk->put($mediumPath, $this->resizeToWebp($image, $mediumMax));
-        $disk->put($thumbPath, $this->resizeToWebp($image, $thumbMax));
+        $disk->put($basePath, $this->resizeToWebp($image, self::ORIGINAL_CAP), 'public');
+        $disk->put($mediumPath, $this->resizeToWebp($image, $mediumMax), 'public');
+        $disk->put($thumbPath, $this->resizeToWebp($image, $thumbMax), 'public');
 
         unset($image);
 

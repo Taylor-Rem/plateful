@@ -56,23 +56,9 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
-            'throw' => false,
-            'report' => false,
-        ],
-
-        'restaurant_assets' => [
-            'driver' => env('FILESYSTEM_RESTAURANT_ASSETS_DRIVER', 'local'),
-            'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
-            'key' => env('RESTAURANT_ASSETS_KEY', env('AWS_ACCESS_KEY_ID')),
-            'secret' => env('RESTAURANT_ASSETS_SECRET', env('AWS_SECRET_ACCESS_KEY')),
-            'region' => env('RESTAURANT_ASSETS_REGION', env('AWS_DEFAULT_REGION')),
-            'bucket' => env('RESTAURANT_ASSETS_BUCKET', env('AWS_BUCKET')),
-            'endpoint' => env('RESTAURANT_ASSETS_ENDPOINT', env('AWS_ENDPOINT')),
-            'use_path_style_endpoint' => env('RESTAURANT_ASSETS_USE_PATH_STYLE_ENDPOINT', false),
         ],
 
     ],

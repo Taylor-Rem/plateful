@@ -14,7 +14,7 @@ function itemImageBase(Restaurant $r): string
 }
 
 beforeEach(function () {
-    Storage::fake('restaurant_assets');
+    Storage::fake(RestaurantImageService::disk());
 });
 
 function itemImageRestaurant(string $sub = 'marcos'): Restaurant
@@ -69,7 +69,7 @@ test('admin can create an item with an image and all 3 webp variants are written
         ->and($item->image_path)->toStartWith("restaurants/{$r->id}/menu-items/{$item->id}/")
         ->and($item->image_path)->toEndWith('.webp');
 
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     foreach (app(RestaurantImageService::class)->variantPaths($item->image_path) as $variant) {
         expect($disk->exists($variant))->toBeTrue();
     }
@@ -101,7 +101,7 @@ test('replacing an item image deletes the previous variants', function () {
             'image' => UploadedFile::fake()->image('second.png', 600, 600),
         ])->assertRedirect();
 
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     foreach ($oldVariants as $variant) {
         expect($disk->exists($variant))->toBeFalse();
     }
@@ -139,7 +139,7 @@ test('remove_image clears the column and deletes variants', function () {
         ])->assertRedirect();
 
     expect($item->fresh()->image_path)->toBeNull();
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     foreach ($variants as $v) {
         expect($disk->exists($v))->toBeFalse();
     }
@@ -203,7 +203,7 @@ test('deleting a menu item removes its image directory', function () {
 
     $item = MenuItem::withoutTenantScope()->where('restaurant_id', $r->id)->first();
     $dir = "restaurants/{$r->id}/menu-items/{$item->id}";
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     expect($disk->directoryExists($dir))->toBeTrue();
 
     $item->delete();

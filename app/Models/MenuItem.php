@@ -75,7 +75,7 @@ class MenuItem extends Model
             $path = "{$prefix}{$name}-{$variant}.webp";
         }
 
-        return Storage::disk(RestaurantImageService::DISK)->url($path);
+        return Storage::disk(RestaurantImageService::disk())->url($path);
     }
 
     public function category(): BelongsTo

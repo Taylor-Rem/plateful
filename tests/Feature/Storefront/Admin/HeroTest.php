@@ -7,7 +7,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    Storage::fake('restaurant_assets');
+    Storage::fake(RestaurantImageService::disk());
 });
 
 function heroRestaurant(string $sub = 'marcos'): Restaurant
@@ -100,7 +100,7 @@ test('admin can upload hero image and all webp variants are written', function (
         ->and($fresh->hero_image_path)->toStartWith("restaurants/{$r->id}/hero/")
         ->and($fresh->hero_image_path)->toEndWith('.webp');
 
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     foreach (app(RestaurantImageService::class)->variantPaths($fresh->hero_image_path) as $variant) {
         expect($disk->exists($variant))->toBeTrue();
     }
@@ -121,7 +121,7 @@ test('replacing the hero image deletes prior variants', function () {
         ->post(heroUrl($r), ['image' => UploadedFile::fake()->image('second.jpg', 1000, 600)])
         ->assertRedirect();
 
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     foreach ($oldVariants as $variant) {
         expect($disk->exists($variant))->toBeFalse();
     }

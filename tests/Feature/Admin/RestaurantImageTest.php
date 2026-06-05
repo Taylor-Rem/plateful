@@ -10,7 +10,7 @@ use Illuminate\Testing\TestResponse;
 const SETTINGS_ADMIN_BASE = 'http://admin.plateful.test';
 
 beforeEach(function () {
-    Storage::fake('restaurant_assets');
+    Storage::fake(RestaurantImageService::disk());
 });
 
 function settingsRestaurant(string $sub = 'marcos'): Restaurant
@@ -62,7 +62,7 @@ test('admin can upload a jpeg logo and all 3 webp variants are written', functio
         ->and($r->logo_path)->toEndWith('.webp')
         ->and($r->logo_path)->toStartWith("restaurants/{$r->id}/logo/");
 
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     $variants = app(RestaurantImageService::class)->variantPaths($r->logo_path);
     foreach ($variants as $variant) {
         expect($disk->exists($variant))->toBeTrue("Expected {$variant} to exist");
@@ -85,7 +85,7 @@ test('replacing the logo deletes the previous variants', function () {
         'logo' => UploadedFile::fake()->image('second.png', 400, 400),
     ])->assertRedirect();
 
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     foreach ($oldVariants as $variant) {
         expect($disk->exists($variant))->toBeFalse("Old variant {$variant} should be gone");
     }
@@ -113,7 +113,7 @@ test('remove_logo deletes variants and clears the column', function () {
 
     expect($r->fresh()->logo_path)->toBeNull();
 
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     foreach ($variants as $variant) {
         expect($disk->exists($variant))->toBeFalse();
     }
@@ -173,7 +173,7 @@ test('deleting a restaurant removes its asset directory', function () {
     ])->assertRedirect();
 
     $path = $r->fresh()->logo_path;
-    $disk = Storage::disk('restaurant_assets');
+    $disk = Storage::disk(RestaurantImageService::disk());
     expect($disk->exists($path))->toBeTrue();
 
     $r->delete();

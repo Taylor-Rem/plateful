@@ -2,10 +2,11 @@
 
 use App\Models\Restaurant;
 use App\Models\RestaurantPhoto;
+use App\Services\RestaurantImageService;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
-    Storage::fake('restaurant_assets');
+    Storage::fake(RestaurantImageService::disk());
 });
 
 function seoRestaurant(array $overrides = []): Restaurant

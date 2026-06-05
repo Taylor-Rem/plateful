@@ -67,6 +67,6 @@ class RestaurantPhoto extends Model
             $path = "{$prefix}{$name}-{$variant}.webp";
         }
 
-        return Storage::disk(RestaurantImageService::DISK)->url($path);
+        return Storage::disk(RestaurantImageService::disk())->url($path);
     }
 }
