@@ -17,6 +17,9 @@ createInertiaApp({
             case name.startsWith('ForRestaurants/'):
                 // Standalone marketing/signup pages with their own chrome.
                 return null;
+            case name.startsWith('Legal/'):
+                // Public legal pages wrap themselves in LegalLayout.
+                return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
             case name.startsWith('settings/'):

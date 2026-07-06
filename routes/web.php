@@ -31,6 +31,9 @@ Route::domain(config('platform.primary_domain'))->group(function () {
         ]);
     })->name('home');
 
+    Route::get('/terms', fn () => Inertia::render('Legal/Terms'))->name('terms');
+    Route::get('/privacy', fn () => Inertia::render('Legal/Privacy'))->name('privacy');
+
     /*
     |---------------------------------------------------------------------------
     | Restaurant owner self-serve signup

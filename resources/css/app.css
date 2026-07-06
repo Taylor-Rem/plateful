@@ -170,3 +170,59 @@
         @apply bg-background text-foreground;
     }
 }
+
+/*
+  Typography for the public legal pages (Terms, Privacy) rendered via
+  LegalLayout. Kept global (not scoped) so the rules reach the slotted
+  content, and driven by the theme CSS variables so light/dark flip
+  automatically with the `.dark` class on <html>.
+*/
+.legal-prose h2 {
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--foreground);
+}
+
+.legal-prose h3 {
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.legal-prose p {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+    color: var(--muted-foreground);
+}
+
+.legal-prose ul {
+    margin-bottom: 1rem;
+    padding-left: 1.25rem;
+    list-style-type: disc;
+}
+
+.legal-prose li {
+    margin-bottom: 0.5rem;
+    line-height: 1.7;
+    color: var(--muted-foreground);
+}
+
+.legal-prose strong {
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.legal-prose a {
+    color: #f53003;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.dark .legal-prose a {
+    color: #ff4433;
+}
