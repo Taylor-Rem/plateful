@@ -215,7 +215,11 @@ Until your sending domain is verified, you can only send to addresses in your Re
 
 ## Consider adding later
 
-- **Error monitoring**: Sentry or Bugsnag — both have first-party Laravel SDKs and are a one-package install plus an env var.
+- **Error monitoring (Sentry)**: `sentry/sentry-laravel` is installed and wired into `bootstrap/app.php`, and stays a no-op until a DSN is present. To turn it on in production, set two env vars in Cloud's **Environment** tab:
+  - `SENTRY_LARAVEL_DSN` — the DSN from your Sentry project dashboard (**Settings → Projects → [project] → Client Keys (DSN)**). Leave it blank/unset locally and in tests so no events are sent.
+  - `SENTRY_TRACES_SAMPLE_RATE` — `0.1` to start (10% of requests traced); raise or lower as needed.
+
+  Logging is unaffected — `LOG_CHANNEL=stderr` keeps working; Sentry is additive. After setting the vars, redeploy and confirm the next unhandled exception shows up in Sentry.
 - **Stripe billing**: Cashier is already installed but unused. When you're ready to charge restaurants, wire up `Billable` on `User` or `Restaurant` and configure Stripe.
 - **Custom queue worker**: as background work grows, move from `database` queue + sync to a dedicated Cloud queue worker on Growth.
 - **Backups**: Cloud Postgres is managed but verify the backup policy on Starter and set up an off-Cloud DB snapshot routine if needed.
