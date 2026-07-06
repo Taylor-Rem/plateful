@@ -43,4 +43,14 @@ return [
         'connect_country' => env('STRIPE_CONNECT_COUNTRY', 'US'),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        // The Google OAuth client registers a single redirect URI on the
+        // platform host (Google forbids wildcard subdomains), so the callback
+        // always resolves on the root domain regardless of the storefront the
+        // customer started from.
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
 ];

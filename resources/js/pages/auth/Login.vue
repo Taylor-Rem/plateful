@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { onMounted, ref } from 'vue';
+import GoogleLogo from '@/components/GoogleLogo.vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -9,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { register } from '@/routes';
+import { redirect as googleRedirect } from '@/routes/auth/google';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
@@ -23,7 +26,20 @@ defineProps<{
     status?: string;
     canResetPassword: boolean;
     canRegister: boolean;
+    googleEnabled?: boolean;
+    googleError?: boolean;
 }>();
+
+// The Google routes live on the platform host; carry the storefront origin so
+// the callback can hand the customer back here after login. Resolved after
+// mount to avoid an SSR hydration mismatch on the href.
+const googleLoginUrl = ref(googleRedirect.url());
+
+onMounted(() => {
+    googleLoginUrl.value = googleRedirect.url({
+        query: { return_to: window.location.origin },
+    });
+});
 </script>
 
 <template>
@@ -34,6 +50,13 @@ defineProps<{
         class="mb-4 text-center text-sm font-medium text-green-600"
     >
         {{ status }}
+    </div>
+
+    <div
+        v-if="googleError"
+        class="mb-4 text-center text-sm font-medium text-destructive"
+    >
+        Google sign-in was canceled or didn't complete. Please try again.
     </div>
 
     <Form
@@ -97,6 +120,31 @@ defineProps<{
             >
                 <Spinner v-if="processing" />
                 Log in
+            </Button>
+        </div>
+
+        <div v-if="googleEnabled" class="flex flex-col gap-6">
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <span class="w-full border-t"></span>
+                </div>
+                <div class="relative flex justify-center text-xs uppercase">
+                    <span class="bg-background px-2 text-muted-foreground">
+                        Or continue with
+                    </span>
+                </div>
+            </div>
+
+            <Button
+                as="a"
+                :href="googleLoginUrl"
+                variant="outline"
+                class="w-full"
+                :tabindex="6"
+                data-test="google-login-button"
+            >
+                <GoogleLogo class="size-4" />
+                Continue with Google
             </Button>
         </div>
 

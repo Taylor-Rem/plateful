@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\OwnerSignupController;
 use App\Models\Restaurant;
 use Illuminate\Http\Request;
@@ -7,6 +8,21 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::domain(config('platform.primary_domain'))->group(function () {
+    /*
+    |---------------------------------------------------------------------------
+    | Sign in with Google
+    |---------------------------------------------------------------------------
+    |
+    | Google permits a single, non-wildcard redirect URI, so both OAuth routes
+    | live on the platform host. The storefront a customer started from is
+    | carried through and they are handed back to it after login.
+    |
+    */
+    Route::prefix('auth/google')->name('auth.google.')->group(function () {
+        Route::get('redirect', [GoogleController::class, 'redirect'])->name('redirect');
+        Route::get('callback', [GoogleController::class, 'callback'])->name('callback');
+    });
+
     Route::get('/', function (Request $request) {
         $scheme = $request->getScheme();
 
