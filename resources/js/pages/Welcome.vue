@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { landing as forRestaurantsLanding } from '@/actions/App/Http/Controllers/OwnerSignupController';
+import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import AppWordmark from '@/components/AppWordmark.vue';
 
 type RestaurantSummary = {
     name: string;
@@ -24,7 +25,11 @@ const query = ref('');
 
 const filteredRestaurants = computed(() => {
     const q = query.value.trim().toLowerCase();
-    if (!q) return props.restaurants;
+
+    if (!q) {
+        return props.restaurants;
+    }
+
     return props.restaurants.filter((r) => {
         return (
             r.name.toLowerCase().includes(q) ||
@@ -46,13 +51,8 @@ const filteredRestaurants = computed(() => {
             <div
                 class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5"
             >
-                <Link href="/" class="flex items-center gap-2">
-                    <AppLogoIcon
-                        class-name="h-7 w-7 text-[#f53003] dark:text-[#FF4433]"
-                    />
-                    <span class="text-lg font-semibold tracking-tight"
-                        >Plateful</span
-                    >
+                <Link href="/" class="flex items-center">
+                    <AppWordmark class-name="h-8 w-auto" />
                 </Link>
 
                 <nav class="flex items-center gap-2 text-sm">
@@ -78,7 +78,7 @@ const filteredRestaurants = computed(() => {
                     <a
                         v-if="hasAdminAccess"
                         :href="adminUrl"
-                        class="rounded-md bg-[#f53003] px-3 py-1.5 text-white hover:bg-[#d62a02] dark:bg-[#FF4433] dark:hover:bg-[#e63b2c]"
+                        class="rounded-md bg-teal-600 px-3 py-1.5 text-white hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500"
                         data-test="nav-admin-console"
                     >
                         Admin console →
@@ -100,7 +100,7 @@ const filteredRestaurants = computed(() => {
                 <div class="grid items-center gap-12 lg:grid-cols-[1.2fr_1fr]">
                     <div>
                         <span
-                            class="inline-flex items-center rounded-full border border-[#f53003]/20 bg-[#fff2f2] px-3 py-1 text-xs font-medium text-[#f53003] dark:border-[#FF4433]/30 dark:bg-[#1D0002] dark:text-[#FF4433]"
+                            class="inline-flex items-center rounded-full border border-crimson-600/20 bg-crimson-50 px-3 py-1 text-xs font-medium text-crimson-700 dark:border-crimson-400/30 dark:bg-crimson-950/40 dark:text-crimson-400"
                         >
                             Order direct. No middlemen.
                         </span>
@@ -108,7 +108,7 @@ const filteredRestaurants = computed(() => {
                             class="mt-5 text-4xl leading-tight font-semibold tracking-tight sm:text-5xl"
                         >
                             Find the restaurants
-                            <span class="text-[#f53003] dark:text-[#FF4433]"
+                            <span class="text-crimson-600 dark:text-crimson-400"
                                 >you love.</span
                             >
                         </h1>
@@ -156,7 +156,7 @@ const filteredRestaurants = computed(() => {
 
                         <p
                             v-if="authUserName"
-                            class="mt-4 rounded-md bg-[#fff2f2] px-3 py-2 text-xs text-[#1b1b18] dark:bg-[#1D0002] dark:text-[#EDEDEC]"
+                            class="mt-4 rounded-md bg-teal-50 px-3 py-2 text-xs text-[#1b1b18] dark:bg-teal-950/40 dark:text-[#EDEDEC]"
                             data-test="auth-greeting"
                         >
                             Welcome back, {{ authUserName }}.
@@ -199,7 +199,7 @@ const filteredRestaurants = computed(() => {
                             restaurant owner?
                             <Link
                                 :href="forRestaurantsLanding()"
-                                class="font-medium text-[#f53003] underline-offset-4 hover:underline dark:text-[#FF4433]"
+                                class="font-medium text-teal-700 underline-offset-4 hover:underline dark:text-teal-300"
                             >
                                 Get started </Link
                             >.
@@ -222,7 +222,7 @@ const filteredRestaurants = computed(() => {
                         >
                             <div class="flex items-center gap-4">
                                 <div
-                                    class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#fff2f2] dark:bg-[#1D0002]"
+                                    class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-teal-50 dark:bg-teal-950/40"
                                 >
                                     <img
                                         v-if="restaurant.logoUrl"
@@ -232,14 +232,14 @@ const filteredRestaurants = computed(() => {
                                     />
                                     <span
                                         v-else
-                                        class="text-lg font-semibold text-[#f53003] dark:text-[#FF4433]"
+                                        class="text-lg font-semibold text-teal-700 dark:text-teal-300"
                                     >
                                         {{ restaurant.name.charAt(0) }}
                                     </span>
                                 </div>
                                 <div class="min-w-0">
                                     <h3
-                                        class="truncate text-base font-semibold group-hover:text-[#f53003] dark:group-hover:text-[#FF4433]"
+                                        class="truncate text-base font-semibold group-hover:text-teal-700 dark:group-hover:text-teal-300"
                                     >
                                         {{ restaurant.name }}
                                     </h3>
@@ -260,7 +260,7 @@ const filteredRestaurants = computed(() => {
                                 {{ restaurant.description }}
                             </p>
                             <span
-                                class="mt-4 inline-flex items-center text-sm font-medium text-[#f53003] dark:text-[#FF4433]"
+                                class="mt-4 inline-flex items-center text-sm font-medium text-teal-700 dark:text-teal-300"
                             >
                                 Order now →
                             </span>
@@ -282,7 +282,7 @@ const filteredRestaurants = computed(() => {
                             class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]"
                         >
                             <span
-                                class="font-mono text-sm text-[#f53003] dark:text-[#FF4433]"
+                                class="font-mono text-sm text-teal-700 dark:text-teal-300"
                                 >01</span
                             >
                             <h3 class="mt-3 text-lg font-semibold">
@@ -299,7 +299,7 @@ const filteredRestaurants = computed(() => {
                             class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]"
                         >
                             <span
-                                class="font-mono text-sm text-[#f53003] dark:text-[#FF4433]"
+                                class="font-mono text-sm text-teal-700 dark:text-teal-300"
                                 >02</span
                             >
                             <h3 class="mt-3 text-lg font-semibold">
@@ -316,7 +316,7 @@ const filteredRestaurants = computed(() => {
                             class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]"
                         >
                             <span
-                                class="font-mono text-sm text-[#f53003] dark:text-[#FF4433]"
+                                class="font-mono text-sm text-teal-700 dark:text-teal-300"
                                 >03</span
                             >
                             <h3 class="mt-3 text-lg font-semibold">
@@ -351,7 +351,7 @@ const filteredRestaurants = computed(() => {
                     </p>
                     <Link
                         :href="forRestaurantsLanding()"
-                        class="mt-6 inline-flex items-center rounded-md bg-[#f53003] px-6 py-3 text-sm font-medium text-white hover:bg-[#d92900]"
+                        class="mt-6 inline-flex items-center rounded-md bg-teal-600 px-6 py-3 text-sm font-medium text-white hover:bg-teal-700"
                         data-test="footer-for-restaurants-cta"
                     >
                         Learn more →
@@ -367,9 +367,7 @@ const filteredRestaurants = computed(() => {
                 class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row"
             >
                 <div class="flex items-center gap-2">
-                    <AppLogoIcon
-                        class-name="h-5 w-5 text-[#f53003] dark:text-[#FF4433]"
-                    />
+                    <AppLogoIcon class-name="h-5 w-5" />
                     <span>© {{ new Date().getFullYear() }} Plateful</span>
                 </div>
                 <div class="flex flex-wrap items-center justify-center gap-5">

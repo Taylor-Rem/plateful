@@ -18,7 +18,6 @@
  * Optional: pass an app slug and/or environment name if auto-detect picks wrong:
  *   php scripts/cloud-check.php plateful production
  */
-
 const BASE = 'https://cloud.laravel.com/api';
 
 $root = dirname(__DIR__);
@@ -42,11 +41,11 @@ if (! $apps) {
 }
 $app = pick($apps, $wantApp, ['plateful']);
 if (! $app) {
-    line("Could not auto-pick an app. Available:");
+    line('Could not auto-pick an app. Available:');
     foreach ($apps as $a) {
         line('  - '.($a['attributes']['slug'] ?? $a['id']).'  ('.($a['attributes']['name'] ?? '').')');
     }
-    line("Re-run with:  php scripts/cloud-check.php <app-slug>");
+    line('Re-run with:  php scripts/cloud-check.php <app-slug>');
     exit(0);
 }
 $appId = $app['id'];
@@ -57,11 +56,11 @@ line('Repo:        '.($app['attributes']['repository']['full_name'] ?? 'n/a'));
 $envs = api(BASE.'/applications/'.$appId.'/environments', $token)['data'] ?? [];
 $env = pick($envs, $wantEnv, ['production', 'main']);
 if (! $env) {
-    line("Could not auto-pick an environment. Available:");
+    line('Could not auto-pick an environment. Available:');
     foreach ($envs as $e) {
         line('  - '.($e['attributes']['name'] ?? $e['id']));
     }
-    line("Re-run with:  php scripts/cloud-check.php <app-slug> <env-name>");
+    line('Re-run with:  php scripts/cloud-check.php <app-slug> <env-name>');
     exit(0);
 }
 $envId = $env['id'];
@@ -108,7 +107,7 @@ present('AWS_BUCKET', $vars);
 
 // 4. Recent application errors (last 24h).
 section('Recent errors (application logs, last 24h)');
-$from = gmdate('Y-m-d\TH:i:s\Z', time() - 86400);
+$from = gmdate('Y-m-d\TH:i:s\Z', time() - 82800); // 23h; API rejects "more than 1 day ago"
 $to = gmdate('Y-m-d\TH:i:s\Z', time());
 $logsUrl = BASE.'/environments/'.$envId.'/logs?type=application&from='.rawurlencode($from).'&to='.rawurlencode($to);
 $logs = api($logsUrl, $token)['data'] ?? null;

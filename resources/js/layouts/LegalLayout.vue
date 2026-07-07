@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import AppWordmark from '@/components/AppWordmark.vue';
 
 defineProps<{
     title: string;
@@ -18,13 +19,8 @@ defineProps<{
             <div
                 class="mx-auto flex max-w-3xl items-center justify-between px-6 py-5"
             >
-                <Link href="/" class="flex items-center gap-2">
-                    <AppLogoIcon
-                        class-name="h-7 w-7 text-[#f53003] dark:text-[#FF4433]"
-                    />
-                    <span class="text-lg font-semibold tracking-tight"
-                        >Plateful</span
-                    >
+                <Link href="/" class="flex items-center">
+                    <AppWordmark class-name="h-8 w-auto" />
                 </Link>
                 <Link
                     href="/"
@@ -59,9 +55,7 @@ defineProps<{
                 class="mx-auto flex max-w-3xl flex-col items-center justify-between gap-3 px-6 sm:flex-row"
             >
                 <div class="flex items-center gap-2">
-                    <AppLogoIcon
-                        class-name="h-5 w-5 text-[#f53003] dark:text-[#FF4433]"
-                    />
+                    <AppLogoIcon class-name="h-5 w-5" />
                     <span>© {{ new Date().getFullYear() }} Plateful</span>
                 </div>
                 <div class="flex items-center gap-5">

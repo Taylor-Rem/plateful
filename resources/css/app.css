@@ -62,6 +62,39 @@
 }
 
 /*
+  Plateful brand palette. Teal is the primary brand color (plate in the logo),
+  crimson is the accent (fork). Bright teal (500) fails AA for small text and
+  for white text on a fill, so use teal-600/700 for text, links, and button
+  fills; reserve 400/500 for large fills and accents. Crimson passes AA for
+  text from 500 down.
+*/
+@theme {
+    --color-teal-50: #e6f6f6;
+    --color-teal-100: #c9ecec;
+    --color-teal-200: #97dada;
+    --color-teal-300: #5fc4c4;
+    --color-teal-400: #26a9a9;
+    --color-teal-500: #069494;
+    --color-teal-600: #057575;
+    --color-teal-700: #045c5c;
+    --color-teal-800: #044747;
+    --color-teal-900: #033838;
+    --color-teal-950: #012424;
+
+    --color-crimson-50: #fbecec;
+    --color-crimson-100: #f6d4d4;
+    --color-crimson-200: #eba9a9;
+    --color-crimson-300: #dd7676;
+    --color-crimson-400: #cc4a4a;
+    --color-crimson-500: #b22222;
+    --color-crimson-600: #991d1d;
+    --color-crimson-700: #7a1717;
+    --color-crimson-800: #5e1212;
+    --color-crimson-900: #481010;
+    --color-crimson-950: #2b0808;
+}
+
+/*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
   looks the same as it did with Tailwind CSS v3.
@@ -96,8 +129,8 @@
     --card-foreground: hsl(0 0% 3.9%);
     --popover: hsl(0 0% 100%);
     --popover-foreground: hsl(0 0% 3.9%);
-    --primary: hsl(0 0% 9%);
-    --primary-foreground: hsl(0 0% 98%);
+    --primary: #057575;
+    --primary-foreground: hsl(0 0% 100%);
     --secondary: hsl(0 0% 92.1%);
     --secondary-foreground: hsl(0 0% 9%);
     --muted: hsl(0 0% 96.1%);
@@ -108,21 +141,21 @@
     --destructive-foreground: hsl(0 0% 98%);
     --border: hsl(0 0% 92.8%);
     --input: hsl(0 0% 89.8%);
-    --ring: hsl(0 0% 3.9%);
-    --chart-1: hsl(12 76% 61%);
-    --chart-2: hsl(173 58% 39%);
+    --ring: #057575;
+    --chart-1: #069494;
+    --chart-2: #b22222;
     --chart-3: hsl(197 37% 24%);
     --chart-4: hsl(43 74% 66%);
     --chart-5: hsl(27 87% 67%);
     --radius: 0.5rem;
     --sidebar-background: hsl(0 0% 98%);
     --sidebar-foreground: hsl(240 5.3% 26.1%);
-    --sidebar-primary: hsl(0 0% 10%);
-    --sidebar-primary-foreground: hsl(0 0% 98%);
+    --sidebar-primary: #057575;
+    --sidebar-primary-foreground: hsl(0 0% 100%);
     --sidebar-accent: hsl(0 0% 94%);
     --sidebar-accent-foreground: hsl(0 0% 30%);
     --sidebar-border: hsl(0 0% 91%);
-    --sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --sidebar-ring: #057575;
     --sidebar: hsl(0 0% 98%);
 }
 
@@ -133,8 +166,8 @@
     --card-foreground: hsl(0 0% 98%);
     --popover: hsl(0 0% 3.9%);
     --popover-foreground: hsl(0 0% 98%);
-    --primary: hsl(0 0% 98%);
-    --primary-foreground: hsl(0 0% 9%);
+    --primary: #057575;
+    --primary-foreground: hsl(0 0% 100%);
     --secondary: hsl(0 0% 14.9%);
     --secondary-foreground: hsl(0 0% 98%);
     --muted: hsl(0 0% 16.08%);
@@ -145,20 +178,20 @@
     --destructive-foreground: hsl(0 0% 98%);
     --border: hsl(0 0% 14.9%);
     --input: hsl(0 0% 14.9%);
-    --ring: hsl(0 0% 83.1%);
-    --chart-1: hsl(220 70% 50%);
-    --chart-2: hsl(160 60% 45%);
+    --ring: #069494;
+    --chart-1: #26a9a9;
+    --chart-2: #cc4a4a;
     --chart-3: hsl(30 80% 55%);
     --chart-4: hsl(280 65% 60%);
     --chart-5: hsl(340 75% 55%);
     --sidebar-background: hsl(0 0% 7%);
     --sidebar-foreground: hsl(0 0% 95.9%);
-    --sidebar-primary: hsl(360, 100%, 100%);
+    --sidebar-primary: #057575;
     --sidebar-primary-foreground: hsl(0 0% 100%);
     --sidebar-accent: hsl(0 0% 15.9%);
     --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
     --sidebar-border: hsl(0 0% 15.9%);
-    --sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --sidebar-ring: #069494;
     --sidebar: hsl(240 5.9% 10%);
 }
 
@@ -218,11 +251,11 @@
 }
 
 .legal-prose a {
-    color: #f53003;
+    color: var(--color-teal-700);
     text-decoration: underline;
     text-underline-offset: 2px;
 }
 
 .dark .legal-prose a {
-    color: #ff4433;
+    color: var(--color-teal-300);
 }

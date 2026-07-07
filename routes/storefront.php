@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Storefront\Account\AddressesController;
@@ -22,6 +23,12 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('tenant')->group(function () {
     Route::get('/', HomeController::class)->name('storefront.home');
     Route::get('/menu', MenuController::class)->name('storefront.menu');
+
+    // Storefront-side landing for the Google login handoff. Not behind 'auth':
+    // it verifies the one-time token from the platform-host callback and logs
+    // the customer in on this storefront host.
+    Route::get('auth/google/finish', [GoogleController::class, 'finish'])
+        ->name('auth.google.finish');
 
     Route::post('cart/items/{menuItem}', [CartController::class, 'addItem'])
         ->name('storefront.cart.add');

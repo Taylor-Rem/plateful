@@ -112,6 +112,8 @@ class FortifyServiceProvider extends ServiceProvider
                 'canResetPassword' => Features::enabled(Features::resetPasswords()),
                 'canRegister' => Features::enabled(Features::registration()),
                 'status' => $request->session()->get('status'),
+                'googleEnabled' => filled(config('services.google.client_id')),
+                'googleError' => $request->query('google') === 'failed',
             ]);
         });
 
@@ -140,6 +142,7 @@ class FortifyServiceProvider extends ServiceProvider
             return Inertia::render('auth/Register', [
                 'passwordRules' => Password::defaults()->toPasswordRulesString(),
                 'restaurantName' => $tenant?->name,
+                'googleEnabled' => filled(config('services.google.client_id')),
             ]);
         });
 
