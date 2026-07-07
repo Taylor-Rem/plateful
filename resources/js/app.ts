@@ -26,6 +26,10 @@ createInertiaApp({
                 return [AppLayout, SettingsLayout];
             case name.startsWith('Storefront/'):
                 return StorefrontLayout;
+            case name === 'Admin/Login':
+                // The admin sign-in screen shares the centered auth chrome
+                // (logo + title + card) with the customer auth pages.
+                return AuthLayout;
             case name.startsWith('Admin/'):
                 // Admin pages compose their own layouts (TenantAdminLayout, etc.) internally
                 return null;
