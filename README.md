@@ -4,8 +4,9 @@ Multi-tenant online ordering for restaurants. Each restaurant gets its own brand
 storefront on a subdomain; customers order and pay there, and the restaurant runs
 operations (menu, orders, kitchen, payouts) from an admin console.
 
-**Pricing model:** 1% per order, charged on the food subtotal only via a Stripe Connect
-application fee. No subscriptions, no tiers. The restaurant is the merchant of record.
+**Pricing model:** 4% flat per order, charged on the food subtotal only via a Stripe Connect
+application fee (on top of the restaurant's own Stripe processing). No subscriptions, no tiers.
+The restaurant is the merchant of record.
 
 ## Stack
 
@@ -55,7 +56,7 @@ Test card: `4242 4242 4242 4242`, any future expiry/CVC/ZIP.
 1. Storefront checkout snapshots the prospective order to `pending_checkouts`
    (pay-first: no `orders` row until payment succeeds).
 2. A Checkout Session is created **on the restaurant's connected account** with
-   `application_fee_amount` = 1% of the food subtotal (not tax/tip/delivery).
+   `application_fee_amount` = 4% of the food subtotal (not tax/tip/delivery).
 3. The order materializes idempotently from both the `checkout.session.completed`
    webhook and the success-URL return (unique `orders.stripe_checkout_session_id`).
 4. Cancelling a paid order issues a full refund and reverses the application fee.

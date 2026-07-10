@@ -8,7 +8,7 @@ to DoorDash with nothing of their own; Plateful is 1%).
 ## Context (Plateful)
 
 - Plateful is a multi-tenant restaurant online-ordering SaaS, live at
-  `https://plateful.fyi`, Laravel 13 / Vue. See `LAUNCH_PLAN.md` for status.
+  `https://plateful.fyi`, Laravel 13 / Vue. See `todo.md` for status.
 - A **Google Cloud project already exists**: name `plateful`, id
   `plateful-497622`. Google OAuth login is already set up on it. We're now adding
   the **Maps/Places** side, which is separate from OAuth.
