@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Plateful logo">
+  <defs>
+    <!-- Plate rim: light upper-left, deeper lower-right -->
+    <radialGradient id="pf-rim" cx="40%" cy="34%" r="75%">
+      <stop offset="0%" stop-color="#2FB9B3"/>
+      <stop offset="55%" stop-color="#069494"/>
+      <stop offset="100%" stop-color="#04716F"/>
+    </radialGradient>
+    <!-- Recessed well -->
+    <radialGradient id="pf-well" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#0AA6A2"/>
+      <stop offset="70%" stop-color="#078585"/>
+      <stop offset="100%" stop-color="#05716F"/>
+    </radialGradient>
+    <!-- Crimson pin: lighter top, deeper bottom -->
+    <linearGradient id="pf-pin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#CE3838"/>
+      <stop offset="55%" stop-color="#B22222"/>
+      <stop offset="100%" stop-color="#8B1A1A"/>
+    </linearGradient>
+    <filter id="pf-shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+    <filter id="pf-soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="11"/>
+    </filter>
+    <filter id="pf-tiny" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <clipPath id="pf-wellclip"><circle cx="512" cy="500" r="278"/></clipPath>
+  </defs>
+
+  <!-- Cast shadow under the plate -->
+  <ellipse cx="524" cy="884" rx="292" ry="40" fill="#0a3b3b" opacity="0.22" filter="url(#pf-shadow)"/>
+
+  <!-- Plate rim -->
+  <circle cx="512" cy="500" r="350" fill="url(#pf-rim)"/>
+  <circle cx="512" cy="500" r="350" fill="none" stroke="#04615F" stroke-width="3" opacity="0.5"/>
+
+  <!-- Rim inner top-left sheen -->
+  <path d="M262 350 A350 350 0 0 1 690 214" fill="none" stroke="#BFF0ED" stroke-width="10" stroke-linecap="round" opacity="0.55" filter="url(#pf-tiny)"/>
+
+  <!-- Groove between rim and well -->
+  <circle cx="512" cy="500" r="291" fill="none" stroke="#04706E" stroke-width="12" opacity="0.55" filter="url(#pf-tiny)"/>
+  <circle cx="512" cy="500" r="299" fill="none" stroke="#7FE0DC" stroke-width="4" opacity="0.4" filter="url(#pf-tiny)"/>
+
+  <!-- Recessed well -->
+  <circle cx="512" cy="500" r="278" fill="url(#pf-well)"/>
+
+  <!-- Well inner-shadow at top (recess) + glossy highlights -->
+  <g clip-path="url(#pf-wellclip)">
+    <ellipse cx="512" cy="252" rx="250" ry="96" fill="#04615F" opacity="0.28" filter="url(#pf-soft)"/>
+    <ellipse cx="470" cy="372" rx="168" ry="82" fill="#ffffff" opacity="0.26" filter="url(#pf-soft)"/>
+    <ellipse cx="432" cy="338" rx="70" ry="34" fill="#ffffff" opacity="0.38" filter="url(#pf-soft)"/>
+  </g>
+
+  <!-- Pin contact shadow -->
+  <ellipse cx="512" cy="600" rx="78" ry="20" fill="#053f3f" opacity="0.22" filter="url(#pf-tiny)"/>
+
+  <!-- Crimson location pin -->
+  <path d="M512 598
+           C476 562 448 526 448 482
+           C448 446 476 416 512 416
+           C548 416 576 446 576 482
+           C576 526 548 562 512 598 Z"
+        fill="url(#pf-pin)" stroke="#7C1616" stroke-width="2" opacity="1"/>
+  <!-- Pin gloss highlight -->
+  <ellipse cx="489" cy="452" rx="24" ry="32" fill="#ffffff" opacity="0.38" filter="url(#pf-tiny)" transform="rotate(-22 489 452)"/>
+</svg>
