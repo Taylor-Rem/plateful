@@ -222,7 +222,7 @@ function confirmCancel(): void {
                                 :class="statusBadgeClasses(event.toStatus).split(' ').filter((c) => c.startsWith('bg-')).join(' ')"
                             />
                             <div class="text-sm font-medium text-foreground capitalize">
-                                {{ event.fromStatus ? `${event.fromStatus} → ${event.toStatus}` : event.toStatus }}
+                                {{ event.fromStatus && event.fromStatus !== event.toStatus ? `${event.fromStatus} → ${event.toStatus}` : event.toStatus }}
                             </div>
                             <div class="text-xs text-muted-foreground">
                                 {{ formatRelativeTime(event.occurredAt) }}

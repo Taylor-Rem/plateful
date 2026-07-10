@@ -76,7 +76,7 @@ it('renders the onboarding checklist for the restaurant admin', function () {
             ->component('Admin/TenantAdmin/Onboarding')
             ->where('restaurant.subdomain', 'pizzajoint')
             ->where('canGoLive', false)
-            ->has('steps', 4));
+            ->has('steps', 5));
 });
 
 it('marks hours and menu steps complete once the data exists', function () {

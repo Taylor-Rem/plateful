@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Enums\PosProviderName;
 use App\Enums\TipRecipient;
 use App\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,6 +37,9 @@ class Order extends Model
             'refunded_at' => 'datetime',
             'refunded_cents' => 'integer',
             'delivery_address' => 'array',
+            'pos_provider' => PosProviderName::class,
+            'pos_pushed_at' => 'datetime',
+            'pos_push_failed_at' => 'datetime',
         ];
     }
 

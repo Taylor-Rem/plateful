@@ -315,6 +315,11 @@ class Restaurant extends Model
         return $this->hasMany(Order::class);
     }
 
+    public function posIntegrations(): HasMany
+    {
+        return $this->hasMany(PosIntegration::class);
+    }
+
     /**
      * Users who have a customer relationship with this restaurant
      * (ordered from or signed up at it).

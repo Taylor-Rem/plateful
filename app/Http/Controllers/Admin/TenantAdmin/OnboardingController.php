@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\TenantAdmin;
 
+use App\Enums\PosIntegrationStatus;
 use App\Enums\RestaurantStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Restaurant;
@@ -129,6 +130,16 @@ class OnboardingController extends Controller
                 'complete' => $restaurant->isStripeReady(),
                 'required' => true,
                 'stripeStatus' => $restaurant->stripe_account_status,
+            ],
+            [
+                'key' => 'pos',
+                'title' => 'Connect your POS',
+                'description' => 'Push online orders straight into your Square or Clover register. Coming soon.',
+                'href' => "/{$restaurant->subdomain}/settings/pos",
+                'complete' => $restaurant->posIntegrations()
+                    ->where('status', PosIntegrationStatus::Connected->value)
+                    ->exists(),
+                'required' => false,
             ],
         ];
     }
