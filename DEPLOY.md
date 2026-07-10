@@ -213,6 +213,66 @@ Until your sending domain is verified, you can only send to addresses in your Re
 
 ---
 
+## Live environment & ops reference (Plateful production)
+
+The concrete values for the running deployment (the generic runbook above uses
+placeholders):
+
+- **Source:** GitHub, branch `main` (repo `Taylor-Rem/plateful`). Laravel Cloud
+  auto-deploys on push to `main`.
+- **Host:** Laravel Cloud, project `plateful`, environment `main`, live at
+  <https://plateful.fyi>. Dashboard: <https://cloud.laravel.com/taylor-remund/plateful/main>.
+- **DNS:** Porkbun (Cloudflare backend) for `plateful.fyi`.
+- **Ops without the dashboard:** Laravel Cloud REST API / CLI. A token lives in
+  local `.env` as `LARAVEL_CLOUD_TOKEN` (gitignored, never in the repo or Cloud).
+  Read-only readiness check: `php scripts/cloud-check.php`.
+- **Inbox mail:** Zoho (`founder@plateful.fyi` + `orders@`/`service@`/`support@`
+  aliases). Outbound app mail goes through Resend on a **separate sending
+  subdomain** so the two SPF records don't collide (see gotchas).
+
+### Known constraints / gotchas
+
+- **Google OAuth:** only `https://plateful.fyi/auth/google/callback` is registered;
+  Google allows no wildcard subdomains and rejects `.test`, so local Google login
+  is limited. The callback must stay on the root/platform host.
+- **SPF:** a domain may have only one SPF record. Zoho (inbox) and Resend
+  (outbound app mail) must not collide — keep Resend on a sending subdomain
+  (e.g. `send.plateful.fyi`).
+- **Vite build:** needs Node 20.19+ or the build fails.
+- **Cloud baseline vars:** Laravel Cloud auto-injects framework vars (`APP_ENV`,
+  etc.) that don't appear in the API's editable env-var list, so
+  `scripts/cloud-check.php` may report them "MISSING" even though they're set —
+  confirm in the dashboard if unsure.
+- **DNS lookups:** public-resolver queries against Porkbun/Cloudflare can return
+  inconsistent results across nodes. Trust the Porkbun records table or a
+  real-world send/receive test over a single one-off lookup.
+
+## Recurring release checklist (every deploy)
+
+**Before push**
+
+- [ ] Tests green: `php artisan test --compact`
+- [ ] PHP formatting: `vendor/bin/pint --dirty --format agent`
+- [ ] JS lint/format: `npm run lint && npm run format`
+- [ ] If routes changed: `php artisan wayfinder:generate`
+- [ ] Any new env vars added to Laravel Cloud **and** `.env.example`
+
+**Deploy**
+
+- [ ] Merge / push to `main` → Cloud auto-deploys (or trigger via CLI/API)
+- [ ] Watch the deploy logs for build or migration failures
+
+**After deploy**
+
+- [ ] Confirm migrations ran
+- [ ] Smoke test: homepage, a restaurant storefront, an order, and login
+- [ ] `php scripts/cloud-check.php` clean
+- [ ] Spot-check production logs for new errors
+
+> **Current launch status and blockers** (Stripe go-live, Resend wiring, etc.)
+> live in [`todo.md`](todo.md) §0 — that's the single source of "what's left
+> before selling," so it isn't duplicated here.
+
 ## Consider adding later
 
 - **Error monitoring (Sentry)**: `sentry/sentry-laravel` is installed and wired into `bootstrap/app.php`, and stays a no-op until a DSN is present. To turn it on in production, set two env vars in Cloud's **Environment** tab:

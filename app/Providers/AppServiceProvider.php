@@ -12,6 +12,7 @@ use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
 use App\Services\Delivery\DeliveryDispatcher;
 use App\Services\Delivery\SelfDeliveryProvider;
+use App\Services\Pos\PosDispatcher;
 use App\Tenancy\CurrentTenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
@@ -39,6 +40,12 @@ class AppServiceProvider extends ServiceProvider
             return new DeliveryDispatcher([
                 DeliveryProviderName::Self->value => $app->make(SelfDeliveryProvider::class),
             ]);
+        });
+
+        $this->app->singleton(PosDispatcher::class, function (): PosDispatcher {
+            // Adapters register here as they are built (Square first, then Clover),
+            // keyed by PosProviderName value.
+            return new PosDispatcher([]);
         });
     }
 

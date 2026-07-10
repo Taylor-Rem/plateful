@@ -6,6 +6,8 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\TipRecipient;
 use App\Exceptions\InvalidCheckoutException;
+use App\Jobs\DispatchDeliveryForOrder;
+use App\Jobs\PushOrderToPos;
 use App\Mail\OrderConfirmationToCustomer;
 use App\Mail\OrderNotificationToRestaurant;
 use App\Models\Address;
@@ -19,8 +21,10 @@ use App\Models\PendingCheckout;
 use App\Models\Restaurant;
 use App\Models\RestaurantCustomer;
 use App\Models\User;
+use App\Services\Pos\PosDispatcher;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -245,7 +249,36 @@ class OrderPlacement
             Mail::to($restaurant->email)->queue(new OrderNotificationToRestaurant($order));
         }
 
+        $this->queuePostPaymentFulfillment($order);
+
         return $order;
+    }
+
+    /**
+     * Queue fulfillment side effects for a freshly paid order: POS injection
+     * and delivery dispatch. Runs on both the checkout-return and Stripe
+     * webhook paths; the session-id idempotency short-circuit above prevents
+     * replays from re-queueing.
+     */
+    protected function queuePostPaymentFulfillment(Order $order): void
+    {
+        // A fulfillment failure must never break placement of a paid order —
+        // on the sync queue driver the jobs run (and may throw) inline here.
+        try {
+            if (app(PosDispatcher::class)->shouldPush($order->restaurant)) {
+                PushOrderToPos::dispatch($order->id);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to queue POS push', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+        }
+
+        try {
+            if ($order->type === OrderType::Delivery) {
+                DispatchDeliveryForOrder::dispatch($order->id);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to queue delivery dispatch', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+        }
     }
 
     protected function validateCartLines(Cart $cart): void

@@ -1,7 +1,7 @@
 # Plateful — Software TODO
 
 Product roadmap. Full reasoning: [docs/pos-integration-strategy.md](docs/pos-integration-strategy.md).
-Launch/ops checklist: [LAUNCH_PLAN.md](LAUNCH_PLAN.md).
+Deployment & ops runbook: [DEPLOY.md](DEPLOY.md). Launch blockers: §0 below.
 
 **Strategy in one line:** we're the online-ordering + customer-ownership layer that *integrates*
 with a restaurant's existing register (Square/Clover first, not Toast) and dispatches delivery
@@ -61,9 +61,8 @@ self-contained; unblocks the savings calculator and the whole fee story. Do earl
       subtotal **excludes tax and tip**. Run `php artisan test --compact`.
 
 **Docs to reconcile (repo currently contradicts itself — 1% and 5% both appear)**
-- [ ] `README.md` "Pricing model" line says **1%** → change to **4%** (+ note it's on food subtotal).
-- [ ] `docs/pos-integration-strategy.md` §5–§6 say **5% (4% floor)** → update to the locked **4%**.
-- [ ] `LAUNCH_PLAN.md` Stripe blocker references the **1%** application fee → change to **4%**.
+- [x] `README.md` "Pricing model" line says **1%** → change to **4%** (+ note it's on food subtotal).
+- [x] `docs/pos-integration-strategy.md` §5–§6 say **5% (4% floor)** → update to the locked **4%**.
 - [ ] (separate `plateful-sales` repo) `PLATEFUL_OVERVIEW.md` + `PROJECT_STATE.md` reference
       1%→5% → update to **4%** so sales and code agree.
 
@@ -143,3 +142,18 @@ _Independent of POS; can partly parallelize. `DeliveryDispatcher` + contract + D
 4. **§3 delivery** and **§2d printer** to widen the addressable set (can overlap §2c).
 5. **§4 customer ownership** to make the pitch real; **§5 calculator** once pricing is locked.
 6. **§6 onboarding automation** as an ongoing friction-reducer.
+
+---
+
+## Open Stripe questions (carried over from the archived Stripe Connect plan)
+_Lifted from `docs/archive/STRIPE_IMPLEMENT_PLAN.md` (migration shipped) so these decisions
+aren't lost. Confirm/resolve before the relevant work._
+
+- [ ] **Webhook secret rotation.** Decide whether `STRIPE_WEBHOOK_SECRET` is a single value or a
+      multi-secret rotation setup (the custom webhook controller replaced Cashier's).
+- [ ] **Restricted connected accounts.** What happens when a restaurant's Stripe account goes
+      `restricted` mid-relationship (payouts disabled, docs requested)? Leaning: surface a banner
+      in the admin console + storefront admin bar; do NOT auto-suspend the restaurant.
+- [ ] **Refund UX.** Where does an admin issue a partial refund? Full refunds already reverse the
+      application fee via order cancellation; confirm the surface for partials against the
+      `OrdersController::transition` flow.

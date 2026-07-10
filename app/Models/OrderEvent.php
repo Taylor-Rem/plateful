@@ -19,6 +19,23 @@ class OrderEvent extends Model
         ];
     }
 
+    /**
+     * Log a status-neutral note on the order timeline (POS pushes, delivery
+     * dispatch attempts). `to_status` is non-nullable, so the current status
+     * is recorded on both sides.
+     */
+    public static function note(Order $order, string $note): self
+    {
+        return self::create([
+            'order_id' => $order->id,
+            'from_status' => $order->status,
+            'to_status' => $order->status,
+            'occurred_at' => now(),
+            'user_id' => null,
+            'note' => $note,
+        ]);
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

@@ -47,6 +47,8 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
 
                 Route::get('/payouts', [TenantAdmin\PayoutsController::class, 'index'])->name('payouts.index');
 
+                Route::get('/settings/pos', [TenantAdmin\PosIntegrationsController::class, 'show'])->name('pos.show');
+
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
                 Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');
