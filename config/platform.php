@@ -16,7 +16,7 @@ return [
     | Per-restaurant overrides are set by super admins in the console.
     |
     */
-    'default_application_fee_percent' => (float) env('PLATFORM_DEFAULT_APPLICATION_FEE_PERCENT', 1.00),
+    'default_application_fee_percent' => (float) env('PLATFORM_DEFAULT_APPLICATION_FEE_PERCENT', 4.00),
 
     /*
     |---------------------------------------------------------------------------

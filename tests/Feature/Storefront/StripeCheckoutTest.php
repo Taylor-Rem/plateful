@@ -55,7 +55,7 @@ it('rejects checkout when the restaurant is not Stripe-ready', function () {
 it('computes the application fee from the food subtotal only', function () {
     $f = cartFixture();
     $r = $f['restaurant'];
-    // $14 subtotal + tax + $5 tip → fee is 1% of 1400 = 14, NOT of the total.
+    // $14 subtotal + tax + $5 tip → fee is 4% of 1400 = 56, NOT of the total.
     $r->update(['tax_rate_percent' => 8.875]);
     $cookie = addPep($this, $f);
 
@@ -70,7 +70,7 @@ it('computes the application fee from the food subtotal only', function () {
         ]);
 
     $order = payLatestCheckout();
-    expect($order->application_fee_cents)->toBe(14)
+    expect($order->application_fee_cents)->toBe(56)
         ->and($order->total_cents)->toBeGreaterThan(1400);
 });
 

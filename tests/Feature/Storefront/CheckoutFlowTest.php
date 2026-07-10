@@ -78,7 +78,7 @@ test('guest pickup order materializes correctly after payment', function () {
     expect($order->delivery_fee_cents)->toBe(0); // pickup
     expect($order->tip_cents)->toBe(0);
     expect($order->total_cents)->toBe(1540);
-    expect($order->application_fee_cents)->toBe(14); // 1% of 1400 subtotal
+    expect($order->application_fee_cents)->toBe(56); // 4% of 1400 subtotal
     expect($order->stripe_payment_intent_id)->toBe('pi_cs_test_1');
     expect($order->stripe_checkout_session_id)->toBe('cs_test_1');
     expect($order->number)->toMatch('/^[A-Z]{3}-[A-Z0-9]{5}$/');

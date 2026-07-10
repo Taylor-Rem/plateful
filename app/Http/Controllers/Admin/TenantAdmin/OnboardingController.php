@@ -142,7 +142,7 @@ class OnboardingController extends Controller
             Restaurant::STRIPE_ENABLED => 'Connected — you can take payments.',
             Restaurant::STRIPE_RESTRICTED => 'Stripe needs more information before you can take payments.',
             Restaurant::STRIPE_PENDING => 'Onboarding started. Finish it on Stripe to take payments.',
-            default => 'Required to take payments. Plateful takes a 1% fee per order.',
+            default => 'Required to take payments. Plateful takes a 4% fee per order.',
         };
     }
 
