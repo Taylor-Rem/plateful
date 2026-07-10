@@ -80,8 +80,9 @@ class OrderPlacement
         $tipRecipient = TipRecipient::forOrder($restaurant, $type);
         $totalCents = $subtotalCents + $taxCents + $deliveryFeeCents + $tipCents;
 
-        // The application fee is 1% of the FOOD SUBTOTAL only — not tax, tip,
-        // or delivery (those are pass-through and don't belong to Plateful).
+        // The application fee is the restaurant's rate (flat 4% default) applied
+        // to the FOOD SUBTOTAL only — not tax, tip, or delivery (those are
+        // pass-through and don't belong to Plateful).
         $applicationFeeCents = (int) floor($subtotalCents * (float) $restaurant->application_fee_percent / 100);
 
         $deliveryAddress = null;

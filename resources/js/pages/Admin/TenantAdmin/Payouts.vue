@@ -60,7 +60,7 @@ const lastPayoutId = props.payouts.length ? props.payouts[props.payouts.length -
                     Plateful fees paid in {{ currentYear }}
                 </p>
                 <p class="mt-1 text-2xl font-semibold" data-test="ytd-fees">{{ formatCents(ytdFeesCents) }}</p>
-                <p class="mt-1 text-xs text-muted-foreground">1% per order on the food subtotal. That's it.</p>
+                <p class="mt-1 text-xs text-muted-foreground">4% per order on the food subtotal. That's it.</p>
             </section>
 
             <section

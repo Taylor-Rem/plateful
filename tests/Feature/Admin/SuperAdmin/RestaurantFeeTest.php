@@ -15,6 +15,15 @@ beforeEach(function () {
     config(['platform.primary_domain' => 'plateful.test']);
 });
 
+test('the shipped platform default fee is a flat 4 percent', function () {
+    // Guards the shipped default — no config override, no explicit rate.
+    expect((float) config('platform.default_application_fee_percent'))->toBe(4.00);
+
+    $restaurant = Restaurant::factory()->create();
+
+    expect((float) $restaurant->fresh()->application_fee_percent)->toBe(4.00);
+});
+
 test('new restaurant picks up the configured platform default fee', function () {
     config(['platform.default_application_fee_percent' => 2.50]);
 
@@ -161,8 +170,8 @@ test('placed order computes the application fee from the per-restaurant rate', f
     $order = payLatestCheckout();
 
     // Fee is floor(subtotal * rate / 100), on the food subtotal only — and at
-    // 2% it must differ from the 1% default, proving the per-restaurant value
-    // is what's read.
+    // 2% it must differ from a 1% computation, proving the per-restaurant value
+    // is what's read (rather than any fixed rate).
     expect($order->application_fee_cents)->toBe((int) floor($order->subtotal_cents * 2 / 100));
     expect($order->application_fee_cents)->not->toBe((int) floor($order->subtotal_cents * 1 / 100));
 });

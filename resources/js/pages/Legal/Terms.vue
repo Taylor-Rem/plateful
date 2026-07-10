@@ -83,7 +83,7 @@ import LegalLayout from '@/layouts/LegalLayout.vue';
         <p>
             Funds for an order are settled to the applicable Restaurant.
             Plateful charges a
-            <strong>platform fee of one percent (1%) per order</strong>, which
+            <strong>platform fee of four percent (4%) per order</strong>, which
             supports the operation of the Platform. Restaurants may be subject
             to additional payment-processor fees charged by Stripe. Plateful
             does not store full payment card numbers; card data is handled by
@@ -145,7 +145,7 @@ import LegalLayout from '@/layouts/LegalLayout.vue';
                 requirements to receive payouts;
             </li>
             <li>
-                authorize Plateful to collect the 1% platform fee and applicable
+                authorize Plateful to collect the 4% platform fee and applicable
                 processing fees from order proceeds; and
             </li>
             <li>

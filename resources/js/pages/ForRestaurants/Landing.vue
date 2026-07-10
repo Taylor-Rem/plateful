@@ -77,16 +77,11 @@ const pricingRows: {
     highlight?: boolean;
 }[] = [
     { service: 'DoorDash', cost: '$7.50', note: '~30% commission' },
-    {
-        service: 'GloriaFood',
-        cost: '$0.38–$0.50',
-        note: 'card-processing add-ons',
-    },
-    { service: 'ChowNow', cost: '$0', note: '+ $150/mo flat' },
+    { service: 'Uber Eats', cost: '$7.00', note: '~28% commission' },
     {
         service: 'Plateful',
-        cost: '$0.25',
-        note: '1% — that’s it',
+        cost: '$1.00',
+        note: '4% — that’s it',
         highlight: true,
     },
 ];
@@ -170,7 +165,7 @@ const pricingRows: {
                         <h1
                             class="text-4xl leading-tight font-semibold tracking-tight sm:text-5xl"
                         >
-                            1% per order. That's it.
+                            4% per order. That's it.
                         </h1>
                         <p
                             class="mt-5 max-w-xl text-lg text-[#1b1b18]/70 dark:text-[#EDEDEC]/70"
@@ -227,7 +222,7 @@ const pricingRows: {
                         </p>
                         <ul class="mt-4 space-y-3 text-sm">
                             <li>
-                                • <strong>1% per order</strong> — no
+                                • <strong>4% per order</strong> — no
                                 subscription
                             </li>
                             <li>
@@ -278,10 +273,10 @@ const pricingRows: {
             <section id="pricing" class="mx-auto max-w-6xl px-6 py-20">
                 <div class="max-w-2xl">
                     <h2 class="text-3xl font-semibold tracking-tight">
-                        1% per order. That's it.
+                        4% per order. That's it.
                     </h2>
                     <p class="mt-4 text-[#1b1b18]/70 dark:text-[#EDEDEC]/70">
-                        We charge 1% of the food subtotal — not tax, not tips,
+                        We charge 4% of the food subtotal — not tax, not tips,
                         not delivery fees. No monthly fee, no tiers, no
                         minimums. Just a simple cut when you make a sale.
                     </p>
