@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Services\PhotoConversionService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RestaurantSettingsRequest extends FormRequest
@@ -23,7 +24,7 @@ class RestaurantSettingsRequest extends FormRequest
             'secondary_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:32'],
-            'logo' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'logo' => ['nullable', 'file', PhotoConversionService::acceptedPhotoMimes(), 'max:5120'],
             'remove_logo' => ['nullable', 'boolean'],
             'tax_rate_percent' => ['nullable', 'numeric', 'between:0,30'],
             'delivery_fee' => ['nullable', 'numeric', 'between:0,500'],

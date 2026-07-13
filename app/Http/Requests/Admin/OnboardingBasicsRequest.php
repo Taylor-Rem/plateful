@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Services\PhotoConversionService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class OnboardingBasicsRequest extends FormRequest
@@ -22,7 +23,7 @@ class OnboardingBasicsRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:32'],
             'primary_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'secondary_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'logo' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'logo' => ['nullable', 'file', PhotoConversionService::acceptedPhotoMimes(), 'max:5120'],
             'street' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'size:2'],

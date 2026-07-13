@@ -44,6 +44,10 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::get('/onboarding', [TenantAdmin\OnboardingController::class, 'show'])->name('onboarding.show');
                 Route::put('/onboarding/basics', [TenantAdmin\OnboardingController::class, 'updateBasics'])->name('onboarding.basics');
                 Route::post('/onboarding/menu-preset', [TenantAdmin\OnboardingController::class, 'applyMenuPreset'])->name('onboarding.menuPreset');
+                Route::post('/onboarding/menu-import', [TenantAdmin\MenuImportController::class, 'store'])->name('menuImport.store');
+                Route::get('/menu-import/{menuImport}/review', [TenantAdmin\MenuImportController::class, 'review'])->name('menuImport.review');
+                Route::post('/menu-import/{menuImport}/confirm', [TenantAdmin\MenuImportController::class, 'confirm'])->name('menuImport.confirm');
+                Route::post('/menu-import/{menuImport}/discard', [TenantAdmin\MenuImportController::class, 'discard'])->name('menuImport.discard');
                 Route::get('/onboarding/preview', [TenantAdmin\OnboardingController::class, 'preview'])->name('onboarding.preview');
                 Route::post('/onboarding/custom-domain', [TenantAdmin\OnboardingController::class, 'requestCustomDomain'])->name('onboarding.customDomain');
                 Route::post('/onboarding/go-live', [TenantAdmin\OnboardingController::class, 'goLive'])->name('onboarding.goLive');

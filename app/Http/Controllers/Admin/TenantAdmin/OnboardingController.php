@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\TenantAdmin;
 
 use App\Data\RestaurantData;
+use App\Enums\MenuImportStatus;
 use App\Enums\RestaurantStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OnboardingBasicsRequest;
@@ -51,8 +52,35 @@ class OnboardingController extends Controller
                 'categories' => $restaurant->menuCategories()->count(),
                 'items' => $restaurant->menuItems()->count(),
             ],
+            'menuImport' => $this->menuImportState($restaurant),
+            'menuImportLimits' => [
+                'maxFiles' => (int) config('menu_import.max_files'),
+                'maxFileKb' => (int) config('menu_import.max_file_kb'),
+            ],
             'primaryDomain' => config('platform.primary_domain'),
         ]);
+    }
+
+    /**
+     * The wizard's menu step polls this: the latest not-yet-completed import,
+     * so the UI can show progress, the review handoff, or a failure.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function menuImportState(Restaurant $restaurant): ?array
+    {
+        $import = $restaurant->menuImports()->latest('id')->first();
+
+        if (! $import || $import->status === MenuImportStatus::Completed) {
+            return null;
+        }
+
+        return [
+            'id' => $import->id,
+            'status' => $import->status->value,
+            'error' => $import->error,
+            'itemCount' => $import->itemCount(),
+        ];
     }
 
     /**

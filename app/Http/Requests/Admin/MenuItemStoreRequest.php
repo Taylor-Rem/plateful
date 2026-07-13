@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\ItemTemplate;
+use App\Services\PhotoConversionService;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -64,7 +65,7 @@ class MenuItemStoreRequest extends FormRequest
             ],
             'is_available' => ['boolean'],
             'is_featured' => ['boolean'],
-            'image' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
+            'image' => ['nullable', 'file', PhotoConversionService::acceptedPhotoMimes(), 'max:5120'],
             'remove_image' => ['nullable', 'boolean'],
             'item_template_id' => [
                 'nullable',

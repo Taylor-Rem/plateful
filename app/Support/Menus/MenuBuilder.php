@@ -27,15 +27,70 @@ class MenuBuilder
      */
     public function build(Restaurant $restaurant, string $cuisine): void
     {
-        $restored = $this->tenant->get();
-        $this->tenant->set($restaurant);
-
-        try {
+        $this->withTenant($restaurant, function () use ($restaurant, $cuisine): void {
             if ($cuisine === MenuPresets::TEMPLATED) {
                 $this->buildItalian($restaurant);
             } else {
                 $this->buildFlat($restaurant, MenuPresets::flat($cuisine));
             }
+        });
+    }
+
+    /**
+     * Create the menu from an owner-confirmed AI import draft. Slugs are
+     * uniquified because extracted menus (unlike curated presets) can repeat
+     * names across categories. Returns the number of items created.
+     *
+     * @param  array<int, array{name: string, items: array<int, array{name: string, description?: ?string, price_cents: int}>}>  $categories
+     */
+    public function buildFromImport(Restaurant $restaurant, array $categories): int
+    {
+        return $this->withTenant($restaurant, function () use ($restaurant, $categories): int {
+            $usedCategorySlugs = [];
+            $usedItemSlugs = [];
+            $created = 0;
+
+            foreach ($categories as $catPos => $category) {
+                $menuCategory = MenuCategory::create([
+                    'restaurant_id' => $restaurant->id,
+                    'name' => $category['name'],
+                    'slug' => $this->uniqueSlug($category['name'], $usedCategorySlugs),
+                    'position' => $catPos,
+                    'is_active' => true,
+                ]);
+
+                foreach ($category['items'] as $itemPos => $item) {
+                    MenuItem::create([
+                        'restaurant_id' => $restaurant->id,
+                        'menu_category_id' => $menuCategory->id,
+                        'item_template_id' => null,
+                        'name' => $item['name'],
+                        'slug' => $this->uniqueSlug($item['name'], $usedItemSlugs),
+                        'description' => $item['description'] ?? null,
+                        'price_cents' => $item['price_cents'],
+                        'is_available' => true,
+                        'is_featured' => false,
+                        'position' => $itemPos,
+                    ]);
+                    $created++;
+                }
+            }
+
+            return $created;
+        });
+    }
+
+    /**
+     * Run $callback with the restaurant set as the current tenant, restoring
+     * any previously-set tenant afterwards.
+     */
+    private function withTenant(Restaurant $restaurant, \Closure $callback): mixed
+    {
+        $restored = $this->tenant->get();
+        $this->tenant->set($restaurant);
+
+        try {
+            return $callback();
         } finally {
             if ($restored !== null) {
                 $this->tenant->set($restored);
@@ -43,6 +98,25 @@ class MenuBuilder
                 $this->tenant->clear();
             }
         }
+    }
+
+    /**
+     * @param  array<string, true>  $used
+     */
+    private function uniqueSlug(string $name, array &$used): string
+    {
+        $base = Str::slug($name) ?: 'item';
+        $slug = $base;
+        $suffix = 2;
+
+        while (isset($used[$slug])) {
+            $slug = "{$base}-{$suffix}";
+            $suffix++;
+        }
+
+        $used[$slug] = true;
+
+        return $slug;
     }
 
     /**

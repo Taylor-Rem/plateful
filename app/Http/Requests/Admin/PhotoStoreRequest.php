@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Services\PhotoConversionService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class PhotoStoreRequest extends FormRequest
@@ -17,7 +18,7 @@ class PhotoStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'image' => ['required', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:8192'],
+            'image' => ['required', 'file', PhotoConversionService::acceptedPhotoMimes(), 'max:8192'],
             'caption' => ['nullable', 'string', 'max:140'],
         ];
     }

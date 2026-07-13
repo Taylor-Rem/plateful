@@ -34,6 +34,13 @@ const props = defineProps<{
     canGoLive: boolean;
     menuPresets: { value: string; label: string }[];
     menuSummary: { categories: number; items: number };
+    menuImport: {
+        id: number;
+        status: 'queued' | 'processing' | 'needs_review' | 'failed';
+        error: string | null;
+        itemCount: number;
+    } | null;
+    menuImportLimits: { maxFiles: number; maxFileKb: number };
     primaryDomain: string;
 }>();
 
@@ -274,6 +281,8 @@ const copyUrl = async (): Promise<void> => {
                         :restaurant="restaurant"
                         :menu-presets="menuPresets"
                         :menu-summary="menuSummary"
+                        :menu-import="menuImport"
+                        :menu-import-limits="menuImportLimits"
                         @advance="advance"
                     />
                     <StepPayments
