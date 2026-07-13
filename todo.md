@@ -75,8 +75,8 @@ self-contained; unblocks the savings calculator and the whole fee story. Do earl
 ## 2. POS order-injection — the linchpin (Phase 0 → 1)
 
 ### 2a. Foundations (net-new primitives — build before any adapter) — DONE (verified 2026-07-13)
-_All the plumbing is built. The `PosDispatcher` is registered with an intentionally empty adapter
-map — pushes return `provider_unavailable` until the first adapter (§2c) registers. The one
+_All the plumbing is built. The `PosDispatcher` map now registers Square and Clover; a restaurant
+whose connected provider has no adapter still degrades safely (`provider_unavailable`). The one
 foundation piece NOT built (the OAuth connect flow) has moved to §2c, where it belongs with Square._
 - [x] `PosProvider` contract in `app/Contracts` (`name()`, `supports(Restaurant)`,
       `pushOrder(Order, PosIntegration): PosPushResult`). (PosProvider.php:11)
@@ -96,21 +96,47 @@ foundation piece NOT built (the OAuth connect flow) has moved to §2c, where it 
       status, and every attempt is logged as an `OrderEvent`. (PushOrderToPos.php)
 
 ### 2b. Menu / item mapping (the hidden hard part)
+_Text-fallback shipped in §2c (each order line pushes as an ad-hoc Square line item with selected
+options folded into the line `note`). The guided catalog matcher below is the remaining, harder half._
+- [x] **Text-fallback for unmatched items** — `SquarePosProvider` pushes ad-hoc line items
+      (name, qty, `base_price_money` = `unit_price_cents`) + option names in the line `note`. Never
+      drops a line. Plateful stays the pricing authority. (SquarePosProvider.php)
 - [ ] Per-tenant reference map (`plateful_menu_item_id → pos_catalog_item_id`) with a guided admin
-      matcher (fetch POS catalog, auto-match by name, staff confirms). Text-fallback for unmatched
-      items. (Plateful modifiers are shared templates; POS uses per-item modifier lists —
-      impedance mismatch; v1 maps references, does not two-way sync.)
+      matcher (fetch POS catalog via `ITEMS_READ`, auto-match by name, staff confirms), so tickets
+      reference real Square catalog objects instead of text. (Plateful modifiers are shared
+      templates; POS uses per-item modifier lists — impedance mismatch; v1 maps references, does not
+      two-way sync.)
 
-### 2c. First adapters
-- [ ] **"Connect your POS" OAuth flow** — the foundations are built but this is NOT. Today a
-      status-only admin page exists, hard-disabled ("Connect — coming soon"), with `available =>
-      false` and no OAuth routes (PosIntegrations.vue:77, PosIntegrationsController). Build the
-      connect/callback routes + token handshake writing into the existing `pos_integrations` store.
-      Lands with the Square adapter (its OAuth), modeled on Stripe Connect onboarding.
-- [ ] `SquarePosProvider` first (`pushOrder`, catalog fetch) + register it in the `PosDispatcher`
-      map in `AppServiceProvider` (currently `[]`) — sharpest wedge.
-- [ ] `CloverPosProvider` next.
+### 2c. First adapters — Square DONE (verified 2026-07-13, 611 tests)
+- [x] **"Connect your POS" OAuth flow** — `SquareOAuthService` + `SquareConnectController`
+      (connect/callback/disconnect) + routes, writing into `pos_integrations`. Redirect URI lives on
+      the **admin host** (`admin.plateful.test/pos/square/callback`) because `SESSION_DOMAIN=null`
+      scopes the session there; the restaurant travels in a single-use, 15-min `state` (session-
+      stashed), not the URL. Admin page now shows live Connect/Reconnect/Disconnect for Square
+      (`available => true`); Clover still "coming soon". `SQUARE_*` creds + config in `.env` /
+      `config/services.php`. Tests: SquareOAuthServiceTest, SquareConnectTest, PosIntegrationsPageTest.
+- [x] `SquarePosProvider::pushOrder` against the Square Orders API (text-fallback lines, §2b),
+      registered in the `PosDispatcher` map in `AppServiceProvider`. **Token refresh (was step 4)
+      folded in**: `freshAccessToken()` refreshes proactively when the token is expired/<5 min out
+      and persists the rotated token; a 401 throws `PosTokenExpiredException`. `SquareClient` owns the
+      host + pinned API version. Tests: SquarePushOrderTest (full-pipeline via `Http::fake`),
+      SquareLiveSandboxTest (opt-in real-sandbox push+read-back, skipped without creds). **Catalog
+      fetch/matching deferred to §2b.**
+- [x] **Clover adapter — DONE (verified 2026-07-13, 19 Clover tests).** `CloverClient` (split
+      authorize vs. API hosts), `CloverOAuthService` (v2/OAuth expiring tokens; single-use rotating
+      refresh via `/oauth/v2/refresh`, no scope param — permissions set on the Clover app),
+      `CloverTokens`, `CloverPosProvider` (atomic-order push, quantity expanded into repeated lines,
+      option text-fallback note), `CloverConnectController` (connect/callback/disconnect; `merchant_id`
+      read from the callback query — no location lookup). Registered in the `PosDispatcher` map and
+      added to the admin `$connectable` list (`available => true`). `CLOVER_*` env + `config/services.php`.
+      Tests: CloverOAuthServiceTest, CloverPushOrderTest, CloverConnectTest. **Setup pending:** the
+      Clover developer app itself (walkthrough delivered) + a live-sandbox smoke test.
 - [ ] Toast later/maybe (gated partner API; we don't save Toast restaurants money — deprioritized).
+
+**Operational note (to run a live integration):** the push is a queued job and `QUEUE_CONNECTION=
+database`, so a queue worker must be running (`composer run dev` includes `queue:listen`, or run
+`php artisan queue:work`) or connected orders never actually push. To verify against real Square,
+set `SQUARE_SANDBOX_ACCESS_TOKEN` + `SQUARE_SANDBOX_LOCATION_ID` and run SquareLiveSandboxTest.
 
 ### 2d. Register-only path
 - [ ] Cloud-printer path (Star/Epson CloudPRNT) for restaurants with no smart POS — order just

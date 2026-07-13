@@ -59,6 +59,18 @@ return [
         'redirect' => env('SQUARE_REDIRECT_URI'),
     ],
 
+    'clover' => [
+        'app_id' => env('CLOVER_APP_ID'),
+        'app_secret' => env('CLOVER_APP_SECRET'),
+        // `sandbox` or `production` — selects both the OAuth authorize host and
+        // the API host (Clover splits the two). North America only for now.
+        'environment' => env('CLOVER_ENVIRONMENT', 'sandbox'),
+        // Clover registers a single OAuth redirect URI. Like Square it must
+        // resolve on the admin host (where the owner's session lives); the
+        // restaurant travels in the OAuth `state`, not the URL.
+        'redirect' => env('CLOVER_REDIRECT_URI'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

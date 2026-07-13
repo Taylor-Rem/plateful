@@ -14,6 +14,7 @@ use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
 use App\Services\Delivery\DeliveryDispatcher;
 use App\Services\Delivery\SelfDeliveryProvider;
+use App\Services\Pos\Clover\CloverPosProvider;
 use App\Services\Pos\PosDispatcher;
 use App\Services\Pos\Square\SquarePosProvider;
 use App\Tenancy\CurrentTenant;
@@ -51,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
             // keyed by PosProviderName value.
             return new PosDispatcher([
                 PosProviderName::Square->value => $app->make(SquarePosProvider::class),
+                PosProviderName::Clover->value => $app->make(CloverPosProvider::class),
             ]);
         });
     }

@@ -24,7 +24,7 @@ class PosIntegrationsController extends Controller
             ->keyBy(fn (PosIntegration $integration): string => $integration->provider->value);
 
         // Providers with a built OAuth adapter. Others render as "coming soon".
-        $connectable = [PosProviderName::Square];
+        $connectable = [PosProviderName::Square, PosProviderName::Clover];
 
         return Inertia::render('Admin/TenantAdmin/PosIntegrations', [
             'restaurant' => RestaurantData::fromModel($restaurant),
