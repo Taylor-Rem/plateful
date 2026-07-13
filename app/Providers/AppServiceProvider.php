@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Enums\DeliveryProviderName;
 use App\Listeners\MergeGuestCartOnLogin;
+use App\Listeners\PurgeUserSessionsOnLogout;
 use App\Models\ItemTemplate;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
@@ -16,6 +17,7 @@ use App\Services\Pos\PosDispatcher;
 use App\Tenancy\CurrentTenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -60,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
         MenuItem::observe(MenuItemObserver::class);
 
         Event::listen(Login::class, MergeGuestCartOnLogin::class);
+        Event::listen(Logout::class, PurgeUserSessionsOnLogout::class);
 
         Route::bind('restaurant', function ($value) {
             $restaurant = Restaurant::query()->where('subdomain', $value)->first();

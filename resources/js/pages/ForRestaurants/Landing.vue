@@ -118,24 +118,40 @@ const pricingRows: {
                         >How it works</a
                     >
 
-                    <template v-if="hasAdminAccess">
+                    <template v-if="authUserName">
                         <span
                             class="hidden px-2 text-[#1b1b18]/60 sm:inline-block dark:text-[#EDEDEC]/60"
                             data-test="nav-greeting"
                         >
                             Hi, {{ authUserName }}
                         </span>
+                        <Link
+                            href="/logout"
+                            method="post"
+                            as="button"
+                            class="px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
+                            data-test="nav-sign-out"
+                        >
+                            Sign out
+                        </Link>
                         <a
+                            v-if="hasAdminAccess"
                             :href="adminUrl"
                             class="rounded-md bg-teal-600 px-4 py-1.5 text-white hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500"
                             data-test="nav-admin-console"
                         >
                             Admin console →
                         </a>
+                        <Link
+                            v-else
+                            :href="createSignup()"
+                            class="rounded-md bg-teal-600 px-4 py-1.5 text-white hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500"
+                        >
+                            Get started
+                        </Link>
                     </template>
                     <template v-else>
                         <a
-                            v-if="!authUserName"
                             :href="signInUrl"
                             class="px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
                             data-test="nav-sign-in"
