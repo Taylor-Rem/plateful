@@ -66,7 +66,7 @@ function addMenuItem(Restaurant $r): MenuItem
     ]);
 }
 
-it('renders the onboarding checklist for the restaurant admin', function () {
+it('renders the onboarding wizard for the restaurant admin', function () {
     [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
 
     $this->actingAs($owner)
@@ -76,7 +76,9 @@ it('renders the onboarding checklist for the restaurant admin', function () {
             ->component('Admin/TenantAdmin/Onboarding')
             ->where('restaurant.subdomain', 'pizzajoint')
             ->where('canGoLive', false)
-            ->has('steps', 5));
+            ->has('steps', 5)
+            ->has('menuPresets')
+            ->where('menuSummary.items', 0));
 });
 
 it('marks hours and menu steps complete once the data exists', function () {
@@ -226,9 +228,10 @@ it('goes live when required steps are complete and appears on the diner homepage
     addMenuItem($restaurant);
     markStripeReady($restaurant);
 
+    // Returns to the wizard, which renders the "you're live" celebration.
     $this->actingAs($owner)
         ->post(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/go-live")
-        ->assertRedirect(ADMIN_HOST."/{$restaurant->subdomain}/dashboard");
+        ->assertRedirect(ADMIN_HOST."/{$restaurant->subdomain}/onboarding");
 
     $restaurant->refresh();
     expect($restaurant->status)->toBe(RestaurantStatus::Active)
@@ -253,6 +256,98 @@ it('cannot go live a second time', function () {
         ->assertRedirect();
 
     expect($restaurant->fresh()->status)->toBe(RestaurantStatus::Active);
+});
+
+it('saves the basics step and marks it complete', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->put(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/basics", [
+            'name' => 'Pizza Joint',
+            'description' => 'Wood-fired pizza in Brooklyn.',
+            'phone' => '555-0100',
+            'primary_color' => '#aa2222',
+            'secondary_color' => '#ffffff',
+            'street' => '1 Main St',
+            'city' => 'Brooklyn',
+            'state' => 'ny',
+            'postal_code' => '11201',
+        ])
+        ->assertRedirect();
+
+    $restaurant->refresh();
+    expect($restaurant->name)->toBe('Pizza Joint')
+        ->and($restaurant->description)->toBe('Wood-fired pizza in Brooklyn.')
+        ->and($restaurant->street)->toBe('1 Main St')
+        ->and($restaurant->state)->toBe('NY');
+
+    $this->actingAs($owner)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
+        ->assertInertia(fn ($page) => $page
+            ->where('steps.0.key', 'basics')
+            ->where('steps.0.complete', true));
+});
+
+it('blocks staff from saving the basics step', function () {
+    [, $restaurant] = makeOwnerAndApprovedRestaurant();
+    $staff = User::factory()->create();
+    $restaurant->members()->attach($staff->id, ['role' => RestaurantRole::Staff->value]);
+
+    $this->actingAs($staff)
+        ->put(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/basics", ['name' => 'Hacked'])
+        ->assertForbidden();
+});
+
+it('seeds a starter menu from a preset while the menu is empty', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->post(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/menu-preset", ['preset' => 'mexican'])
+        ->assertRedirect();
+
+    expect($restaurant->menuItems()->exists())->toBeTrue()
+        ->and($restaurant->menuCategories()->exists())->toBeTrue();
+});
+
+it('refuses to apply a preset once the menu has items', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+    addMenuItem($restaurant);
+    $itemCount = $restaurant->menuItems()->count();
+
+    $this->actingAs($owner)
+        ->post(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/menu-preset", ['preset' => 'mexican'])
+        ->assertSessionHasErrors('preset');
+
+    expect($restaurant->menuItems()->count())->toBe($itemCount);
+});
+
+it('rejects an unknown menu preset', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->post(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/menu-preset", ['preset' => 'klingon'])
+        ->assertSessionHasErrors('preset');
+});
+
+it('hands the owner to the storefront preview with a token', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/preview")
+        ->assertRedirectContains("http://{$restaurant->subdomain}.plateful.test/preview/enter?token=");
+});
+
+it('updates the restaurant timezone alongside hours', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->put(ADMIN_HOST."/{$restaurant->subdomain}/hours", [
+            'windows' => [1 => [['opens_at' => '11:00', 'closes_at' => '21:00']]],
+            'timezone' => 'America/Denver',
+        ])
+        ->assertRedirect();
+
+    expect($restaurant->fresh()->timezone)->toBe('America/Denver');
 });
 
 it('redirects single-restaurant owners with approved restaurant to onboarding', function () {

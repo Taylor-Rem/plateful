@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\PosIntegrationStatus;
 use App\Enums\RestaurantRole;
 use App\Enums\RestaurantStatus;
 use App\Models\PosIntegration;
@@ -63,36 +62,17 @@ it('is forbidden for staff members', function () {
         ->assertForbidden();
 });
 
-it('adds an optional pos step to the onboarding checklist', function () {
+it('keeps pos out of the onboarding wizard steps', function () {
+    // POS is a post-live concern: the wizard links to it from "More options"
+    // instead of carrying an un-completable "coming soon" step.
     [$owner, $restaurant] = posPageOwnerAndRestaurant();
     $restaurant->update(['status' => RestaurantStatus::Approved]);
+    PosIntegration::factory()->create(['restaurant_id' => $restaurant->id]);
 
     $this->actingAs($owner)
         ->get(POS_ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
-            ->where('steps.4.key', 'pos')
-            ->where('steps.4.required', false)
-            ->where('steps.4.complete', false)
+            ->where('steps', fn ($steps) => collect($steps)->pluck('key')->doesntContain('pos'))
         );
-
-    PosIntegration::factory()->create(['restaurant_id' => $restaurant->id]);
-
-    $this->actingAs($owner)
-        ->get(POS_ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
-        ->assertInertia(fn ($page) => $page->where('steps.4.complete', true));
-});
-
-it('does not mark the pos step complete for a disconnected integration', function () {
-    [$owner, $restaurant] = posPageOwnerAndRestaurant();
-    $restaurant->update(['status' => RestaurantStatus::Approved]);
-    PosIntegration::factory()->create([
-        'restaurant_id' => $restaurant->id,
-        'status' => PosIntegrationStatus::Disconnected,
-    ]);
-
-    $this->actingAs($owner)
-        ->get(POS_ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
-        ->assertSuccessful()
-        ->assertInertia(fn ($page) => $page->where('steps.4.complete', false));
 });

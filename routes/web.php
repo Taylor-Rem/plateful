@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\OwnerSignupController;
 use App\Models\Restaurant;
+use Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -64,7 +65,7 @@ Route::domain(config('platform.primary_domain'))->group(function () {
         Route::get('/', [OwnerSignupController::class, 'landing'])->name('landing');
         Route::get('/signup', [OwnerSignupController::class, 'create'])->name('create');
         Route::post('/signup', [OwnerSignupController::class, 'store'])
-            ->middleware('throttle:6,1')
+            ->middleware(['throttle:30,1', HandlePrecognitiveRequests::class])
             ->name('store');
     });
 });

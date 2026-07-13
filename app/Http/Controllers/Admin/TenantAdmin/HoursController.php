@@ -25,6 +25,10 @@ class HoursController extends Controller
     {
         $windows = (array) $request->input('windows', []);
 
+        if ($request->filled('timezone')) {
+            $restaurant->update(['timezone' => $request->input('timezone')]);
+        }
+
         DB::transaction(function () use ($restaurant, $windows): void {
             RestaurantHour::where('restaurant_id', $restaurant->id)->delete();
 

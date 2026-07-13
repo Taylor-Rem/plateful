@@ -7,12 +7,10 @@ use App\Enums\RestaurantStatus;
 use App\Http\Requests\OwnerSignupRequest;
 use App\Models\Restaurant;
 use App\Models\User;
-use App\Support\Menus\MenuBuilder;
-use App\Support\Menus\MenuPresets;
+use App\Support\StorefrontLoginHandoff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -37,20 +35,13 @@ class OwnerSignupController extends Controller
     }
 
     /**
-     * Owner signup form.
+     * Owner signup form. Kept to the five fields needed to create the account
+     * and claim a storefront URL — everything else happens in the wizard.
      */
     public function create(): Response
     {
         return Inertia::render('ForRestaurants/Signup', [
-            'reservedSubdomains' => array_values((array) config('platform.reserved_subdomains', [])),
             'primaryDomain' => config('platform.primary_domain'),
-            'menuPresets' => array_map(
-                fn (string $cuisine): array => [
-                    'value' => $cuisine,
-                    'label' => Str::headline($cuisine),
-                ],
-                MenuPresets::cuisines(),
-            ),
         ]);
     }
 
@@ -62,16 +53,17 @@ class OwnerSignupController extends Controller
      * configured) but NOT live — go-live still requires Stripe Connect plus the
      * required onboarding steps, so a dead signup costs the platform nothing.
      *
-     * If the owner picked a starter-menu preset, we seed it now so they land in
-     * onboarding with a menu already built (and editable).
+     * Sessions are host-scoped (SESSION_DOMAIN is null), so the login
+     * established here on the primary host cannot cross to the admin host by
+     * cookie. We mint a single-use handoff token and let the admin host
+     * exchange it for a session of its own before landing on onboarding.
      */
-    public function store(OwnerSignupRequest $request, MenuBuilder $menuBuilder): SymfonyResponse
+    public function store(OwnerSignupRequest $request, StorefrontLoginHandoff $handoff): SymfonyResponse
     {
-        [$user, $restaurant] = DB::transaction(function () use ($request, $menuBuilder) {
+        [$user, $restaurant] = DB::transaction(function () use ($request) {
             $user = User::create([
                 'name' => $request->string('name')->trim()->toString(),
                 'email' => $request->string('email')->trim()->toString(),
-                'phone' => $request->input('phone'),
                 'password' => $request->string('password')->toString(),
             ]);
 
@@ -79,13 +71,12 @@ class OwnerSignupController extends Controller
                 'name' => $request->string('restaurant_name')->trim()->toString(),
                 'subdomain' => $request->string('subdomain')->toString(),
                 'email' => $user->email,
-                'phone' => $user->phone,
                 'street' => '',
-                'city' => $request->input('city') ?? '',
-                'state' => $request->input('state') ?? '',
+                'city' => '',
+                'state' => '',
                 'postal_code' => '',
                 'country' => 'US',
-                'timezone' => 'America/New_York',
+                'timezone' => $request->input('timezone') ?: 'America/New_York',
                 'is_active' => true,
                 'status' => RestaurantStatus::Approved,
                 'approved_at' => now(),
@@ -97,23 +88,20 @@ class OwnerSignupController extends Controller
                 'role' => RestaurantRole::Admin->value,
             ]);
 
-            // Optional starter menu. Validation guarantees the preset is one of
-            // MenuPresets::cuisines(), so a non-empty value is always buildable.
-            $preset = $request->string('menu_preset')->toString();
-            if ($preset !== '') {
-                $menuBuilder->build($restaurant, $preset);
-            }
-
             return [$user, $restaurant];
         });
 
+        // Log in on the primary host too, so returning to plateful.test
+        // greets the owner by name.
         Auth::login($user);
 
-        // Onboarding lives on the admin host — a different origin from this
-        // tenant-root signup page. A normal redirect would be followed by
-        // Inertia over XHR and blocked by CORS, so force a full-page visit.
-        return Inertia::location(route('admin.restaurant.onboarding.show', [
-            'restaurant' => $restaurant->subdomain,
-        ]));
+        $adminHost = config('platform.admin_subdomain').'.'.config('platform.primary_domain');
+
+        return Inertia::location(
+            $request->getScheme().'://'.$adminHost.'/auth/handoff?'.http_build_query([
+                'token' => $handoff->issue($user, $adminHost),
+                'to' => "/{$restaurant->subdomain}/onboarding",
+            ])
+        );
     }
 }

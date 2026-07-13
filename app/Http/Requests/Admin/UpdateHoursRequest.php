@@ -22,6 +22,7 @@ class UpdateHoursRequest extends FormRequest
             'windows.*' => ['array'],
             'windows.*.*.opens_at' => ['required', 'date_format:H:i'],
             'windows.*.*.closes_at' => ['required', 'date_format:H:i'],
+            'timezone' => ['nullable', 'string', 'timezone:all'],
         ];
     }
 
