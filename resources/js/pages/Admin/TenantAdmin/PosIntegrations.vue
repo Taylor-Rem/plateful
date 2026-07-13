@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Plug } from 'lucide-vue-next';
@@ -11,12 +11,31 @@ type PosProviderCard = {
     lastError: string | null;
     connectedAt: string | null;
     available: boolean;
+    connectUrl: string | null;
+    disconnectUrl: string | null;
 };
 
 defineProps<{
     restaurant: App.Data.RestaurantData;
     providers: PosProviderCard[];
 }>();
+
+const form = useForm({});
+
+const connect = (card: PosProviderCard): void => {
+    if (card.connectUrl) {
+        form.post(card.connectUrl);
+    }
+};
+
+const disconnect = (card: PosProviderCard): void => {
+    if (
+        card.disconnectUrl &&
+        confirm(`Disconnect ${card.label}? New orders will stop pushing to your register.`)
+    ) {
+        form.post(card.disconnectUrl);
+    }
+};
 
 const statusLabels: Record<string, string> = {
     connected: 'Connected',
@@ -74,8 +93,30 @@ const statusClasses: Record<string, string> = {
                             </p>
                         </div>
                     </div>
-                    <Button type="button" size="sm" :disabled="!card.available">
-                        {{ card.available ? 'Connect' : 'Connect — coming soon' }}
+                    <Button
+                        v-if="card.status === 'connected'"
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        :disabled="form.processing"
+                        @click="disconnect(card)"
+                    >
+                        Disconnect
+                    </Button>
+                    <Button
+                        v-else
+                        type="button"
+                        size="sm"
+                        :disabled="!card.available || form.processing"
+                        @click="connect(card)"
+                    >
+                        {{
+                            !card.available
+                                ? 'Connect — coming soon'
+                                : card.status === 'token_expired'
+                                  ? 'Reconnect'
+                                  : 'Connect'
+                        }}
                     </Button>
                 </div>
             </section>

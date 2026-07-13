@@ -1,0 +1,163 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\RevenueRole;
+use App\Models\FeeDistribution;
+use App\Models\Order;
+use App\Models\PlatformRoleHolder;
+use App\Models\Restaurant;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+
+/**
+ * Turns a restaurant's retained platform fee into per-role earning slices.
+ *
+ * Shares come from config('platform.revenue_shares') and are shares of
+ * Plateful's take (they sum to 100). Each share resolves to a concrete user:
+ * founder/operator are platform-wide holders; recruiter/overseer are per
+ * restaurant, with an unassigned overseer (and any unresolvable slice) falling
+ * back to the Operator, then the Founder. A person holding several roles simply
+ * earns several slices — the report sums them.
+ */
+class RevenueSplitResolver
+{
+    /**
+     * Compute how a fee amount splits, without persisting. Cents are allocated
+     * by the largest-remainder method so the slices sum EXACTLY to $feeCents.
+     *
+     * @return array<int, array{role: RevenueRole, user: ?User, percent: float, amountCents: int}>
+     */
+    public function splitFor(Restaurant $restaurant, int $feeCents): array
+    {
+        $shares = $this->shares();
+
+        $operator = PlatformRoleHolder::holder(RevenueRole::Operator);
+        $founder = PlatformRoleHolder::holder(RevenueRole::Founder);
+
+        $resolve = fn (RevenueRole $role): ?User => match ($role) {
+            RevenueRole::Founder => $founder,
+            RevenueRole::Operator => $operator,
+            RevenueRole::Recruiter => $restaurant->recruiter,
+            RevenueRole::Overseer => $restaurant->overseer ?? $operator,
+        };
+
+        // Build the paying slices: only roles with a positive share and a
+        // user we can actually attribute to (with the operator→founder
+        // fallback for anything left dangling).
+        $slices = [];
+        foreach ($shares as $role => $percent) {
+            if ($percent <= 0) {
+                continue;
+            }
+
+            $roleEnum = RevenueRole::from((string) $role);
+            $user = $resolve($roleEnum) ?? $operator ?? $founder;
+            if (! $user) {
+                continue;
+            }
+
+            $slices[] = ['role' => $roleEnum, 'user' => $user, 'percent' => (float) $percent];
+        }
+
+        return $this->allocate($slices, $feeCents);
+    }
+
+    /**
+     * Persist the split for a freshly paid order. Idempotent: a replayed
+     * webhook/return won't double-write, thanks to the (order, user, role)
+     * unique key. Nothing is written when the fee rounds to zero.
+     */
+    public function record(Order $order): void
+    {
+        $feeCents = (int) $order->application_fee_cents;
+        if ($feeCents <= 0) {
+            return;
+        }
+
+        $restaurant = $order->relationLoaded('restaurant')
+            ? $order->getRelation('restaurant')
+            : $order->restaurant()->first();
+
+        if (! $restaurant) {
+            return;
+        }
+
+        $earnedAt = $order->placed_at ?? Carbon::now();
+
+        foreach ($this->splitFor($restaurant, $feeCents) as $slice) {
+            if ($slice['amountCents'] <= 0) {
+                continue;
+            }
+
+            FeeDistribution::query()->firstOrCreate(
+                [
+                    'order_id' => $order->id,
+                    'user_id' => $slice['user']?->id,
+                    'role' => $slice['role']->value,
+                ],
+                [
+                    'restaurant_id' => $restaurant->id,
+                    'percent' => $slice['percent'],
+                    'amount_cents' => $slice['amountCents'],
+                    'earned_at' => $earnedAt,
+                ],
+            );
+        }
+    }
+
+    /**
+     * The configured role→percent shares, keyed by RevenueRole. Unknown keys
+     * are ignored; the sum is asserted to be 100 by a test, not here.
+     *
+     * @return array<string, float> role value => percent
+     */
+    public function shares(): array
+    {
+        $out = [];
+        foreach ((array) config('platform.revenue_shares', []) as $role => $percent) {
+            if (RevenueRole::tryFrom((string) $role) !== null) {
+                $out[$role] = (float) $percent;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Largest-remainder allocation of $feeCents across weighted slices.
+     *
+     * @param  array<int, array{role: RevenueRole, user: ?User, percent: float}>  $slices
+     * @return array<int, array{role: RevenueRole, user: ?User, percent: float, amountCents: int}>
+     */
+    private function allocate(array $slices, int $feeCents): array
+    {
+        $totalWeight = array_sum(array_column($slices, 'percent'));
+        if ($slices === [] || $totalWeight <= 0) {
+            return [];
+        }
+
+        $remainders = [];
+        $allocated = 0;
+        foreach ($slices as $i => $slice) {
+            $exact = $feeCents * $slice['percent'] / $totalWeight;
+            $floor = (int) floor($exact);
+            $slices[$i]['amountCents'] = $floor;
+            $remainders[$i] = $exact - $floor;
+            $allocated += $floor;
+        }
+
+        // Hand out the leftover cents to the largest fractional remainders.
+        $leftover = $feeCents - $allocated;
+        arsort($remainders);
+        foreach (array_keys($remainders) as $i) {
+            if ($leftover <= 0) {
+                break;
+            }
+            $slices[$i]['amountCents']++;
+            $leftover--;
+        }
+
+        return $slices;
+    }
+}

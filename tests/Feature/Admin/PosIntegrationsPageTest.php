@@ -31,8 +31,11 @@ it('shows provider statuses to a restaurant admin', function () {
             ->has('providers', 2)
             ->where('providers.0.provider', 'square')
             ->where('providers.0.status', 'disconnected')
-            ->where('providers.0.available', false)
+            ->where('providers.0.available', true)
+            ->where('providers.0.connectUrl', fn ($url) => str_contains((string) $url, '/settings/pos/square/connect'))
             ->where('providers.1.provider', 'clover')
+            ->where('providers.1.available', true)
+            ->where('providers.1.connectUrl', fn ($url) => str_contains((string) $url, '/settings/pos/clover/connect'))
         );
 });
 

@@ -25,6 +25,13 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
     Route::middleware('admin')->group(function () {
         Route::get('/', AdminHomeController::class)->name('admin.home');
 
+        // Square posts back to a single registered redirect URI (not scoped to
+        // a restaurant path); the restaurant is carried in the OAuth `state`.
+        Route::get('/pos/square/callback', [TenantAdmin\SquareConnectController::class, 'callback'])
+            ->name('admin.pos.square.callback');
+        Route::get('/pos/clover/callback', [TenantAdmin\CloverConnectController::class, 'callback'])
+            ->name('admin.pos.clover.callback');
+
         Route::prefix('{restaurant}')->middleware('admin.restaurant')->name('admin.restaurant.')->group(function () {
             // Routes available to any restaurant member (admin OR staff)
             Route::get('/dashboard', TenantAdmin\DashboardController::class)->name('dashboard');
@@ -60,6 +67,10 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::get('/payouts', [TenantAdmin\PayoutsController::class, 'index'])->name('payouts.index');
 
                 Route::get('/settings/pos', [TenantAdmin\PosIntegrationsController::class, 'show'])->name('pos.show');
+                Route::post('/settings/pos/square/connect', [TenantAdmin\SquareConnectController::class, 'connect'])->name('pos.square.connect');
+                Route::post('/settings/pos/square/disconnect', [TenantAdmin\SquareConnectController::class, 'disconnect'])->name('pos.square.disconnect');
+                Route::post('/settings/pos/clover/connect', [TenantAdmin\CloverConnectController::class, 'connect'])->name('pos.clover.connect');
+                Route::post('/settings/pos/clover/disconnect', [TenantAdmin\CloverConnectController::class, 'disconnect'])->name('pos.clover.disconnect');
 
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
@@ -91,8 +102,12 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             Route::post('/restaurants', [SuperAdmin\RestaurantsController::class, 'store'])->name('restaurants.store');
             Route::get('/restaurants/{restaurant}', [SuperAdmin\RestaurantsController::class, 'show'])->name('restaurants.show');
             Route::put('/restaurants/{restaurant}/fee', [SuperAdmin\RestaurantsController::class, 'updateFee'])->name('restaurants.updateFee');
+            Route::put('/restaurants/{restaurant}/roles', [SuperAdmin\RestaurantsController::class, 'updateRoles'])->name('restaurants.updateRoles');
             Route::post('/restaurants/{restaurant}/deactivate', [SuperAdmin\RestaurantsController::class, 'deactivate'])->name('restaurants.deactivate');
             Route::post('/restaurants/{restaurant}/activate', [SuperAdmin\RestaurantsController::class, 'activate'])->name('restaurants.activate');
+
+            Route::get('/earnings', [SuperAdmin\EarningsController::class, 'index'])->name('earnings');
+            Route::put('/platform-roles', [SuperAdmin\PlatformRolesController::class, 'update'])->name('platformRoles.update');
 
             Route::get('/admins', [SuperAdmin\AdminsController::class, 'index'])->name('admins.index');
             Route::post('/admins/invitations', [SuperAdmin\InvitationController::class, 'store'])->name('admins.invitations.store');

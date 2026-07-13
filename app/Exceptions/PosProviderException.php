@@ -20,4 +20,9 @@ class PosProviderException extends RuntimeException
     {
         return new self("POS push failed: {$reason}");
     }
+
+    public static function oauthFailed(string $reason): self
+    {
+        return new self("POS OAuth failed: {$reason}");
+    }
 }
