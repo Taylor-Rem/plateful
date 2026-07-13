@@ -47,6 +47,18 @@ return [
         'connect_country' => env('STRIPE_CONNECT_COUNTRY', 'US'),
     ],
 
+    'square' => [
+        'application_id' => env('SQUARE_APPLICATION_ID'),
+        'application_secret' => env('SQUARE_APPLICATION_SECRET'),
+        // `sandbox` or `production` — selects the Square API host.
+        'environment' => env('SQUARE_ENVIRONMENT', 'sandbox'),
+        // Square registers a single OAuth redirect URI. It must resolve on the
+        // admin host (where the owner's session lives) because the callback
+        // writes credentials on their behalf; the restaurant is carried in the
+        // OAuth `state`, not the URL.
+        'redirect' => env('SQUARE_REDIRECT_URI'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

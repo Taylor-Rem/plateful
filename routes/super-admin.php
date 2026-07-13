@@ -25,6 +25,11 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
     Route::middleware('admin')->group(function () {
         Route::get('/', AdminHomeController::class)->name('admin.home');
 
+        // Square posts back to a single registered redirect URI (not scoped to
+        // a restaurant path); the restaurant is carried in the OAuth `state`.
+        Route::get('/pos/square/callback', [TenantAdmin\SquareConnectController::class, 'callback'])
+            ->name('admin.pos.square.callback');
+
         Route::prefix('{restaurant}')->middleware('admin.restaurant')->name('admin.restaurant.')->group(function () {
             // Routes available to any restaurant member (admin OR staff)
             Route::get('/dashboard', TenantAdmin\DashboardController::class)->name('dashboard');
@@ -60,6 +65,8 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::get('/payouts', [TenantAdmin\PayoutsController::class, 'index'])->name('payouts.index');
 
                 Route::get('/settings/pos', [TenantAdmin\PosIntegrationsController::class, 'show'])->name('pos.show');
+                Route::post('/settings/pos/square/connect', [TenantAdmin\SquareConnectController::class, 'connect'])->name('pos.square.connect');
+                Route::post('/settings/pos/square/disconnect', [TenantAdmin\SquareConnectController::class, 'disconnect'])->name('pos.square.disconnect');
 
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
