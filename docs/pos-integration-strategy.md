@@ -71,7 +71,7 @@ Facts that shape this plan:
 - **Payments are Stripe Connect (Express, direct charges).**
   `Services/Stripe/StripeConnectService.php` creates the Checkout Session as a direct charge on
   the restaurant's connected account with an `application_fee_amount` = Plateful's cut
-  (currently **1% of food subtotal** — to be revised, see §6). Restaurant pays Stripe's
+  (**4% flat of food subtotal** — see §6). Restaurant pays Stripe's
   processing; Plateful takes the application fee on top.
 
 > **Code reality — two patterns already exist that we build on.** The `DeliveryDispatcher`
@@ -102,7 +102,7 @@ who is:
 A restaurant's online cost on Plateful is **Stripe (2.9% + 30¢) + our fee**. Toast's own online
 ordering is **3.5% + 15¢** plus a ~$75/mo add-on and a $0.99 guest fee. Because Stripe's base
 rate already ≈ Toast's rate, anything we add on top pushes us *above* Toast on per-order
-processing — at 5%, at 3.5%, at basically any fee that leaves us a margin. On total monthly cost
+processing — at 4%, at 3.5%, at basically any fee that leaves us a margin. On total monthly cost
 including Toast's $75/mo add-on, Toast online only loses to us below ~45–65 orders/month — i.e.
 never, for a real restaurant. So "cheaper than Toast online" is a comparison we lose regardless
 of fee. Chasing it just gives away revenue on the orders we *do* win.
@@ -164,7 +164,7 @@ Reframed around the real competitor (the marketplaces), not Toast.
 | --- | --- |
 | **Uber Eats ~28% commission** | keeps ~72% (~$25.20) — the app keeps the customer |
 | **DoorDash ~25% commission** | keeps ~75% (~$26.25) — the app keeps the customer |
-| **Plateful @ 5%** (Stripe 2.9%+30¢ + 5%) | keeps ~91% (~$31.94) — **restaurant owns the customer** |
+| **Plateful @ 4%** (Stripe 2.9%+30¢ + 4%) | keeps ~92% (~$32.29) — **restaurant owns the customer** |
 | **Toast online** (3.5%+15¢ + $75/mo + $0.99 guest) | keeps ~96% on processing — but Toast keeps the customer |
 | **In-store (Toast register) ~2.49%+15¢** | keeps ~97% |
 
@@ -188,14 +188,14 @@ cell and every number recalculates.
 
 ### The decision
 
-- **Percentage fee, flat rate: 5%** of the order (on top of Stripe), **with a ~4% floor** if a
-  lower price is needed to win share during the Utah land-grab.
+- **Percentage fee, flat rate: 4%** of the food subtotal (on top of Stripe). Locked 2026-07-10:
+  no tiers, no volume discounts, no floor. Tips and tax are excluded from the fee.
 - **Free setup / onboarding** — part of the pitch, and a differentiator vs. competitors who
   charge setup fees ($119–499 at ChowNow).
 - **Paid custom/ongoing support** for special work, extra training, and bespoke requests —
   *but fixing our own bugs is always free.*
-- **Optional per-order minimum** (e.g. "5%, minimum ~$0.40/order") to keep tiny orders
-  profitable without penalizing large ones.
+- **Per-order minimum: deferred.** An on-top 4% is always positive, so no floor is needed to stay
+  solvent. Revisit only if tiny-order economics prove annoying.
 
 ### Why this shape (the reasoning we worked through)
 
@@ -205,7 +205,7 @@ cell and every number recalculates.
   we want restaurants to push through us. A percentage scales down gracefully on small orders and
   up on large ones — it's the more *aligned* model.
 - **Flat percentage, not tiers.** Volume tiers create a cliff — right below a threshold, one more
-  order jumps the price — giving the restaurant a reason to hold volume down. A constant "5% every
+  order jumps the price — giving the restaurant a reason to hold volume down. A constant "4% every
   order" has a tiny, known, constant disincentive that never changes behavior.
 - **Incentive alignment is the core principle.** A flat percentage keeps us on the same side as
   the restaurant: they want to push *every* order through us. This is what makes the "own your
@@ -217,11 +217,11 @@ cell and every number recalculates.
   support" case.
 - **Don't chase "cheaper than Toast."** No fee level wins that (§3). 3.5% is priced to win a
   comparison that can't be won; it just leaves money on the table on the DoorDash/Uber orders
-  where we win big anyway. Hence 5% (4% floor), not 3.5%.
+  where we win big anyway. Hence a flat 4%, not 3.5%.
 
 ### Pricing vs. competitors
 
-At 5% on a restaurant doing ~1,200 online orders/mo at $35, Plateful earns ~$1,680/mo while
+At 4% on a restaurant doing ~1,200 online orders/mo at $35, Plateful earns ~$1,680/mo while
 saving the restaurant ~$3,000+/mo vs. their current DoorDash/Uber mix. Against ChowNow
 ($119–328/mo) and Owner.com ($249–499/mo), we can undercut on price *and* offer free setup,
 because our cost structure allows it.
@@ -351,7 +351,7 @@ first sellable milestone is **Square injection + pickup**; add delivery (Phase 2
 | **ChowNow** | Flat monthly, 0% commission + 2.95%+29¢ processing | ~$119–328/mo + setup | Category leader, funded, strong support (4.6 G2), site + app + marketplace |
 | **Owner.com** | Flat monthly or low base + 5%/order | $249/mo (+5%) or $499/mo | VC-backed, aggressive; AI site + SEO + app + SMS/email. "Own your customers" is their pitch |
 | **Beyond Menu** | First-party ordering, low fees | Cheaper, less polished (3.9 G2) | Tens of thousands of restaurants, budget option |
-| **Plateful (us)** | 5% flat (4% floor), free setup | Undercuts all of the above | Solo, local, owns its code |
+| **Plateful (us)** | 4% flat, free setup | Undercuts all of the above | Solo, local, owns its code |
 
 The category is proven (demand exists) but contested. We differentiate on **price** (structural
 cost advantage) and **locality/high-touch** (Utah, founder-led), not features. We must reach
@@ -388,8 +388,8 @@ customers" real.
 
 ## 13. Immediate next steps
 
-1. **Lock pricing:** confirm 5% (4% floor), free setup, paid custom support, optional per-order
-   minimum. Update `application_fee_cents` handling accordingly.
+1. **Pricing — LOCKED (2026-07-10): 4% flat** of food subtotal, free setup, paid custom support,
+   per-order minimum deferred. Implemented as the Stripe Connect application fee (see §6).
 2. **Validate with 3–5 Utah restaurants:** collect real DoorDash/Uber statements, run
    `docs/plateful_fee_comparison.xlsx`, confirm the savings story and that they're on Square/Clover.
 3. **Spec Phase 0** (PosProvider interface, `pos_integrations` encrypted store, push trigger,
