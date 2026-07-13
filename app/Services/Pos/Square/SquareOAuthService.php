@@ -3,8 +3,6 @@
 namespace App\Services\Pos\Square;
 
 use App\Exceptions\PosProviderException;
-use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Support\Facades\Http;
 
 /**
  * Handles the Square OAuth handshake: building the authorize URL, exchanging
@@ -13,11 +11,7 @@ use Illuminate\Support\Facades\Http;
  */
 class SquareOAuthService
 {
-    /**
-     * Square API version pinned for every request. Bump deliberately after
-     * reading the Square changelog — never float it.
-     */
-    public const API_VERSION = '2025-06-18';
+    public function __construct(private SquareClient $client) {}
 
     /**
      * Scopes requested from the merchant. ORDERS_* to inject tickets,
@@ -49,7 +43,7 @@ class SquareOAuthService
      */
     public function buildAuthorizeUrl(string $state): string
     {
-        return $this->host().'/oauth2/authorize?'.http_build_query([
+        return $this->client->host().'/oauth2/authorize?'.http_build_query([
             'client_id' => $this->applicationId(),
             'scope' => implode(' ', self::SCOPES),
             'session' => 'false',
@@ -63,7 +57,7 @@ class SquareOAuthService
      */
     public function exchangeCode(string $code): SquareTokens
     {
-        $response = $this->client()->post('/oauth2/token', [
+        $response = $this->client->base()->post('/oauth2/token', [
             'client_id' => $this->applicationId(),
             'client_secret' => $this->applicationSecret(),
             'code' => $code,
@@ -83,7 +77,7 @@ class SquareOAuthService
      */
     public function refreshToken(string $refreshToken): SquareTokens
     {
-        $response = $this->client()->post('/oauth2/token', [
+        $response = $this->client->base()->post('/oauth2/token', [
             'client_id' => $this->applicationId(),
             'client_secret' => $this->applicationSecret(),
             'refresh_token' => $refreshToken,
@@ -103,8 +97,7 @@ class SquareOAuthService
      */
     public function fetchPrimaryLocationId(string $accessToken): ?string
     {
-        $response = $this->client()
-            ->withToken($accessToken)
+        $response = $this->client->authed($accessToken)
             ->get('/v2/locations');
 
         if ($response->failed()) {
@@ -125,7 +118,7 @@ class SquareOAuthService
      */
     public function revoke(string $accessToken): bool
     {
-        $response = $this->client()
+        $response = $this->client->base()
             ->withHeaders(['Authorization' => 'Client '.$this->applicationSecret()])
             ->post('/oauth2/revoke', [
                 'client_id' => $this->applicationId(),
@@ -133,26 +126,6 @@ class SquareOAuthService
             ]);
 
         return $response->successful();
-    }
-
-    private function client(): PendingRequest
-    {
-        return Http::baseUrl($this->host())
-            ->acceptJson()
-            ->withHeaders(['Square-Version' => self::API_VERSION])
-            ->timeout(15);
-    }
-
-    private function host(): string
-    {
-        return $this->environment() === 'production'
-            ? 'https://connect.squareup.com'
-            : 'https://connect.squareupsandbox.com';
-    }
-
-    private function environment(): string
-    {
-        return (string) config('services.square.environment', 'sandbox');
     }
 
     private function applicationId(): string

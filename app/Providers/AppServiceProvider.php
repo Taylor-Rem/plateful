@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Enums\DeliveryProviderName;
+use App\Enums\PosProviderName;
 use App\Listeners\MergeGuestCartOnLogin;
 use App\Listeners\PurgeUserSessionsOnLogout;
 use App\Models\ItemTemplate;
@@ -14,6 +15,7 @@ use App\Observers\RestaurantObserver;
 use App\Services\Delivery\DeliveryDispatcher;
 use App\Services\Delivery\SelfDeliveryProvider;
 use App\Services\Pos\PosDispatcher;
+use App\Services\Pos\Square\SquarePosProvider;
 use App\Tenancy\CurrentTenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
@@ -44,10 +46,12 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        $this->app->singleton(PosDispatcher::class, function (): PosDispatcher {
+        $this->app->singleton(PosDispatcher::class, function ($app): PosDispatcher {
             // Adapters register here as they are built (Square first, then Clover),
             // keyed by PosProviderName value.
-            return new PosDispatcher([]);
+            return new PosDispatcher([
+                PosProviderName::Square->value => $app->make(SquarePosProvider::class),
+            ]);
         });
     }
 
