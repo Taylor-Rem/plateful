@@ -13,6 +13,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
@@ -313,6 +314,29 @@ class Restaurant extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    /**
+     * The user who recruited (signed) this restaurant. Nullable; tracked for
+     * attribution even though the recruiter share is currently 0.
+     */
+    public function recruiter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'recruiter_id');
+    }
+
+    /**
+     * The user responsible for top-level support of this restaurant. When
+     * null, the platform Operator is the effective overseer.
+     */
+    public function overseer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'overseer_id');
+    }
+
+    public function feeDistributions(): HasMany
+    {
+        return $this->hasMany(FeeDistribution::class);
     }
 
     public function posIntegrations(): HasMany

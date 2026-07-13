@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Admin\SuperAdmin;
 use App\Data\AdminUserData;
 use App\Data\PendingInvitationData;
 use App\Data\RestaurantData;
+use App\Enums\RevenueRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SuperAdmin\StoreRestaurantRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantFeeRequest;
+use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantRolesRequest;
 use App\Mail\AdminInvitationMail;
 use App\Models\AdminInvitation;
+use App\Models\PlatformRoleHolder;
 use App\Models\Restaurant;
+use App\Models\User;
+use App\Services\RevenueSplitResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -106,7 +111,72 @@ class RestaurantsController extends Controller
             'restaurant' => RestaurantData::fromModel($restaurant),
             'admins' => $admins,
             'pendingInvitations' => $pendingInvitations,
+            'revenueRoles' => $this->revenueRolesFor($restaurant),
+            'assignableUsers' => $this->assignableUsers($restaurant),
         ]);
+    }
+
+    /**
+     * Snapshot of how this restaurant's retained fee splits: the share config,
+     * each role's currently resolved earner, and the per-restaurant recruiter /
+     * overseer assignments the form edits.
+     *
+     * @return array<string, mixed>
+     */
+    private function revenueRolesFor(Restaurant $restaurant): array
+    {
+        $operator = PlatformRoleHolder::holder(RevenueRole::Operator);
+
+        $person = fn (?User $u) => $u ? ['id' => $u->id, 'name' => $u->name] : null;
+
+        return [
+            'shares' => app(RevenueSplitResolver::class)->shares(),
+            'recruiterId' => $restaurant->recruiter_id,
+            'overseerId' => $restaurant->overseer_id,
+            'resolved' => [
+                'founder' => $person(PlatformRoleHolder::holder(RevenueRole::Founder)),
+                'operator' => $person($operator),
+                'recruiter' => $person($restaurant->recruiter),
+                // A blank overseer is covered by the platform Operator.
+                'overseer' => $person($restaurant->overseer ?? $operator),
+                'overseerIsFallback' => $restaurant->overseer_id === null,
+            ],
+        ];
+    }
+
+    /**
+     * Users who may be assigned as recruiter/overseer: platform staff (super
+     * admins) plus anyone already holding one of those roles here.
+     *
+     * @return array<int, array{id: int, name: string, email: string}>
+     */
+    private function assignableUsers(Restaurant $restaurant): array
+    {
+        return User::query()
+            ->where('is_super_admin', true)
+            ->orWhereIn('id', array_filter([$restaurant->recruiter_id, $restaurant->overseer_id]))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email'])
+            ->map(fn (User $u) => ['id' => $u->id, 'name' => $u->name, 'email' => $u->email])
+            ->all();
+    }
+
+    /**
+     * Assign the per-restaurant recruiter and overseer. These are attribution
+     * only — they drive the earnings ledger and do NOT grant panel access,
+     * which stays with the existing membership / super-admin mechanisms.
+     */
+    public function updateRoles(UpdateRestaurantRolesRequest $request, Restaurant $restaurant): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $restaurant->recruiter_id = $validated['recruiter_id'] ?? null;
+        $restaurant->overseer_id = $validated['overseer_id'] ?? null;
+        $restaurant->save();
+
+        return redirect()
+            ->route('admin.super.restaurants.show', $restaurant)
+            ->with('success', 'Revenue roles updated.');
     }
 
     /**

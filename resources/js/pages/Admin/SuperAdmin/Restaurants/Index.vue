@@ -32,6 +32,9 @@ function formatDate(iso: string | null | undefined): string {
                 </div>
                 <div class="flex items-center gap-4">
                     <AppearanceTabs />
+                    <Link href="/super/earnings" class="text-sm text-muted-foreground hover:text-foreground">
+                        Earnings
+                    </Link>
                     <Link href="/super/admins" class="text-sm text-muted-foreground hover:text-foreground">
                         Admins
                     </Link>

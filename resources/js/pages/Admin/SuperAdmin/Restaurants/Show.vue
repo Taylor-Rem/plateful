@@ -4,10 +4,25 @@ import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
 import { ref } from 'vue';
 
+type Person = { id: number; name: string } | null;
+
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     admins: App.Data.AdminUserData[];
     pendingInvitations: App.Data.PendingInvitationData[];
+    revenueRoles: {
+        shares: Record<string, number>;
+        recruiterId: number | null;
+        overseerId: number | null;
+        resolved: {
+            founder: Person;
+            operator: Person;
+            recruiter: Person;
+            overseer: Person;
+            overseerIsFallback: boolean;
+        };
+    };
+    assignableUsers: { id: number; name: string; email: string }[];
 }>();
 
 const confirming = ref(false);
@@ -21,6 +36,22 @@ function saveFee() {
     feeForm.put(`/super/restaurants/${props.restaurant.subdomain}/fee`, {
         preserveScroll: true,
     });
+}
+
+const rolesForm = useForm({
+    recruiter_id: props.revenueRoles.recruiterId,
+    overseer_id: props.revenueRoles.overseerId,
+});
+
+function saveRoles() {
+    rolesForm
+        .transform((data) => ({
+            recruiter_id: data.recruiter_id || null,
+            overseer_id: data.overseer_id || null,
+        }))
+        .put(`/super/restaurants/${props.restaurant.subdomain}/roles`, {
+            preserveScroll: true,
+        });
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -88,7 +119,15 @@ function activate() {
                         Deactivated
                     </span>
                 </div>
-                <AppearanceTabs />
+                <div class="flex items-center gap-4">
+                    <Link
+                        href="/super/earnings"
+                        class="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                        Earnings
+                    </Link>
+                    <AppearanceTabs />
+                </div>
             </div>
         </header>
 
@@ -173,6 +212,85 @@ function activate() {
                 >
                     {{ feeForm.errors.application_fee_percent }}
                 </p>
+            </section>
+
+            <section class="rounded-lg border border-border bg-card p-6">
+                <h2 class="text-base font-semibold text-foreground">Revenue roles &amp; payout split</h2>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    How the platform fee Plateful keeps from this restaurant is attributed for
+                    payouts. Shares are of Plateful's take (not the restaurant's sales) and drive
+                    the monthly earnings report — this does not move money automatically, and does
+                    not grant panel access.
+                </p>
+
+                <dl class="mt-4 space-y-2 text-sm">
+                    <div class="flex items-center justify-between border-b border-border py-2">
+                        <dt class="text-muted-foreground">
+                            Founder
+                            <span class="ml-1 text-xs">({{ revenueRoles.shares.founder ?? 0 }}%)</span>
+                        </dt>
+                        <dd class="font-medium text-foreground">
+                            {{ revenueRoles.resolved.founder?.name ?? 'Unset' }}
+                        </dd>
+                    </div>
+                    <div class="flex items-center justify-between py-2">
+                        <dt class="text-muted-foreground">
+                            Overseer
+                            <span class="ml-1 text-xs">({{ revenueRoles.shares.overseer ?? 0 }}%)</span>
+                        </dt>
+                        <dd class="text-right font-medium text-foreground">
+                            {{ revenueRoles.resolved.overseer?.name ?? 'Unset' }}
+                            <span
+                                v-if="revenueRoles.resolved.overseerIsFallback"
+                                class="block text-xs font-normal text-muted-foreground"
+                            >
+                                via Operator (no overseer assigned)
+                            </span>
+                        </dd>
+                    </div>
+                </dl>
+
+                <form class="mt-5 grid gap-4 sm:grid-cols-2" @submit.prevent="saveRoles">
+                    <div>
+                        <label for="overseer_id" class="block text-xs font-medium text-muted-foreground">
+                            Overseer
+                        </label>
+                        <select
+                            id="overseer_id"
+                            v-model="rolesForm.overseer_id"
+                            class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        >
+                            <option :value="null">— Operator (fallback) —</option>
+                            <option v-for="u in assignableUsers" :key="u.id" :value="u.id">
+                                {{ u.name }}
+                            </option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="recruiter_id" class="block text-xs font-medium text-muted-foreground">
+                            Recruiter
+                            <span class="text-xs">(tracked, {{ revenueRoles.shares.recruiter ?? 0 }}%)</span>
+                        </label>
+                        <select
+                            id="recruiter_id"
+                            v-model="rolesForm.recruiter_id"
+                            class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        >
+                            <option :value="null">— None —</option>
+                            <option v-for="u in assignableUsers" :key="u.id" :value="u.id">
+                                {{ u.name }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2 flex items-center gap-3">
+                        <Button type="submit" :disabled="rolesForm.processing">
+                            {{ rolesForm.processing ? 'Saving…' : 'Save roles' }}
+                        </Button>
+                        <p v-if="rolesForm.recentlySuccessful" class="text-sm text-green-600">
+                            Saved.
+                        </p>
+                    </div>
+                </form>
             </section>
 
             <section class="rounded-lg border border-border bg-card p-6">

@@ -30,7 +30,10 @@ use Illuminate\Support\Str;
 
 class OrderPlacement
 {
-    public function __construct(protected CartManager $carts) {}
+    public function __construct(
+        protected CartManager $carts,
+        protected RevenueSplitResolver $revenueSplits,
+    ) {}
 
     /**
      * Validate a cart + checkout input and build a serializable snapshot of
@@ -198,6 +201,12 @@ class OrderPlacement
                 'user_id' => $user?->id,
                 'note' => null,
             ]);
+
+            // Attribute the retained platform fee across revenue roles. Written
+            // in the same transaction as the order so the ledger can never
+            // drift from the orders it derives from.
+            $order->setRelation('restaurant', $restaurant);
+            $this->revenueSplits->record($order);
 
             foreach ($snapshot['items'] as $line) {
                 OrderItem::create([

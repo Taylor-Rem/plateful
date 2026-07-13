@@ -20,6 +20,28 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Revenue Shares
+    |---------------------------------------------------------------------------
+    |
+    | How the platform fee Plateful RETAINS from each order (the application
+    | fee) is attributed across roles. These are shares of Plateful's take —
+    | NOT of the restaurant's sales — and MUST sum to 100. Attribution only:
+    | Plateful still collects the whole fee via Stripe; these percentages drive
+    | the internal earnings ledger used to pay role-holders out of band.
+    |
+    | Keys are RevenueRole values. Adding a future bucket (e.g. 'company' to
+    | fund salaried departments) is a matter of adding a key here and a role to
+    | the enum — no schema change. Recruiter is tracked but currently unpaid.
+    |
+    */
+    'revenue_shares' => [
+        'founder' => 10,
+        'recruiter' => 0,
+        'overseer' => 90,
+    ],
+
+    /*
+    |---------------------------------------------------------------------------
     | Admin Notification Email
     |---------------------------------------------------------------------------
     |

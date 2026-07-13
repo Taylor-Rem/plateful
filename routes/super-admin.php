@@ -91,8 +91,12 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             Route::post('/restaurants', [SuperAdmin\RestaurantsController::class, 'store'])->name('restaurants.store');
             Route::get('/restaurants/{restaurant}', [SuperAdmin\RestaurantsController::class, 'show'])->name('restaurants.show');
             Route::put('/restaurants/{restaurant}/fee', [SuperAdmin\RestaurantsController::class, 'updateFee'])->name('restaurants.updateFee');
+            Route::put('/restaurants/{restaurant}/roles', [SuperAdmin\RestaurantsController::class, 'updateRoles'])->name('restaurants.updateRoles');
             Route::post('/restaurants/{restaurant}/deactivate', [SuperAdmin\RestaurantsController::class, 'deactivate'])->name('restaurants.deactivate');
             Route::post('/restaurants/{restaurant}/activate', [SuperAdmin\RestaurantsController::class, 'activate'])->name('restaurants.activate');
+
+            Route::get('/earnings', [SuperAdmin\EarningsController::class, 'index'])->name('earnings');
+            Route::put('/platform-roles', [SuperAdmin\PlatformRolesController::class, 'update'])->name('platformRoles.update');
 
             Route::get('/admins', [SuperAdmin\AdminsController::class, 'index'])->name('admins.index');
             Route::post('/admins/invitations', [SuperAdmin\InvitationController::class, 'store'])->name('admins.invitations.store');
