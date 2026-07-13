@@ -8,11 +8,6 @@ use App\Models\RestaurantPhoto;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\Drivers\Gd\Driver as GdDriver;
-use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
-use Intervention\Image\Encoders\WebpEncoder;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Interfaces\ImageInterface;
 
 class RestaurantImageService
 {
@@ -48,15 +43,7 @@ class RestaurantImageService
 
     public const ORIGINAL_CAP = 2000;
 
-    public const WEBP_QUALITY = 85;
-
-    protected ImageManager $manager;
-
-    public function __construct()
-    {
-        $driver = extension_loaded('gd') ? new GdDriver : new ImagickDriver;
-        $this->manager = new ImageManager($driver);
-    }
+    public function __construct(protected PhotoConversionService $conversion) {}
 
     public function storeLogo(Restaurant $restaurant, UploadedFile $file): string
     {
@@ -218,21 +205,14 @@ class RestaurantImageService
         $mediumPath = "{$directory}/{$uuid}-medium.webp";
         $thumbPath = "{$directory}/{$uuid}-thumb.webp";
 
-        $image = $this->manager->decodePath($file->getRealPath());
+        $image = $this->conversion->decode($file);
 
-        $disk->put($basePath, $this->resizeToWebp($image, self::ORIGINAL_CAP), 'public');
-        $disk->put($mediumPath, $this->resizeToWebp($image, $mediumMax), 'public');
-        $disk->put($thumbPath, $this->resizeToWebp($image, $thumbMax), 'public');
+        $disk->put($basePath, $this->conversion->toWebp($image, self::ORIGINAL_CAP), 'public');
+        $disk->put($mediumPath, $this->conversion->toWebp($image, $mediumMax), 'public');
+        $disk->put($thumbPath, $this->conversion->toWebp($image, $thumbMax), 'public');
 
         unset($image);
 
         return $basePath;
-    }
-
-    protected function resizeToWebp(ImageInterface $image, int $max): string
-    {
-        $image->scaleDown(width: $max, height: $max);
-
-        return (string) $image->encode(new WebpEncoder(quality: self::WEBP_QUALITY));
     }
 }

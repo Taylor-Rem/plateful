@@ -15,10 +15,12 @@ type StorefrontPageProps = {
         user?: { name: string } | null;
         canEditSite?: boolean;
     } | null;
+    storefrontPreview?: boolean;
 };
 
 const page = usePage<StorefrontPageProps>();
 const restaurant = computed(() => page.props.restaurant);
+const isPreview = computed(() => Boolean(page.props.storefrontPreview));
 const isAuthenticated = computed(() => Boolean(page.props.auth?.user));
 const canEditSite = computed(() => Boolean(page.props.auth?.canEditSite));
 const cartCount = computed(() => page.props.cart?.itemCount ?? 0);
@@ -73,6 +75,18 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
             :edit-mode="editMode"
             @update:edit-mode="setEditMode"
         />
+
+        <div
+            v-if="isPreview"
+            class="border-b border-amber-300 bg-amber-100 text-amber-900"
+            data-test="storefront-preview-banner"
+        >
+            <div class="mx-auto max-w-5xl px-4 py-2 text-center text-sm sm:px-6">
+                <strong class="font-semibold">Preview</strong> — your site isn't
+                live yet. Only you can see this. Finish setup to open for
+                orders.
+            </div>
+        </div>
 
         <nav
             class="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"

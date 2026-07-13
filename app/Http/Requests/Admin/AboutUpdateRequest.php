@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Services\PhotoConversionService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class AboutUpdateRequest extends FormRequest
@@ -18,7 +19,7 @@ class AboutUpdateRequest extends FormRequest
     {
         return [
             'about_body' => ['nullable', 'string', 'max:5000'],
-            'image' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:8192'],
+            'image' => ['nullable', 'file', PhotoConversionService::acceptedPhotoMimes(), 'max:8192'],
             'remove_image' => ['nullable', 'boolean'],
         ];
     }

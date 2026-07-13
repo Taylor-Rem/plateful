@@ -35,6 +35,10 @@ return [
         ],
     ],
 
+    'anthropic' => [
+        'api_key' => env('CLAUDE_API_KEY'),
+    ],
+
     'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),

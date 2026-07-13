@@ -1,52 +1,84 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
+import QRCode from 'qrcode';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Check, Circle, ExternalLink } from 'lucide-vue-next';
+import { Check, Copy, ExternalLink, PartyPopper } from 'lucide-vue-next';
+import StepBasics from './Onboarding/StepBasics.vue';
+import StepHours from './Onboarding/StepHours.vue';
+import StepMenu from './Onboarding/StepMenu.vue';
+import StepPayments from './Onboarding/StepPayments.vue';
+import StepReview from './Onboarding/StepReview.vue';
 
 type Step = {
     key: string;
     title: string;
     description: string;
-    href: string;
     complete: boolean;
     required: boolean;
-    stripeStatus?: string | null;
 };
 
 const props = defineProps<{
-    restaurant: {
-        id: number;
-        name: string;
-        subdomain: string;
+    restaurant: App.Data.RestaurantData;
+    onboarding: {
         status: string;
-        customDomain: string | null;
         pendingCustomDomain: string | null;
         customDomainRequestedAt: string | null;
         onboardingCompletedAt: string | null;
-        isLive: boolean;
+        stripeStatus: string | null;
     };
     steps: Step[];
     canGoLive: boolean;
+    menuPresets: { value: string; label: string }[];
+    menuSummary: { categories: number; items: number };
+    menuImport: {
+        id: number;
+        status: 'queued' | 'processing' | 'needs_review' | 'failed';
+        error: string | null;
+        itemCount: number;
+    } | null;
+    menuImportLimits: { maxFiles: number; maxFileKb: number };
     primaryDomain: string;
 }>();
 
-const goLiveForm = useForm({});
-function goLive() {
-    goLiveForm.post(`/${props.restaurant.subdomain}/onboarding/go-live`);
-}
+const stepOrder = ['basics', 'hours', 'menu', 'stripe', 'review'] as const;
 
-const stripeForm = useForm({});
-function connectStripe() {
-    stripeForm.post(`/${props.restaurant.subdomain}/onboarding/stripe/connect`);
-}
+const firstIncomplete = (): string =>
+    props.steps.find((s) => !s.complete)?.key ?? 'review';
 
+const currentKey = ref<string>(firstIncomplete());
+
+const currentIndex = computed(() =>
+    stepOrder.indexOf(currentKey.value as (typeof stepOrder)[number]),
+);
+
+const goto = (key: string): void => {
+    currentKey.value = key;
+};
+
+const advance = (): void => {
+    const next = stepOrder[currentIndex.value + 1];
+    if (next) {
+        currentKey.value = next;
+    }
+};
+
+const setupSteps = computed(() => props.steps.filter((s) => s.key !== 'review'));
+const completedCount = computed(
+    () => setupSteps.value.filter((s) => s.complete).length,
+);
+
+const currentStep = computed(
+    () => props.steps.find((s) => s.key === currentKey.value) ?? props.steps[0],
+);
+
+// ----- Custom domain ("More options") -----
 const showDomain = ref(false);
 const domainForm = useForm<{ pending_custom_domain: string }>({
-    pending_custom_domain: props.restaurant.pendingCustomDomain ?? '',
+    pending_custom_domain: props.onboarding.pendingCustomDomain ?? '',
 });
 function submitDomain() {
     domainForm.post(`/${props.restaurant.subdomain}/onboarding/custom-domain`, {
@@ -56,6 +88,26 @@ function submitDomain() {
         },
     });
 }
+
+// ----- Live celebration -----
+const qrCanvas = ref<HTMLCanvasElement | null>(null);
+watchEffect(() => {
+    if (props.restaurant.isLive && qrCanvas.value) {
+        QRCode.toCanvas(qrCanvas.value, props.restaurant.publicUrl, {
+            width: 168,
+            margin: 1,
+        });
+    }
+});
+
+const copied = ref(false);
+const copyUrl = async (): Promise<void> => {
+    await navigator.clipboard.writeText(props.restaurant.publicUrl);
+    copied.value = true;
+    setTimeout(() => {
+        copied.value = false;
+    }, 2000);
+};
 </script>
 
 <template>
@@ -64,8 +116,20 @@ function submitDomain() {
 
         <header class="border-b border-border bg-card">
             <div class="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-                <h1 class="text-lg font-semibold">Set up {{ restaurant.name }}</h1>
+                <h1 class="text-lg font-semibold">
+                    {{ restaurant.isLive ? restaurant.name : `Set up ${restaurant.name}` }}
+                </h1>
                 <div class="flex items-center gap-4">
+                    <a
+                        v-if="!restaurant.isLive"
+                        :href="`/${restaurant.subdomain}/onboarding/preview`"
+                        target="_blank"
+                        class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
+                        data-test="preview-site-link"
+                    >
+                        Preview your site
+                        <ExternalLink class="size-3.5" />
+                    </a>
                     <AppearanceTabs />
                     <Link
                         href="/logout"
@@ -80,145 +144,243 @@ function submitDomain() {
         </header>
 
         <main class="mx-auto max-w-3xl space-y-8 px-6 py-8">
-            <section class="rounded-lg border border-border bg-card p-6">
-                <p class="text-xs uppercase tracking-wide text-muted-foreground">Welcome to Plateful</p>
-                <h2 class="mt-1 text-2xl font-semibold">Let's get your storefront live</h2>
-                <p class="mt-2 text-sm text-muted-foreground">
-                    Work through the steps below. Required steps must be done before you can go live;
-                    the rest you can come back to anytime.
-                </p>
-
-                <div class="mt-6 rounded-md border border-border bg-background p-4 text-sm">
-                    <p class="text-xs uppercase tracking-wide text-muted-foreground">Your storefront URL</p>
-                    <p class="mt-1 font-mono">{{ restaurant.subdomain }}.{{ primaryDomain }}</p>
-                </div>
-            </section>
-
-            <section class="space-y-3">
-                <div
-                    v-for="step in steps"
-                    :key="step.key"
-                    class="flex items-start justify-between rounded-lg border border-border bg-card p-4"
-                    :data-test="`onboarding-step-${step.key}`"
+            <!-- ============== Live: celebration ============== -->
+            <template v-if="restaurant.isLive">
+                <section
+                    class="rounded-lg border border-primary/30 bg-primary/5 p-8 text-center"
+                    data-test="live-celebration"
                 >
-                    <div class="flex items-start gap-3">
+                    <PartyPopper class="mx-auto size-10 text-primary" />
+                    <h2 class="mt-4 text-2xl font-semibold">You're live!</h2>
+                    <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                        {{ restaurant.name }} is open for orders and listed on
+                        the Plateful homepage. Share your link — or let
+                        customers scan the code from a flyer or table tent.
+                    </p>
+
+                    <div
+                        class="mx-auto mt-6 flex max-w-md items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-3"
+                    >
+                        <a
+                            :href="restaurant.publicUrl"
+                            target="_blank"
+                            class="truncate font-mono text-sm text-primary hover:opacity-80"
+                        >
+                            {{ restaurant.publicUrl }}
+                        </a>
+                        <button
+                            type="button"
+                            class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            :aria-label="copied ? 'Copied' : 'Copy link'"
+                            @click="copyUrl"
+                        >
+                            <Check v-if="copied" class="size-4 text-green-600" />
+                            <Copy v-else class="size-4" />
+                        </button>
+                    </div>
+
+                    <canvas
+                        ref="qrCanvas"
+                        class="mx-auto mt-6 rounded-md border border-border bg-white p-2"
+                    ></canvas>
+
+                    <div class="mt-6 flex items-center justify-center gap-3">
+                        <Button as-child>
+                            <a :href="restaurant.publicUrl" target="_blank">
+                                Open your site
+                            </a>
+                        </Button>
+                        <Button variant="outline" as-child>
+                            <Link :href="`/${restaurant.subdomain}/dashboard`">
+                                Go to dashboard
+                            </Link>
+                        </Button>
+                    </div>
+                </section>
+            </template>
+
+            <!-- ============== Pre-live: wizard ============== -->
+            <template v-else>
+                <section>
+                    <p class="text-xs tracking-wide text-muted-foreground uppercase">
+                        Welcome to Plateful
+                    </p>
+                    <h2 class="mt-1 text-2xl font-semibold">
+                        Let's get your storefront live
+                    </h2>
+                    <div class="mt-4 flex items-center gap-3">
+                        <div class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                                class="h-full rounded-full bg-primary transition-all"
+                                :style="{ width: `${(completedCount / setupSteps.length) * 100}%` }"
+                            ></div>
+                        </div>
+                        <span class="text-sm text-muted-foreground" data-test="wizard-progress">
+                            {{ completedCount }} of {{ setupSteps.length }} done
+                        </span>
+                    </div>
+                </section>
+
+                <nav class="flex flex-wrap gap-2" aria-label="Setup steps">
+                    <button
+                        v-for="(step, idx) in steps"
+                        :key="step.key"
+                        type="button"
+                        :class="[
+                            'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition',
+                            step.key === currentKey
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border bg-card text-muted-foreground hover:text-foreground',
+                        ]"
+                        :data-test="`wizard-step-tab-${step.key}`"
+                        @click="goto(step.key)"
+                    >
                         <span
                             :class="[
-                                'mt-0.5 flex h-6 w-6 items-center justify-center rounded-full',
+                                'flex size-4 items-center justify-center rounded-full text-[10px]',
                                 step.complete
                                     ? 'bg-green-100 text-green-700'
-                                    : 'border border-border text-muted-foreground',
+                                    : step.key === currentKey
+                                      ? 'bg-primary-foreground/20'
+                                      : 'bg-muted',
                             ]"
                         >
-                            <Check v-if="step.complete" class="size-4" />
-                            <Circle v-else class="size-3" />
+                            <Check v-if="step.complete" class="size-3" />
+                            <template v-else>{{ idx + 1 }}</template>
                         </span>
-                        <div>
-                            <h3 class="text-sm font-medium">
-                                {{ step.title }}
-                                <span
-                                    v-if="!step.required"
-                                    class="ml-2 text-xs font-normal text-muted-foreground"
-                                >
-                                    Optional
-                                </span>
-                            </h3>
-                            <p class="mt-1 text-sm text-muted-foreground">{{ step.description }}</p>
-                        </div>
+                        {{ step.title }}
+                    </button>
+                </nav>
+
+                <section
+                    class="rounded-lg border border-border bg-card p-6"
+                    :data-test="`wizard-step-${currentKey}`"
+                >
+                    <div class="mb-5 flex items-baseline justify-between">
+                        <h3 class="text-lg font-semibold">{{ currentStep.title }}</h3>
+                        <span
+                            v-if="!currentStep.required"
+                            class="text-xs text-muted-foreground"
+                        >
+                            Optional
+                        </span>
                     </div>
-                    <template v-if="step.key === 'stripe'">
-                        <a
-                            v-if="step.complete"
-                            :href="`/${restaurant.subdomain}/onboarding/stripe/dashboard`"
-                            class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
-                        >
-                            Manage on Stripe
-                            <ExternalLink class="size-3.5" />
-                        </a>
-                        <Button
-                            v-else
-                            type="button"
-                            size="sm"
-                            :disabled="stripeForm.processing"
-                            @click="connectStripe"
-                            data-test="connect-stripe-button"
-                        >
-                            {{ step.stripeStatus === 'pending' ? 'Continue setup' : 'Connect Stripe' }}
-                        </Button>
-                    </template>
-                    <a
-                        v-else
-                        :href="step.href"
-                        class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
-                    >
-                        {{ step.complete ? 'Edit' : 'Set up' }}
-                        <ExternalLink class="size-3.5" />
-                    </a>
-                </div>
-            </section>
 
-            <section class="rounded-lg border border-border bg-card p-6">
-                <h2 class="text-base font-semibold">Custom domain</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Want to use your own domain (like <code>pizzajoint.com</code>) instead of a Plateful subdomain?
-                    Request it here — we'll set up DNS and TLS, usually within a business day.
-                </p>
-
-                <p
-                    v-if="restaurant.customDomain"
-                    class="mt-4 inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-800"
-                >
-                    Live at {{ restaurant.customDomain }}
-                </p>
-                <p
-                    v-else-if="restaurant.pendingCustomDomain"
-                    class="mt-4 inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800"
-                    data-test="custom-domain-pending"
-                >
-                    Pending: {{ restaurant.pendingCustomDomain }}
-                </p>
-
-                <Button v-if="!showDomain" type="button" variant="outline" class="mt-4" @click="showDomain = true">
-                    {{ restaurant.pendingCustomDomain ? 'Change request' : 'Request custom domain' }}
-                </Button>
-
-                <form v-else @submit.prevent="submitDomain" class="mt-4 space-y-2">
-                    <Label for="pending_custom_domain">Domain</Label>
-                    <Input
-                        id="pending_custom_domain"
-                        v-model="domainForm.pending_custom_domain"
-                        placeholder="pizzajoint.com"
-                        required
+                    <StepBasics
+                        v-if="currentKey === 'basics'"
+                        :restaurant="restaurant"
+                        @advance="advance"
                     />
-                    <p v-if="domainForm.errors.pending_custom_domain" class="text-sm text-red-600">
-                        {{ domainForm.errors.pending_custom_domain }}
-                    </p>
-                    <div class="flex gap-2">
-                        <Button type="submit" :disabled="domainForm.processing">Request</Button>
-                        <Button type="button" variant="ghost" @click="showDomain = false">Cancel</Button>
+                    <StepHours
+                        v-else-if="currentKey === 'hours'"
+                        :restaurant="restaurant"
+                        @advance="advance"
+                    />
+                    <StepMenu
+                        v-else-if="currentKey === 'menu'"
+                        :restaurant="restaurant"
+                        :menu-presets="menuPresets"
+                        :menu-summary="menuSummary"
+                        :menu-import="menuImport"
+                        :menu-import-limits="menuImportLimits"
+                        @advance="advance"
+                    />
+                    <StepPayments
+                        v-else-if="currentKey === 'stripe'"
+                        :restaurant="restaurant"
+                        :stripe-status="onboarding.stripeStatus"
+                        :description="currentStep.description"
+                        @advance="advance"
+                    />
+                    <StepReview
+                        v-else
+                        :restaurant="restaurant"
+                        :steps="steps"
+                        :can-go-live="canGoLive"
+                        :primary-domain="primaryDomain"
+                        @goto="goto"
+                    />
+                </section>
+            </template>
+
+            <!-- ============== More options ============== -->
+            <section class="rounded-lg border border-border bg-card p-6">
+                <h2 class="text-base font-semibold">More options</h2>
+
+                <div class="mt-4 space-y-6">
+                    <div>
+                        <h3 class="text-sm font-medium">Custom domain</h3>
+                        <p class="mt-1 text-sm text-muted-foreground">
+                            Use your own domain (like <code>pizzajoint.com</code>)
+                            instead of a Plateful address. We set up DNS and TLS,
+                            usually within a business day.
+                        </p>
+
+                        <p
+                            v-if="restaurant.customDomain"
+                            class="mt-3 inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-800"
+                        >
+                            Live at {{ restaurant.customDomain }}
+                        </p>
+                        <p
+                            v-else-if="onboarding.pendingCustomDomain"
+                            class="mt-3 inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800"
+                            data-test="custom-domain-pending"
+                        >
+                            Pending: {{ onboarding.pendingCustomDomain }}
+                        </p>
+
+                        <Button
+                            v-if="!showDomain && !restaurant.customDomain"
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            class="mt-3"
+                            @click="showDomain = true"
+                        >
+                            {{ onboarding.pendingCustomDomain ? 'Change request' : 'Request custom domain' }}
+                        </Button>
+
+                        <form v-if="showDomain" class="mt-3 space-y-2" @submit.prevent="submitDomain">
+                            <Label for="pending_custom_domain">Domain</Label>
+                            <Input
+                                id="pending_custom_domain"
+                                v-model="domainForm.pending_custom_domain"
+                                placeholder="pizzajoint.com"
+                                required
+                            />
+                            <p
+                                v-if="domainForm.errors.pending_custom_domain"
+                                class="text-sm text-destructive"
+                            >
+                                {{ domainForm.errors.pending_custom_domain }}
+                            </p>
+                            <div class="flex gap-2">
+                                <Button type="submit" size="sm" :disabled="domainForm.processing">
+                                    Request
+                                </Button>
+                                <Button type="button" size="sm" variant="ghost" @click="showDomain = false">
+                                    Cancel
+                                </Button>
+                            </div>
+                        </form>
                     </div>
-                </form>
-            </section>
 
-            <section class="rounded-lg border border-primary/30 bg-primary/5 p-6">
-                <h2 class="text-base font-semibold">Go live</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    When you're ready, flip the switch. Your storefront will be open for orders and your restaurant
-                    will appear on the Plateful homepage.
-                </p>
-
-                <Button
-                    type="button"
-                    class="mt-4"
-                    :disabled="!canGoLive || goLiveForm.processing"
-                    @click="goLive"
-                    data-test="go-live-button"
-                >
-                    {{ canGoLive ? 'Go live now' : 'Finish required steps first' }}
-                </Button>
-                <p v-if="goLiveForm.errors.go_live" class="mt-2 text-sm text-red-600">
-                    {{ goLiveForm.errors.go_live }}
-                </p>
+                    <div>
+                        <h3 class="text-sm font-medium">Point-of-sale</h3>
+                        <p class="mt-1 text-sm text-muted-foreground">
+                            Push online orders straight into your Square or
+                            Clover register.
+                            <a
+                                :href="`/${restaurant.subdomain}/settings/pos`"
+                                class="font-medium text-primary underline hover:opacity-80"
+                            >
+                                See POS integrations
+                            </a>
+                            — coming soon.
+                        </p>
+                    </div>
+                </div>
             </section>
         </main>
     </div>

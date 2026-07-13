@@ -5,7 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Services\PhotoConversionService;
 use Illuminate\Foundation\Http\FormRequest;
 
-class RestaurantSettingsRequest extends FormRequest
+class OnboardingBasicsRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,24 +19,32 @@ class RestaurantSettingsRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'phone' => ['nullable', 'string', 'max:32'],
             'primary_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'secondary_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:32'],
             'logo' => ['nullable', 'file', PhotoConversionService::acceptedPhotoMimes(), 'max:5120'],
-            'remove_logo' => ['nullable', 'boolean'],
-            'tax_rate_percent' => ['nullable', 'numeric', 'between:0,30'],
-            'delivery_fee' => ['nullable', 'numeric', 'between:0,500'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'size:2'],
+            'postal_code' => ['nullable', 'string', 'max:16'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'state.size' => 'State must be a 2-letter code.',
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        if ($this->has('delivery_fee') && $this->input('delivery_fee') !== null && $this->input('delivery_fee') !== '') {
-            $this->merge([
-                'delivery_fee_cents' => (int) round(((float) $this->input('delivery_fee')) * 100),
-            ]);
+        if ($this->filled('state')) {
+            $this->merge(['state' => strtoupper(trim((string) $this->input('state')))]);
         }
     }
 }

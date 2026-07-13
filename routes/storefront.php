@@ -18,6 +18,7 @@ use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\HomeController;
 use App\Http\Controllers\Storefront\MenuController;
 use App\Http\Controllers\Storefront\OrderController;
+use App\Http\Controllers\Storefront\PreviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('tenant')->group(function () {
@@ -29,6 +30,12 @@ Route::middleware('tenant')->group(function () {
     // the customer in on this storefront host.
     Route::get('auth/google/finish', [GoogleController::class, 'finish'])
         ->name('auth.google.finish');
+
+    // Owner-preview handoff from the admin console. Also token-gated, not
+    // 'auth' — ResolveTenant whitelists this route pre-live so the token can
+    // establish the session that the rest of the preview relies on.
+    Route::get('preview/enter', [PreviewController::class, 'enter'])
+        ->name('storefront.preview.enter');
 
     Route::post('cart/items/{menuItem}', [CartController::class, 'addItem'])
         ->name('storefront.cart.add');

@@ -44,11 +44,15 @@ class ResolveTenant
             && $restaurant->status === RestaurantStatus::Active;
 
         if (! $isStorefrontLive) {
-            return Inertia::render('Storefront/Unavailable', [
-                'restaurantName' => $restaurant->name,
-            ])
-                ->toResponse($request)
-                ->setStatusCode(503);
+            if (! $this->canPreview($request, $restaurant)) {
+                return Inertia::render('Storefront/Unavailable', [
+                    'restaurantName' => $restaurant->name,
+                ])
+                    ->toResponse($request)
+                    ->setStatusCode(503);
+            }
+
+            Inertia::share('storefrontPreview', true);
         }
 
         $this->currentTenant->set($restaurant);
@@ -67,5 +71,23 @@ class ResolveTenant
         ]);
 
         return $next($request);
+    }
+
+    /**
+     * Admins of this restaurant (and super admins) may browse a not-yet-live
+     * storefront so they can see their site take shape during onboarding.
+     * The token-exchange route must also pass: it's how the admin's login
+     * reaches this host in the first place (sessions are host-scoped).
+     */
+    protected function canPreview(Request $request, Restaurant $restaurant): bool
+    {
+        if ($request->routeIs('storefront.preview.enter')) {
+            return true;
+        }
+
+        $user = $request->user();
+
+        return $user !== null
+            && ($user->isSuperAdmin() || $user->isRestaurantAdminAt($restaurant));
     }
 }

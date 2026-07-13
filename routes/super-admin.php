@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminHomeController;
 use App\Http\Controllers\Admin\AdminInvitationController;
+use App\Http\Controllers\Admin\AdminLoginHandoffController;
 use App\Http\Controllers\Admin\SuperAdmin;
 use App\Http\Controllers\Admin\TenantAdmin;
 use App\Http\Controllers\StripeWebhookController;
@@ -11,6 +12,10 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
     // Stripe Connect webhooks. Public (no auth), CSRF-exempt via
     // bootstrap/app.php, signature-verified in the controller.
     Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
+
+    // Cross-host login handoff (e.g. straight after owner signup on the
+    // primary host). Token-gated, so no auth middleware.
+    Route::get('/auth/handoff', AdminLoginHandoffController::class)->name('admin.auth.handoff');
 
     Route::middleware('guest')->group(function () {
         Route::get('/invitations/{token}', [AdminInvitationController::class, 'show'])->name('admin.invitations.show');
@@ -37,6 +42,13 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             // Routes restricted to restaurant admins
             Route::middleware('admin.restaurant.admin')->group(function () {
                 Route::get('/onboarding', [TenantAdmin\OnboardingController::class, 'show'])->name('onboarding.show');
+                Route::put('/onboarding/basics', [TenantAdmin\OnboardingController::class, 'updateBasics'])->name('onboarding.basics');
+                Route::post('/onboarding/menu-preset', [TenantAdmin\OnboardingController::class, 'applyMenuPreset'])->name('onboarding.menuPreset');
+                Route::post('/onboarding/menu-import', [TenantAdmin\MenuImportController::class, 'store'])->name('menuImport.store');
+                Route::get('/menu-import/{menuImport}/review', [TenantAdmin\MenuImportController::class, 'review'])->name('menuImport.review');
+                Route::post('/menu-import/{menuImport}/confirm', [TenantAdmin\MenuImportController::class, 'confirm'])->name('menuImport.confirm');
+                Route::post('/menu-import/{menuImport}/discard', [TenantAdmin\MenuImportController::class, 'discard'])->name('menuImport.discard');
+                Route::get('/onboarding/preview', [TenantAdmin\OnboardingController::class, 'preview'])->name('onboarding.preview');
                 Route::post('/onboarding/custom-domain', [TenantAdmin\OnboardingController::class, 'requestCustomDomain'])->name('onboarding.customDomain');
                 Route::post('/onboarding/go-live', [TenantAdmin\OnboardingController::class, 'goLive'])->name('onboarding.goLive');
 

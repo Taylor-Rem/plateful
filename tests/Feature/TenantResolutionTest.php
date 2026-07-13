@@ -1,6 +1,9 @@
 <?php
 
+use App\Enums\RestaurantRole;
 use App\Models\Restaurant;
+use App\Models\User;
+use App\Support\StorefrontLoginHandoff;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -83,4 +86,57 @@ test('approved-but-not-live restaurants are NOT served on the storefront host', 
     Restaurant::factory()->approved()->create(['subdomain' => 'soon', 'is_active' => true]);
 
     $this->get('http://soon.plateful.test/')->assertStatus(503);
+});
+
+test('a restaurant admin can preview their not-yet-live storefront', function () {
+    $restaurant = Restaurant::factory()->approved()->create(['subdomain' => 'soon', 'is_active' => true]);
+    $owner = User::factory()->create();
+    $restaurant->members()->attach($owner->id, ['role' => RestaurantRole::Admin->value]);
+
+    $this->actingAs($owner)
+        ->get('http://soon.plateful.test/')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('storefrontPreview', true));
+});
+
+test('authenticated users unrelated to the restaurant still get the pre-live wall', function () {
+    Restaurant::factory()->approved()->create(['subdomain' => 'soon', 'is_active' => true]);
+    $stranger = User::factory()->create();
+
+    $this->actingAs($stranger)
+        ->get('http://soon.plateful.test/')
+        ->assertStatus(503);
+});
+
+test('live storefronts do not carry the preview flag', function () {
+    $restaurant = Restaurant::factory()->create(['subdomain' => 'open', 'is_active' => true]);
+    $owner = User::factory()->create();
+    $restaurant->members()->attach($owner->id, ['role' => RestaurantRole::Admin->value]);
+
+    $this->actingAs($owner)
+        ->get('http://open.plateful.test/')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->missing('storefrontPreview'));
+});
+
+test('the preview handoff logs the owner in on the storefront host pre-live', function () {
+    $restaurant = Restaurant::factory()->approved()->create(['subdomain' => 'soon', 'is_active' => true]);
+    $owner = User::factory()->create();
+    $restaurant->members()->attach($owner->id, ['role' => RestaurantRole::Admin->value]);
+
+    $token = app(StorefrontLoginHandoff::class)->issue($owner, 'soon.plateful.test');
+
+    $this->get('http://soon.plateful.test/preview/enter?token='.urlencode($token))
+        ->assertRedirect('http://soon.plateful.test');
+
+    expect(auth()->id())->toBe($owner->id);
+});
+
+test('an invalid preview token bounces back to the onboarding wizard', function () {
+    Restaurant::factory()->approved()->create(['subdomain' => 'soon', 'is_active' => true]);
+
+    $this->get('http://soon.plateful.test/preview/enter?token=garbage')
+        ->assertRedirect('http://admin.plateful.test/soon/onboarding');
+
+    expect(auth()->guest())->toBeTrue();
 });
