@@ -107,7 +107,7 @@ options folded into the line `note`). The guided catalog matcher below is the re
       templates; POS uses per-item modifier lists — impedance mismatch; v1 maps references, does not
       two-way sync.)
 
-### 2c. First adapters — Square DONE (verified 2026-07-13, 611 tests)
+### 2c. First adapters — Square + Clover DONE (verified 2026-07-13)
 - [x] **"Connect your POS" OAuth flow** — `SquareOAuthService` + `SquareConnectController`
       (connect/callback/disconnect) + routes, writing into `pos_integrations`. Redirect URI lives on
       the **admin host** (`admin.plateful.test/pos/square/callback`) because `SESSION_DOMAIN=null`
@@ -129,14 +129,21 @@ options folded into the line `note`). The guided catalog matcher below is the re
       option text-fallback note), `CloverConnectController` (connect/callback/disconnect; `merchant_id`
       read from the callback query — no location lookup). Registered in the `PosDispatcher` map and
       added to the admin `$connectable` list (`available => true`). `CLOVER_*` env + `config/services.php`.
-      Tests: CloverOAuthServiceTest, CloverPushOrderTest, CloverConnectTest. **Setup pending:** the
-      Clover developer app itself (walkthrough delivered) + a live-sandbox smoke test.
+      Tests: CloverOAuthServiceTest, CloverPushOrderTest, CloverConnectTest, CloverLiveSandboxTest
+      (opt-in real-sandbox push+read-back, skipped without creds — mirrors Square's).
+- [ ] **Clover live verification (only remaining Clover item).** `CLOVER_*` app creds are entered in
+      `.env` and verified resolving (authorize URL builds against the sandbox host). Still to do: (a)
+      run the OAuth connect flow once against a sandbox test merchant to prove the handshake (redirect
+      match + Orders R/W permission), and (b) run `CloverLiveSandboxTest` with `CLOVER_SANDBOX_ACCESS_TOKEN`
+      + `CLOVER_SANDBOX_MERCHANT_ID` to prove a real order push. Needs a Clover sandbox test merchant.
 - [ ] Toast later/maybe (gated partner API; we don't save Toast restaurants money — deprioritized).
 
 **Operational note (to run a live integration):** the push is a queued job and `QUEUE_CONNECTION=
 database`, so a queue worker must be running (`composer run dev` includes `queue:listen`, or run
-`php artisan queue:work`) or connected orders never actually push. To verify against real Square,
-set `SQUARE_SANDBOX_ACCESS_TOKEN` + `SQUARE_SANDBOX_LOCATION_ID` and run SquareLiveSandboxTest.
+`php artisan queue:work`) or connected orders never actually push. To verify against real POS
+sandboxes: Square — set `SQUARE_SANDBOX_ACCESS_TOKEN` + `SQUARE_SANDBOX_LOCATION_ID` and run
+SquareLiveSandboxTest; Clover — set `CLOVER_SANDBOX_ACCESS_TOKEN` + `CLOVER_SANDBOX_MERCHANT_ID`
+and run CloverLiveSandboxTest.
 
 ### 2d. Register-only path
 - [ ] Cloud-printer path (Star/Epson CloudPRNT) for restaurants with no smart POS — order just
@@ -152,7 +159,24 @@ flow: `OrderPlacement` → `DispatchDeliveryForOrder` job → `DeliveryDispatche
 is registered. Remaining = the two third-party adapters below. (Note: `DeliveryDispatcher::quote()`
 has no caller yet — it becomes live once these adapters need real-time quotes; see §8.)_
 
-- [ ] `UberDirectProvider` **first** — Uber Direct is self-serve OAuth via the developer portal.
+**Full plan: [docs/uber-direct-implementation-plan.md](docs/uber-direct-implementation-plan.md)**
+(drafted 2026-07-14 — locks per-restaurant Uber accounts, pass-through pricing, quote-at-checkout,
+and auth/capture; carries the CPA questions).
+
+- [ ] `UberDirectProvider` **first** — self-serve; sandbox credentials are provisioned automatically
+      on signup at `direct.uber.com`. Machine-to-machine `client_credentials` (scope
+      `eats.deliveries`), so no redirect/callback flow — simpler than Square/Clover.
+- [ ] **Move the quote before payment.** Today `OrderPlacement.php:286` dispatches delivery
+      post-payment, so the customer is charged before we know Uber will take the job. The quote must
+      gate checkout instead — it doubles as the out-of-range check (a failed quote = no delivery
+      offered), which is why no geocoding or radius table is needed.
+- [ ] **Drop `customer_delivery_fee_cents_max`** (never read anywhere) and **wire
+      `DeliveryFeeStrategy`** (defined, cast, read by nothing — `Absorb`/`Split` are unreachable).
+      Today's flat fee is decided pre-quote and never reconciled, so restaurants silently eat or
+      pocket the delta.
+- [ ] **Fix the live landmine:** `DeliveryDispatcher.php:27` defaults the provider chain to
+      `['doordash','uber']`, so any restaurant flipped to third-party mode today gets
+      `provider_unsupported` and a permanently failed job. Inert only because nobody's enabled it.
 - [ ] `DoorDashDriveProvider` second — Drive production access is GATED (certification + required
       live demo, no timeline). Start the interest/certification request early, in parallel.
 
@@ -211,6 +235,31 @@ _Low-effort correctness & cleanup items found while auditing the roadmap against
       §7 partial-refund proration — wire it there, or drop the column if partials stay out of scope.
 - [ ] **`DeliveryDispatcher::quote()` has no caller.** Dead until the Uber/DoorDash adapters (§3)
       need live quotes. Leave a note or fold the quote step into those adapters when built.
+
+## 9. Menu availability & order pausing (surfaced 2026-07-14 while scoping §3 delivery)
+_Availability itself is built and enforced: `menu_items.is_available` + `item_template_options.is_available`,
+with `OrderPlacement::validateCartLines()` blocking unavailable items AND options at checkout
+(OrderPlacement.php:293), and `isOpenAt()` rejecting closed-restaurant orders (OrderPlacement.php:50).
+These are the gaps around it — they matter more once delivery makes fulfillment promises to customers._
+
+- [ ] **Time-boxed 86 / snooze.** `is_available` is a permanent boolean an owner must remember to
+      flip back — no "sold out until 4pm", no auto-expiry. Add `unavailable_until` (nullable) so an
+      item self-heals, and a one-click 86 toggle: today the only way to mark an item out is to open
+      the full `MenuItemEditDrawer` and save the whole record.
+- [ ] **No ingredient model.** "We're out of avocado → 86 everything with avocado" is not
+      expressible; availability is per-item and per-option only. Real feature, only worth it if
+      owners actually ask.
+- [ ] **Pause-orders kill switch.** `restaurant_hours` is the ONLY way to stop the flow — an owner
+      slammed at lunch has to edit their hours to stop taking orders. Add a manual
+      `orders_paused_until` / `is_accepting_orders` guard checked in `OrderPlacement::prepare()`
+      alongside `isOpenAt()`.
+- [ ] **`isOpenAt()` returns `true` when a restaurant has no hours rows** (Restaurant.php:404) —
+      deliberate "always open" back-compat, but it means deleting your hours silently accepts orders
+      24/7. Now that hours gate delivery dispatch, decide: keep the back-compat or fail closed.
+- [ ] **`CartManager::addItem` never checks `is_available`** (CartManager.php:110) — an unavailable
+      item can be added via a direct POST (route-model-bound `MenuItem`, no filter). Caught at
+      checkout by `validateCartLines`, so it's a late failure rather than an ordering hole; the cart
+      drawer surfaces it client-side via `CartItemData::isAvailable`. Move the check earlier.
 
 ---
 
