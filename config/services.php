@@ -97,6 +97,18 @@ return [
         // always resolves on the root domain regardless of the storefront the
         // customer started from.
         'redirect' => env('GOOGLE_REDIRECT_URI'),
+
+        // Places autocomplete for delivery addresses. A DIFFERENT credential
+        // from the OAuth client above — same Google Cloud project, but an API
+        // key rather than an OAuth client, and the Places API must be enabled
+        // on it.
+        //
+        // Server-side and IP-restricted, never a browser key: we proxy Places
+        // through the backend rather than calling it from the storefront. A
+        // browser key is protected only by an HTTP-referrer allowlist, and every
+        // custom domain we onboard would be another entry to maintain. Keeping
+        // it here also means it never reaches the client at all.
+        'maps_api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
 ];

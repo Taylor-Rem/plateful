@@ -3,7 +3,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 import { Button } from '@/components/ui/button';
 import { Truck } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 type DeliveryProviderCard = {
     provider: string;
@@ -18,11 +18,47 @@ type DeliveryProviderCard = {
     disconnectUrl: string | null;
 };
 
+type Option = { value: string; label: string };
+
+type DeliverySettings = {
+    deliveryEnabled: boolean;
+    deliveryMode: string | null;
+    deliveryFee: string;
+    deliveryFeeStrategy: string;
+    prepTimeMinutes: number;
+    selfDeliveryTipRecipient: string;
+    deliveryFallbackAction: string;
+    saveUrl: string;
+};
+
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     providers: DeliveryProviderCard[];
     webhookUrl: string;
+    settings: DeliverySettings;
+    options: {
+        modes: Option[];
+        feeStrategies: Option[];
+        tipRecipients: Option[];
+        fallbackActions: Option[];
+    };
 }>();
+
+const settingsForm = useForm({
+    delivery_enabled: props.settings.deliveryEnabled,
+    delivery_mode: props.settings.deliveryMode,
+    delivery_fee: props.settings.deliveryFee,
+    delivery_fee_strategy: props.settings.deliveryFeeStrategy,
+    prep_time_minutes: props.settings.prepTimeMinutes,
+    self_delivery_tip_recipient: props.settings.selfDeliveryTipRecipient,
+    delivery_fallback_action: props.settings.deliveryFallbackAction,
+});
+
+const isSelfDelivery = computed(() => settingsForm.delivery_mode === 'self');
+
+const saveSettings = (): void => {
+    settingsForm.put(props.settings.saveUrl, { preserveScroll: true });
+};
 
 const uber = props.providers.find((p) => p.provider === 'uber') ?? null;
 
@@ -87,6 +123,170 @@ const statusClasses: Record<string, string> = {
                     directly for each delivery.
                 </p>
             </div>
+
+            <!-- The behaviour flags. Every one of these lived in the schema
+                 with no UI, so a restaurant could have delivery on with no mode
+                 set and nobody could tell. -->
+            <section class="rounded-lg border border-border bg-card p-5">
+                <h2 class="mb-4 text-base font-semibold">Delivery settings</h2>
+
+                <form class="space-y-4" @submit.prevent="saveSettings">
+                    <label class="flex items-center gap-2 text-sm">
+                        <input
+                            v-model="settingsForm.delivery_enabled"
+                            type="checkbox"
+                            class="rounded"
+                        />
+                        Offer delivery at checkout
+                    </label>
+
+                    <template v-if="settingsForm.delivery_enabled">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium"
+                                >Who delivers?</label
+                            >
+                            <select
+                                v-model="settingsForm.delivery_mode"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                                <option :value="null">Choose…</option>
+                                <option
+                                    v-for="m in options.modes"
+                                    :key="m.value"
+                                    :value="m.value"
+                                >
+                                    {{ m.label }}
+                                </option>
+                            </select>
+                            <p
+                                v-if="settingsForm.errors.delivery_mode"
+                                class="mt-1 text-xs text-destructive"
+                            >
+                                {{ settingsForm.errors.delivery_mode }}
+                            </p>
+                        </div>
+
+                        <div v-if="!isSelfDelivery">
+                            <label class="mb-1 block text-sm font-medium"
+                                >How is the delivery fee priced?</label
+                            >
+                            <select
+                                v-model="settingsForm.delivery_fee_strategy"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                                <option
+                                    v-for="s in options.feeStrategies"
+                                    :key="s.value"
+                                    :value="s.value"
+                                >
+                                    {{ s.label }}
+                                </option>
+                            </select>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                Passing the real cost through means the customer
+                                pays what the courier charges. Charging a flat
+                                fee means you cover any difference — set it to
+                                $0.00 to offer free delivery.
+                            </p>
+                        </div>
+
+                        <div
+                            v-if="
+                                isSelfDelivery ||
+                                settingsForm.delivery_fee_strategy === 'absorb'
+                            "
+                        >
+                            <label class="mb-1 block text-sm font-medium"
+                                >Your delivery fee ($)</label
+                            >
+                            <input
+                                v-model="settingsForm.delivery_fee"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            />
+                            <p
+                                v-if="settingsForm.errors.delivery_fee"
+                                class="mt-1 text-xs text-destructive"
+                            >
+                                {{ settingsForm.errors.delivery_fee }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="mb-1 block text-sm font-medium"
+                                >Kitchen prep time (minutes)</label
+                            >
+                            <input
+                                v-model.number="settingsForm.prep_time_minutes"
+                                type="number"
+                                min="0"
+                                max="180"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            />
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                How long a ticket takes. Couriers are timed to
+                                arrive when the food is ready, and customers are
+                                quoted an arrival time that includes it.
+                            </p>
+                            <p
+                                v-if="settingsForm.errors.prep_time_minutes"
+                                class="mt-1 text-xs text-destructive"
+                            >
+                                {{ settingsForm.errors.prep_time_minutes }}
+                            </p>
+                        </div>
+
+                        <div v-if="isSelfDelivery">
+                            <label class="mb-1 block text-sm font-medium"
+                                >Who gets the tip?</label
+                            >
+                            <select
+                                v-model="
+                                    settingsForm.self_delivery_tip_recipient
+                                "
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                                <option
+                                    v-for="t in options.tipRecipients"
+                                    :key="t.value"
+                                    :value="t.value"
+                                >
+                                    {{ t.label }}
+                                </option>
+                            </select>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                On courier-network deliveries the tip always goes
+                                to the courier, so this only applies to your own
+                                drivers.
+                            </p>
+                        </div>
+
+                        <div v-else>
+                            <label class="mb-1 block text-sm font-medium"
+                                >If no courier can be found</label
+                            >
+                            <select
+                                v-model="settingsForm.delivery_fallback_action"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                                <option
+                                    v-for="a in options.fallbackActions"
+                                    :key="a.value"
+                                    :value="a.value"
+                                >
+                                    {{ a.label }}
+                                </option>
+                            </select>
+                        </div>
+                    </template>
+
+                    <Button type="submit" size="sm" :disabled="settingsForm.processing">
+                        {{ settingsForm.processing ? 'Saving…' : 'Save settings' }}
+                    </Button>
+                </form>
+            </section>
 
             <section
                 v-for="card in providers"

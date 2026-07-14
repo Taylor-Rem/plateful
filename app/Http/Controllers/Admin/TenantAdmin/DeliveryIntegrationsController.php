@@ -3,10 +3,15 @@
 namespace App\Http\Controllers\Admin\TenantAdmin;
 
 use App\Data\RestaurantData;
+use App\Enums\DeliveryFallbackAction;
+use App\Enums\DeliveryFeeStrategy;
 use App\Enums\DeliveryIntegrationStatus;
+use App\Enums\DeliveryMode;
 use App\Enums\DeliveryProviderName;
+use App\Enums\SelfDeliveryTipRecipient;
 use App\Exceptions\DeliveryProviderException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\DeliverySettingsRequest;
 use App\Http\Requests\Admin\UberDirectCredentialsRequest;
 use App\Models\DeliveryIntegration;
 use App\Models\Restaurant;
@@ -36,6 +41,22 @@ class DeliveryIntegrationsController extends Controller
             // The owner pastes this into their own Uber dashboard to create the
             // webhook, so show it rather than making them ask for it.
             'webhookUrl' => route('webhooks.uber'),
+            'settings' => [
+                'deliveryEnabled' => (bool) $restaurant->delivery_enabled,
+                'deliveryMode' => $restaurant->delivery_mode?->value,
+                'deliveryFee' => number_format((int) $restaurant->delivery_fee_cents / 100, 2, '.', ''),
+                'deliveryFeeStrategy' => ($restaurant->delivery_fee_strategy ?? DeliveryFeeStrategy::PassThrough)->value,
+                'prepTimeMinutes' => (int) $restaurant->prep_time_minutes,
+                'selfDeliveryTipRecipient' => ($restaurant->self_delivery_tip_recipient ?? SelfDeliveryTipRecipient::Driver)->value,
+                'deliveryFallbackAction' => ($restaurant->delivery_fallback_action ?? DeliveryFallbackAction::TryNextProvider)->value,
+                'saveUrl' => route('admin.restaurant.delivery.settings.update', ['restaurant' => $restaurant->subdomain]),
+            ],
+            'options' => [
+                'modes' => $this->enumOptions(DeliveryMode::cases()),
+                'feeStrategies' => $this->enumOptions(DeliveryFeeStrategy::cases()),
+                'tipRecipients' => $this->enumOptions(SelfDeliveryTipRecipient::cases()),
+                'fallbackActions' => $this->enumOptions(DeliveryFallbackAction::cases()),
+            ],
             'providers' => collect(DeliveryProviderName::cases())
                 // Self-delivery is a delivery *mode*, not a credentialed
                 // integration — it has nothing to connect.
@@ -70,6 +91,40 @@ class DeliveryIntegrationsController extends Controller
                 ->sortByDesc('available')
                 ->values()->all(),
         ]);
+    }
+
+    /**
+     * The delivery behaviour flags. Every one of these existed in the schema
+     * with no UI and no validation, which is why a restaurant could have
+     * delivery on and no mode set, and nobody could tell.
+     */
+    public function updateSettings(DeliverySettingsRequest $request, Restaurant $restaurant): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $restaurant->forceFill([
+            'delivery_enabled' => (bool) $validated['delivery_enabled'],
+            'delivery_mode' => $validated['delivery_mode'] ?? null,
+            'delivery_fee_cents' => (int) ($request->input('delivery_fee_cents') ?? $restaurant->delivery_fee_cents),
+            'delivery_fee_strategy' => $validated['delivery_fee_strategy'],
+            'prep_time_minutes' => (int) $validated['prep_time_minutes'],
+            'self_delivery_tip_recipient' => $validated['self_delivery_tip_recipient'],
+            'delivery_fallback_action' => $validated['delivery_fallback_action'],
+        ])->save();
+
+        return back()->with('success', 'Delivery settings saved.');
+    }
+
+    /**
+     * @param  array<int, DeliveryMode|DeliveryFeeStrategy|SelfDeliveryTipRecipient|DeliveryFallbackAction>  $cases
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function enumOptions(array $cases): array
+    {
+        return array_map(fn ($case): array => [
+            'value' => $case->value,
+            'label' => $case->label(),
+        ], $cases);
     }
 
     /**

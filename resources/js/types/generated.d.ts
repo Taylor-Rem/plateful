@@ -174,6 +174,7 @@ taxRatePercent: number,
 applicationFeePercent: number,
 deliveryFeeCents: number,
 deliveryEnabled: boolean,
+selfDelivery: boolean,
 isActive: boolean,
 isLive: boolean,
 isStripeReady: boolean,
@@ -214,7 +215,7 @@ imageThumbUrl: string | null,
 namespace Enums {
 export type AutoCancelRefundMode = 'auto' | 'manual';
 export type DeliveryFallbackAction = 'try_next_provider' | 'hold_for_owner' | 'auto_cancel_refund';
-export type DeliveryFeeStrategy = 'pass_through' | 'absorb' | 'split';
+export type DeliveryFeeStrategy = 'pass_through' | 'absorb';
 export type DeliveryIntegrationStatus = 'connected' | 'disconnected' | 'error';
 export type DeliveryMode = 'self' | 'third_party';
 export type DeliveryProviderName = 'self' | 'doordash' | 'uber';

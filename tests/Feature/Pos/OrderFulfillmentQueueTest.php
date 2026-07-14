@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DeliveryMode;
 use App\Jobs\DispatchDeliveryForOrder;
 use App\Jobs\PushOrderToPos;
 use App\Models\PosIntegration;
@@ -73,7 +74,11 @@ it('does not queue a POS push when the integration is disconnected', function ()
 
 it('queues delivery dispatch for delivery orders', function () {
     $f = cartFixture();
-    $f['restaurant']->update(['delivery_enabled' => true]);
+    // Self-delivery keeps this test about queueing, not about quoting.
+    $f['restaurant']->update([
+        'delivery_enabled' => true,
+        'delivery_mode' => DeliveryMode::SelfDelivery,
+    ]);
 
     startCheckout($f, [
         'type' => 'delivery',

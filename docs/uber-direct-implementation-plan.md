@@ -370,7 +370,7 @@ one or the other depending on event type; betting on one would silently drop hal
 confusion, unknown customers, out-of-order retries, and CSRF exemption. Signature verification is
 security code, so it gets adversarial coverage rather than a happy path.
 
-## 5. Address capture
+## 5. Address capture — **built 2026-07-14**
 
 Places autocomplete on the checkout address field (backend proxy + our own dropdown, per §0) plus a
 separate unit/apt field. The formatted result lands in the existing `orders.delivery_address` JSON
@@ -380,7 +380,18 @@ byte-identical rule in §3). Assembled once, not twice.
 Note: once a courier accepts, **addresses cannot be changed** — cancel and recreate. That constrains
 what customers may edit post-checkout.
 
-## 6. Quote at checkout — the real rework
+**Verified end-to-end before building any of it:** Places (New) autocomplete → `placeId` → Place
+Details → `addressComponents` → snapshot → `UberDirectAddress` → a real Uber quote ($7.99). The risk
+worth checking was whether Places returns *structured* components or only a formatted string; it
+returns components, including `administrative_area_level_1.shortText` = `UT`, which is the form
+Uber's structured address wants. No address parsing needed.
+
+Two things that cost money if missed: Places (New) **bills per requested field** and rejects a
+request with no `X-Goog-FieldMask`, and it bills autocomplete + details as **one session only when
+the same `sessionToken` rides on both**. The proxy is also throttled — a public, unmetered Places
+proxy is somebody else's free geocoding API.
+
+## 6. Quote at checkout — **built 2026-07-14**, the real rework
 
 **The heart of the change.** Today the quote happens post-payment inside `DispatchDeliveryForOrder`,
 which is exactly why a customer can be charged before we know delivery is possible.
@@ -408,7 +419,24 @@ after-close orders are rejected before any of it.
 Touches `OrderPlacement.php:85`, `Checkout.vue`, and finally gives `DeliveryDispatcher::quote()` a
 caller — closing the dead-code item in todo.md §8.
 
-## 7. Pricing + kitchen ETA + the delivery settings page
+### What the quote is checked against
+
+The token is opaque (a uuid, not an id) because it travels through the browser. On checkout the
+quote must be **the same restaurant's**, **for the same address**, and **unexpired** — otherwise a
+customer could quote a cheap address and deliver to an expensive one, or reuse another restaurant's
+$1 quote. The fee itself is read from the row; it is never accepted from the client.
+
+Address comparison deliberately **ignores delivery instructions**: editing "leave at the door"
+doesn't move the courier, so it must not silently re-price the order. Changing the unit *does*.
+
+`DeliveryDispatcher` now replays the checkout quote when it is still valid, and re-quotes only when
+it has expired — the customer may have lingered on Stripe's hosted page past the 15-minute life.
+Replaying keeps the price Uber honours identical to the price the customer saw.
+
+**Self-delivery has no quote**, because there is no provider to ask; it keeps the restaurant's own
+advertised fee. Third-party **requires** one. That is the whole rework in one sentence.
+
+## 7. Pricing + kitchen ETA + the delivery settings page — **built 2026-07-14**
 
 Wire `DeliveryFeeStrategy` for real (it is currently defined, cast, and read by **nothing** —
 `Absorb` and `Split` are unreachable). Drop `Split` and `customer_delivery_fee_cents_max`. See §0.
@@ -427,8 +455,13 @@ from the UI. The real Delivery Settings page lands **here**, not in §2, because
 means guessing its shape before the checkout rework tells you what it needs (the enum collapse and
 `prep_time_minutes` both land in this section). Build it once, when it's known.
 
-For proving the sandbox quote in §2–3, set the flags by tinker. That's what "independently
-shippable" is for.
+**One rule the page enforces that the schema never did:** delivery cannot be switched on without
+choosing a mode. `DeliveryDispatcher` treats a null mode as third-party, so an owner who merely
+flipped `delivery_enabled` would get couriers they never asked for. The choice is now required at
+the only moment it is cheap to ask.
+
+The page also shows the Uber webhook URL to paste, and warns when the signing key is missing —
+deliveries still dispatch without it, you just get no status updates.
 
 ## 8. Auth/capture — *last, and carefully*
 
@@ -478,12 +511,21 @@ being captive at renegotiation.
 
 ## 10. Sequencing
 
-1. **§1** — the `delivery_enabled` fix. Self-contained, depends on nothing, fixes a live bug.
-2. **§2–3** — credentials + adapter. Independently shippable; prove a real sandbox quote before
-   touching checkout. Flags set by tinker.
-3. **§4** — webhooks. Ahead of auth/capture, which needs the courier-confirmed signal.
-4. **§5–7** — the checkout rework. Wants to land together.
-5. **§8** — auth/capture. Separable; touches shipped payment code, so on its own.
+1. ~~**§1** — the `delivery_enabled` fix.~~ **Done 2026-07-14.**
+2. ~~**§2–3** — credentials + adapter.~~ **Done 2026-07-14**, verified against a real sandbox quote.
+3. ~~**§4** — webhooks.~~ **Done 2026-07-14.** Ahead of auth/capture, which needs the
+   courier-confirmed signal.
+4. ~~**§5–7** — the checkout rework.~~ **Done 2026-07-14.**
+5. **§8** — auth/capture. Separable; touches shipped payment code, so on its own. **Next.**
+
+### Before production
+
+- [ ] **Provision Plateful's PRODUCTION Uber account** — it can currently mint only
+      `direct.organizations`, not `eats.deliveries`. Sandbox working says nothing about it.
+- [ ] **Rotate the production Uber Client Secret** — exposed in a session transcript 2026-07-14.
+- [ ] **Restrict the Google Maps key** to the Places API (New) and to the production server's IP.
+      It is a server-side key; an unrestricted one is a billing liability.
+- [ ] Each restaurant creates its own Uber webhook and pastes the signing key (§4).
 
 **Getting sandbox credentials** (~10 min, self-serve): `direct.uber.com` → log in or create an Uber
 account → accept the Uber Direct Terms + API Terms of Use → skip billing (only required for

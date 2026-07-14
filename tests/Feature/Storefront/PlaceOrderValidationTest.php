@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Models\Order;
@@ -121,7 +122,12 @@ test('delivery order is rejected when the restaurant has delivery disabled', fun
 test('delivery order is accepted when the restaurant has delivery enabled', function () {
     $f = cartFixture();
     $r = $f['restaurant'];
-    $r->update(['delivery_enabled' => true, 'delivery_fee_cents' => 499]);
+    // Self-delivery: priced from the restaurant's own fee, no quote involved.
+    $r->update([
+        'delivery_enabled' => true,
+        'delivery_fee_cents' => 499,
+        'delivery_mode' => DeliveryMode::SelfDelivery,
+    ]);
     $cookie = addPepperoniLine($this, $f);
 
     fakeCheckoutSession();

@@ -77,4 +77,22 @@ class Order extends Model
     {
         return $this->belongsTo(DeliveryAssignment::class);
     }
+
+    /**
+     * The quote this order's delivery fee was priced from, if any.
+     *
+     * Not a relation: it is looked up unscoped because the dispatch job runs in
+     * a queue worker with no tenant bound, and joined on an opaque token rather
+     * than an id so the handle can safely travel through the browser.
+     */
+    public function deliveryQuote(): ?DeliveryQuote
+    {
+        if ($this->delivery_quote_token === null) {
+            return null;
+        }
+
+        return DeliveryQuote::withoutTenantScope()
+            ->where('token', $this->delivery_quote_token)
+            ->first();
+    }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\DeliveryFeeStrategy;
+use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\TipRecipient;
@@ -13,6 +15,7 @@ use App\Mail\OrderNotificationToRestaurant;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\DeliveryQuote;
 use App\Models\ItemTemplateOption;
 use App\Models\Order;
 use App\Models\OrderEvent;
@@ -87,9 +90,24 @@ class OrderPlacement
             ]);
         }
 
+        $deliveryAddress = $type === OrderType::Delivery
+            ? $this->normalizeDeliveryAddress($data['delivery_address'] ?? [])
+            : null;
+
+        $deliveryQuote = $type === OrderType::Delivery
+            ? $this->resolveDeliveryQuote($restaurant, $data, $deliveryAddress ?? [])
+            : null;
+
         $taxRate = (float) $restaurant->tax_rate_percent;
         $taxCents = (int) round($subtotalCents * $taxRate / 100);
-        $deliveryFeeCents = $type === OrderType::Delivery ? (int) $restaurant->delivery_fee_cents : 0;
+
+        // The fee comes from the server-side quote, never from the client — it
+        // is money. Self-delivery has no provider to quote, so it keeps the
+        // restaurant's own advertised number.
+        $deliveryFeeCents = $deliveryQuote !== null
+            ? $this->customerDeliveryFeeCents($restaurant, $deliveryQuote)
+            : ($type === OrderType::Delivery ? (int) $restaurant->delivery_fee_cents : 0);
+
         $tipCents = max(0, (int) ($data['tip_cents'] ?? 0));
         $tipRecipient = TipRecipient::forOrder($restaurant, $type);
         $totalCents = $subtotalCents + $taxCents + $deliveryFeeCents + $tipCents;
@@ -98,20 +116,6 @@ class OrderPlacement
         // to the FOOD SUBTOTAL only — not tax, tip, or delivery (those are
         // pass-through and don't belong to Plateful).
         $applicationFeeCents = (int) floor($subtotalCents * (float) $restaurant->application_fee_percent / 100);
-
-        $deliveryAddress = null;
-        if ($type === OrderType::Delivery) {
-            $addr = $data['delivery_address'] ?? [];
-            $deliveryAddress = [
-                'street' => (string) ($addr['street'] ?? ''),
-                'street2' => isset($addr['street2']) ? (string) $addr['street2'] : null,
-                'city' => (string) ($addr['city'] ?? ''),
-                'state' => (string) ($addr['state'] ?? ''),
-                'postal_code' => (string) ($addr['postal_code'] ?? ''),
-                'country' => (string) ($addr['country'] ?? 'US'),
-                'instructions' => isset($addr['instructions']) ? (string) $addr['instructions'] : null,
-            ];
-        }
 
         $addressId = null;
         if ($user && isset($data['address_id'])) {
@@ -145,7 +149,91 @@ class OrderPlacement
             'confirmation_token' => Str::random(64),
             'notes' => $data['notes'] ?? null,
             'items' => $items,
+            // Carried so dispatch can replay this exact quote instead of
+            // re-deriving one, and so the fee the customer paid is traceable
+            // to the quote it came from.
+            'delivery_quote_token' => $deliveryQuote?->token,
         ];
+    }
+
+    /**
+     * One canonical address shape. It becomes `orders.delivery_address` and is
+     * the single source of truth for both the quote and the eventual courier
+     * dispatch — assembled once, not twice.
+     *
+     * @param  array<string, mixed>  $address
+     * @return array<string, string|null>
+     */
+    protected function normalizeDeliveryAddress(array $address): array
+    {
+        return [
+            'street' => (string) ($address['street'] ?? ''),
+            'street2' => isset($address['street2']) ? (string) $address['street2'] : null,
+            'city' => (string) ($address['city'] ?? ''),
+            'state' => (string) ($address['state'] ?? ''),
+            'postal_code' => (string) ($address['postal_code'] ?? ''),
+            'country' => (string) ($address['country'] ?? 'US') ?: 'US',
+            'instructions' => isset($address['instructions']) ? (string) $address['instructions'] : null,
+        ];
+    }
+
+    /**
+     * Find and validate the quote this checkout is claiming.
+     *
+     * Third-party delivery REQUIRES one — that is the whole point of the rework:
+     * no customer gets charged for a delivery nobody priced. Self-delivery has
+     * no provider to quote, so it has none and keeps the restaurant's own fee.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $address
+     */
+    protected function resolveDeliveryQuote(Restaurant $restaurant, array $data, array $address): ?DeliveryQuote
+    {
+        if ($restaurant->delivery_mode === DeliveryMode::SelfDelivery) {
+            return null;
+        }
+
+        $token = $data['delivery_quote_token'] ?? null;
+
+        $quote = is_string($token) && $token !== ''
+            ? DeliveryQuote::query()
+                ->where('token', $token)
+                ->where('restaurant_id', $restaurant->id)
+                ->first()
+            : null;
+
+        if ($quote === null) {
+            throw InvalidCheckoutException::withErrors([
+                'delivery_quote_token' => 'Please re-enter your delivery address so we can price it.',
+            ]);
+        }
+
+        // A quote priced for one address must not pay for a delivery to
+        // another. The customer edits the address, the fee re-quotes.
+        if (! $quote->matchesAddress($address)) {
+            throw InvalidCheckoutException::withErrors([
+                'delivery_quote_token' => 'Your address changed. Please check the delivery fee again.',
+            ]);
+        }
+
+        if ($quote->isExpired()) {
+            throw InvalidCheckoutException::withErrors([
+                'delivery_quote_token' => 'Your delivery quote expired. Please check the fee again.',
+            ]);
+        }
+
+        return $quote;
+    }
+
+    /**
+     * What the customer pays for delivery, which is not always what the courier
+     * costs — under `Absorb` the restaurant eats the difference.
+     */
+    protected function customerDeliveryFeeCents(Restaurant $restaurant, DeliveryQuote $quote): int
+    {
+        $strategy = $restaurant->delivery_fee_strategy ?? DeliveryFeeStrategy::PassThrough;
+
+        return $strategy->customerFeeCents((int) $quote->fee_cents, $restaurant);
     }
 
     /**
@@ -430,6 +518,7 @@ class OrderPlacement
                     'tip_cents' => (int) $snapshot['tip_cents'],
                     'tip_recipient' => TipRecipient::from($snapshot['tip_recipient']),
                     'delivery_fee_cents' => (int) $snapshot['delivery_fee_cents'],
+                    'delivery_quote_token' => $snapshot['delivery_quote_token'] ?? null,
                     'application_fee_cents' => (int) $snapshot['application_fee_cents'],
                     'total_cents' => (int) $snapshot['total_cents'],
                     'stripe_payment_intent_id' => $payment['stripe_payment_intent_id'] ?? null,

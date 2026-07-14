@@ -82,6 +82,7 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 // redirect and no callback route — the owner pastes credentials
                 // straight in and we verify them against Uber's token endpoint.
                 Route::get('/settings/delivery', [TenantAdmin\DeliveryIntegrationsController::class, 'show'])->name('delivery.show');
+                Route::put('/settings/delivery', [TenantAdmin\DeliveryIntegrationsController::class, 'updateSettings'])->name('delivery.settings.update');
                 Route::post('/settings/delivery/uber', [TenantAdmin\DeliveryIntegrationsController::class, 'saveUber'])->name('delivery.uber.save');
                 Route::post('/settings/delivery/uber/disconnect', [TenantAdmin\DeliveryIntegrationsController::class, 'disconnectUber'])->name('delivery.uber.disconnect');
 

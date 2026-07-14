@@ -12,6 +12,8 @@ use App\Models\Restaurant;
 use App\Services\OrderPlacement;
 use App\Tenancy\CurrentTenant;
 
+require_once __DIR__.'/DeliveryQuoteTestHelpers.php';
+
 function placementRestaurant(string $sub, array $overrides = []): Restaurant
 {
     $r = Restaurant::create(array_merge([
@@ -51,7 +53,7 @@ function placementCart(Restaurant $r): Cart
     return $cart->fresh()->load('items.menuItem.template.groups.options');
 }
 
-function placeWith(Restaurant $r, OrderType $type)
+function placeWith(Restaurant $r, OrderType $type, ?string $quoteToken = null)
 {
     $cart = placementCart($r);
 
@@ -65,6 +67,7 @@ function placeWith(Restaurant $r, OrderType $type)
         'delivery_address' => $type === OrderType::Delivery ? [
             'street' => '1', 'city' => 'NYC', 'state' => 'NY', 'postal_code' => '10001', 'country' => 'US',
         ] : null,
+        'delivery_quote_token' => $quoteToken,
     ];
 
     return app(OrderPlacement::class)->place($cart, $r, $data, null);
@@ -84,7 +87,13 @@ it('writes tip_recipient=driver for third-party delivery orders', function () {
         'delivery_mode' => DeliveryMode::ThirdParty->value,
     ]);
 
-    $order = placeWith($r, OrderType::Delivery);
+    // Third-party delivery now requires a priced quote — no customer is charged
+    // for a delivery nobody quoted.
+    $quote = makeDeliveryQuote($r, [
+        'street' => '1', 'city' => 'NYC', 'state' => 'NY', 'postal_code' => '10001', 'country' => 'US',
+    ]);
+
+    $order = placeWith($r, OrderType::Delivery, $quote->token);
 
     expect($order->tip_recipient)->toBe(TipRecipient::Driver);
 });

@@ -10,11 +10,13 @@ use App\Http\Controllers\Storefront\Account\OrdersController as AccountOrdersCon
 use App\Http\Controllers\Storefront\Account\PasswordController as AccountPasswordController;
 use App\Http\Controllers\Storefront\Account\ProfileController as AccountProfileController;
 use App\Http\Controllers\Storefront\AccountController;
+use App\Http\Controllers\Storefront\AddressLookupController;
 use App\Http\Controllers\Storefront\Admin\MenuItemController as AdminMenuItemController;
 use App\Http\Controllers\Storefront\Admin\PhotoController as AdminPhotoController;
 use App\Http\Controllers\Storefront\Admin\SiteController as AdminSiteController;
 use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
+use App\Http\Controllers\Storefront\DeliveryQuoteController;
 use App\Http\Controllers\Storefront\HomeController;
 use App\Http\Controllers\Storefront\MenuController;
 use App\Http\Controllers\Storefront\OrderController;
@@ -45,6 +47,21 @@ Route::middleware('tenant')->group(function () {
         ->name('storefront.cart.remove');
     Route::delete('cart', [CartController::class, 'clear'])
         ->name('storefront.cart.clear');
+
+    // Places proxy for the checkout address field. Throttled because it is
+    // public and every call bills at Google — an unmetered proxy is somebody
+    // else's free geocoding API.
+    Route::middleware('throttle:60,1')->group(function (): void {
+        Route::post('checkout/address/suggest', [AddressLookupController::class, 'suggest'])
+            ->name('storefront.checkout.address.suggest');
+        Route::post('checkout/address/resolve', [AddressLookupController::class, 'resolve'])
+            ->name('storefront.checkout.address.resolve');
+
+        // The live quote that gates checkout. Throttled alongside the address
+        // lookups: it calls a delivery provider on every address change.
+        Route::post('checkout/delivery-quote', DeliveryQuoteController::class)
+            ->name('storefront.checkout.deliveryQuote');
+    });
 
     Route::get('checkout', [CheckoutController::class, 'show'])
         ->name('storefront.checkout.show');

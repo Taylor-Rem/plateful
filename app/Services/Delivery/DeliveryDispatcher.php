@@ -102,8 +102,7 @@ class DeliveryDispatcher
             }
 
             try {
-                $request = $this->quoteRequestFromOrder($order);
-                $quote = $provider->quote($request);
+                $quote = $this->quoteForDispatch($provider, $order, $providerName);
                 $assignment = $provider->create($order, $quote);
                 $order->forceFill(['delivery_assignment_id' => $assignment->id])->save();
 
@@ -133,6 +132,34 @@ class DeliveryDispatcher
         }
 
         return $provider->supports($restaurant) ? $provider : null;
+    }
+
+    /**
+     * The quote to create the delivery from.
+     *
+     * Prefers the one taken at checkout — the customer was charged from it, and
+     * replaying it keeps the price Uber honours identical to the price the
+     * customer saw. It is only usable for 15 minutes though, and the customer
+     * may have lingered on Stripe's hosted page, so an expired or absent quote
+     * falls back to a fresh one. The restaurant carries any difference; that is
+     * the drift §0 accepts, and `quote_fee_cents` vs `actual_fee_cents` is what
+     * measures it.
+     */
+    protected function quoteForDispatch(
+        DeliveryProvider $provider,
+        Order $order,
+        DeliveryProviderName $providerName,
+    ): DeliveryQuote {
+        $stored = $order->deliveryQuote();
+
+        if ($stored !== null
+            && ! $stored->isExpired()
+            && $stored->provider === $providerName
+            && $stored->external_quote_id !== null) {
+            return $stored->toValueObject();
+        }
+
+        return $provider->quote($this->quoteRequestFromOrder($order));
     }
 
     protected function quoteRequestFromOrder(Order $order): DeliveryQuoteRequest

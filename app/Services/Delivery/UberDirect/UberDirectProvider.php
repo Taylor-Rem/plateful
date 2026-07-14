@@ -115,6 +115,13 @@ class UberDirectProvider implements DeliveryProvider
                 // Lets the status webhook find the order without a lookup table.
                 'external_id' => $order->number,
                 'tip' => $tipCents,
+                // When the kitchen will actually have the food. Uber assigns
+                // the courier to arrive for this time; without it Uber assumes
+                // "now", the courier arrives to nothing, and idles in the lobby
+                // for the length of the ticket.
+                'pickup_ready_dt' => now()
+                    ->addMinutes(max(0, (int) $restaurant->prep_time_minutes))
+                    ->toIso8601String(),
                 // DispatchDeliveryForOrder retries up to 3 times. Without this,
                 // a crash between Uber creating the delivery and us saving the
                 // assignment would dispatch a SECOND courier on the retry.
