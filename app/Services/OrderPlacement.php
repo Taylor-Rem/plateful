@@ -80,6 +80,13 @@ class OrderPlacement
         }
 
         $type = OrderType::from($data['type']);
+
+        if ($type === OrderType::Delivery && ! $restaurant->delivery_enabled) {
+            throw InvalidCheckoutException::withErrors([
+                'type' => $restaurant->name.' doesn’t offer delivery.',
+            ]);
+        }
+
         $taxRate = (float) $restaurant->tax_rate_percent;
         $taxCents = (int) round($subtotalCents * $taxRate / 100);
         $deliveryFeeCents = $type === OrderType::Delivery ? (int) $restaurant->delivery_fee_cents : 0;

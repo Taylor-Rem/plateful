@@ -73,6 +73,7 @@ it('does not queue a POS push when the integration is disconnected', function ()
 
 it('queues delivery dispatch for delivery orders', function () {
     $f = cartFixture();
+    $f['restaurant']->update(['delivery_enabled' => true]);
 
     startCheckout($f, [
         'type' => 'delivery',

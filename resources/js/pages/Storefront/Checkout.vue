@@ -282,6 +282,7 @@ const submit = (): void => {
                             Pickup
                         </button>
                         <button
+                            v-if="restaurant.deliveryEnabled"
                             type="button"
                             class="flex-1 rounded-md border px-4 py-2 text-sm font-medium"
                             :class="
@@ -303,6 +304,12 @@ const submit = (): void => {
                             Delivery
                         </button>
                     </div>
+                    <p
+                        v-if="form.errors.type"
+                        class="mt-2 text-xs text-destructive"
+                    >
+                        {{ form.errors.type }}
+                    </p>
                 </section>
 
                 <!-- Delivery address -->

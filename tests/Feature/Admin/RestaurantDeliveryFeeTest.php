@@ -55,6 +55,18 @@ test('delivery fee appears on storefront response', function () {
         ->assertInertia(fn ($p) => $p->where('restaurant.deliveryFeeCents', 350));
 });
 
+test('delivery_enabled reaches the storefront so the UI can gate the delivery option', function () {
+    $r = deliveryFeeRestaurant();
+
+    $this->get("http://{$r->subdomain}.plateful.test/")
+        ->assertInertia(fn ($p) => $p->where('restaurant.deliveryEnabled', false));
+
+    $r->update(['delivery_enabled' => true]);
+
+    $this->get("http://{$r->subdomain}.plateful.test/")
+        ->assertInertia(fn ($p) => $p->where('restaurant.deliveryEnabled', true));
+});
+
 test('delivery fee above $500 is rejected', function () {
     $r = deliveryFeeRestaurant();
     $u = deliveryFeeAdmin($r);

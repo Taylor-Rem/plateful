@@ -3,6 +3,7 @@
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Models\Order;
+use App\Models\PendingCheckout;
 use App\Services\CartManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -88,6 +89,59 @@ test('delivery without address fails validation', function () {
     $resp->assertStatus(422);
     $errors = $resp->json('errors');
     expect(array_keys($errors))->toContain('delivery_address.street');
+});
+
+test('delivery order is rejected when the restaurant has delivery disabled', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    expect($r->fresh()->delivery_enabled)->toBeFalse();
+    $cookie = addPepperoniLine($this, $f);
+
+    $resp = $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'delivery',
+            'delivery_address' => [
+                'street' => '123 Main',
+                'city' => 'NYC',
+                'state' => 'NY',
+                'postal_code' => '10001',
+            ],
+            'tip_preset' => '0',
+        ], ['Accept' => 'application/json']);
+
+    $resp->assertStatus(422);
+    expect(array_keys($resp->json('errors')))->toContain('type');
+
+    // No Stripe session may be opened for an order we won't dispatch.
+    expect(PendingCheckout::count())->toBe(0);
+});
+
+test('delivery order is accepted when the restaurant has delivery enabled', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    $r->update(['delivery_enabled' => true, 'delivery_fee_cents' => 499]);
+    $cookie = addPepperoniLine($this, $f);
+
+    fakeCheckoutSession();
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'delivery',
+            'delivery_address' => [
+                'street' => '123 Main',
+                'city' => 'NYC',
+                'state' => 'NY',
+                'postal_code' => '10001',
+            ],
+            'tip_preset' => '0',
+        ]);
+
+    $order = payLatestCheckout();
+    expect($order->type->value)->toBe('delivery');
+    expect($order->delivery_fee_cents)->toBe(499);
 });
 
 test('pickup with address provided is accepted and address is ignored', function () {
