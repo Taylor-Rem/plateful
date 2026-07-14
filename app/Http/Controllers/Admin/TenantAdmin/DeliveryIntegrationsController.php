@@ -33,6 +33,9 @@ class DeliveryIntegrationsController extends Controller
 
         return Inertia::render('Admin/TenantAdmin/DeliveryIntegrations', [
             'restaurant' => RestaurantData::fromModel($restaurant),
+            // The owner pastes this into their own Uber dashboard to create the
+            // webhook, so show it rather than making them ask for it.
+            'webhookUrl' => route('webhooks.uber'),
             'providers' => collect(DeliveryProviderName::cases())
                 // Self-delivery is a delivery *mode*, not a credentialed
                 // integration — it has nothing to connect.
@@ -48,9 +51,11 @@ class DeliveryIntegrationsController extends Controller
                             ?? DeliveryIntegrationStatus::Disconnected->value,
                         'lastError' => $integration?->last_error,
                         'connectedAt' => $integration?->created_at?->toIso8601String(),
-                        // Never echo the client id/secret back — only enough to
-                        // show the owner which account is wired up.
+                        // Never echo the client id/secret/signing key back —
+                        // only enough to show the owner which account is wired
+                        // up and whether status updates are live.
                         'customerId' => $integration?->customer_id,
+                        'hasWebhookKey' => $integration?->webhook_signing_key !== null,
                         'available' => $available,
                         'saveUrl' => $available
                             ? route("admin.restaurant.delivery.{$provider->value}.save", ['restaurant' => $restaurant->subdomain])
@@ -95,6 +100,13 @@ class DeliveryIntegrationsController extends Controller
                 'client_id' => $validated['client_id'],
                 'client_secret' => $validated['client_secret'],
                 'customer_id' => $validated['customer_id'],
+                // Blank means "leave it alone" rather than "clear it": the key
+                // is issued in a separate dashboard step, so an owner
+                // re-pasting credentials later must not silently wipe it and
+                // switch status updates off.
+                ...($validated['webhook_signing_key'] ?? null) !== null
+                    ? ['webhook_signing_key' => $validated['webhook_signing_key']]
+                    : [],
                 // The verification above already minted a usable token; keeping
                 // it saves a redundant grant against the 100/hour limit.
                 'access_token' => $token->accessToken,

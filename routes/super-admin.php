@@ -6,12 +6,18 @@ use App\Http\Controllers\Admin\AdminLoginHandoffController;
 use App\Http\Controllers\Admin\SuperAdmin;
 use App\Http\Controllers\Admin\TenantAdmin;
 use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\UberDirectWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
     // Stripe Connect webhooks. Public (no auth), CSRF-exempt via
     // bootstrap/app.php, signature-verified in the controller.
     Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
+
+    // Uber Direct delivery-status webhooks. One URL for every tenant; the
+    // payload's customer_id selects which restaurant's signing key to verify
+    // against, since each restaurant owns its own Uber account and key.
+    Route::post('/webhooks/uber', UberDirectWebhookController::class)->name('webhooks.uber');
 
     // Cross-host login handoff (e.g. straight after owner signup on the
     // primary host). Token-gated, so no auth middleware.

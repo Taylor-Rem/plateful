@@ -20,6 +20,10 @@ class UberDirectCredentialsRequest extends FormRequest
             'client_id' => ['required', 'string', 'max:255'],
             'client_secret' => ['required', 'string', 'max:255'],
             'customer_id' => ['required', 'string', 'max:255'],
+            // Optional: delivery works without it, you just get no status
+            // updates. Uber only issues it once the restaurant creates the
+            // webhook, which is a separate step in their dashboard.
+            'webhook_signing_key' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -31,7 +35,7 @@ class UberDirectCredentialsRequest extends FormRequest
     {
         $this->merge(array_map(
             fn (mixed $value): mixed => is_string($value) ? trim($value) : $value,
-            $this->only(['client_id', 'client_secret', 'customer_id']),
+            $this->only(['client_id', 'client_secret', 'customer_id', 'webhook_signing_key']),
         ));
     }
 

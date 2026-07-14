@@ -12,6 +12,7 @@ type DeliveryProviderCard = {
     lastError: string | null;
     connectedAt: string | null;
     customerId: string | null;
+    hasWebhookKey: boolean;
     available: boolean;
     saveUrl: string | null;
     disconnectUrl: string | null;
@@ -20,6 +21,7 @@ type DeliveryProviderCard = {
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     providers: DeliveryProviderCard[];
+    webhookUrl: string;
 }>();
 
 const uber = props.providers.find((p) => p.provider === 'uber') ?? null;
@@ -32,6 +34,7 @@ const form = useForm({
     client_id: '',
     client_secret: '',
     customer_id: '',
+    webhook_signing_key: '',
 });
 
 const disconnectForm = useForm({});
@@ -116,6 +119,13 @@ const statusClasses: Record<string, string> = {
                                 class="mt-1 font-mono text-xs text-muted-foreground"
                             >
                                 Customer ID {{ card.customerId }}
+                            </p>
+                            <p
+                                v-if="card.status === 'connected' && !card.hasWebhookKey"
+                                class="mt-1 text-sm text-amber-700"
+                            >
+                                Deliveries will dispatch, but no live courier
+                                updates — add a webhook signing key below.
                             </p>
                             <p v-if="card.lastError" class="mt-1 text-sm text-red-600">
                                 {{ card.lastError }}
@@ -221,6 +231,49 @@ const statusClasses: Record<string, string> = {
                             class="mt-1 text-xs text-destructive"
                         >
                             {{ form.errors.customer_id }}
+                        </p>
+                    </div>
+
+                    <div class="border-t border-border pt-4">
+                        <label
+                            class="mb-1 block text-sm font-medium"
+                            for="webhook_signing_key"
+                            >Webhook Signing Key
+                            <span class="font-normal text-muted-foreground"
+                                >— optional</span
+                            ></label
+                        >
+                        <p class="mb-2 text-sm text-muted-foreground">
+                            Without this, deliveries still dispatch — you just
+                            won't get live courier updates. In your Uber
+                            dashboard go to Developer → Webhooks → Create
+                            Webhook, select
+                            <span class="font-medium">delivery status</span> and
+                            <span class="font-medium">courier update</span>, and
+                            use this URL:
+                        </p>
+                        <code
+                            class="mb-2 block overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs"
+                            >{{ webhookUrl }}</code
+                        >
+                        <input
+                            id="webhook_signing_key"
+                            v-model="form.webhook_signing_key"
+                            type="password"
+                            autocomplete="off"
+                            spellcheck="false"
+                            :placeholder="
+                                card.hasWebhookKey
+                                    ? 'Saved — leave blank to keep it'
+                                    : ''
+                            "
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
+                        />
+                        <p
+                            v-if="form.errors.webhook_signing_key"
+                            class="mt-1 text-xs text-destructive"
+                        >
+                            {{ form.errors.webhook_signing_key }}
                         </p>
                     </div>
 

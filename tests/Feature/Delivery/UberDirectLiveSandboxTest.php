@@ -36,6 +36,25 @@ require_once __DIR__.'/../Admin/AdminOrderTestHelpers.php';
  * happens in setUp() — long after Pest has collected this file. Reading env at
  * the top level of the file (as CloverLiveSandboxTest does) always yields null,
  * so such a test skips even when the credentials are set.
+ *
+ * ---------------------------------------------------------------------------
+ * INVARIANT: NOTHING IN THIS FILE MAY CREATE A DELIVERY.
+ * ---------------------------------------------------------------------------
+ * Every call here must be side-effect-free — minting a token and fetching a
+ * quote create nothing and cost nothing, which is what makes them safe to run
+ * even if production credentials end up in `.env` by mistake. That is the only
+ * thing protecting this file from dispatching a real courier to a real address.
+ *
+ * It cannot be enforced programmatically before the fact: Uber exposes
+ * `live_mode` on the *delivery* object and on webhook payloads, but neither the
+ * token response nor the quote response says which environment you are in. The
+ * dashboard toggle decides, and the credentials carry it silently.
+ *
+ * So if you ever add a test that calls `create()`, it MUST assert
+ * `live_mode === false` on the response and fail loudly otherwise — and even
+ * then it is creating something, so think hard about whether a faked test would
+ * do. `UberDirectProviderTest` covers create/cancel against Http::fake for
+ * exactly this reason.
  */
 
 /**

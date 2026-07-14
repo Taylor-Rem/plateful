@@ -220,18 +220,19 @@ Four things the plan asserted from the docs that the real API contradicted:
   of a test file yields null *even when the credentials are set*, so the test skips
   unconditionally. `CloverLiveSandboxTest` had exactly this bug and had never once run.
 
-### Blocked: the sandbox account needs Direct API access
+### Verified live 2026-07-14
 
-`eats.deliveries` is confirmed correct — the quote endpoint itself replies *"This endpoint requires
-at least one of the following scopes: eats.deliveries"*. But the auth endpoint **rejects that scope**
-for our sandbox credentials as `invalid_scope`; the only scope they can mint is
-`direct.organizations`, which the deliveries API refuses.
+`UberDirectLiveSandboxTest` passes against the real Uber sandbox: a token mints with the
+`eats.deliveries` scope, is stored and reused rather than re-requested, and a **real priced quote**
+comes back for a real pair of addresses. That is the gate this plan puts in front of the checkout
+rework — §2 and §3 stand on verified ground.
 
-So the credentials are real and the code is right — the Uber *account* is not provisioned for Direct
-API access. Finish account setup at direct.uber.com (accept the Uber Direct Terms + API Terms of
-Use) until the credentials can mint an `eats.deliveries` token. `UberDirectLiveSandboxTest` fails
-with precisely this diagnosis and turns green the moment the account is provisioned — that failure
-is the tracking mechanism, so it is deliberately not skipped away.
+Getting there surfaced a trap worth remembering: a *provisioning* problem presents as
+`invalid_scope`, which reads exactly like a code bug. If it recurs, the tell is that the deliveries
+endpoint replies *"requires at least one of the following scopes: eats.deliveries"* while the auth
+endpoint refuses to mint that very scope — that combination means the **account**, not the code.
+Fix it at direct.uber.com by completing setup and accepting the API Terms of Use (separate from the
+Uber Direct Terms). `UberDirectTokenService` maps `invalid_scope` to exactly this diagnosis.
 
 ## 3. The adapter — **built 2026-07-14**
 
@@ -287,18 +288,55 @@ than sending none because it looks like it works. **Confirm against the live san
 ### Verification
 
 `UberDirectProviderTest` (19) + `UberDirectAddressTest` (7) run on `Http::fake` against Uber's
-verbatim documented payloads. `UberDirectLiveSandboxTest` adds a real priced quote — the gate this
-plan puts in front of the checkout rework — and is currently **red on the account blocker in §2**.
+verbatim documented payloads. `UberDirectLiveSandboxTest` adds a real priced quote against the
+sandbox — **green as of 2026-07-14**.
 
-## 4. Status webhooks — *moved ahead of auth/capture*
+## 4. Status webhooks — **built 2026-07-14**, *moved ahead of auth/capture*
 
-Uber pushes courier status. `delivery_assignments` already carries the `[provider, external_id]`
-index for the lookup — the schema anticipated this. New webhook route + signature verification,
-driving `DeliveryStatus` transitions and customer notifications.
+Uber pushes courier status. `delivery_assignments` already carried the `[provider, external_id]`
+index for the lookup — the schema anticipated this. One webhook route at
+`POST admin.{domain}/webhooks/uber`, CSRF-exempt and signature-verified in the controller, driving
+`DeliveryStatus` transitions and order-timeline notes.
 
 **Why this moved:** §8 captures payment "once a courier is confirmed," but nothing in the
 create-delivery response says that — Uber returns `pending` and the courier lands later, via this
 webhook. As originally sequenced, auth/capture depended on a signal that didn't exist yet.
+
+### The signing key is per-restaurant — a consequence §0 didn't chase down
+
+Each restaurant owns its Uber account, so **each restaurant creates its own webhook in its own
+dashboard and Uber mints a different signing key for each one.** There is no platform-wide secret.
+This falls straight out of §0's per-restaurant account model, but it inverts how a webhook is
+normally authenticated:
+
+- `delivery_integrations.webhook_signing_key` is encrypted per-tenant, and the admin form takes it
+  as a fourth, **optional** field — deliveries dispatch fine without it, you just get no status
+  updates, and Uber only issues it after a separate dashboard step.
+- One URL serves every tenant. The payload's `customer_id` selects *which* restaurant's key to
+  verify against, so we must identify the sender before we can authenticate it.
+- That is safe because the claimed identity selects the key but grants nothing: a forged
+  `customer_id` merely means the signature is checked against a different key and fails. The
+  signature stays the only thing that authorizes a write. Resolution is **strictly** by
+  `customer_id` — an earlier `delivery_id` fallback was removed because it quietly made the claimed
+  customer irrelevant whenever a delivery id happened to match.
+- **Onboarding cost:** every restaurant does a webhook setup step and pastes a key. Inherent to the
+  account model; the settings screen shows the URL and warns when the key is missing.
+
+### Out-of-order retries
+
+Uber retries at 10s/40s/100s/220s, so a stale `pending` can land *after* `delivered`.
+`delivery_assignments.last_event_at` records Uber's own event clock and anything not newer is
+dropped, rather than letting a retry walk the status backwards — which would tell a customer their
+delivered order is pending, and (once §8 lands) confuse the capture decision.
+
+Two header names are accepted (`x-uber-signature` and `x-postmates-signature`) because Uber sends
+one or the other depending on event type; betting on one would silently drop half the traffic.
+
+### Verification
+
+`UberDirectWebhookTest` (15) covers signature rejection, body tampering, cross-restaurant key
+confusion, unknown customers, out-of-order retries, and CSRF exemption. Signature verification is
+security code, so it gets adversarial coverage rather than a happy path.
 
 ## 5. Address capture
 

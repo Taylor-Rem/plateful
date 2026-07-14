@@ -34,6 +34,7 @@ class DeliveryIntegration extends Model
             'client_id' => 'encrypted',
             'client_secret' => 'encrypted',
             'access_token' => 'encrypted',
+            'webhook_signing_key' => 'encrypted',
             'token_expires_at' => 'datetime',
         ];
     }

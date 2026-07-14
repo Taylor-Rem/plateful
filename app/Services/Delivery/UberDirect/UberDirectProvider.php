@@ -132,7 +132,7 @@ class UberDirectProvider implements DeliveryProvider
             'order_id' => $order->id,
             'provider' => $this->name(),
             'external_id' => $externalId,
-            'status' => $this->mapStatus($this->stringOrNull($response->json('status'))),
+            'status' => UberDirectStatusMap::toDeliveryStatus($this->stringOrNull($response->json('status'))),
             'quote_fee_cents' => $quote->feeCents,
             // What Uber will actually bill, which may differ from the quote the
             // customer was charged. Recording both is what makes the drift
@@ -162,7 +162,7 @@ class UberDirectProvider implements DeliveryProvider
         }
 
         $assignment->forceFill([
-            'status' => $this->mapStatus($this->stringOrNull($response->json('status'))),
+            'status' => UberDirectStatusMap::toDeliveryStatus($this->stringOrNull($response->json('status'))),
             'actual_fee_cents' => $this->intOrNull($response->json('fee')) ?? $assignment->actual_fee_cents,
             'tracking_url' => $this->stringOrNull($response->json('tracking_url')) ?? $assignment->tracking_url,
             'pickup_eta_at' => $this->timeOrNull($response->json('pickup_eta')) ?? $assignment->pickup_eta_at,
@@ -209,24 +209,6 @@ class UberDirectProvider implements DeliveryProvider
             'driver_name' => $this->stringOrNull($courier['name'] ?? null),
             'driver_phone' => $this->stringOrNull($courier['phone_number'] ?? null),
         ];
-    }
-
-    /**
-     * Uber's delivery lifecycle mapped onto Plateful's smaller vocabulary.
-     * `pickup` means a courier has been assigned and is heading to the kitchen —
-     * that is the moment a driver exists, so it maps to DriverAssigned.
-     */
-    private function mapStatus(?string $status): DeliveryStatus
-    {
-        return match ($status) {
-            'pending' => DeliveryStatus::Pending,
-            'pickup', 'pickup_imminent', 'pickup_complete' => DeliveryStatus::DriverAssigned,
-            'dropoff', 'dropoff_imminent' => DeliveryStatus::PickedUp,
-            'delivered' => DeliveryStatus::Delivered,
-            'canceled', 'cancelled' => DeliveryStatus::Cancelled,
-            'returned', 'failed' => DeliveryStatus::Failed,
-            default => DeliveryStatus::Pending,
-        };
     }
 
     /**
