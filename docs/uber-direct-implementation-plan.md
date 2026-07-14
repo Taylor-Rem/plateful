@@ -47,8 +47,8 @@ clicking "Connect."
   guaranteed mode.
 - Delivery is a **separately stated, untaxed line**, behind a flag pending CPA confirmation (§11).
 
-Today's behavior is absorb-by-accident in both directions: `OrderPlacement.php:85` charges a flat
-admin-set fee decided before any provider is contacted, and the real quote never revises
+Behaviour before §6 was absorb-by-accident in both directions: `OrderPlacement` charged a flat
+admin-set fee decided before any provider was contacted, and the real quote never revised
 `orders.delivery_fee_cents`. A restaurant charging $4.99 against a $9.20 quote silently eats $4.21;
 on a close-in order they silently pocket the difference. Nobody chose either outcome.
 
@@ -103,7 +103,7 @@ checkout copy should say "tip your driver," not a generic "tip."
 
 Money flow: customer → restaurant's connected Stripe account → restaurant's Uber Direct account pays
 Uber including tip → Uber pays courier. Net-zero for the restaurant, but the tip transits their
-books. **The 4% application fee stays on food subtotal only** (`OrderPlacement.php:90`) — unchanged.
+books. **The 4% application fee stays on food subtotal only** (`OrderPlacement.php:118`) — unchanged.
 
 ### Self-delivery disclaimer
 Self-delivery checkout carries an explicit "the delivery charge is not a tip paid to your driver"
@@ -178,7 +178,7 @@ the feature so it's legible in the history rather than buried in the §6 diff:
 - `deliveryEnabled` onto `RestaurantData`.
 - Gate the Delivery toggle in `Checkout.vue`.
 - Reject delivery orders in `OrderPlacement::prepare()` when delivery is off — same place and shape
-  as the `restaurant_closed` guard at `OrderPlacement.php:50`, which covers the internal `place()`
+  as the `restaurant_closed` guard at `OrderPlacement.php:53`, which covers the internal `place()`
   path too.
 - `OrderEvent::note()` instead of the silent return, so an owner can see *why* nothing dispatched.
 
@@ -413,10 +413,10 @@ restaurant flag, and the fee is unknowable until an address exists ("enter your 
 pricing," then a firm number).
 
 On timer expiry: re-quote, then either show the new fee or tell them delivery is no longer
-available. Restaurant hours already gate this upstream (`OrderPlacement.php:50`), so
+available. Restaurant hours already gate this upstream (`OrderPlacement.php:53`), so
 after-close orders are rejected before any of it.
 
-Touches `OrderPlacement.php:85`, `Checkout.vue`, and finally gives `DeliveryDispatcher::quote()` a
+Touched `OrderPlacement::prepare()`, `Checkout.vue`, and finally gives `DeliveryDispatcher::quote()` a
 caller — closing the dead-code item in todo.md §8.
 
 ### What the quote is checked against
@@ -479,7 +479,7 @@ Target: **authorize** at checkout → create the Uber delivery → **capture** o
 confirmed (via §4's webhook). If Uber can't find a driver, void the authorization: the customer sees
 a hold drop off, never a charge-and-refund.
 
-**The POS push gates on courier confirmation too.** `OrderPlacement.php:277-290` currently queues
+**The POS push gates on courier confirmation too.** `OrderPlacement::queuePostPaymentFulfillment()` currently queues
 the POS push and the delivery dispatch together. Cooking a meal for an order about to be voided is
 worse than a ticket that prints a minute late — courier assignment typically resolves well inside
 `prep_time_minutes`. Both the push and the capture hang off the same trigger: *the delivery is real
