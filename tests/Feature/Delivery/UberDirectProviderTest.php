@@ -197,6 +197,93 @@ it('creates a delivery and records both the quoted and actual fee', function () 
         && $req['dropoff_notes'] === 'Buzz twice');
 });
 
+it('passes the customer tip through to the courier', function () {
+    Http::fake(['api.uber.com/*' => Http::response(uberDeliveryBody())]);
+
+    $r = uberRestaurant();
+    $order = makeOrder($r);
+    $order->forceFill([
+        'delivery_address' => uberQuoteRequestFor($r)->dropoffAddress,
+        'tip_cents' => 500,
+    ])->save();
+
+    app(UberDirectProvider::class)->create($order->load('items'), new DeliveryQuote(
+        provider: DeliveryProviderName::Uber,
+        feeCents: 558,
+        externalQuoteId: 'dqt_x',
+    ));
+
+    // Uber's merchant terms require a courier tip reach the courier, and on a
+    // third-party delivery the tip is unambiguously theirs. `tip` is the field
+    // on DeliveryReq — `tip_by_customer` is update, `courier_tip` is the
+    // store-scoped Eats API.
+    Http::assertSent(fn (Request $req): bool => $req['tip'] === 500);
+});
+
+it('excludes the tip from actual_fee_cents so fee drift stays measurable', function () {
+    // Uber's delivery `fee` INCLUDES the tip; a quote's fee cannot, since no
+    // tip exists yet. Comparing them raw would read the tip as fee drift.
+    Http::fake(['api.uber.com/*' => Http::response(uberDeliveryBody(['fee' => 1032]))]);
+
+    $r = uberRestaurant();
+    $order = makeOrder($r);
+    $order->forceFill([
+        'delivery_address' => uberQuoteRequestFor($r)->dropoffAddress,
+        'tip_cents' => 500,
+    ])->save();
+
+    $assignment = app(UberDirectProvider::class)->create($order->load('items'), new DeliveryQuote(
+        provider: DeliveryProviderName::Uber,
+        feeCents: 558,
+        externalQuoteId: 'dqt_x',
+    ));
+
+    // 1032 returned - 500 tip = 532 of actual delivery fee, against a 558
+    // quote: the restaurant is 26c to the good, not 474c to the bad.
+    expect($assignment->actual_fee_cents)->toBe(532);
+    expect($assignment->quote_fee_cents)->toBe(558);
+});
+
+it('never lets a tip larger than the fee drive actual_fee_cents negative', function () {
+    Http::fake(['api.uber.com/*' => Http::response(uberDeliveryBody(['fee' => 300]))]);
+
+    $r = uberRestaurant();
+    $order = makeOrder($r);
+    $order->forceFill([
+        'delivery_address' => uberQuoteRequestFor($r)->dropoffAddress,
+        'tip_cents' => 900,
+    ])->save();
+
+    $assignment = app(UberDirectProvider::class)->create($order->load('items'), new DeliveryQuote(
+        provider: DeliveryProviderName::Uber,
+        feeCents: 558,
+        externalQuoteId: 'dqt_x',
+    ));
+
+    expect($assignment->actual_fee_cents)->toBe(0);
+});
+
+it('derives the idempotency key from the order so a retry cannot dispatch two couriers', function () {
+    Http::fake(['api.uber.com/*' => Http::response(uberDeliveryBody())]);
+
+    $r = uberRestaurant();
+    $order = makeOrder($r);
+    $order->forceFill(['delivery_address' => uberQuoteRequestFor($r)->dropoffAddress])->save();
+
+    app(UberDirectProvider::class)->create($order->load('items'), new DeliveryQuote(
+        provider: DeliveryProviderName::Uber,
+        feeCents: 558,
+        externalQuoteId: 'dqt_x',
+    ));
+
+    // DispatchDeliveryForOrder retries 3 times, so a crash between Uber
+    // creating the delivery and us saving the assignment would otherwise send a
+    // second courier. The key must be a pure function of the order — a random
+    // one would be worthless on the retry. (delivery_assignments.order_id is
+    // unique, so our own table is already safe; this protects Uber's side.)
+    Http::assertSent(fn (Request $req): bool => $req['idempotency_key'] === 'pf-delivery-'.$order->id);
+});
+
 it('sends a manifest describing what the courier carries', function () {
     Http::fake(['api.uber.com/*' => Http::response(uberDeliveryBody())]);
 

@@ -84,21 +84,19 @@ class UberDirectProvider implements DeliveryProvider
     }
 
     /**
-     * NOTE — the courier tip is deliberately NOT sent yet.
-     *
-     * §0 commits to passing the customer's tip through to the courier, which
-     * Uber's merchant terms require. But the field name is unverified: the
-     * customer-scoped create example documents no tip field, and the two
-     * candidates (`tip` here vs `courier_tip`) belong to two different Uber
-     * APIs. A silently-ignored field would mean tips quietly never reaching
-     * couriers — strictly worse than not sending one, because it looks like it
-     * works. It lands in §6, where checkout actually carries the tip through,
-     * gated on confirming the field against the live sandbox first.
+     * The tip field is `tip` (cents), per the `DeliveryReq` schema in Uber's own
+     * OpenAPI spec. Worth stating because there are three plausible names in
+     * circulation and they belong to three different requests: `tip` on create,
+     * `tip_by_customer` on update, and `courier_tip` on the store-scoped Eats
+     * API. §0 requires the tip reach the courier, and on a third-party delivery
+     * `TipRecipient::forOrder()` always resolves to the driver, so the order's
+     * tip is unambiguously theirs.
      */
     public function create(Order $order, DeliveryQuote $quote): DeliveryAssignment
     {
         $restaurant = $order->restaurant;
         $integration = $this->integrationOrFail($restaurant);
+        $tipCents = max(0, (int) $order->tip_cents);
 
         $response = $this->client
             ->authed($this->tokens->freshAccessToken($integration))
@@ -116,6 +114,13 @@ class UberDirectProvider implements DeliveryProvider
                 'manifest_reference' => $order->number,
                 // Lets the status webhook find the order without a lookup table.
                 'external_id' => $order->number,
+                'tip' => $tipCents,
+                // DispatchDeliveryForOrder retries up to 3 times. Without this,
+                // a crash between Uber creating the delivery and us saving the
+                // assignment would dispatch a SECOND courier on the retry.
+                // Uber honours the key for 60 minutes, which covers the job's
+                // 30s/120s backoff many times over.
+                'idempotency_key' => 'pf-delivery-'.$order->id,
             ]);
 
         if ($response->failed()) {
@@ -136,8 +141,9 @@ class UberDirectProvider implements DeliveryProvider
             'quote_fee_cents' => $quote->feeCents,
             // What Uber will actually bill, which may differ from the quote the
             // customer was charged. Recording both is what makes the drift
-            // measurable rather than a guess.
-            'actual_fee_cents' => $this->intOrNull($response->json('fee')),
+            // measurable rather than a guess — which is why the tip has to come
+            // back out first. See deliveryFeeExcludingTip().
+            'actual_fee_cents' => $this->deliveryFeeExcludingTip($response->json('fee'), $tipCents),
             'tracking_url' => $this->stringOrNull($response->json('tracking_url')),
             'pickup_eta_at' => $this->timeOrNull($response->json('pickup_eta')),
             'dropoff_eta_at' => $this->timeOrNull($response->json('dropoff_eta')),
@@ -163,7 +169,10 @@ class UberDirectProvider implements DeliveryProvider
 
         $assignment->forceFill([
             'status' => UberDirectStatusMap::toDeliveryStatus($this->stringOrNull($response->json('status'))),
-            'actual_fee_cents' => $this->intOrNull($response->json('fee')) ?? $assignment->actual_fee_cents,
+            'actual_fee_cents' => $this->deliveryFeeExcludingTip(
+                $response->json('fee'),
+                max(0, (int) $order->tip_cents),
+            ) ?? $assignment->actual_fee_cents,
             'tracking_url' => $this->stringOrNull($response->json('tracking_url')) ?? $assignment->tracking_url,
             'pickup_eta_at' => $this->timeOrNull($response->json('pickup_eta')) ?? $assignment->pickup_eta_at,
             'dropoff_eta_at' => $this->timeOrNull($response->json('dropoff_eta')) ?? $assignment->dropoff_eta_at,
@@ -190,6 +199,23 @@ class UberDirectProvider implements DeliveryProvider
         }
 
         $assignment->forceFill(['status' => DeliveryStatus::Cancelled])->save();
+    }
+
+    /**
+     * Uber's create/get response `fee` **includes the tip** — their spec says so
+     * explicitly — whereas a quote's `fee` cannot, because no tip exists yet at
+     * quote time. Comparing the two raw would therefore read the tip as fee
+     * drift and quietly wreck the very measurement §0 relies on to decide
+     * whether absorbing restaurants need an exposure cap.
+     *
+     * So `actual_fee_cents` stores the delivery fee alone, apples-to-apples
+     * with `quote_fee_cents`. The tip is already on the order.
+     */
+    private function deliveryFeeExcludingTip(mixed $rawFee, int $tipCents): ?int
+    {
+        $fee = $this->intOrNull($rawFee);
+
+        return $fee === null ? null : max(0, $fee - $tipCents);
     }
 
     /**

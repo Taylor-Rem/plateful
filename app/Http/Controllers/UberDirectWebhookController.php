@@ -99,11 +99,18 @@ class UberDirectWebhookController extends Controller
         $status = UberDirectStatusMap::toDeliveryStatus($this->stringOrNull($payload['status'] ?? null));
         $courier = is_array($data['courier'] ?? null) ? $data['courier'] : null;
 
+        // Uber's delivery `fee` includes the tip, but `quote_fee_cents` cannot
+        // — no tip exists at quote time. Strip it back out so the two stay
+        // comparable; see UberDirectProvider::deliveryFeeExcludingTip().
+        $tipCents = max(0, (int) ($assignment->order?->tip_cents ?? 0));
+        $rawFee = $this->intOrNull($data['fee'] ?? null);
+
         $assignment->forceFill(array_filter([
             'status' => $status,
             'last_event_at' => $eventAt ?? now(),
             'tracking_url' => $this->stringOrNull($data['tracking_url'] ?? null) ?? $assignment->tracking_url,
-            'actual_fee_cents' => $this->intOrNull($data['fee'] ?? null) ?? $assignment->actual_fee_cents,
+            'actual_fee_cents' => ($rawFee === null ? null : max(0, $rawFee - $tipCents))
+                ?? $assignment->actual_fee_cents,
             'pickup_eta_at' => $this->timeOrNull($data['pickup_eta'] ?? null) ?? $assignment->pickup_eta_at,
             'dropoff_eta_at' => $this->timeOrNull($data['dropoff_eta'] ?? null) ?? $assignment->dropoff_eta_at,
             'driver_name' => $this->stringOrNull($courier['name'] ?? null) ?? $assignment->driver_name,

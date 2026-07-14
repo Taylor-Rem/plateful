@@ -226,6 +226,18 @@ it('acknowledges but ignores event kinds it does not handle', function () {
     expect($assignment->fresh()->status)->toBe(DeliveryStatus::Pending);
 });
 
+it('excludes the tip from actual_fee_cents on the webhook path too', function () {
+    $assignment = seedUberWebhookFixture();
+    $assignment->order->forceFill(['tip_cents' => 500])->save();
+
+    // The webhook carries the same tip-inclusive fee the API does, so it needs
+    // the same correction or the drift measurement is wrong depending on which
+    // path happened to update it last.
+    postUberWebhook(uberWebhookPayload(dataOverrides: ['fee' => 1032]))->assertOk();
+
+    expect($assignment->fresh()->actual_fee_cents)->toBe(532);
+});
+
 it('maps a cancelled delivery through the webhook', function () {
     $assignment = seedUberWebhookFixture();
 

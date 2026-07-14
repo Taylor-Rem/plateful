@@ -234,6 +234,13 @@ endpoint refuses to mint that very scope — that combination means the **accoun
 Fix it at direct.uber.com by completing setup and accepting the API Terms of Use (separate from the
 Uber Direct Terms). `UberDirectTokenService` maps `invalid_scope` to exactly this diagnosis.
 
+> **Known, for launch: Plateful's own PRODUCTION Uber account is not provisioned.** Production
+> credentials were briefly in `.env` by mistake on 2026-07-14, and while there they proved they can
+> mint only `direct.organizations` — never `eats.deliveries`. So the sandbox working says nothing
+> about production; the same wall is waiting there. Provision it before go-live rather than
+> discovering it on the first real delivery. (Also from that mistake: **rotate that production
+> Client Secret** — it and a minted token were exposed in a session transcript.)
+
 ## 3. The adapter — **built 2026-07-14**
 
 `UberDirectClient` (host + pinned API version) and `UberDirectProvider` implementing the existing
@@ -274,16 +281,41 @@ Two shapes worth knowing, both verified against Uber's own examples:
   `"{\"street_address\":[\"20 W 34th St\",\"Floor 2\"],…}"`.
 - `fee` is already in **cents**. No conversion.
 
-### Open: the courier tip field is unverified
+### The courier tip — resolved, and it hid a fee bug
 
-`UberDirectProvider::create()` deliberately does **not** send a tip yet. §0 commits to passing the
-customer's tip to the courier — Uber's merchant terms require it — but the field name is unconfirmed:
-the customer-scoped create example documents no tip field, and the two candidates (`tip` vs
-`courier_tip`) belong to the two different APIs above.
+**The field is `tip`** (integer, cents) on create. Settled not by experiment but by reading the
+`DeliveryReq` schema in **Uber's own OpenAPI spec**, which ships inside their SDK at
+`uber/uber-direct-sdk:src/deliveries/openapi.yaml` — machine-readable and authoritative. Worth
+knowing that file exists; it answers this class of question in seconds and outranks the prose docs.
 
-A silently-ignored field would mean tips quietly never reaching couriers, which is strictly worse
-than sending none because it looks like it works. **Confirm against the live sandbox and wire it in
-§6**, where checkout actually carries the tip through. This is a launch blocker, not a nicety.
+All three candidate names are real. They belong to three different requests, which is exactly why
+the docs read as contradictory:
+
+| request | field |
+|---|---|
+| `DeliveryReq` (create) | **`tip`** |
+| `UpdateDeliveryReq` (update) | `tip_by_customer` |
+| store-scoped Eats API | `courier_tip` |
+
+**The spec then volunteered a trap:** *"The fee value in the Create Delivery response includes the
+tip value."* A quote's `fee` cannot include a tip — none exists yet at quote time. So comparing the
+two raw would read the whole tip as fee drift and quietly wreck the measurement §0 leans on to
+decide whether absorbing restaurants need an exposure cap. `actual_fee_cents` therefore stores the
+delivery fee with the tip subtracted, apples-to-apples with `quote_fee_cents`, on both the API and
+webhook paths.
+
+This is the argument for wiring the tip now rather than in §6: the trap is understood *here*.
+Deferring meant someone later adds `tip`, changes no fee code, and silently corrupts the drift data
+with no test failing.
+
+### Also from the spec: `idempotency_key`
+
+`DispatchDeliveryForOrder` retries 3 times. Without an idempotency key, a crash between Uber
+creating the delivery and us persisting the assignment dispatches a **second courier** on retry —
+two couriers, two bills, one order. `create()` now sends `pf-delivery-{order_id}`, a pure function
+of the order; Uber honours it for 60 minutes, which covers the job's 30s/120s backoff many times
+over. (`delivery_assignments.order_id` is unique, so our own table was already safe — this protects
+Uber's side, which the constraint cannot reach.)
 
 ### Verification
 
