@@ -182,20 +182,56 @@ the feature so it's legible in the history rather than buried in the §6 diff:
   path too.
 - `OrderEvent::note()` instead of the silent return, so an owner can see *why* nothing dispatched.
 
-## 2. Credentials + token service
+## 2. Credentials + token service — **built 2026-07-14**
 
-- `config/services.php` gets an `uber_direct` block following the Square/Clover shape:
-  `client_id`, `client_secret`, `customer_id`, `environment` (test|production).
 - **New `delivery_integrations` table** mirroring `pos_integrations`: encrypted credentials,
   `status`, `last_error`, unique `(restaurant_id, provider)`. This is the piece POS has and delivery
   lacks — `DeliveryProvider::supports()` currently just reads `delivery_enabled` off the restaurant,
   which won't survive real per-tenant credentials.
 - `UberDirectTokenService`: `client_credentials` grant against `https://auth.uber.com/oauth/v2/token`,
-  scope `eats.deliveries`. Cache the token, refresh proactively before expiry.
-  **Simpler than Square/Clover** — machine-to-machine, no refresh-token rotation, no callback route.
+  scope `eats.deliveries`. **Simpler than Square/Clover** — machine-to-machine, no refresh-token
+  rotation, no callback route.
 - Admin UI: **credential entry form only** (paste `client_id`/`client_secret`/`customer_id`),
-  alongside the existing POS Connect surface. The seven delivery *behavior* flags wait for §7 — see
-  "Admin scope" below.
+  verified against Uber's token endpoint before saving so a typo fails in front of the person who
+  can fix it. The seven delivery *behavior* flags wait for §7 — see "Admin scope" below.
+
+### Corrections from the live sandbox
+
+Four things the plan asserted from the docs that the real API contradicted:
+
+- **No `environment` config key.** Copied from the Square/Clover shape, but Uber Direct serves test
+  and production from the *same* host (`api.uber.com/v1/customers/{customer_id}/`). Test mode is a
+  property of the credentials, set by a dashboard toggle — there is no host to select, so the key
+  would have selected nothing.
+- **Tokens live 30 days, and the grant is rate-limited to 100 requests/hour.** Caching is therefore
+  a correctness requirement, not an optimization: re-minting per request breaks the integration
+  under any real load. Tokens are stored on the integration row and re-minted 24h before expiry.
+- **Uber's error taxonomy is finer than documented**, and worth mapping precisely because these
+  strings are what an owner reads on the settings screen:
+
+  | condition | HTTP | `error` |
+  |---|---|---|
+  | unknown client id | 401 | `invalid_client` |
+  | bad client secret | 403 | `access_denied` |
+  | account lacks the scope | 400 | `invalid_scope` |
+
+- **Live tests must defer their skip check into the test lifecycle.** `.env` is loaded when the
+  application boots, in `setUp()` — long after Pest collects the file. Reading env at the top level
+  of a test file yields null *even when the credentials are set*, so the test skips
+  unconditionally. `CloverLiveSandboxTest` had exactly this bug and had never once run.
+
+### Blocked: the sandbox account needs Direct API access
+
+`eats.deliveries` is confirmed correct — the quote endpoint itself replies *"This endpoint requires
+at least one of the following scopes: eats.deliveries"*. But the auth endpoint **rejects that scope**
+for our sandbox credentials as `invalid_scope`; the only scope they can mint is
+`direct.organizations`, which the deliveries API refuses.
+
+So the credentials are real and the code is right — the Uber *account* is not provisioned for Direct
+API access. Finish account setup at direct.uber.com (accept the Uber Direct Terms + API Terms of
+Use) until the credentials can mint an `eats.deliveries` token. `UberDirectLiveSandboxTest` fails
+with precisely this diagnosis and turns green the moment the account is provisioned — that failure
+is the tracking mechanism, so it is deliberately not skipped away.
 
 ## 3. The adapter
 

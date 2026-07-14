@@ -344,6 +344,11 @@ class Restaurant extends Model
         return $this->hasMany(PosIntegration::class);
     }
 
+    public function deliveryIntegrations(): HasMany
+    {
+        return $this->hasMany(DeliveryIntegration::class);
+    }
+
     public function menuImports(): HasMany
     {
         return $this->hasMany(MenuImport::class);

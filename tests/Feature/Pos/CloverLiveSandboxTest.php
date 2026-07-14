@@ -22,11 +22,32 @@ require_once __DIR__.'/../Admin/AdminOrderTestHelpers.php';
  *
  * It is NOT part of the normal suite (no creds -> skipped), so CI stays
  * deterministic and offline.
+ *
+ * NOTE: the credential lookup and skip condition are deferred into the test
+ * lifecycle on purpose. `.env` is loaded when the application boots, which
+ * happens in setUp() — long after Pest collects this file. Reading env at the
+ * top level yields null even when the credentials ARE set, which silently
+ * skipped this test unconditionally.
  */
-$liveToken = env('CLOVER_SANDBOX_ACCESS_TOKEN');
-$liveMerchant = env('CLOVER_SANDBOX_MERCHANT_ID');
+function cloverSandboxToken(): ?string
+{
+    return env('CLOVER_SANDBOX_ACCESS_TOKEN') ?: null;
+}
 
-it('creates a real order in the Clover sandbox and can read it back', function () use ($liveToken, $liveMerchant) {
+function cloverSandboxMerchant(): ?string
+{
+    return env('CLOVER_SANDBOX_MERCHANT_ID') ?: null;
+}
+
+function cloverSandboxMissing(): bool
+{
+    return cloverSandboxToken() === null || cloverSandboxMerchant() === null;
+}
+
+it('creates a real order in the Clover sandbox and can read it back', function () {
+    $liveToken = cloverSandboxToken();
+    $liveMerchant = cloverSandboxMerchant();
+
     config()->set('services.clover.environment', 'sandbox');
 
     $restaurant = adminOrderRestaurant('cloverlive');
@@ -58,6 +79,6 @@ it('creates a real order in the Clover sandbox and can read it back', function (
     expect($readBack->successful())->toBeTrue();
     expect($readBack->json('id'))->toBe($result->ticketId);
 })->skip(
-    empty($liveToken) || empty($liveMerchant),
+    cloverSandboxMissing(...),
     'Set CLOVER_SANDBOX_ACCESS_TOKEN and CLOVER_SANDBOX_MERCHANT_ID to run the live Clover sandbox test.'
 );

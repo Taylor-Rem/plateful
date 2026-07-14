@@ -72,6 +72,13 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::post('/settings/pos/clover/connect', [TenantAdmin\CloverConnectController::class, 'connect'])->name('pos.clover.connect');
                 Route::post('/settings/pos/clover/disconnect', [TenantAdmin\CloverConnectController::class, 'disconnect'])->name('pos.clover.disconnect');
 
+                // Uber Direct uses client_credentials, so there is no authorize
+                // redirect and no callback route — the owner pastes credentials
+                // straight in and we verify them against Uber's token endpoint.
+                Route::get('/settings/delivery', [TenantAdmin\DeliveryIntegrationsController::class, 'show'])->name('delivery.show');
+                Route::post('/settings/delivery/uber', [TenantAdmin\DeliveryIntegrationsController::class, 'saveUber'])->name('delivery.uber.save');
+                Route::post('/settings/delivery/uber/disconnect', [TenantAdmin\DeliveryIntegrationsController::class, 'disconnectUber'])->name('delivery.uber.disconnect');
+
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
                 Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');

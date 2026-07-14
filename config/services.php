@@ -71,6 +71,24 @@ return [
         'redirect' => env('CLOVER_REDIRECT_URI'),
     ],
 
+    'uber_direct' => [
+        // Uber Direct credentials are PER-RESTAURANT and live encrypted in
+        // `delivery_integrations` — each restaurant holds its own Uber account
+        // and Uber bills them directly, so there is no app-level credential the
+        // way Square and Clover have one.
+        //
+        // These are sandbox credentials for local development and the opt-in
+        // live sandbox test. Production resolves credentials ONLY from the
+        // integration row; nothing here is a fallback.
+        //
+        // Deliberately no `environment` key: unlike Square/Clover, Uber Direct
+        // serves test and production from the same host (api.uber.com). Test
+        // mode is a property of the credentials, not the URL.
+        'sandbox_client_id' => env('UBER_DIRECT_SANDBOX_CLIENT_ID'),
+        'sandbox_client_secret' => env('UBER_DIRECT_SANDBOX_CLIENT_SECRET'),
+        'sandbox_customer_id' => env('UBER_DIRECT_SANDBOX_CUSTOMER_ID'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
