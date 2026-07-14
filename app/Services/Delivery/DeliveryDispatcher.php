@@ -34,7 +34,12 @@ class DeliveryDispatcher
             return [DeliveryProviderName::Self];
         }
 
-        $priority = $restaurant->delivery_provider_priority ?: ['doordash', 'uber'];
+        // Default to the providers that actually have an adapter registered.
+        // This previously defaulted to ['doordash', 'uber'], which meant any
+        // restaurant switched to third-party mode got `provider_unsupported`
+        // and a permanently failed job, because no DoorDash adapter exists.
+        // Add 'doordash' here when §9 lands, not before.
+        $priority = $restaurant->delivery_provider_priority ?: ['uber'];
         $chain = [];
         foreach ($priority as $name) {
             $enum = DeliveryProviderName::tryFrom((string) $name);

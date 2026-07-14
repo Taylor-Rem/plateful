@@ -4,6 +4,8 @@ use App\Enums\DeliveryIntegrationStatus;
 use App\Enums\DeliveryProviderName;
 use App\Exceptions\DeliveryProviderException;
 use App\Models\DeliveryIntegration;
+use App\Services\Delivery\DeliveryQuoteRequest;
+use App\Services\Delivery\UberDirect\UberDirectProvider;
 use App\Services\Delivery\UberDirect\UberDirectTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -110,4 +112,59 @@ it('reports a rejected secret rather than throwing something opaque', function (
 it('reports an unrecognized client id distinctly from a bad secret', function () {
     expect(fn () => app(UberDirectTokenService::class)->requestToken('not-a-real-client-id', 'nope'))
         ->toThrow(DeliveryProviderException::class, 'does not recognize this Client ID');
+})->skip(uberSandboxMissing(...), UBER_SKIP_REASON);
+
+/**
+ * The one that matters: a real, priced, deliverable quote from Uber for a real
+ * pair of addresses. This is the gate the plan puts in front of the checkout
+ * rework — until it passes, nothing downstream is standing on verified ground.
+ *
+ * A quote creates nothing and costs nothing.
+ */
+it('gets a real priced quote from the Uber sandbox', function () {
+    ['clientId' => $clientId, 'clientSecret' => $clientSecret, 'customerId' => $customerId] = uberSandboxCredentials();
+
+    $restaurant = adminOrderRestaurant('uberquote');
+    $restaurant->forceFill([
+        'street' => '350 S 200 E',
+        'city' => 'Salt Lake City',
+        'state' => 'UT',
+        'postal_code' => '84111',
+        'phone' => '8015551234',
+        'delivery_enabled' => true,
+    ])->save();
+
+    DeliveryIntegration::withoutTenantScope()->create([
+        'restaurant_id' => $restaurant->id,
+        'provider' => DeliveryProviderName::Uber,
+        'client_id' => $clientId,
+        'client_secret' => $clientSecret,
+        'customer_id' => $customerId,
+        'status' => DeliveryIntegrationStatus::Connected,
+    ]);
+
+    $quote = app(UberDirectProvider::class)->quote(new DeliveryQuoteRequest(
+        restaurant: $restaurant->fresh(),
+        dropoffAddress: [
+            'street' => '201 S Main St',
+            'street2' => '',
+            'city' => 'Salt Lake City',
+            'state' => 'UT',
+            'postal_code' => '84111',
+            'country' => 'US',
+        ],
+        subtotalCents: 1400,
+        tipCents: 0,
+        customerName: 'Test Customer',
+        customerPhone: '8015555678',
+    ));
+
+    expect($quote->feeCents)->toBeGreaterThan(0);
+    expect($quote->externalQuoteId)->toBeString()->not->toBeEmpty();
+    expect($quote->expiresAt)->not->toBeNull();
+
+    // Uber documents a 15-minute quote life — the number §0's countdown is
+    // built on. Assert the shape of that claim rather than the exact minute.
+    expect($quote->expiresAt->isAfter(now()))->toBeTrue();
+    expect($quote->expiresAt->isBefore(now()->addMinutes(30)))->toBeTrue();
 })->skip(uberSandboxMissing(...), UBER_SKIP_REASON);

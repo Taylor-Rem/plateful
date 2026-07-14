@@ -25,4 +25,13 @@ class DeliveryProviderException extends RuntimeException
     {
         return new self("Authentication with provider [{$provider}] failed. {$detail}");
     }
+
+    /**
+     * An API call to the provider failed. Internal-facing: this lands in logs
+     * and the order timeline, not in front of a customer.
+     */
+    public static function createFailed(string $provider, string $detail): self
+    {
+        return new self("Provider [{$provider}] request failed. {$detail}");
+    }
 }

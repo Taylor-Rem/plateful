@@ -233,29 +233,62 @@ Use) until the credentials can mint an `eats.deliveries` token. `UberDirectLiveS
 with precisely this diagnosis and turns green the moment the account is provisioned — that failure
 is the tracking mechanism, so it is deliberately not skipped away.
 
-## 3. The adapter
+## 3. The adapter — **built 2026-07-14**
 
-`UberDirectClient` (HTTP, host + pinned API version) and `UberDirectProvider` implementing the
-existing `DeliveryProvider` contract (`quote` / `create` / `status` / `cancel`). Registered in
+`UberDirectClient` (host + pinned API version) and `UberDirectProvider` implementing the existing
+`DeliveryProvider` contract (`quote` / `create` / `status` / `cancel`). Registered in
 `AppServiceProvider` next to `SelfDeliveryProvider`.
 
 Quote response fields we care about: `id`, `fee`, `dropoff_eta`, `dropoff_deadline`, `duration`,
-`pickup_duration`, `expires` (15 min). `DeliveryQuote` grows fields to carry them plus the exact
-address payload — a contract change that ripples into `SelfDeliveryProvider`.
+`pickup_duration`, `expires` (15 min). `DeliveryQuote` grew fields to carry them plus the exact
+address payload — additive, so `SelfDeliveryProvider` was untouched.
 
-**Two documented landmines:**
+**Two documented landmines, both handled:**
 - Persist the *exact* address payload used for the quote and replay it **byte-identical** on create,
-  or Uber returns `delivery location changed`.
+  or Uber returns `delivery location changed`. `UberDirectAddress` is the single encoder, with fixed
+  key order, and the quote carries its payload forward into create rather than re-encoding.
 - Sending lat/lng more than 1km from the stated address makes Uber silently override the coordinates
-  with its own geocoding. We send address-only and let Uber geocode.
+  with its own geocoding. We send address-only and let Uber geocode — asserted by a test.
 
-**Also fixes a second live bug:** `DeliveryDispatcher.php:27` defaults the provider chain to
-`['doordash','uber']`, so any restaurant flipped to third-party mode *today* gets
-`provider_unsupported` and a permanently failed job. Inert only because nobody's turned it on.
+**Also fixes a second live bug:** `DeliveryDispatcher.php:37` defaulted the provider chain to
+`['doordash','uber']`, so any restaurant flipped to third-party mode *today* got
+`provider_unsupported` and a permanently failed job. Now defaults to `['uber']`; add `doordash` when
+§9 lands, not before.
 
-**Verification:** an opt-in `UberDirectLiveSandboxTest` mirroring `CloverLiveSandboxTest` — skips
-cleanly without credentials so CI stays offline and deterministic. Unit tests use `Http::fake`
-regardless; that's the right shape either way.
+### Mind which Uber API you're reading
+
+There are **two** delivery APIs and their docs sit side by side:
+
+| | endpoint | keyed on | addresses |
+|---|---|---|---|
+| **Direct** (ours) | `/v1/customers/{customer_id}/…` | `customer_id` | JSON *string* |
+| Eats | `/v1/eats/deliveries/…` | `store_id` | Google Place ids |
+
+They take different fields and different identifiers. The scope gating **both** is confusingly named
+`eats.deliveries`, so the scope name is not a signal for which one you're on. The dashboard hands out
+a `customer_id`, which is the tell: we're on Direct.
+
+Two shapes worth knowing, both verified against Uber's own examples:
+- `pickup_address` / `dropoff_address` are **JSON-encoded strings, not objects** —
+  `"{\"street_address\":[\"20 W 34th St\",\"Floor 2\"],…}"`.
+- `fee` is already in **cents**. No conversion.
+
+### Open: the courier tip field is unverified
+
+`UberDirectProvider::create()` deliberately does **not** send a tip yet. §0 commits to passing the
+customer's tip to the courier — Uber's merchant terms require it — but the field name is unconfirmed:
+the customer-scoped create example documents no tip field, and the two candidates (`tip` vs
+`courier_tip`) belong to the two different APIs above.
+
+A silently-ignored field would mean tips quietly never reaching couriers, which is strictly worse
+than sending none because it looks like it works. **Confirm against the live sandbox and wire it in
+§6**, where checkout actually carries the tip through. This is a launch blocker, not a nicety.
+
+### Verification
+
+`UberDirectProviderTest` (19) + `UberDirectAddressTest` (7) run on `Http::fake` against Uber's
+verbatim documented payloads. `UberDirectLiveSandboxTest` adds a real priced quote — the gate this
+plan puts in front of the checkout rework — and is currently **red on the account blocker in §2**.
 
 ## 4. Status webhooks — *moved ahead of auth/capture*
 
