@@ -59,6 +59,10 @@ class CheckoutRequest extends FormRequest
             'delivery_address.postal_code' => ['required_if:type,delivery', 'nullable', 'string', 'max:20'],
             'delivery_address.country' => ['nullable', 'string', 'max:64'],
             'delivery_address.instructions' => ['nullable', 'string', 'max:1000'],
+            // Opaque handle on the server-side quote. Its existence, address
+            // match, and expiry are checked in OrderPlacement::prepare() —
+            // the fee itself is never accepted from the client.
+            'delivery_quote_token' => ['nullable', 'string', 'max:64'],
             'address_id' => [
                 'nullable',
                 'integer',

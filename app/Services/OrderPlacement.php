@@ -2,17 +2,22 @@
 
 namespace App\Services;
 
+use App\Enums\DeliveryFeeStrategy;
+use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Enums\PaymentState;
 use App\Enums\TipRecipient;
 use App\Exceptions\InvalidCheckoutException;
 use App\Jobs\DispatchDeliveryForOrder;
+use App\Jobs\ExpireAuthorizedDelivery;
 use App\Jobs\PushOrderToPos;
 use App\Mail\OrderConfirmationToCustomer;
 use App\Mail\OrderNotificationToRestaurant;
 use App\Models\Address;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\DeliveryQuote;
 use App\Models\ItemTemplateOption;
 use App\Models\Order;
 use App\Models\OrderEvent;
@@ -80,9 +85,31 @@ class OrderPlacement
         }
 
         $type = OrderType::from($data['type']);
+
+        if ($type === OrderType::Delivery && ! $restaurant->delivery_enabled) {
+            throw InvalidCheckoutException::withErrors([
+                'type' => $restaurant->name.' doesn’t offer delivery.',
+            ]);
+        }
+
+        $deliveryAddress = $type === OrderType::Delivery
+            ? $this->normalizeDeliveryAddress($data['delivery_address'] ?? [])
+            : null;
+
+        $deliveryQuote = $type === OrderType::Delivery
+            ? $this->resolveDeliveryQuote($restaurant, $data, $deliveryAddress ?? [])
+            : null;
+
         $taxRate = (float) $restaurant->tax_rate_percent;
         $taxCents = (int) round($subtotalCents * $taxRate / 100);
-        $deliveryFeeCents = $type === OrderType::Delivery ? (int) $restaurant->delivery_fee_cents : 0;
+
+        // The fee comes from the server-side quote, never from the client — it
+        // is money. Self-delivery has no provider to quote, so it keeps the
+        // restaurant's own advertised number.
+        $deliveryFeeCents = $deliveryQuote !== null
+            ? $this->customerDeliveryFeeCents($restaurant, $deliveryQuote)
+            : ($type === OrderType::Delivery ? (int) $restaurant->delivery_fee_cents : 0);
+
         $tipCents = max(0, (int) ($data['tip_cents'] ?? 0));
         $tipRecipient = TipRecipient::forOrder($restaurant, $type);
         $totalCents = $subtotalCents + $taxCents + $deliveryFeeCents + $tipCents;
@@ -91,20 +118,6 @@ class OrderPlacement
         // to the FOOD SUBTOTAL only — not tax, tip, or delivery (those are
         // pass-through and don't belong to Plateful).
         $applicationFeeCents = (int) floor($subtotalCents * (float) $restaurant->application_fee_percent / 100);
-
-        $deliveryAddress = null;
-        if ($type === OrderType::Delivery) {
-            $addr = $data['delivery_address'] ?? [];
-            $deliveryAddress = [
-                'street' => (string) ($addr['street'] ?? ''),
-                'street2' => isset($addr['street2']) ? (string) $addr['street2'] : null,
-                'city' => (string) ($addr['city'] ?? ''),
-                'state' => (string) ($addr['state'] ?? ''),
-                'postal_code' => (string) ($addr['postal_code'] ?? ''),
-                'country' => (string) ($addr['country'] ?? 'US'),
-                'instructions' => isset($addr['instructions']) ? (string) $addr['instructions'] : null,
-            ];
-        }
 
         $addressId = null;
         if ($user && isset($data['address_id'])) {
@@ -138,7 +151,91 @@ class OrderPlacement
             'confirmation_token' => Str::random(64),
             'notes' => $data['notes'] ?? null,
             'items' => $items,
+            // Carried so dispatch can replay this exact quote instead of
+            // re-deriving one, and so the fee the customer paid is traceable
+            // to the quote it came from.
+            'delivery_quote_token' => $deliveryQuote?->token,
         ];
+    }
+
+    /**
+     * One canonical address shape. It becomes `orders.delivery_address` and is
+     * the single source of truth for both the quote and the eventual courier
+     * dispatch — assembled once, not twice.
+     *
+     * @param  array<string, mixed>  $address
+     * @return array<string, string|null>
+     */
+    protected function normalizeDeliveryAddress(array $address): array
+    {
+        return [
+            'street' => (string) ($address['street'] ?? ''),
+            'street2' => isset($address['street2']) ? (string) $address['street2'] : null,
+            'city' => (string) ($address['city'] ?? ''),
+            'state' => (string) ($address['state'] ?? ''),
+            'postal_code' => (string) ($address['postal_code'] ?? ''),
+            'country' => (string) ($address['country'] ?? 'US') ?: 'US',
+            'instructions' => isset($address['instructions']) ? (string) $address['instructions'] : null,
+        ];
+    }
+
+    /**
+     * Find and validate the quote this checkout is claiming.
+     *
+     * Third-party delivery REQUIRES one — that is the whole point of the rework:
+     * no customer gets charged for a delivery nobody priced. Self-delivery has
+     * no provider to quote, so it has none and keeps the restaurant's own fee.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $address
+     */
+    protected function resolveDeliveryQuote(Restaurant $restaurant, array $data, array $address): ?DeliveryQuote
+    {
+        if ($restaurant->delivery_mode === DeliveryMode::SelfDelivery) {
+            return null;
+        }
+
+        $token = $data['delivery_quote_token'] ?? null;
+
+        $quote = is_string($token) && $token !== ''
+            ? DeliveryQuote::query()
+                ->where('token', $token)
+                ->where('restaurant_id', $restaurant->id)
+                ->first()
+            : null;
+
+        if ($quote === null) {
+            throw InvalidCheckoutException::withErrors([
+                'delivery_quote_token' => 'Please re-enter your delivery address so we can price it.',
+            ]);
+        }
+
+        // A quote priced for one address must not pay for a delivery to
+        // another. The customer edits the address, the fee re-quotes.
+        if (! $quote->matchesAddress($address)) {
+            throw InvalidCheckoutException::withErrors([
+                'delivery_quote_token' => 'Your address changed. Please check the delivery fee again.',
+            ]);
+        }
+
+        if ($quote->isExpired()) {
+            throw InvalidCheckoutException::withErrors([
+                'delivery_quote_token' => 'Your delivery quote expired. Please check the fee again.',
+            ]);
+        }
+
+        return $quote;
+    }
+
+    /**
+     * What the customer pays for delivery, which is not always what the courier
+     * costs — under `Absorb` the restaurant eats the difference.
+     */
+    protected function customerDeliveryFeeCents(Restaurant $restaurant, DeliveryQuote $quote): int
+    {
+        $strategy = $restaurant->delivery_fee_strategy ?? DeliveryFeeStrategy::PassThrough;
+
+        return $strategy->customerFeeCents((int) $quote->fee_cents, $restaurant);
     }
 
     /**
@@ -268,17 +365,19 @@ class OrderPlacement
      * and delivery dispatch. Runs on both the checkout-return and Stripe
      * webhook paths; the session-id idempotency short-circuit above prevents
      * replays from re-queueing.
+     *
+     * On an authorized-not-captured order the POS push is deliberately HELD.
+     * The money is only a hold, and Uber has not found a courier yet — printing
+     * a ticket now means the kitchen cooks a meal for an order we may be about
+     * to void. It is released by {@see DeliverySettlement::onCourierConfirmed()}
+     * off the same signal that captures the payment: the delivery is real now.
      */
     protected function queuePostPaymentFulfillment(Order $order): void
     {
         // A fulfillment failure must never break placement of a paid order —
         // on the sync queue driver the jobs run (and may throw) inline here.
-        try {
-            if (app(PosDispatcher::class)->shouldPush($order->restaurant)) {
-                PushOrderToPos::dispatch($order->id);
-            }
-        } catch (\Throwable $e) {
-            Log::error('Failed to queue POS push', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+        if ($order->payment_state !== PaymentState::Authorized) {
+            $this->queuePosPush($order);
         }
 
         try {
@@ -287,6 +386,36 @@ class OrderPlacement
             }
         } catch (\Throwable $e) {
             Log::error('Failed to queue delivery dispatch', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+        }
+
+        // The deadline for the whole authorize→courier→capture dance. Without
+        // it a hung courier search strands the order forever: no ticket, no
+        // charge, and a hold sitting on the customer's card.
+        if ($order->payment_state === PaymentState::Authorized) {
+            try {
+                ExpireAuthorizedDelivery::dispatch($order->id)
+                    ->delay(now()->addMinutes(ExpireAuthorizedDelivery::deadlineMinutes()));
+            } catch (\Throwable $e) {
+                Log::error('Failed to queue delivery authorization deadline', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Send the ticket to the kitchen. Public so the courier-confirmed path can
+     * release a push this class deliberately held.
+     */
+    public function queuePosPush(Order $order): void
+    {
+        try {
+            if (app(PosDispatcher::class)->shouldPush($order->restaurant)) {
+                PushOrderToPos::dispatch($order->id);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to queue POS push', ['order_id' => $order->id, 'error' => $e->getMessage()]);
         }
     }
 
@@ -402,6 +531,9 @@ class OrderPlacement
      */
     protected function createOrderWithUniqueNumber(array $snapshot, array $payment, Restaurant $restaurant): Order
     {
+        // Captured unless the caller says otherwise: every non-delivery order,
+        // and every path that predates auth/capture, takes the money outright.
+        $paymentState = $payment['payment_state'] ?? PaymentState::Captured;
         $attempts = 0;
         while (true) {
             $attempts++;
@@ -423,10 +555,14 @@ class OrderPlacement
                     'tip_cents' => (int) $snapshot['tip_cents'],
                     'tip_recipient' => TipRecipient::from($snapshot['tip_recipient']),
                     'delivery_fee_cents' => (int) $snapshot['delivery_fee_cents'],
+                    'delivery_quote_token' => $snapshot['delivery_quote_token'] ?? null,
                     'application_fee_cents' => (int) $snapshot['application_fee_cents'],
                     'total_cents' => (int) $snapshot['total_cents'],
                     'stripe_payment_intent_id' => $payment['stripe_payment_intent_id'] ?? null,
                     'stripe_checkout_session_id' => $payment['stripe_checkout_session_id'] ?? null,
+                    'payment_state' => $paymentState,
+                    'authorized_at' => $paymentState === PaymentState::Authorized ? now() : null,
+                    'captured_at' => $paymentState === PaymentState::Captured ? now() : null,
                     'notes' => $snapshot['notes'] ?? null,
                     'placed_at' => now(),
                     'confirmation_token' => $snapshot['confirmation_token'],

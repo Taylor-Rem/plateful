@@ -14,6 +14,7 @@ use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
 use App\Services\Delivery\DeliveryDispatcher;
 use App\Services\Delivery\SelfDeliveryProvider;
+use App\Services\Delivery\UberDirect\UberDirectProvider;
 use App\Services\Pos\Clover\CloverPosProvider;
 use App\Services\Pos\PosDispatcher;
 use App\Services\Pos\Square\SquarePosProvider;
@@ -42,8 +43,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(DeliveryDispatcher::class, function ($app): DeliveryDispatcher {
+            // Adapters register here as they are built (Uber Direct first, then
+            // DoorDash Drive), keyed by DeliveryProviderName value.
             return new DeliveryDispatcher([
                 DeliveryProviderName::Self->value => $app->make(SelfDeliveryProvider::class),
+                DeliveryProviderName::Uber->value => $app->make(UberDirectProvider::class),
             ]);
         });
 

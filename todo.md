@@ -10,6 +10,10 @@ via flat-fee APIs. Target = independent restaurants dependent on DoorDash/Uber.
 The build splits into two independent jobs: **get the order to the kitchen** (POS injection or
 cloud printer) and **deliver it** (DoorDash Drive / Uber Direct). Sequenced below by dependency.
 
+**Position (2026-07-15):** both jobs now have a shipped path — Square + Clover injection, and Uber
+Direct delivery end-to-end. The remaining work is mostly *launch*, not build: §0 is still open and
+Stripe is still in test mode.
+
 ---
 
 ## 0. Launch blockers — clear before selling to anyone
@@ -55,8 +59,8 @@ self-contained; unblocks the savings calculator and the whole fee story. Do earl
 - [x] `config/platform.php`: `default_application_fee_percent` default is `4.00` (value + the
       `PLATFORM_DEFAULT_APPLICATION_FEE_PERCENT` env fallback). The fee is NOT in
       `StripeConnectService` — it's passed in as `applicationFeeCents`. (config/platform.php:20)
-- [x] Computation at `OrderPlacement::prepare()` (line 93, `floor(subtotal × percent / 100)`,
-      **food subtotal only**) flows the rate through — tips/tax excluded. (OrderPlacement.php:93)
+- [x] Computation at `OrderPlacement::prepare()` (`floor(subtotal × percent / 100)`,
+      **food subtotal only**) flows the rate through — tips/tax excluded.
 - [x] `UpdateRestaurantFeeRequest` accepts `4`. (UpdateRestaurantFeeRequest.php:21) **Caveat:** the
       accepted range is `0–100`, not the 0–15 sane range intended — see §8 for the tightening item.
 - [x] All restaurants (incl. Marco's) are at 4.00% in the DB — a migration backfilled old 1.00 rows.
@@ -90,7 +94,8 @@ foundation piece NOT built (the OAuth connect flow) has moved to §2c, where it 
       `pos_push_failed_at` to `orders`.
 - [x] Fire the POS push from the post-commit tail of `OrderPlacement` via
       `queuePostPaymentFulfillment()` → `PushOrderToPos` job, right where confirmation emails queue,
-      deduped by the existing idempotency; records `pos_ticket_id`. (OrderPlacement.php:261)
+      deduped by the existing idempotency; records `pos_ticket_id`.
+      (`OrderPlacement::queuePostPaymentFulfillment()`)
       **This same hook now also fires delivery dispatch — see §3 (no longer "no caller").**
 - [x] Failure states: `PushOrderToPos` job has retries/backoff, token-expiry flips integration
       status, and every attempt is logged as an `OrderEvent`. (PushOrderToPos.php)
@@ -151,34 +156,65 @@ and run CloverLiveSandboxTest.
 
 ---
 
-## 3. Delivery dispatch (Phase 2)
-_Independent of POS; can partly parallelize. `DeliveryDispatcher` + contract + DTOs exist,
-`SelfDeliveryProvider` is built and registered, and the dispatcher IS now wired into the order
-flow: `OrderPlacement` → `DispatchDeliveryForOrder` job → `DeliveryDispatcher::dispatch()`
-(OrderPlacement.php:286, guarded to delivery orders). Enum lists Self/DoorDash/Uber; only `Self`
-is registered. Remaining = the two third-party adapters below. (Note: `DeliveryDispatcher::quote()`
-has no caller yet — it becomes live once these adapters need real-time quotes; see §8.)_
+## 3. Delivery dispatch (Phase 2) — **Uber Direct COMPLETE (2026-07-15)**
+_Built end-to-end and verified against the real Uber sandbox: per-restaurant credentials, the
+adapter, status webhooks, Places address capture, quote-before-payment, and auth/capture. The
+customer now gets a committed fee and ETA before paying, and is only ever charged once a courier
+actually exists. `DeliveryFeeStrategy` is wired and `DeliveryDispatcher::quote()` has a caller.
+DoorDash (§9 of the plan) is all that remains, and is deliberately later._
 
 **Full plan: [docs/uber-direct-implementation-plan.md](docs/uber-direct-implementation-plan.md)**
-(drafted 2026-07-14 — locks per-restaurant Uber accounts, pass-through pricing, quote-at-checkout,
-and auth/capture; carries the CPA questions).
+— kept current as it was built; carries the decisions, the corrections the live API forced, and the
+"Before production" checklist. **Read it before touching any of this.**
 
-- [ ] `UberDirectProvider` **first** — self-serve; sandbox credentials are provisioned automatically
-      on signup at `direct.uber.com`. Machine-to-machine `client_credentials` (scope
-      `eats.deliveries`), so no redirect/callback flow — simpler than Square/Clover.
-- [ ] **Move the quote before payment.** Today `OrderPlacement.php:286` dispatches delivery
-      post-payment, so the customer is charged before we know Uber will take the job. The quote must
-      gate checkout instead — it doubles as the out-of-range check (a failed quote = no delivery
-      offered), which is why no geocoding or radius table is needed.
-- [ ] **Drop `customer_delivery_fee_cents_max`** (never read anywhere) and **wire
-      `DeliveryFeeStrategy`** (defined, cast, read by nothing — `Absorb`/`Split` are unreachable).
-      Today's flat fee is decided pre-quote and never reconciled, so restaurants silently eat or
-      pocket the delta.
-- [ ] **Fix the live landmine:** `DeliveryDispatcher.php:27` defaults the provider chain to
-      `['doordash','uber']`, so any restaurant flipped to third-party mode today gets
-      `provider_unsupported` and a permanently failed job. Inert only because nobody's enabled it.
-- [ ] `DoorDashDriveProvider` second — Drive production access is GATED (certification + required
-      live demo, no timeline). Start the interest/certification request early, in parallel.
+**Done 2026-07-14**
+- [x] Live bug: every storefront offered delivery regardless of `delivery_enabled`, charged the fee,
+      and the dispatch job returned silently. Gated in `OrderPlacement::prepare()`.
+- [x] `UberDirectProvider` (quote/create/status/cancel) + per-restaurant `delivery_integrations` +
+      `UberDirectTokenService`. Verified live: real token, real priced quote.
+- [x] Status webhooks. The signing key is **per-restaurant** — each restaurant creates its own
+      webhook in its own Uber dashboard, so there is no platform secret.
+- [x] Quote before payment. A failed quote = delivery not offered, which is the out-of-range check
+      for free.
+- [x] Dropped `customer_delivery_fee_cents_max` and `DeliveryFeeStrategy::Split`; wired
+      `PassThrough` + `Absorb`. `prep_time_minutes` added (default 5).
+- [x] Delivery settings page — seven flags that had no UI at all. Delivery can no longer be enabled
+      without choosing a mode, which silently meant third-party.
+- [x] Fixed `DeliveryDispatcher` defaulting the provider chain to `['doordash','uber']`.
+
+**Done 2026-07-15 — §8 auth/capture**
+- [x] Courier-network deliveries **hold** the money and capture only once Uber confirms a driver;
+      no driver → the hold is released and the customer sees it drop off, never a charge+refund.
+      Pickup and self-delivery still capture at checkout — holding funds to wait for nothing is
+      pure downside.
+- [x] `PaymentState` (`captured`/`authorized`/`voided`) is its own column, NOT an `OrderStatus`
+      case: `OrderStatus` is the kitchen lifecycle and "authorized" is not something a cook acts on.
+- [x] The POS push is held until the courier is confirmed, off the same signal as the capture.
+- [x] The deadline job polls Uber before giving up, so a missing webhook costs latency rather than
+      correctness. Without it, a restaurant that skipped webhook setup would have had **every**
+      delivery silently cancel with a courier en route.
+- [x] **Fixed shipped code:** `OrderTransition::refundOnCancel()` refunded the PaymentIntent, which
+      Stripe rejects when uncaptured — it failed silently (best-effort) and stranded the hold on the
+      customer's card. Voided orders were being refunded for a charge that never existed too.
+
+**Next**
+- [ ] `DoorDashDriveProvider` — same contract, one line in `AppServiceProvider`. Drive production
+      access is GATED (certification + required live demo, no timeline). Start the
+      interest/certification request early, in parallel. Then add `'doordash'` to the
+      `DeliveryDispatcher` chain default and the admin `$connectable` list.
+
+**Before this can take real money** (full list in the plan)
+- [ ] **A queue worker must be running.** Delivery dispatch and the auth/capture deadline are queued
+      jobs on `QUEUE_CONNECTION=database`. Without a worker, authorized orders never dispatch AND
+      never expire — holds sit on customer cards with nothing scheduled to release them. This is the
+      one operational dependency with no in-code backstop. Worth a Sentry alert on
+      `payment_state = 'authorized'` older than an hour.
+- [ ] Provision Plateful's **production** Uber account — it can currently mint only
+      `direct.organizations`, not `eats.deliveries`. Sandbox working says nothing about it.
+- [ ] Rotate the production Uber Client Secret (exposed in a session transcript 2026-07-14).
+- [ ] Restrict the Google Maps key to Places API (New) + the production server's IP.
+- [ ] Each restaurant creates its own Uber webhook and pastes the signing key. Optional but wanted:
+      without it every delivery waits out the courier deadline before capturing.
 
 ---
 
@@ -230,17 +266,27 @@ _Low-effort correctness & cleanup items found while auditing the roadmap against
 - [ ] **Tighten fee validation range.** `UpdateRestaurantFeeRequest` accepts `0–100`
       (UpdateRestaurantFeeRequest.php:21); a fat-fingered 40% fee would pass. Narrow to the
       intended sane range (e.g. 0–15) to prevent an accidental predatory rate.
-- [ ] **`refunded_cents` is written but never read.** `OrderTransition` always sets it to the full
-      `total_cents` (OrderTransition.php:83) and no code consults it. It's the natural hook for the
-      §7 partial-refund proration — wire it there, or drop the column if partials stay out of scope.
-- [ ] **`DeliveryDispatcher::quote()` has no caller.** Dead until the Uber/DoorDash adapters (§3)
-      need live quotes. Leave a note or fold the quote step into those adapters when built.
+- [ ] **`refunded_cents` is written but never read.** `OrderTransition` sets it to the full
+      `total_cents` on a refunded cancel (`OrderTransition::refundOnCancel()`) and no code consults it. It's the
+      natural hook for the §7 partial-refund proration — wire it there, or drop the column if
+      partials stay out of scope. (Since §8, an order cancelled while only *authorized* is voided
+      instead and correctly leaves this at 0 — nothing was charged, so nothing was refunded.)
+- [x] ~~**`DeliveryDispatcher::quote()` has no caller.**~~ Closed 2026-07-14: the quote now gates
+      checkout (§3), so it is called on every third-party delivery address.
+- [ ] **Six pre-existing TypeScript errors.** `npm run types:check` has been red since before
+      2026-07-14 — `AppHeader.vue` imports a missing `dashboard` route, `Checkout.vue` reads
+      server-only error keys off `FormDataErrors`, `Orders/Index.vue` passes `preserveScroll` to
+      `ReloadOptions`, `Unavailable.vue` assigns `null` to a layout. Unrelated to delivery, but the
+      check is useless as a gate while it's red.
 
 ## 9. Menu availability & order pausing (surfaced 2026-07-14 while scoping §3 delivery)
 _Availability itself is built and enforced: `menu_items.is_available` + `item_template_options.is_available`,
 with `OrderPlacement::validateCartLines()` blocking unavailable items AND options at checkout
-(OrderPlacement.php:293), and `isOpenAt()` rejecting closed-restaurant orders (OrderPlacement.php:50).
-These are the gaps around it — they matter more once delivery makes fulfillment promises to customers._
+(`OrderPlacement::validateCartLines()`), and `isOpenAt()` rejecting closed-restaurant orders
+(`OrderPlacement::prepare()`).
+These are the gaps around it — and they got sharper now that §3 shipped: a delivery order quotes an
+arrival time and sends a courier, so an 86'd item or an unnoticed rush is no longer just a bad
+pickup experience._
 
 - [ ] **Time-boxed 86 / snooze.** `is_available` is a permanent boolean an owner must remember to
       flip back — no "sold out until 4pm", no auto-expiry. Add `unavailable_until` (nullable) so an
@@ -265,11 +311,16 @@ These are the gaps around it — they matter more once delivery makes fulfillmen
 
 ## Suggested sequence
 1. **§0 launch blockers** + **§1 pricing** (parallel; both small, both gate revenue/story).
-2. **§2a foundations** (credential store is the keystone — everything POS depends on it).
-3. **§2b/2c Square injection + pickup** = first sellable POS milestone.
-4. **§3 delivery** and **§2d printer** to widen the addressable set (can overlap §2c).
-5. **§4 customer ownership** to make the pitch real; **§5 calculator** once pricing is locked.
-6. **§6 onboarding automation** as an ongoing friction-reducer.
+2. ~~**§2a foundations**~~ — done.
+3. ~~**§2b/2c Square injection + pickup**~~ — Square + Clover adapters done; catalog matcher open.
+4. ~~**§3 delivery**~~ — Uber Direct complete 2026-07-15. Both halves of the strategy ("get the
+   order to the kitchen" and "deliver it") now have a shipped path.
+5. **Next: §0 launch blockers.** The build has outrun the launch prep — delivery is done and Stripe
+   is still in test mode. §0 + §3's "Before this can take real money" list are what stand between
+   this and a paying restaurant.
+6. **§4 customer ownership** to make the pitch real; **§5 calculator** once pricing is locked.
+   **§2d printer** widens the addressable set; **§6 onboarding automation** is an ongoing
+   friction-reducer.
 
 ---
 

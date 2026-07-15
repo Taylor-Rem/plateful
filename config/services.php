@@ -71,6 +71,24 @@ return [
         'redirect' => env('CLOVER_REDIRECT_URI'),
     ],
 
+    'uber_direct' => [
+        // Uber Direct credentials are PER-RESTAURANT and live encrypted in
+        // `delivery_integrations` — each restaurant holds its own Uber account
+        // and Uber bills them directly, so there is no app-level credential the
+        // way Square and Clover have one.
+        //
+        // These are sandbox credentials for local development and the opt-in
+        // live sandbox test. Production resolves credentials ONLY from the
+        // integration row; nothing here is a fallback.
+        //
+        // Deliberately no `environment` key: unlike Square/Clover, Uber Direct
+        // serves test and production from the same host (api.uber.com). Test
+        // mode is a property of the credentials, not the URL.
+        'sandbox_client_id' => env('UBER_DIRECT_SANDBOX_CLIENT_ID'),
+        'sandbox_client_secret' => env('UBER_DIRECT_SANDBOX_CLIENT_SECRET'),
+        'sandbox_customer_id' => env('UBER_DIRECT_SANDBOX_CUSTOMER_ID'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
@@ -79,6 +97,18 @@ return [
         // always resolves on the root domain regardless of the storefront the
         // customer started from.
         'redirect' => env('GOOGLE_REDIRECT_URI'),
+
+        // Places autocomplete for delivery addresses. A DIFFERENT credential
+        // from the OAuth client above — same Google Cloud project, but an API
+        // key rather than an OAuth client, and the Places API must be enabled
+        // on it.
+        //
+        // Server-side and IP-restricted, never a browser key: we proxy Places
+        // through the backend rather than calling it from the storefront. A
+        // browser key is protected only by an HTTP-referrer allowlist, and every
+        // custom domain we onboard would be another entry to maintain. Keeping
+        // it here also means it never reaches the client at all.
+        'maps_api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
 ];

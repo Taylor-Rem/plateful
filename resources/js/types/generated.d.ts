@@ -173,6 +173,8 @@ postalCode: string | null,
 taxRatePercent: number,
 applicationFeePercent: number,
 deliveryFeeCents: number,
+deliveryEnabled: boolean,
+selfDelivery: boolean,
 isActive: boolean,
 isLive: boolean,
 isStripeReady: boolean,
@@ -213,16 +215,20 @@ imageThumbUrl: string | null,
 namespace Enums {
 export type AutoCancelRefundMode = 'auto' | 'manual';
 export type DeliveryFallbackAction = 'try_next_provider' | 'hold_for_owner' | 'auto_cancel_refund';
-export type DeliveryFeeStrategy = 'pass_through' | 'absorb' | 'split';
+export type DeliveryFeeStrategy = 'pass_through' | 'absorb';
+export type DeliveryIntegrationStatus = 'connected' | 'disconnected' | 'error';
 export type DeliveryMode = 'self' | 'third_party';
 export type DeliveryProviderName = 'self' | 'doordash' | 'uber';
 export type DeliveryStatus = 'pending' | 'driver_assigned' | 'picked_up' | 'delivered' | 'cancelled' | 'failed';
+export type MenuImportStatus = 'queued' | 'processing' | 'needs_review' | 'completed' | 'failed';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type OrderType = 'delivery' | 'pickup';
+export type PaymentState = 'captured' | 'authorized' | 'voided';
 export type PosIntegrationStatus = 'connected' | 'disconnected' | 'token_expired' | 'error';
 export type PosProviderName = 'square' | 'clover';
 export type RestaurantRole = 'admin' | 'staff';
 export type RestaurantStatus = 'pending_review' | 'approved' | 'active' | 'suspended';
+export type RevenueRole = 'founder' | 'operator' | 'recruiter' | 'overseer';
 export type SelfDeliveryTipRecipient = 'driver' | 'pool' | 'split_50_50';
 export type TipRecipient = 'pool' | 'driver' | 'split';
 }

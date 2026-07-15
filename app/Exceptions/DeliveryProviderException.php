@@ -15,4 +15,23 @@ class DeliveryProviderException extends RuntimeException
     {
         return new self("Provider [{$provider}] is not configured for this restaurant.");
     }
+
+    /**
+     * The provider rejected the restaurant's credentials. `$detail` is surfaced
+     * to the owner on the integration screen, so it must read as an
+     * instruction, not a stack trace.
+     */
+    public static function authenticationFailed(string $provider, string $detail): self
+    {
+        return new self("Authentication with provider [{$provider}] failed. {$detail}");
+    }
+
+    /**
+     * An API call to the provider failed. Internal-facing: this lands in logs
+     * and the order timeline, not in front of a customer.
+     */
+    public static function createFailed(string $provider, string $detail): self
+    {
+        return new self("Provider [{$provider}] request failed. {$detail}");
+    }
 }

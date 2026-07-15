@@ -67,14 +67,19 @@ it('is a no-op for non-delivery orders', function () {
     expect(OrderEvent::query()->where('order_id', $order->id)->count())->toBe(0);
 });
 
-it('is a no-op when delivery is not configured', function () {
+it('records why it did not dispatch when delivery is not configured', function () {
     $r = adminOrderRestaurant('djoff');
     $order = deliveryJobOrder($r);
 
     (new DispatchDeliveryForOrder($order->id))->handle(new DeliveryDispatcher([]));
 
     expect($order->fresh()->delivery_assignment_id)->toBeNull();
-    expect(OrderEvent::query()->where('order_id', $order->id)->count())->toBe(0);
+
+    // The order is already paid by the time this job runs, so an undispatchable
+    // delivery must leave a trace on the timeline rather than vanishing.
+    $events = OrderEvent::query()->where('order_id', $order->id)->get();
+    expect($events)->toHaveCount(1);
+    expect($events->first()->note)->toContain('no delivery provider is configured');
 });
 
 it('is a no-op when the order already has an assignment', function () {

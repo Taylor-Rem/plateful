@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DeliveryMode;
 use App\Mail\OrderConfirmationToCustomer;
 use App\Mail\OrderNotificationToRestaurant;
 use App\Models\CartItem;
@@ -98,7 +99,15 @@ test('guest pickup order materializes correctly after payment', function () {
 test('paid delivery order computes delivery fee and snapshots address', function () {
     $f = cartFixture();
     $r = $f['restaurant'];
-    $r->update(['tax_rate_percent' => 8, 'delivery_fee_cents' => 499]);
+    // Self-delivery: no provider to quote, so the restaurant's own advertised
+    // fee is the price. Third-party pricing rides on a quote and is covered in
+    // DeliveryQuoteCheckoutTest.
+    $r->update([
+        'tax_rate_percent' => 8,
+        'delivery_fee_cents' => 499,
+        'delivery_enabled' => true,
+        'delivery_mode' => DeliveryMode::SelfDelivery,
+    ]);
 
     $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
         'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],

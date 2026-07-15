@@ -2,6 +2,7 @@
 
 namespace App\Data;
 
+use App\Enums\DeliveryMode;
 use App\Models\Restaurant;
 use Illuminate\Support\Facades\Request;
 use Spatie\LaravelData\Data;
@@ -42,6 +43,9 @@ class RestaurantData extends Data
         public float $taxRatePercent,
         public float $applicationFeePercent,
         public int $deliveryFeeCents,
+        public bool $deliveryEnabled,
+        /** Own drivers rather than a courier network — no quote, and a Tips Act disclaimer. */
+        public bool $selfDelivery,
         public bool $isActive,
         public bool $isLive,
         public bool $isStripeReady,
@@ -106,6 +110,8 @@ class RestaurantData extends Data
             taxRatePercent: (float) $restaurant->tax_rate_percent,
             applicationFeePercent: (float) $restaurant->application_fee_percent,
             deliveryFeeCents: (int) $restaurant->delivery_fee_cents,
+            deliveryEnabled: (bool) $restaurant->delivery_enabled,
+            selfDelivery: $restaurant->delivery_mode === DeliveryMode::SelfDelivery,
             isActive: (bool) $restaurant->is_active,
             isLive: $restaurant->isLive(),
             isStripeReady: $restaurant->isStripeReady(),

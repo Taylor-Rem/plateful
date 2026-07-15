@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Enums\PaymentState;
 use App\Exceptions\InvalidOrderTransitionException;
 use App\Mail\OrderCancelledToCustomer;
 use App\Mail\OrderReadyForPickupToCustomer;
@@ -67,12 +68,34 @@ class OrderTransition
     }
 
     /**
-     * Full refund (reversing Plateful's application fee) when a paid order is
-     * cancelled. Best-effort — a Stripe failure must not block the cancel.
+     * Give the customer their money back when a paid order is cancelled — by
+     * whichever mechanism actually applies. Best-effort: a Stripe failure must
+     * not block the cancel.
+     *
+     * An order awaiting a courier holds an AUTHORIZATION, not a charge, and
+     * Stripe rejects a refund against an uncaptured intent. So the hold is
+     * released instead. Without this split, an owner cancelling a delivery
+     * order before its courier was found would hit a Stripe error, the refund
+     * would silently fail, and the hold would sit on the card until the bank
+     * dropped it.
      */
     protected function refundOnCancel(Order $order): void
     {
-        if (! $order->stripe_payment_intent_id || $order->refunded_at) {
+        if (! $order->stripe_payment_intent_id) {
+            return;
+        }
+
+        if ($order->payment_state === PaymentState::Authorized) {
+            $this->voidUncapturedHold($order);
+
+            return;
+        }
+
+        // Only captured money can be refunded. A hold that was already released
+        // has nothing to give back, and asking Stripe to refund it would fail —
+        // matching on "not Authorized" instead of "is Captured" would send
+        // every voided order down this path.
+        if ($order->payment_state !== PaymentState::Captured || $order->refunded_at) {
             return;
         }
 
@@ -81,6 +104,24 @@ class OrderTransition
             $order->forceFill([
                 'refunded_at' => now(),
                 'refunded_cents' => (int) $order->total_cents,
+            ])->save();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    /**
+     * Release a hold on an order cancelled before its courier was confirmed.
+     * Nothing is "refunded" because nothing was ever charged — so
+     * `refunded_at`/`refunded_cents` stay null, and the money never moved.
+     */
+    protected function voidUncapturedHold(Order $order): void
+    {
+        try {
+            $this->connect->voidPayment($order);
+            $order->forceFill([
+                'payment_state' => PaymentState::Voided,
+                'voided_at' => now(),
             ])->save();
         } catch (\Throwable $e) {
             report($e);

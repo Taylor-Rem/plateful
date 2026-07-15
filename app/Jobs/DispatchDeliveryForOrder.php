@@ -43,7 +43,16 @@ class DispatchDeliveryForOrder implements ShouldQueue
             return;
         }
 
+        // No provider chain means delivery is switched off or unconfigured. The
+        // order is already paid at this point, so say so on the timeline rather
+        // than vanishing — an owner needs to see why nothing dispatched.
         if ($dispatcher->providerChainFor($order->restaurant) === []) {
+            OrderEvent::note($order, 'Delivery not dispatched: no delivery provider is configured for this restaurant.');
+            Log::warning('Delivery order placed with no provider chain configured', [
+                'order_id' => $order->id,
+                'restaurant_id' => $order->restaurant_id,
+            ]);
+
             return;
         }
 

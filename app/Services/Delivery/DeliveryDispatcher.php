@@ -7,6 +7,7 @@ use App\Enums\DeliveryFallbackAction;
 use App\Enums\DeliveryMode;
 use App\Enums\DeliveryProviderName;
 use App\Exceptions\DeliveryProviderException;
+use App\Models\DeliveryAssignment;
 use App\Models\Order;
 use App\Models\Restaurant;
 use Illuminate\Support\Facades\Log;
@@ -34,7 +35,12 @@ class DeliveryDispatcher
             return [DeliveryProviderName::Self];
         }
 
-        $priority = $restaurant->delivery_provider_priority ?: ['doordash', 'uber'];
+        // Default to the providers that actually have an adapter registered.
+        // This previously defaulted to ['doordash', 'uber'], which meant any
+        // restaurant switched to third-party mode got `provider_unsupported`
+        // and a permanently failed job, because no DoorDash adapter exists.
+        // Add 'doordash' here when §9 lands, not before.
+        $priority = $restaurant->delivery_provider_priority ?: ['uber'];
         $chain = [];
         foreach ($priority as $name) {
             $enum = DeliveryProviderName::tryFrom((string) $name);
@@ -74,6 +80,42 @@ class DeliveryDispatcher
         throw $lastError ?? DeliveryProviderException::driverNotAvailable('chain');
     }
 
+    /**
+     * Ask the provider where a delivery actually stands, right now.
+     *
+     * The webhook is the fast path, but it is not a dependency: this is how we
+     * find out the truth when no event arrived — because the restaurant never
+     * configured a webhook, or the endpoint was down when Uber gave up retrying.
+     */
+    public function status(DeliveryAssignment $assignment): DeliveryAssignment
+    {
+        $provider = $this->providers[$assignment->provider->value] ?? null;
+
+        if ($provider === null) {
+            throw DeliveryProviderException::notConfigured($assignment->provider->value);
+        }
+
+        return $provider->status($assignment);
+    }
+
+    /**
+     * Call off a delivery already created with a provider.
+     *
+     * Used when giving up on a courier search: we must tell Uber to stop
+     * looking BEFORE releasing the customer's payment hold, or a courier could
+     * still turn up at a kitchen for an order that no longer exists.
+     */
+    public function cancel(DeliveryAssignment $assignment): void
+    {
+        $provider = $this->providers[$assignment->provider->value] ?? null;
+
+        if ($provider === null) {
+            throw DeliveryProviderException::notConfigured($assignment->provider->value);
+        }
+
+        $provider->cancel($assignment);
+    }
+
     public function dispatch(Order $order): DeliveryDispatchResult
     {
         $restaurant = $order->restaurant;
@@ -97,8 +139,7 @@ class DeliveryDispatcher
             }
 
             try {
-                $request = $this->quoteRequestFromOrder($order);
-                $quote = $provider->quote($request);
+                $quote = $this->quoteForDispatch($provider, $order, $providerName);
                 $assignment = $provider->create($order, $quote);
                 $order->forceFill(['delivery_assignment_id' => $assignment->id])->save();
 
@@ -128,6 +169,34 @@ class DeliveryDispatcher
         }
 
         return $provider->supports($restaurant) ? $provider : null;
+    }
+
+    /**
+     * The quote to create the delivery from.
+     *
+     * Prefers the one taken at checkout — the customer was charged from it, and
+     * replaying it keeps the price Uber honours identical to the price the
+     * customer saw. It is only usable for 15 minutes though, and the customer
+     * may have lingered on Stripe's hosted page, so an expired or absent quote
+     * falls back to a fresh one. The restaurant carries any difference; that is
+     * the drift §0 accepts, and `quote_fee_cents` vs `actual_fee_cents` is what
+     * measures it.
+     */
+    protected function quoteForDispatch(
+        DeliveryProvider $provider,
+        Order $order,
+        DeliveryProviderName $providerName,
+    ): DeliveryQuote {
+        $stored = $order->deliveryQuote();
+
+        if ($stored !== null
+            && ! $stored->isExpired()
+            && $stored->provider === $providerName
+            && $stored->external_quote_id !== null) {
+            return $stored->toValueObject();
+        }
+
+        return $provider->quote($this->quoteRequestFromOrder($order));
     }
 
     protected function quoteRequestFromOrder(Order $order): DeliveryQuoteRequest

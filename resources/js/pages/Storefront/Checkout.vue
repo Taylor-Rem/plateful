@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { Head, useForm, useHttp, usePage } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import AddressAutocomplete, {
+    type AddressSnapshot,
+} from '@/pages/Storefront/components/AddressAutocomplete.vue';
+import deliveryQuote from '@/actions/App/Http/Controllers/Storefront/DeliveryQuoteController';
 
 type BrandPalette = {
     primary: string;
@@ -42,6 +46,15 @@ type CheckoutForm = {
     tip_preset: string;
     tip_custom_cents: number | null;
     notes: string;
+    delivery_quote_token: string | null;
+};
+
+type LiveQuote = {
+    token: string;
+    feeCents: number;
+    etaMinutes: number | null;
+    /** Null under absorb: the customer's price can't move, so nothing counts down. */
+    expiresAt: string | null;
 };
 
 const defaultAddress = props.savedAddresses.find((a) => a.isDefault) ?? props.savedAddresses[0] ?? null;
@@ -65,6 +78,7 @@ const form = useForm<CheckoutForm>({
     tip_preset: '0',
     tip_custom_cents: null,
     notes: '',
+    delivery_quote_token: null,
 });
 
 const useNewAddress = ref(props.savedAddresses.length === 0);
@@ -82,15 +96,165 @@ watch(
         form.delivery_address.postal_code = sel.postalCode;
         form.delivery_address.country = sel.country;
         form.delivery_address.instructions = sel.instructions ?? '';
+        // A saved address is a different destination, so its price is a
+        // different price.
+        onAddressChanged();
     },
 );
+
+/**
+ * Fill the snapshot from a resolved Places result. This snapshot is the single
+ * source of truth — the same object prices the quote and later tells the
+ * courier where to drive.
+ */
+const onAddressResolved = (address: AddressSnapshot): void => {
+    form.delivery_address.street = address.street;
+    form.delivery_address.city = address.city;
+    form.delivery_address.state = address.state;
+    form.delivery_address.postal_code = address.postal_code;
+    form.delivery_address.country = address.country || 'US';
+    onAddressChanged();
+};
+
+const onAddressChanged = (): void => {
+    clearQuote();
+    if (needsQuote.value && addressIsComplete.value) void fetchQuote();
+};
+
+/** The typed text no longer matches a resolved address. */
+const onAddressCleared = (): void => {
+    if (!needsQuote.value) return;
+    form.delivery_address.street = '';
+    clearQuote();
+};
+
+// useHttp carries the payload; the getter keeps it in step with the form.
+const quoteHttp = useHttp(() => ({
+    address: { ...form.delivery_address },
+}));
+
+const liveQuote = ref<LiveQuote | null>(null);
+const quoting = ref(false);
+const quoteError = ref<string | null>(null);
+const secondsLeft = ref(0);
+let countdown: ReturnType<typeof setInterval> | undefined;
+
+// Self-delivery is priced by the restaurant, not a courier network, so there is
+// nothing to quote and the advertised fee stands.
+const needsQuote = computed(
+    () => form.type === 'delivery' && !props.restaurant.selfDelivery,
+);
+
+const addressIsComplete = computed(
+    () =>
+        form.delivery_address.street.trim() !== '' &&
+        form.delivery_address.city.trim() !== '' &&
+        form.delivery_address.state.trim() !== '' &&
+        form.delivery_address.postal_code.trim() !== '',
+);
+
+const clearQuote = (): void => {
+    liveQuote.value = null;
+    form.delivery_quote_token = null;
+    stopCountdown();
+};
+
+const stopCountdown = (): void => {
+    clearInterval(countdown);
+    countdown = undefined;
+    secondsLeft.value = 0;
+};
+
+const startCountdown = (expiresAt: string): void => {
+    stopCountdown();
+    const tick = (): void => {
+        const remaining = Math.floor(
+            (new Date(expiresAt).getTime() - Date.now()) / 1000,
+        );
+        secondsLeft.value = Math.max(0, remaining);
+        if (remaining <= 0) {
+            stopCountdown();
+            // Expired: re-quote rather than let a stale price be submitted. The
+            // server rejects an expired token anyway; this saves the round trip
+            // and tells the customer before they try to pay.
+            void fetchQuote();
+        }
+    };
+    tick();
+    countdown = setInterval(tick, 1000);
+};
+
+const fetchQuote = async (): Promise<void> => {
+    if (!needsQuote.value || !addressIsComplete.value) return;
+
+    quoting.value = true;
+    quoteError.value = null;
+
+    try {
+        const { quote } = (await quoteHttp.submit(deliveryQuote())) as {
+            quote: LiveQuote;
+        };
+
+        liveQuote.value = quote;
+        form.delivery_quote_token = quote.token;
+
+        // Only pass-through can move under the customer, so only pass-through
+        // gets a countdown. The timer promises a PRICE, never availability —
+        // Uber only looks for a courier once the delivery is created, and that
+        // search can fail against a perfectly valid quote.
+        if (quote.expiresAt) startCountdown(quote.expiresAt);
+    } catch (e) {
+        clearQuote();
+        quoteError.value =
+            (e as { response?: { data?: { message?: string } } })?.response?.data
+                ?.message ??
+            'We can’t deliver to that address right now. You can still choose pickup.';
+    } finally {
+        quoting.value = false;
+    }
+};
+
+// A unit change moves the courier's destination, so it re-prices. Instructions
+// deliberately do not — the server treats them as outside the quoted address.
+watch(
+    () => [form.type, form.delivery_address.street2] as const,
+    () => {
+        if (!needsQuote.value) {
+            clearQuote();
+            return;
+        }
+        if (addressIsComplete.value) void fetchQuote();
+    },
+);
+
+onBeforeUnmount(stopCountdown);
+
+const countdownLabel = computed(() => {
+    const m = Math.floor(secondsLeft.value / 60);
+    const s = secondsLeft.value % 60;
+
+    return `${m}:${String(s).padStart(2, '0')}`;
+});
 
 const subtotalCents = computed(() => props.cart.subtotalCents);
 const taxCents = computed(() =>
     Math.round((subtotalCents.value * props.restaurant.taxRatePercent) / 100),
 );
-const deliveryFeeCents = computed(() =>
-    form.type === 'delivery' ? props.restaurant.deliveryFeeCents : 0,
+const deliveryFeeCents = computed(() => {
+    if (form.type !== 'delivery') return 0;
+    // The quote is the price under third-party delivery; the restaurant's
+    // advertised fee only applies when it IS the one delivering.
+    if (needsQuote.value) return liveQuote.value?.feeCents ?? 0;
+
+    return props.restaurant.deliveryFeeCents;
+});
+
+// Delivery can't be paid for until it's been priced.
+const canSubmit = computed(
+    () =>
+        !form.processing &&
+        props.restaurant.isOpen !== false &&
+        (!needsQuote.value || liveQuote.value !== null),
 );
 const tipCents = computed(() => {
     if (form.tip_preset === 'custom') {
@@ -132,6 +296,7 @@ const submit = (): void => {
     };
     if (form.type === 'delivery') {
         payload.delivery_address = form.delivery_address;
+        payload.delivery_quote_token = form.delivery_quote_token;
         if (!useNewAddress.value && form.address_id) {
             payload.address_id = form.address_id;
         }
@@ -282,6 +447,7 @@ const submit = (): void => {
                             Pickup
                         </button>
                         <button
+                            v-if="restaurant.deliveryEnabled"
                             type="button"
                             class="flex-1 rounded-md border px-4 py-2 text-sm font-medium"
                             :class="
@@ -303,6 +469,12 @@ const submit = (): void => {
                             Delivery
                         </button>
                     </div>
+                    <p
+                        v-if="form.errors.type"
+                        class="mt-2 text-xs text-destructive"
+                    >
+                        {{ form.errors.type }}
+                    </p>
                 </section>
 
                 <!-- Delivery address -->
@@ -345,14 +517,22 @@ const submit = (): void => {
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div class="sm:col-span-2">
-                            <label class="mb-1 block text-sm font-medium"
-                                >Street</label
-                            >
-                            <input
-                                v-model="form.delivery_address.street"
-                                type="text"
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            <AddressAutocomplete
+                                :initial-query="form.delivery_address.street"
+                                :invalid="
+                                    !!form.errors['delivery_address.street']
+                                "
+                                @resolved="onAddressResolved"
+                                @cleared="onAddressCleared"
                             />
+                            <p
+                                v-if="form.delivery_address.city"
+                                class="mt-1 text-xs text-muted-foreground"
+                            >
+                                {{ form.delivery_address.city }},
+                                {{ form.delivery_address.state }}
+                                {{ form.delivery_address.postal_code }}
+                            </p>
                             <p
                                 v-if="form.errors['delivery_address.street']"
                                 class="mt-1 text-xs text-destructive"
@@ -364,53 +544,14 @@ const submit = (): void => {
                             <label class="mb-1 block text-sm font-medium"
                                 >Apt / suite (optional)</label
                             >
+                            <!-- Its own field on purpose: Places won't reliably
+                                 return a unit, and guessing one is worse than
+                                 asking. -->
                             <input
                                 v-model="form.delivery_address.street2"
                                 type="text"
                                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             />
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium"
-                                >City</label
-                            >
-                            <input
-                                v-model="form.delivery_address.city"
-                                type="text"
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            />
-                            <p
-                                v-if="form.errors['delivery_address.city']"
-                                class="mt-1 text-xs text-destructive"
-                            >
-                                {{ form.errors['delivery_address.city'] }}
-                            </p>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label
-                                    class="mb-1 block text-sm font-medium"
-                                    >State</label
-                                >
-                                <input
-                                    v-model="form.delivery_address.state"
-                                    type="text"
-                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                />
-                            </div>
-                            <div>
-                                <label
-                                    class="mb-1 block text-sm font-medium"
-                                    >ZIP</label
-                                >
-                                <input
-                                    v-model="
-                                        form.delivery_address.postal_code
-                                    "
-                                    type="text"
-                                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                />
-                            </div>
                         </div>
                         <div class="sm:col-span-2">
                             <label class="mb-1 block text-sm font-medium"
@@ -433,6 +574,63 @@ const submit = (): void => {
                             </label>
                         </div>
                     </div>
+
+                    <!-- The live quote. Delivery has no price until an address
+                         exists, so this is where the fee becomes knowable. -->
+                    <div v-if="needsQuote" class="mt-4 border-t border-border pt-4">
+                        <p
+                            v-if="quoting"
+                            class="text-sm text-muted-foreground"
+                        >
+                            Checking delivery availability…
+                        </p>
+                        <p
+                            v-else-if="quoteError"
+                            class="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                        >
+                            {{ quoteError }}
+                        </p>
+                        <div v-else-if="liveQuote" class="space-y-1">
+                            <p class="text-sm">
+                                <span class="font-medium">{{
+                                    formatPrice(liveQuote.feeCents)
+                                }}</span>
+                                delivery
+                                <span
+                                    v-if="liveQuote.etaMinutes"
+                                    class="text-muted-foreground"
+                                >
+                                    · arrives in about
+                                    {{ liveQuote.etaMinutes }} min
+                                </span>
+                            </p>
+                            <!-- Promises the PRICE and nothing else. Uber only
+                                 looks for a courier once the delivery is
+                                 created, so this can't promise availability. -->
+                            <p
+                                v-if="secondsLeft > 0"
+                                class="text-xs text-muted-foreground"
+                            >
+                                Your delivery fee is guaranteed for
+                                {{ countdownLabel }}.
+                            </p>
+                        </div>
+                        <p v-else class="text-sm text-muted-foreground">
+                            Enter your address for delivery pricing.
+                        </p>
+                    </div>
+
+                    <!-- Domino's charged $2.50, kept it, and lost a motion to
+                         dismiss under the Massachusetts Tips Act partly because
+                         a reasonable customer would read a charge that size as
+                         the tip. One line of copy; the liability is the
+                         restaurant's but we render the screen. -->
+                    <p
+                        v-else-if="restaurant.selfDelivery"
+                        class="mt-4 border-t border-border pt-4 text-xs text-muted-foreground"
+                    >
+                        The delivery charge is not a tip paid to your driver.
+                    </p>
                 </section>
 
                 <!-- Notes -->
@@ -592,7 +790,7 @@ const submit = (): void => {
                             backgroundColor: 'var(--brand-primary)',
                             color: 'var(--brand-primary-foreground)',
                         }"
-                        :disabled="form.processing || restaurant.isOpen === false"
+                        :disabled="!canSubmit"
                     >
                         {{ form.processing ? 'Placing order...' : 'Place order' }}
                     </button>
@@ -602,6 +800,13 @@ const submit = (): void => {
                         class="mt-3 text-center text-xs text-amber-700"
                     >
                         We're currently closed. {{ restaurant.nextOpenLabel }}.
+                    </p>
+                    <p
+                        v-else-if="needsQuote && !liveQuote"
+                        class="mt-3 text-center text-xs text-muted-foreground"
+                    >
+                        Enter a delivery address to see the fee and place your
+                        order.
                     </p>
                     <p
                         v-else

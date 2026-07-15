@@ -67,7 +67,7 @@ class Restaurant extends Model
         'delivery_mode',
         'delivery_provider_priority',
         'delivery_fee_strategy',
-        'customer_delivery_fee_cents_max',
+        'prep_time_minutes',
         'self_delivery_tip_recipient',
         'delivery_fallback_action',
         'auto_cancel_refund_mode',
@@ -104,7 +104,7 @@ class Restaurant extends Model
             'delivery_mode' => DeliveryMode::class,
             'delivery_provider_priority' => 'array',
             'delivery_fee_strategy' => DeliveryFeeStrategy::class,
-            'customer_delivery_fee_cents_max' => 'integer',
+            'prep_time_minutes' => 'integer',
             'self_delivery_tip_recipient' => SelfDeliveryTipRecipient::class,
             'delivery_fallback_action' => DeliveryFallbackAction::class,
             'auto_cancel_refund_mode' => AutoCancelRefundMode::class,
@@ -342,6 +342,11 @@ class Restaurant extends Model
     public function posIntegrations(): HasMany
     {
         return $this->hasMany(PosIntegration::class);
+    }
+
+    public function deliveryIntegrations(): HasMany
+    {
+        return $this->hasMany(DeliveryIntegration::class);
     }
 
     public function menuImports(): HasMany

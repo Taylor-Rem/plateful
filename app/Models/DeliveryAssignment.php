@@ -23,6 +23,7 @@ class DeliveryAssignment extends Model
             'actual_fee_cents' => 'integer',
             'pickup_eta_at' => 'datetime',
             'dropoff_eta_at' => 'datetime',
+            'last_event_at' => 'datetime',
         ];
     }
 
