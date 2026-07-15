@@ -103,7 +103,7 @@ checkout copy should say "tip your driver," not a generic "tip."
 
 Money flow: customer → restaurant's connected Stripe account → restaurant's Uber Direct account pays
 Uber including tip → Uber pays courier. Net-zero for the restaurant, but the tip transits their
-books. **The 4% application fee stays on food subtotal only** (`OrderPlacement.php:118`) — unchanged.
+books. **The 4% application fee stays on food subtotal only** (`OrderPlacement::prepare()`) — unchanged.
 
 ### Self-delivery disclaimer
 Self-delivery checkout carries an explicit "the delivery charge is not a tip paid to your driver"
@@ -178,7 +178,7 @@ the feature so it's legible in the history rather than buried in the §6 diff:
 - `deliveryEnabled` onto `RestaurantData`.
 - Gate the Delivery toggle in `Checkout.vue`.
 - Reject delivery orders in `OrderPlacement::prepare()` when delivery is off — same place and shape
-  as the `restaurant_closed` guard at `OrderPlacement.php:53`, which covers the internal `place()`
+  as the `restaurant_closed` guard in `OrderPlacement::prepare()`, which covers the internal `place()`
   path too.
 - `OrderEvent::note()` instead of the silent return, so an owner can see *why* nothing dispatched.
 
@@ -413,7 +413,7 @@ restaurant flag, and the fee is unknowable until an address exists ("enter your 
 pricing," then a firm number).
 
 On timer expiry: re-quote, then either show the new fee or tell them delivery is no longer
-available. Restaurant hours already gate this upstream (`OrderPlacement.php:53`), so
+available. Restaurant hours already gate this upstream (`OrderPlacement::prepare()`), so
 after-close orders are rejected before any of it.
 
 Touched `OrderPlacement::prepare()`, `Checkout.vue`, and finally gives `DeliveryDispatcher::quote()` a
