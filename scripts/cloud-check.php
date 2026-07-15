@@ -100,8 +100,8 @@ present('SENTRY_LARAVEL_DSN', $vars);
 
 // ---- Storage ---------------------------------------------------------------
 section('Storage');
-show('FILESYSTEM_DISK', $vars);
-show('FILESYSTEM_RESTAURANT_ASSETS_DRIVER', $vars, expect: 's3');
+show('FILESYSTEM_DISK', $vars, expect: 's3');
+mediaDisk($vars);
 present('AWS_ACCESS_KEY_ID', $vars);
 present('AWS_BUCKET', $vars);
 
@@ -216,6 +216,37 @@ function show(string $key, array $vars, ?string $expect = null): void
     $val = $vars[$key];
     $flag = $expect !== null ? (strtolower((string) $val) === strtolower($expect) ? ' [ok]' : ' [expected '.$expect.']') : '';
     line(sprintf('  %-38s %s%s', $key, $val, $flag));
+}
+
+/**
+ * Report the disk restaurant media actually resolves to.
+ *
+ * Mirrors config/media.php: MEDIA_DISK if set, otherwise FILESYSTEM_DISK, otherwise
+ * "local". Checking the env vars in isolation is not enough — media rides the
+ * fallback, so FILESYSTEM_DISK=local with MEDIA_DISK unset silently parks every
+ * logo and menu photo on the container's ephemeral disk.
+ */
+function mediaDisk(array $vars): void
+{
+    $media = (string) ($vars['MEDIA_DISK'] ?? '');
+    $default = (string) ($vars['FILESYSTEM_DISK'] ?? '');
+
+    if ($media !== '') {
+        $effective = $media;
+        $source = 'MEDIA_DISK';
+    } else {
+        $effective = $default !== '' ? $default : 'local';
+        $source = 'FILESYSTEM_DISK fallback';
+    }
+
+    $ok = strtolower($effective) === 's3';
+    line(sprintf(
+        '  %-38s %s (via %s)%s',
+        'media disk (effective)',
+        $effective,
+        $source,
+        $ok ? ' [ok]' : ' [expected s3 — uploads are NOT durable]'
+    ));
 }
 
 /** Report Stripe key as LIVE / TEST by prefix, never the value. */

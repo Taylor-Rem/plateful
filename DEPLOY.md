@@ -58,9 +58,13 @@ git push origin main
 6. **Deploy command (post-deploy hook):** `php artisan migrate --force && php artisan storage:link && php artisan config:cache && php artisan route:cache && php artisan view:cache`
    - **Important:** never use `migrate:fresh` or `db:seed` in production. Plateful has real photo data; only forward-only migrations are safe.
 7. **Scheduler:** enable it. Cloud will run `schedule:run` every minute. Currently nothing is scheduled, but enabling it now means cron jobs added later "just work."
-8. **Queue worker:** on Starter, the queue runs against the database. Either:
-   - Enable Cloud's in-process queue worker (recommended if available on Starter), or
-   - Leave `QUEUE_CONNECTION=database` and skip the worker for now — sync-style behavior is fine until you add jobs that must run async.
+8. **Queue worker: required.** On Starter the queue runs against the database — enable Cloud's queue
+   worker. `QUEUE_CONNECTION=database` does **not** mean jobs run inline; with no worker they sit in
+   the `jobs` table forever. Order placement dispatches four of them (`PushOrderToPos`,
+   `DispatchDeliveryForOrder`, `ExpireAuthorizedDelivery`, plus confirmation mail), so without a
+   worker: tickets never reach the kitchen, deliveries never dispatch, and — because courier-network
+   orders authorize rather than capture — **authorization holds sit on customer cards with nothing
+   scheduled to release them**. This is the one operational dependency with no in-code backstop.
 
 ---
 
@@ -116,12 +120,19 @@ On Growth+ with Redis/KV available, switch all three to `redis`.
 
 | Key | Value |
 |---|---|
-| `FILESYSTEM_DISK` | `local` |
-| `FILESYSTEM_RESTAURANT_ASSETS_DRIVER` | `s3` |
+| `FILESYSTEM_DISK` | `s3` |
+| `MEDIA_DISK` | leave **unset** |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_BUCKET`, `AWS_DEFAULT_REGION`, `AWS_URL` | *auto* (Cloud object storage) |
 | `AWS_USE_PATH_STYLE_ENDPOINT` | `false` (or whatever Cloud's docs recommend) |
 
-The `restaurant_assets` disk in `config/filesystems.php` already falls back to `AWS_*` when the `RESTAURANT_ASSETS_*` overrides aren't set, so this is all you need.
+Restaurant media (logos, menu-item images, hero/about images, gallery photos) resolves through
+`config/media.php`: `MEDIA_DISK` if set, otherwise `FILESYSTEM_DISK`. Leaving `MEDIA_DISK` unset in
+Cloud makes media follow the default disk onto the injected bucket, which is what you want — set it
+only to override media independently of the app default (locally it's `public`, so `Storage::url()`
+resolves via `storage:link`).
+
+**`FILESYSTEM_DISK` is the setting that matters.** Leave it at `local` and every uploaded logo and
+menu photo writes to the container's ephemeral disk and disappears on the next deploy.
 
 ### Platform / tenancy
 
@@ -197,7 +208,7 @@ We deliberately leave `SESSION_DOMAIN=null` so each tenant subdomain (`admin.X`,
 `AppServiceProvider` calls `URL::forceScheme('https')` in production, and the app trusts all proxies via `bootstrap/app.php`. If you still see `http://` URLs, confirm `APP_ENV=production` and `APP_URL` starts with `https://`, then `php artisan config:clear`.
 
 ### Image URLs broken
-Check `Storage::disk('restaurant_assets')->url('some/path.jpg')` in Cloud's `php artisan tinker`. It should return an HTTPS URL pointing at the Cloud object storage bucket (or `AWS_URL` if you set a custom CDN). The accessors `MenuItem::image_url` and `Restaurant::logo_url` use this disk and don't hardcode anything.
+Check `config('media.disk')` in Cloud's `php artisan tinker` — it should report `s3`, not `local`. If it says `local`, `FILESYSTEM_DISK` is wrong (see Storage above). Then confirm `Storage::disk(config('media.disk'))->url('some/path.jpg')` returns an HTTPS URL pointing at the Cloud object storage bucket (or `AWS_URL` if you set a custom CDN). The accessors `MenuItem::image_url` and `Restaurant::logo_url` resolve through `config('media.disk')` and don't hardcode anything.
 
 ### "Unable to locate file in Vite manifest"
 The build step didn't run, or `public/build` wasn't deployed. Re-check the build command in Cloud and redeploy.
