@@ -8,10 +8,15 @@ use App\Services\Delivery\DeliveryQuoteRequest;
 use App\Services\Delivery\UberDirect\UberDirectProvider;
 use App\Services\Delivery\UberDirect\UberDirectTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
 require_once __DIR__.'/../Admin/AdminOrderTestHelpers.php';
+
+// The global Http::preventStrayRequests() guard (tests/Pest.php) would block
+// the real sandbox calls this opt-in suite exists to make.
+beforeEach(fn () => Http::preventStrayRequests(false));
 
 /**
  * Opt-in LIVE integration test — makes real calls to Uber's auth endpoint and

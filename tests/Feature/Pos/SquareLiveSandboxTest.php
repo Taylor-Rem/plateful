@@ -5,6 +5,7 @@ use App\Enums\PosProviderName;
 use App\Models\PosIntegration;
 use App\Services\Pos\Square\SquareClient;
 use App\Services\Pos\Square\SquarePosProvider;
+use Illuminate\Support\Facades\Http;
 
 require_once __DIR__.'/../Admin/AdminOrderTestHelpers.php';
 
@@ -24,6 +25,10 @@ require_once __DIR__.'/../Admin/AdminOrderTestHelpers.php';
  */
 $liveToken = env('SQUARE_SANDBOX_ACCESS_TOKEN');
 $liveLocation = env('SQUARE_SANDBOX_LOCATION_ID');
+
+// The global Http::preventStrayRequests() guard (tests/Pest.php) would block
+// the real sandbox calls this opt-in suite exists to make.
+beforeEach(fn () => Http::preventStrayRequests(false));
 
 it('creates a real order in the Square sandbox and can read it back', function () use ($liveToken, $liveLocation) {
     config()->set('services.square.environment', 'sandbox');

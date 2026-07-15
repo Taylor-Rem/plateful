@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
+use App\Models\OrderEvent;
 use App\Models\PendingCheckout;
 use App\Models\Restaurant;
 use App\Services\OrderPlacement;
 use App\Services\Stripe\StripeConnectService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use Stripe\Account;
 use Stripe\Checkout\Session;
+use Stripe\Dispute;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook;
 use UnexpectedValueException;
@@ -22,9 +26,10 @@ class StripeWebhookController extends Controller
     ) {}
 
     /**
-     * Receive Stripe Connect webhooks. Currently only syncs connected-account
-     * readiness from `account.updated`; unknown events are acknowledged so
-     * Stripe stops retrying.
+     * Receive Stripe Connect webhooks: connected-account readiness from
+     * `account.updated`, order materialization from `checkout.session.completed`,
+     * and chargeback visibility from `charge.dispute.created`. Unknown events
+     * are acknowledged so Stripe stops retrying.
      */
     public function __invoke(Request $request): Response
     {
@@ -66,6 +71,31 @@ class StripeWebhookController extends Controller
                         'stripe_payment_intent_id' => is_string($session->payment_intent) ? $session->payment_intent : null,
                     ]);
                 }
+            }
+        }
+
+        if ($event->type === 'charge.dispute.created') {
+            $dispute = $event->data->object;
+
+            if ($dispute instanceof Dispute) {
+                $order = is_string($dispute->payment_intent)
+                    ? Order::query()->where('stripe_payment_intent_id', $dispute->payment_intent)->first()
+                    : null;
+
+                if ($order) {
+                    $amount = number_format($dispute->amount / 100, 2);
+                    OrderEvent::note($order, "Payment disputed (chargeback): \${$amount}, reason \"{$dispute->reason}\". The restaurant must respond in its Stripe dashboard before the evidence deadline.");
+                }
+
+                // Error-level so it reaches monitoring — a dispute has a hard
+                // response deadline and losing one by silence costs real money.
+                Log::error('Stripe dispute received', [
+                    'dispute_id' => $dispute->id,
+                    'payment_intent' => $dispute->payment_intent,
+                    'reason' => $dispute->reason,
+                    'amount' => $dispute->amount,
+                    'order_id' => $order?->id,
+                ]);
             }
         }
 

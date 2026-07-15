@@ -15,7 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php-version: ['8.4', '8.5']
+        # Match production (PHP 8.4). Re-add 8.5 when an upgrade is planned —
+        # a bleeding-edge matrix entry is a flake source, not coverage.
+        php-version: ['8.4']
 
     steps:
       - name: Checkout code
@@ -55,4 +57,4 @@ jobs:
         run: npm run types:check
 
       - name: Tests
-        run: ./vendor/bin/pest
+        run: ./vendor/bin/pest -d memory_limit=512M

@@ -67,7 +67,12 @@ Route::middleware('tenant')->group(function () {
         ->name('storefront.checkout.show');
     Route::get('checkout/return', [CheckoutController::class, 'paymentReturn'])
         ->name('storefront.checkout.return');
+    // Throttled: every hit creates a real Stripe Checkout Session (and, live,
+    // a PaymentIntent) — an unmetered endpoint is a card-testing target the
+    // moment live keys are configured. 10/min per session is far above any
+    // legitimate checkout retry rate.
     Route::post('orders', [CheckoutController::class, 'store'])
+        ->middleware('throttle:10,1')
         ->name('storefront.orders.store');
     Route::get('orders/{number}', [OrderController::class, 'show'])
         ->where('number', '[A-Za-z0-9-]+')

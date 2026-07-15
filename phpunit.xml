@@ -20,6 +20,10 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <!-- No SSR gateway runs in tests; without this every Inertia render
+             attempts an HTTP call to 127.0.0.1:13714, which the global
+             Http::preventStrayRequests() guard (tests/Pest.php) rejects. -->
+        <env name="INERTIA_SSR_ENABLED" value="false"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
