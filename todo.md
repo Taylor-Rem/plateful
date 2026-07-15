@@ -47,8 +47,37 @@ self-contained; unblocks the savings calculator and the whole fee story. Do earl
 - **Rate: 4.00% flat.** No tiers, no volume discounts. Simple to quote, honest, and a blowout vs.
   the 15–40% the delivery apps take. A high-volume restaurant that ever balks gets negotiated 1:1
   later — not a system to build now.
-- **Base: food subtotal only.** Tips and tax are NOT part of our fee. `OrderPlacement` already
-  computes on the food subtotal — keep it. (We deliberately do not take a cut of tips.)
+- **Base — PINNED (2026-07-15): 4% of the post-redemption food subtotal.** One sentence, rewards or
+  no rewards: *we take 4% of what the customer actually pays for food.* Tax, tip, and the delivery
+  fee are excluded. `OrderPlacement::prepare()` already computes on the food subtotal — the only
+  change §10 brings is that redemption must reduce that subtotal **before** the fee line
+  (`OrderPlacement.php:120`).
+  - **Tips excluded — this is the industry norm, NOT a differentiator.** Verified 2026-07-15 against
+    competitors' own documents. DoorDash's glossary defines subtotal as "the price of an order before
+    taxes, commissions, fees, error charges, and tips"; Uber Eats' fee is "applied to order
+    sub-totals"; ChowNow's Restaurant Agreement defines Subtotal as "excluding Fees, taxes, tip,
+    delivery fees, and any additional fees." Every commission-type fee in this market already
+    excludes tips. **Do not sell "we don't take a cut of tips" as a differentiator** — it's table
+    stakes, and no competitor markets it because there is nothing to claim. The differentiator is
+    **4% vs 15–30%**.
+  - **But keep excluding them, deliberately.** Our own code routes tips to staff or the courier
+    (`TipRecipient::forOrder()`), and third-party delivery passes the tip to Uber for the driver —
+    a cut of a tip is a cut of a worker's money, never the restaurant's revenue. Precedent: DoorDash's
+    2017–2019 model counted tips toward courier pay and cost it **~$30M+** across the DC ($2.5M),
+    Illinois ($11.25M) and NY ($16.75M) AGs; the FTC's analogous case is **Amazon Flex ($61.7M)**.
+    Delaware **HB 315** would bar card fees on the tip portion outright. This is a live legislative
+    target — stay off it.
+  - **Net-of-redemption is where we genuinely differ.** Uber applies its fee to "order sub-totals
+    **before discounts**" — it charges on money the restaurant never collected. We charge on what
+    they actually collect, so **Plateful absorbs 4% of every redemption and the restaurant funds
+    96%**. Deliberate: it buys one simple rule with no gross/net special case, and it is a real,
+    sayable edge — *"we charge on what you collect; they charge on what you would have."*
+  - **What we cannot claim: that tips are fee-free.** Stripe's 2.9% + 30¢ is charged "per successful
+    transaction" on the gross charge, tip included, and on direct charges the **restaurant** pays it
+    ("application fees … are in addition to Stripe fees"). Square: "processing fees are taken out of
+    the total amount of each transaction, including tax and tip." Toast: the restaurant pays its rate
+    "on the gross amount of all card transactions." Nobody escapes this — the card rails can't split
+    a tip from a sale. Tips are free of *our* cut, not of Stripe's. Say it that way.
 - **Model: application fee _on top of_ Stripe** (current architecture). We are NOT absorbing
   Stripe or computing a single "all-in" fee — the one-clean-number idea is a _pitch/marketing_
   framing, not a code change. The restaurant pays Stripe's 2.9% + 30¢ directly (direct charges,
@@ -237,37 +266,10 @@ _Head start: a `restaurant_customer` pivot already stores per-restaurant order c
 (`total_orders`, `total_spent_cents`, `first/last_ordered_at`), but it holds no contact info
 (email/phone live on `User`) and is surfaced only on the customer's own storefront loyalty view —
 never in the tenant admin. So this is a partial data foundation, not a blank slate._
-- [ ] **Loyalty redemption — points can be earned but never spent, and we advertise otherwise.**
-      (Surfaced 2026-07-15. The only gap found that was both user-visible and untracked.)
-      Built today: `LoyaltyService::awardForOrder()` grants `floor(subtotal_cents / 100) ×
-      platform.loyalty.points_per_dollar` (currently 1) when an order goes Completed
-      (`OrderTransition:51`), idempotent via `orders.awarded_loyalty_points`; `LoyaltyController`
-      shows the balance and recent earning orders. **`awardForOrder()` is the service's only
-      method** — there is no debit, redeem, or spend path anywhere in `app/`, and no reversal or
-      clawback on cancel/refund. Points accrue forever as an unbounded liability.
-      The problem isn't just the missing feature — we already promise it:
-      - `Welcome.vue:323` — "Redeem at the place you earned it" on the public landing page.
-      - `Legal/Terms.vue:107` — "Points are earned and redeemed with the specific Restaurant."
-        (Hedged: "Restaurants **may** offer… terms, value, and availability are set by each
-        Restaurant" — so this is softer than the landing-page claim, but still points at a
-        redemption flow that doesn't exist.)
-      Decide before building — these are product calls, not code ones:
-      - **What do points buy?** ($ off subtotal, a free item, tiers?) And who sets the rate —
-        platform-wide, or per-restaurant? Terms currently says the restaurant sets it, and
-        `points_per_dollar` is platform-wide config, so those already disagree.
-      - **Fee interaction.** Our 4% is on the food subtotal. If points discount the subtotal, our
-        fee shrinks with it and the restaurant eats the discount — confirm that's intended, and
-        that a fully-points-paid order can't produce a $0/negative charge.
-      - **Schema.** `loyalty_points` is a single mutable balance row per `(user_id, restaurant_id)`
-        — a bare integer, no ledger. Spending against it leaves no audit trail and no way to answer
-        "where did my points go", and it races under concurrent redemption
-        (`awardForOrder` already reaches for `lockForUpdate`). A redemption path probably wants an
-        events table, with the balance derived or reconciled — same shape as `fee_distributions`
-        in §7.
-      - **Reversal.** A refunded or cancelled order keeps its points today. Ties into §7's
-        partial-refund proration and §8's `refunded_cents` question — same underlying gap.
-      Interim option if this stays deferred: soften `Welcome.vue:323` so we stop promising a flow
-      that isn't built. Cheap, and it's the only part with a live customer-facing claim.
+- [ ] **Loyalty → see §10.** Rewards are restaurant-owned (opt in/out, own rate, they fund
+      redemption) and are the sharpest "own your customers" lever we have. The full state, the
+      decided model, and the open questions live in **§10** — one section, so this doesn't drift
+      into two conflicting accounts.
 - [ ] Surface a per-restaurant customer contact list (join `restaurant_customer` → `User` for
       email/phone) in the tenant admin; add CSV export. No admin customer page exists today.
 - [ ] Fee-free remarketing: email/SMS campaigns — core differentiator vs DoorDash/Toast.
@@ -384,50 +386,87 @@ pickup experience._
       checkout by `validateCartLines`, so it's a late failure rather than an ordering hole; the cart
       drawer surfaces it client-side via `CartItemData::isAvailable`. Move the check earlier.
 
-## 10. Loyalty — points are earned but can never be spent (surfaced 2026-07-15 by codebase audit)
-_The earn path is shipped and tested: `LoyaltyService::awardForOrder()` fires on the transition to
-`Completed` (`OrderTransition.php:51`), credits `floor(subtotal_cents / 100) × points_per_dollar`,
-is idempotent via `orders.awarded_loyalty_points`, skips guest orders, and is surfaced read-only at
-`/account/loyalty` (`LoyaltyController`). **`awardForOrder()` is the only method on the service.**
-There is no debit, redeem, or spend path anywhere in `app/` — grepping "redeem" repo-wide returns
-two hits, both marketing copy. Points accrue forever against a balance nobody can draw down._
+## 10. Loyalty — restaurant-owned rewards (earn path shipped, spend path missing)
+_Surfaced 2026-07-15 by codebase audit; model decided 2026-07-15._
 
-**Why this is not just a missing feature**
-- **The landing page already promises it.** `Welcome.vue:323` — "Redeem at the place you earned it."
-  A prospect reading the marketing site is told redemption exists today. It does not.
-- **Growing liability.** Every completed order adds points. The longer the gap runs, the larger the
-  balance you eventually have to honor — or explain away.
-- **`Terms.vue:104-112` contradicts the code.** It says "The terms, value, and availability of
-  rewards are set by each Restaurant." `points_per_dollar` is a **platform-wide constant**
-  (`config/platform.php:108`, value `1`) with no per-restaurant column or admin UI. No restaurant
-  sets anything. The Terms are hedged enough ("Restaurants *may* offer") to be defensible, but they
-  describe a system that isn't built.
+**Current state.** The earn path is shipped and tested: `LoyaltyService::awardForOrder()` fires on
+the transition to `Completed` (`OrderTransition.php:51`), credits
+`floor(subtotal_cents / 100) × points_per_dollar`, is idempotent via `orders.awarded_loyalty_points`,
+skips guest orders, and is surfaced read-only at `/account/loyalty` (`LoyaltyController`).
+**`awardForOrder()` is the only method on the service** — there is no debit, redeem, or spend path
+anywhere in `app/`. Grepping "redeem" repo-wide returns two hits, both marketing copy.
 
-**Decisions to make before building any of it**
-- [ ] **Redemption mechanism.** Dollar-off at checkout, a free item at a threshold, or tiers? This
-      is the product decision everything else hangs off.
-- [ ] **Does redemption cut our fee? (ties to §1 — pricing.)** Our 4% is charged on the **food
-      subtotal**. If points redeem as dollars off that subtotal, then every redemption shrinks our
-      application fee *and* the restaurant absorbs the discount. If it applies after the fee is
-      computed, our fee holds and the restaurant still eats the discount. Neither is obviously
-      right, but it is a **pricing decision, not an implementation detail** — decide it explicitly
-      rather than discovering it in `OrderPlacement::prepare()`.
-- [ ] **Who sets the rate.** Either add per-restaurant loyalty config (matching what the Terms
-      already claim) or correct the Terms to say Plateful sets it. Today neither is true.
+**The liability is currently zero — this is the free moment to build it.** `loyalty_points` has
+**0 rows**: no customer has ever earned a point (verified against the live DB 2026-07-15). Nothing
+to grandfather, nothing to strand, no balance to honor. Every decision below gets more expensive the
+day after the first real order.
+
+### Model — DECIDED 2026-07-15
+Rewards are a **tool the restaurant owns**, not a platform program. The pitch is that it's a lever to
+pull customers off DoorDash; a restaurant that doesn't want it should never see it.
+- **Opt-in / opt-out per restaurant, completely.** Off means no earning, no balance, no loyalty UI
+  anywhere on that storefront — not a disabled tab.
+- **The restaurant sets its own earn rate.** Not a platform constant.
+- **Redemption comes out of the restaurant's pocket.** They fund the discount; it's their lever and
+  their margin.
+- **Plateful's 4% is charged on the POST-redemption food subtotal** — one rule, rewards or no
+  rewards: 4% of what the customer actually pays for food. **Tax, tip and delivery stay excluded**
+  (§1, unchanged — the tip exclusion is a deliberate differentiator, not an oversight).
+  - *Stated so nobody "corrects" it later:* because the fee follows the discounted subtotal,
+    **Plateful absorbs 4% of every redemption and the restaurant funds the other 96%** ($50 order,
+    $5 redeemed → fee $1.80 not $2.00; the reward costs the restaurant $4.80). That small co-funding
+    is the deliberate price of one simple rule, chosen over a gross/net special case.
+  - *Implementation:* redemption must reduce the food subtotal **before**
+    `OrderPlacement::prepare()` computes `$applicationFeeCents` (`OrderPlacement.php:120`). Get the
+    ordering wrong and the fee silently reverts to gross. `StripeCheckoutTest` already pins
+    tax/tip exclusion; add the redemption case beside it.
+
+This also **resolves the `Terms.vue:104-112` contradiction** flagged by the audit: the Terms already
+say "the terms, value, and availability of rewards are set by each Restaurant," which was false —
+`points_per_dollar` is a platform-wide constant (`config/platform.php:108`, value `1`) that no
+restaurant can touch, and every restaurant earns whether it wants to or not. The decided model is
+what the Terms already describe. Build it and the Terms become true.
+
+### Open — decide before building
+- [ ] **Redemption mechanism.** Dollar-off at checkout, free item at a threshold, or tiers? Drives
+      everything below.
+- [ ] **Rate storage — mirror the fee's existing pattern.** Add `restaurants.loyalty_enabled` +
+      `restaurants.loyalty_points_per_dollar`, and demote `platform.loyalty.points_per_dollar` to the
+      **default for new restaurants at creation**, exactly as `default_application_fee_percent`
+      already governs fees (§1: "only governs NEW restaurants at creation time; existing rows keep
+      their stored rate"). Same shape, same grandfathering story, no new concept.
+- [ ] **A fully-points-paid order must not produce a $0 or negative charge.** With the fee on the
+      post-redemption subtotal, redeeming the whole order drives the subtotal — and our fee — to $0.
+      If tax and tip are also 0 there is nothing to charge, and Stripe rejects sub-minimum amounts
+      (~50¢); `application_fee_amount` must also never exceed the charge. Decide the floor (cap
+      redemption at some % of the order? require a minimum charge?) before the mechanism is built,
+      not when a PaymentIntent fails in production.
 - [ ] **Add a ledger.** `loyalty_points` is a single `points` integer per `(user_id, restaurant_id)`
       (`2026_05_18_170004_create_orders_tables.php:45-52`) — a balance with **no transaction
-      history**. Earning-only survives that; spending does not. Without rows you cannot answer
-      "where did my points go", reverse a mistake, or reconcile a dispute.
+      history**. Earning-only survives that; spending does not. Without rows you cannot answer "where
+      did my points go", reverse a mistake, or settle a dispute. It also **races under concurrent
+      redemption** — `awardForOrder()` already reaches for `lockForUpdate`, which is the tell. A
+      redemption path probably wants an events table with the balance derived or reconciled — the
+      same shape as `fee_distributions` in §7. Cheapest to add now, at 0 rows.
 - [ ] **Clawback on refund.** Points are awarded at `Completed` and **never reversed** — nothing in
       `OrderTransition` or `DeliverySettlement` touches them on cancel or refund, so a
-      completed-then-refunded order keeps its points. Free points for an order that generated no
-      revenue. Same family as §7's partial-refund proration and §8's `refunded_cents`.
+      completed-then-refunded order keeps its points. Free points for an order that earned nothing.
+      Same family as §7's partial-refund proration and §8's `refunded_cents`.
 - [ ] **Expiry / breakage.** The Terms mention forfeiture on account termination; nothing else
-      expires. Decide whether points age out, and note that `unavailable_until`-style self-healing
-      (§9) is the same shape of problem.
+      expires. If the restaurant funds redemption, expiry is *their* lever too — so it likely belongs
+      next to the rate, not as a platform rule.
 
-**Cheapest way to close the exposure today (no feature work):** soften `Welcome.vue:323` so the
-public site stops advertising redemption until it exists. Worth doing regardless of when §10 lands.
+### Build (once the above are settled)
+- [ ] Gate the earn path: `awardForOrder()` currently fires for **every** restaurant with no check.
+- [ ] Gate the surface: `/account/loyalty` (`routes/storefront.php:113`) is ungated and
+      `AccountTabs.vue:41-43` shows a "Loyalty" tab unconditionally. Both must disappear when off.
+- [ ] Tenant-admin UI to toggle rewards and set the rate.
+- [ ] The redemption path itself + the ledger.
+
+**Interim, independent of all of the above:** `Welcome.vue:323` promises "Redeem at the place you
+earned it" on the public marketing site. Redemption does not exist, and under the decided model it
+will be **per-restaurant** — so a blanket platform-level promise will still overstate it even after
+§10 ships. Soften the copy now; it's a one-line change.
 
 ---
 
@@ -443,9 +482,11 @@ public site stops advertising redemption until it exists. Worth doing regardless
 6. **§4 customer ownership** to make the pitch real; **§5 calculator** once pricing is locked.
    **§2d printer** widens the addressable set; **§6 onboarding automation** is an ongoing
    friction-reducer.
-7. **§10 loyalty** is the one gap the marketing site already sells as shipped, so it sets its own
-   deadline. Its fee-base question belongs with **§1**, not after it — decide that while pricing is
-   still fresh. The one-line `Welcome.vue` copy fix closes the exposure until the feature lands.
+7. **§10 loyalty** — model decided (restaurant-owned: opt in/out, sets its own rate, funds its own
+   redemptions; our 4% charged on the post-redemption subtotal, per §1). Two things make it
+   time-sensitive: the marketing site already sells redemption as shipped, and `loyalty_points` is
+   still at **0 rows**, so the ledger and the opt-in default are free to get right today and
+   expensive the day after the first real order. What's left is product shape, not pricing.
 
 ---
 

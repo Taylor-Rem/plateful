@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Models\Order;
@@ -72,6 +73,48 @@ it('computes the application fee from the food subtotal only', function () {
     $order = payLatestCheckout();
     expect($order->application_fee_cents)->toBe(56)
         ->and($order->total_cents)->toBeGreaterThan(1400);
+});
+
+/**
+ * The delivery half of the same rule. Tax and tip are pinned above; without this
+ * the delivery fee was the one exclusion nothing enforced — every other test
+ * sets delivery_fee_cents to 0, so widening the base to include it would not
+ * have failed a single assertion. See the fee rule at OrderPlacement::prepare().
+ */
+it('excludes the delivery fee from the application fee', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    // Self-delivery: the restaurant prices the fee itself, so no quote is involved.
+    $r->update([
+        'tax_rate_percent' => 8.875,
+        'delivery_enabled' => true,
+        'delivery_fee_cents' => 499,
+        'delivery_mode' => DeliveryMode::SelfDelivery,
+    ]);
+    $cookie = addPep($this, $f);
+
+    fakeCheckoutSession();
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'delivery',
+            'delivery_address' => [
+                'street' => '123 Main',
+                'city' => 'NYC',
+                'state' => 'NY',
+                'postal_code' => '10001',
+            ],
+            'tip_preset' => 'custom',
+            'tip_custom_cents' => 500,
+        ]);
+
+    $order = payLatestCheckout();
+
+    // $14 food + $4.99 delivery + tax + $5 tip. The fee is 4% of 1400 = 56 —
+    // unchanged by the delivery fee being on the order at all.
+    expect($order->delivery_fee_cents)->toBe(499)
+        ->and($order->application_fee_cents)->toBe(56);
 });
 
 it('scales the application fee with a custom percent', function () {

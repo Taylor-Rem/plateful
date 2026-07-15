@@ -190,6 +190,23 @@ cell and every number recalculates.
 
 - **Percentage fee, flat rate: 4%** of the food subtotal (on top of Stripe). Locked 2026-07-10:
   no tiers, no volume discounts, no floor. Tips and tax are excluded from the fee.
+  - **Base pinned 2026-07-15: 4% of the *post-redemption* food subtotal** — "we take 4% of what the
+    customer actually pays for food." Tax, tip and delivery excluded. (Roadmap §1 / §10.)
+  - **Sales guidance — do NOT pitch "we don't take a cut of tips" as a differentiator.** Verified
+    2026-07-15: every commission-type fee in this market already excludes tips. DoorDash's own
+    glossary defines subtotal as "before taxes, commissions, fees, error charges, and tips";
+    ChowNow's Restaurant Agreement says "excluding Fees, taxes, tip, delivery fees." We match the
+    norm. Claiming it as an edge invites an easy rebuttal. **The edge is 4% vs 15–30%.**
+  - **Never claim tips are fee-free.** The restaurant still pays Stripe's 2.9% + 30¢ on the gross
+    charge, tip included — as they would with Square ("including tax and tip") or Toast ("the gross
+    amount of all card transactions"). The card rails can't split a tip from a sale. Tips are free of
+    *our* cut, not of Stripe's. An operator who has read their Toast statement will catch this.
+  - **Two claims that ARE real and defensible:**
+    1. *"We charge on what you collect, not what you would have."* Uber applies its fee to "order
+       sub-totals **before discounts**"; ours follows the discounted subtotal, so we absorb 4% of
+       every loyalty redemption and the restaurant funds 96%.
+    2. *"Rewards are yours."* Restaurants opt in or out, set their own earn rate, and fund their own
+       redemptions (§10) — the marketplaces don't offer that at all.
 - **Free setup / onboarding** — part of the pitch, and a differentiator vs. competitors who
   charge setup fees ($119–499 at ChowNow).
 - **Paid custom/ongoing support** for special work, extra training, and bespoke requests —
