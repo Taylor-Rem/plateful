@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, provide, ref, watch } from 'vue';
 import { Menu as MenuIcon, ShoppingCart, User, X } from 'lucide-vue-next';
-import { Toaster } from '@/components/ui/sonner';
+import { computed, onMounted, provide, ref, watch } from 'vue';
 import CartDrawer from '@/components/Storefront/CartDrawer.vue';
+import { Toaster } from '@/components/ui/sonner';
 import AdminBar from '@/pages/Storefront/components/AdminBar.vue';
 import Footer from '@/pages/Storefront/components/Footer.vue';
 import SocialLinksEditDrawer from '@/pages/Storefront/components/SocialLinksEditDrawer.vue';
@@ -24,7 +24,9 @@ const isPreview = computed(() => Boolean(page.props.storefrontPreview));
 const isAuthenticated = computed(() => Boolean(page.props.auth?.user));
 const canEditSite = computed(() => Boolean(page.props.auth?.canEditSite));
 const cartCount = computed(() => page.props.cart?.itemCount ?? 0);
-const currentPath = computed(() => new URL(page.url, 'http://placeholder').pathname);
+const currentPath = computed(
+    () => new URL(page.url, 'http://placeholder').pathname,
+);
 const isOnPath = (path: string): boolean => currentPath.value === path;
 
 // ----- Edit mode (single source of truth, persisted) -----
@@ -39,13 +41,16 @@ onMounted(() => {
 
 const setEditMode = (value: boolean): void => {
     editMode.value = value;
+
     if (typeof window !== 'undefined') {
         window.localStorage.setItem(EDIT_MODE_KEY, value ? '1' : '0');
     }
 };
 
 watch(canEditSite, (value) => {
-    if (!value) editMode.value = false;
+    if (!value) {
+        editMode.value = false;
+    }
 });
 
 provide('storefrontEditMode', editMode);
@@ -58,12 +63,25 @@ const mobileNavOpen = ref(false);
 const navLinks = [
     { label: 'Home', href: '/', kind: 'link' as const },
     { label: 'Menu', href: '/menu', kind: 'link' as const },
-    { label: 'About', href: '/#about', kind: 'anchor' as const, matchPath: '/' },
-    { label: 'Visit', href: '/#location', kind: 'anchor' as const, matchPath: '/' },
+    {
+        label: 'About',
+        href: '/#about',
+        kind: 'anchor' as const,
+        matchPath: '/',
+    },
+    {
+        label: 'Visit',
+        href: '/#location',
+        kind: 'anchor' as const,
+        matchPath: '/',
+    },
 ];
 
 const isActive = (link: (typeof navLinks)[number]): boolean => {
-    if (link.kind === 'link') return isOnPath(link.href);
+    if (link.kind === 'link') {
+        return isOnPath(link.href);
+    }
+
     return false;
 };
 </script>
@@ -81,7 +99,9 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
             class="border-b border-amber-300 bg-amber-100 text-amber-900"
             data-test="storefront-preview-banner"
         >
-            <div class="mx-auto max-w-5xl px-4 py-2 text-center text-sm sm:px-6">
+            <div
+                class="mx-auto max-w-5xl px-4 py-2 text-center text-sm sm:px-6"
+            >
                 <strong class="font-semibold">Preview</strong> — your site isn't
                 live yet. Only you can see this. Finish setup to open for
                 orders.
@@ -91,7 +111,9 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
         <nav
             class="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
         >
-            <div class="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
+            <div
+                class="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6"
+            >
                 <Link
                     href="/"
                     class="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight"
@@ -103,7 +125,9 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
                         :alt="`${restaurant.name} logo`"
                         class="size-8 rounded-md bg-white object-contain p-0.5"
                     />
-                    <span class="max-w-[12rem] truncate">{{ restaurant?.name ?? 'Menu' }}</span>
+                    <span class="max-w-[12rem] truncate">{{
+                        restaurant?.name ?? 'Menu'
+                    }}</span>
                 </Link>
 
                 <div class="hidden items-center gap-1 md:flex">
@@ -113,13 +137,19 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
                             :href="link.href"
                             class="relative rounded-md px-3 py-1.5 text-sm font-medium text-foreground transition hover:bg-muted"
                             :class="{ 'font-semibold': isActive(link) }"
-                            :style="isActive(link) ? { color: 'var(--brand-primary)' } : {}"
+                            :style="
+                                isActive(link)
+                                    ? { color: 'var(--brand-primary)' }
+                                    : {}
+                            "
                         >
                             {{ link.label }}
                             <span
                                 v-if="isActive(link)"
                                 class="absolute inset-x-3 -bottom-px h-0.5 rounded-full"
-                                :style="{ backgroundColor: 'var(--brand-primary)' }"
+                                :style="{
+                                    backgroundColor: 'var(--brand-primary)',
+                                }"
                                 aria-hidden="true"
                             />
                         </Link>
@@ -143,7 +173,7 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
                         <ShoppingCart class="size-5" />
                         <span
                             v-if="cartCount > 0"
-                            class="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full text-[10px] font-semibold"
+                            class="absolute -top-1 -right-1 grid size-4 place-items-center rounded-full text-[10px] font-semibold"
                             :style="{
                                 backgroundColor: 'var(--brand-primary)',
                                 color: 'var(--brand-primary-foreground)',
@@ -174,13 +204,18 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
                         :aria-label="mobileNavOpen ? 'Close menu' : 'Open menu'"
                         @click="mobileNavOpen = !mobileNavOpen"
                     >
-                        <component :is="mobileNavOpen ? X : MenuIcon" class="size-5" />
+                        <component
+                            :is="mobileNavOpen ? X : MenuIcon"
+                            class="size-5"
+                        />
                     </button>
                 </div>
             </div>
 
             <div v-if="mobileNavOpen" class="border-t border-border md:hidden">
-                <div class="mx-auto flex max-w-5xl flex-col gap-1 px-4 py-3 sm:px-6">
+                <div
+                    class="mx-auto flex max-w-5xl flex-col gap-1 px-4 py-3 sm:px-6"
+                >
                     <template v-for="link in navLinks" :key="link.href">
                         <Link
                             v-if="link.kind === 'link'"

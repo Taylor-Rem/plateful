@@ -3,7 +3,7 @@
 Help me enable the Google Places API and then build a lead-generation script that
 finds independent restaurants in Utah County with **no website or a weak/broken
 one** — the best targets for Plateful sales outreach (they're likely paying ~30%
-to DoorDash with nothing of their own; Plateful is 1%).
+to DoorDash with nothing of their own; Plateful is 4%).
 
 ## Context (Plateful)
 

@@ -1,2 +1,8 @@
 resources/js/components/ui/*
 resources/views/mail/*
+
+# Emitted by spatie/laravel-typescript-transformer. Formatting them fights the
+# generator on every `typescript:transform` — and the manifest stores an md5 of
+# generated.d.ts, so reformatting it desyncs the file from its own checksum.
+resources/js/types/generated.d.ts
+resources/js/types/typescript-transformer-manifest.json

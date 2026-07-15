@@ -26,8 +26,13 @@ _These gate real revenue and are independent of everything below. Do first._
       set `MAIL_*` / `RESEND_API_KEY` in Cloud, confirm a live password-reset delivers.
 - [ ] **Sentry error monitoring**: set `SENTRY_LARAVEL_DSN` in Cloud. `cloud-check.php` already
       checks for it; confirm errors report before launch.
-- [ ] **S3 restaurant-asset storage**: set `FILESYSTEM_RESTAURANT_ASSETS_DRIVER=s3` + AWS creds/
-      bucket in Cloud (menu/logo/hero images). `cloud-check.php` verifies these.
+- [ ] **S3 restaurant-asset storage**: set `FILESYSTEM_DISK=s3` and leave `MEDIA_DISK` unset, + AWS
+      creds/bucket in Cloud (menu/logo/hero images). `cloud-check.php` reports the **effective**
+      media disk, not just the raw vars. (Corrected 2026-07-15: this item used to say
+      `FILESYSTEM_RESTAURANT_ASSETS_DRIVER=s3` — that var is read by nothing, and DEPLOY.md paired it
+      with `FILESYSTEM_DISK=local`, so following the runbook would have parked every upload on the
+      container's ephemeral disk while the check printed green. The real knob is `config/media.php`:
+      `MEDIA_DISK` if set, else `FILESYSTEM_DISK`.)
 - [ ] Final verification: `php scripts/cloud-check.php` shows Stripe LIVE + mail + Sentry + S3
       configured with no recent errors.
 
@@ -112,7 +117,9 @@ options folded into the line `note`). The guided catalog matcher below is the re
       templates; POS uses per-item modifier lists — impedance mismatch; v1 maps references, does not
       two-way sync.)
 
-### 2c. First adapters — Square + Clover DONE (verified 2026-07-13)
+### 2c. First adapters — Square + Clover code-complete (2026-07-13)
+_"Verified" here means built and covered by `Http::fake` tests — **neither has pushed to a real
+register.** Both live-sandbox tests skip for want of credentials; see the two items below._
 - [x] **"Connect your POS" OAuth flow** — `SquareOAuthService` + `SquareConnectController`
       (connect/callback/disconnect) + routes, writing into `pos_integrations`. Redirect URI lives on
       the **admin host** (`admin.plateful.test/pos/square/callback`) because `SESSION_DOMAIN=null`
@@ -136,7 +143,14 @@ options folded into the line `note`). The guided catalog matcher below is the re
       added to the admin `$connectable` list (`available => true`). `CLOVER_*` env + `config/services.php`.
       Tests: CloverOAuthServiceTest, CloverPushOrderTest, CloverConnectTest, CloverLiveSandboxTest
       (opt-in real-sandbox push+read-back, skipped without creds — mirrors Square's).
-- [ ] **Clover live verification (only remaining Clover item).** `CLOVER_*` app creds are entered in
+- [ ] **Square live verification — same gap as Clover's, and it was never tracked.** Corrected
+      2026-07-15: `SQUARE_SANDBOX_ACCESS_TOKEN` / `SQUARE_SANDBOX_LOCATION_ID` are not set, so
+      `SquareLiveSandboxTest` **skips** — it has never run. Neither adapter has pushed to a real
+      register; only Uber Direct is genuinely sandbox-verified (its 5 live tests do run and pass
+      locally, because the `UBER_DIRECT_SANDBOX_*` creds are in `.env`). §2c reads as though Square
+      is proven and only Clover is pending; they are in identical shape. Note the two skips are the
+      *only* skips in the suite, so a green run says nothing about either POS adapter.
+- [ ] **Clover live verification.** `CLOVER_*` app creds are entered in
       `.env` and verified resolving (authorize URL builds against the sandbox host). Still to do: (a)
       run the OAuth connect flow once against a sandbox test merchant to prove the handshake (redirect
       match + Orders R/W permission), and (b) run `CloverLiveSandboxTest` with `CLOVER_SANDBOX_ACCESS_TOKEN`
@@ -273,11 +287,43 @@ _Low-effort correctness & cleanup items found while auditing the roadmap against
       instead and correctly leaves this at 0 — nothing was charged, so nothing was refunded.)
 - [x] ~~**`DeliveryDispatcher::quote()` has no caller.**~~ Closed 2026-07-14: the quote now gates
       checkout (§3), so it is called on every third-party delivery address.
-- [ ] **Six pre-existing TypeScript errors.** `npm run types:check` has been red since before
-      2026-07-14 — `AppHeader.vue` imports a missing `dashboard` route, `Checkout.vue` reads
-      server-only error keys off `FormDataErrors`, `Orders/Index.vue` passes `preserveScroll` to
-      `ReloadOptions`, `Unavailable.vue` assigns `null` to a layout. Unrelated to delivery, but the
-      check is useless as a gate while it's red.
+- [x] **Six pre-existing TypeScript errors.** Fixed 2026-07-15. `npm run types:check` is green.
+      Two were real bugs, not type noise:
+      - `Unavailable.vue` used `defineOptions({ layout: null })` to opt out of the storefront
+        chrome, but Inertia v3 resolves `page.layout ?? defaultLayout(...)` — **null falls through**,
+        so the page rendered wrapped in `StorefrontLayout` on a response that has no restaurant.
+        Only the `app.ts` resolver can opt a page out; it now returns `null` for that page.
+      - `Orders/Index.vue` passed `preserveScroll`/`preserveState` to `usePoll`; `reload()` spreads
+        both as `true` *after* caller options, so they were no-ops (hence `ReloadOptions` omits them).
+      - `AppHeader.vue`'s missing `dashboard` import died with the dead subtree (see below).
+      - `Checkout.vue` / `Menu.vue` read server-only form-level error keys — now via the
+        `Record<string, string>` cast already used in `StepReview.vue`.
+- [x] **CI never gated anything** (root cause, fixed 2026-07-15). `lint.yml` ran the *fixing*
+      variants (`composer lint` = `pint` write-mode, `npm run format` = `prettier --write`,
+      `npm run lint` = `eslint --fix`) with the auto-commit step commented out, so it mutated the
+      runner and exited clean regardless. `types:check` was in no workflow at all. Both workflows
+      also triggered on `develop`/`master`/`workos` — none of which exist — and **not** on `dev`,
+      the working branch. That is how ~430 violations accumulated under a green CI. Now: `lint.yml`
+      runs the `:check` variants, `tests.yml` runs `types:check` after the build (vue-tsc needs the
+      gitignored Wayfinder output), and both trigger on `main` + `dev`. `composer ci:check` covers
+      the same ground locally — but note it runs `php artisan test`, which needs
+      `memory_limit` > 128M (run pest directly with `-d memory_limit=2G`).
+- [x] **Dead starter-kit frontend removed** (2026-07-15). `AppHeaderLayout.vue` had zero importers
+      and was the only importer of `AppHeader.vue`; Vite never bundled the subtree, so only `vue-tsc`
+      ever saw its broken `dashboard` import. Deleted with `PlaceholderPattern.vue`,
+      `AuthCardLayout.vue`, `AuthSplitLayout.vue`, the orphaned `ui/{badge,collapsible,select,
+      navigation-menu}`, and `tests/Unit/ExampleTest.php`. (`ui/tooltip` and `ui/skeleton` look
+      orphaned but are used by the live sidebar — leave them.)
+- [ ] **More verified dead code, not yet removed.** All zero-reference, confirmed against the route
+      table: `routes/settings.php` (never loaded by `bootstrap/app.php`; its six routes are
+      duplicated at `routes/storefront.php:96-131`, which is where the live ones come from);
+      `RequirePlatformHost` + its `'platform'` alias (zero routes); `MenuItemReorderRequest` (no
+      route or controller); `orders.stripe_transfer_id` (zero references anywhere); write-only
+      columns `voided_at` / `captured_at` / `authorized_at` / `restaurants.suspension_reason`;
+      `restaurants.delivery_provider_priority` (read by `DeliveryDispatcher`, written only by tests,
+      so always NULL in production); ~10 superseded migrations incl. a 7-migration Cashier chain for
+      a package never in `composer.json`; `config('platform.admin_notification_email')` and
+      `services.stripe.key`, neither ever read.
 
 ## 9. Menu availability & order pausing (surfaced 2026-07-14 while scoping §3 delivery)
 _Availability itself is built and enforced: `menu_items.is_available` + `item_template_options.is_available`,

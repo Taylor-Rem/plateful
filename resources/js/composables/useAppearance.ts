@@ -29,6 +29,7 @@ export function updateTheme(value: Appearance): void {
     // Tenant storefronts are locked to light mode regardless of preference.
     if (isTenantContext()) {
         document.documentElement.classList.remove('dark');
+
         return;
     }
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\RestaurantRole;
 use App\Enums\RestaurantStatus;
 use App\Models\Restaurant;
 use App\Models\User;
@@ -34,7 +35,7 @@ it('passes the authenticated user name when logged in', function () {
 it('flags admin access on the diner homepage for an owner', function () {
     $owner = User::factory()->create();
     Restaurant::factory()->create()->members()->attach($owner->id, [
-        'role' => \App\Enums\RestaurantRole::Admin->value,
+        'role' => RestaurantRole::Admin->value,
     ]);
 
     $this->actingAs($owner)
