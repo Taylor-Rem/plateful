@@ -104,12 +104,13 @@ import LegalLayout from '@/layouts/LegalLayout.vue';
         <h2>6. Loyalty Points</h2>
         <p>
             Restaurants may offer loyalty points or rewards through the
-            Platform. Points are earned and redeemed with the specific
-            Restaurant that issued them and have no cash value. The terms,
-            value, and availability of rewards are set by each Restaurant and
-            may change or be discontinued. Points are not transferable between
-            Restaurants and are forfeited if an account or Restaurant
-            relationship is terminated, except where prohibited by law.
+            Platform. Points are earned with the specific Restaurant that issued
+            them and have no cash value. Ways to use points, and the terms,
+            value, and availability of any rewards, are determined by each
+            Restaurant as they are made available, and may change or be
+            discontinued. Points are not transferable between Restaurants and
+            are forfeited if an account or Restaurant relationship is
+            terminated, except where prohibited by law.
         </p>
 
         <h2>7. Food Safety, Allergens, and Health</h2>

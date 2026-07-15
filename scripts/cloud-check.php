@@ -88,6 +88,38 @@ stripeKey('STRIPE_SECRET', $vars);
 present('STRIPE_WEBHOOK_SECRET', $vars, 'whsec_');
 show('STRIPE_CONNECT_COUNTRY', $vars);
 
+// ---- POS (Square / Clover) ---------------------------------------------------
+// Both default to 'sandbox' in config/services.php, and host selection keys
+// entirely off these vars — if production doesn't set them explicitly, every
+// OAuth connect and ticket push silently goes to the sandbox hosts and real
+// registers never see an order. Same silent-fallback class as the media disk.
+section('POS (Square / Clover)');
+show('SQUARE_ENVIRONMENT', $vars, expect: 'production');
+present('SQUARE_APPLICATION_ID', $vars);
+present('SQUARE_APPLICATION_SECRET', $vars);
+show('SQUARE_REDIRECT_URI', $vars);
+show('CLOVER_ENVIRONMENT', $vars, expect: 'production');
+present('CLOVER_APP_ID', $vars);
+present('CLOVER_APP_SECRET', $vars);
+show('CLOVER_REDIRECT_URI', $vars);
+
+// ---- Onboarding & delivery ---------------------------------------------------
+section('Onboarding & delivery');
+// AI menu import (the "free setup" pitch) dies silently without this.
+present('CLAUDE_API_KEY', $vars);
+// Places autocomplete + delivery quotes need the server-side Maps key.
+present('GOOGLE_MAPS_API_KEY', $vars);
+
+// ---- Queue -------------------------------------------------------------------
+// POS pushes, delivery dispatch, and the auth/capture deadline are all queued
+// jobs. QUEUE_CONNECTION=database with no worker means orders never push,
+// deliveries never dispatch, and card holds never release — with no in-code
+// backstop. The worker itself can't be seen from env vars; confirm it in the
+// Cloud dashboard (see DEPLOY.md).
+section('Queue');
+show('QUEUE_CONNECTION', $vars);
+line('  NOTE: a queue worker must be provisioned — env vars cannot prove one is running.');
+
 // ---- Mail (Resend) ---------------------------------------------------------
 section('Mail');
 show('MAIL_MAILER', $vars, expect: 'resend');
