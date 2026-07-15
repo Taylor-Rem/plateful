@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { Pencil, X } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
 
 const props = defineProps<{
     photos: App.Data.RestaurantPhotoData[];
@@ -18,8 +18,10 @@ const lightboxIndex = ref<number | null>(null);
 const openLightbox = (idx: number): void => {
     if (props.editMode) {
         emit('edit-gallery');
+
         return;
     }
+
     lightboxIndex.value = idx;
 };
 
@@ -28,7 +30,9 @@ const closeLightbox = (): void => {
 };
 
 const lightboxPhoto = computed(() =>
-    lightboxIndex.value === null ? null : props.photos[lightboxIndex.value] ?? null,
+    lightboxIndex.value === null
+        ? null
+        : (props.photos[lightboxIndex.value] ?? null),
 );
 </script>
 
@@ -55,16 +59,24 @@ const lightboxPhoto = computed(() =>
             </button>
         </div>
 
-        <div v-if="hasAny" class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        <div
+            v-if="hasAny"
+            class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
+        >
             <button
                 v-for="(photo, idx) in photos"
                 :key="photo.id"
                 type="button"
-                class="group relative aspect-square overflow-hidden rounded-lg bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+                class="group relative aspect-square overflow-hidden rounded-lg bg-muted focus:ring-2 focus:ring-ring focus:outline-none"
                 @click="openLightbox(idx)"
             >
                 <img
-                    :src="photo.imageThumbUrl ?? photo.imageMediumUrl ?? photo.imageUrl ?? ''"
+                    :src="
+                        photo.imageThumbUrl ??
+                        photo.imageMediumUrl ??
+                        photo.imageUrl ??
+                        ''
+                    "
                     :alt="photo.caption ?? ''"
                     class="size-full object-cover transition group-hover:scale-105"
                     loading="lazy"
@@ -92,7 +104,7 @@ const lightboxPhoto = computed(() =>
         >
             <button
                 type="button"
-                class="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+                class="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
                 aria-label="Close"
                 @click="closeLightbox"
             >
@@ -100,11 +112,18 @@ const lightboxPhoto = computed(() =>
             </button>
             <figure class="max-h-full max-w-5xl">
                 <img
-                    :src="lightboxPhoto.imageUrl ?? lightboxPhoto.imageMediumUrl ?? ''"
+                    :src="
+                        lightboxPhoto.imageUrl ??
+                        lightboxPhoto.imageMediumUrl ??
+                        ''
+                    "
                     :alt="lightboxPhoto.caption ?? ''"
                     class="max-h-[80vh] w-auto rounded-lg"
                 />
-                <figcaption v-if="lightboxPhoto.caption" class="mt-3 text-center text-sm text-white/90">
+                <figcaption
+                    v-if="lightboxPhoto.caption"
+                    class="mt-3 text-center text-sm text-white/90"
+                >
                     {{ lightboxPhoto.caption }}
                 </figcaption>
             </figure>

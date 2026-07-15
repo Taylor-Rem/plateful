@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
-import { Button } from '@/components/ui/button';
 import { Plug } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
+import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 
 type PosProviderCard = {
     provider: string;
@@ -31,7 +31,9 @@ const connect = (card: PosProviderCard): void => {
 const disconnect = (card: PosProviderCard): void => {
     if (
         card.disconnectUrl &&
-        confirm(`Disconnect ${card.label}? New orders will stop pushing to your register.`)
+        confirm(
+            `Disconnect ${card.label}? New orders will stop pushing to your register.`,
+        )
     ) {
         form.post(card.disconnectUrl);
     }
@@ -60,8 +62,8 @@ const statusClasses: Record<string, string> = {
             <div>
                 <h1 class="text-xl font-semibold">POS integrations</h1>
                 <p class="mt-1 text-sm text-muted-foreground">
-                    Push online orders straight into your register so the kitchen sees them
-                    without a separate tablet.
+                    Push online orders straight into your register so the
+                    kitchen sees them without a separate tablet.
                 </p>
             </div>
 
@@ -83,12 +85,20 @@ const statusClasses: Record<string, string> = {
                                 {{ card.label }}
                                 <span
                                     class="ml-2 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
-                                    :class="statusClasses[card.status] ?? statusClasses.disconnected"
+                                    :class="
+                                        statusClasses[card.status] ??
+                                        statusClasses.disconnected
+                                    "
                                 >
-                                    {{ statusLabels[card.status] ?? card.status }}
+                                    {{
+                                        statusLabels[card.status] ?? card.status
+                                    }}
                                 </span>
                             </h3>
-                            <p v-if="card.lastError" class="mt-1 text-sm text-red-600">
+                            <p
+                                v-if="card.lastError"
+                                class="mt-1 text-sm text-red-600"
+                            >
                                 {{ card.lastError }}
                             </p>
                         </div>

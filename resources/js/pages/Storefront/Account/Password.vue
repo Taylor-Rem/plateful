@@ -44,7 +44,10 @@ const submit = (): void => {
             >
                 <div class="grid gap-4">
                     <div>
-                        <label class="mb-1 block text-sm font-medium" for="current_password">
+                        <label
+                            class="mb-1 block text-sm font-medium"
+                            for="current_password"
+                        >
                             Current password
                         </label>
                         <input
@@ -55,12 +58,18 @@ const submit = (): void => {
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             required
                         />
-                        <p v-if="form.errors.current_password" class="mt-1 text-xs text-destructive">
+                        <p
+                            v-if="form.errors.current_password"
+                            class="mt-1 text-xs text-destructive"
+                        >
                             {{ form.errors.current_password }}
                         </p>
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium" for="password">
+                        <label
+                            class="mb-1 block text-sm font-medium"
+                            for="password"
+                        >
                             New password
                         </label>
                         <input
@@ -71,12 +80,18 @@ const submit = (): void => {
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             required
                         />
-                        <p v-if="form.errors.password" class="mt-1 text-xs text-destructive">
+                        <p
+                            v-if="form.errors.password"
+                            class="mt-1 text-xs text-destructive"
+                        >
                             {{ form.errors.password }}
                         </p>
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium" for="password_confirmation">
+                        <label
+                            class="mb-1 block text-sm font-medium"
+                            for="password_confirmation"
+                        >
                             Confirm new password
                         </label>
                         <input

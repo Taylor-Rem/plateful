@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Form, Head, useForm } from '@inertiajs/vue3';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { computed, ref } from 'vue';
+import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -27,26 +27,28 @@ const form = useForm({
 
 const newLogoPreview = ref<string | null>(null);
 
-const currentLogo = computed(
-    () => props.restaurant.logoMediumUrl,
-);
+const currentLogo = computed(() => props.restaurant.logoMediumUrl);
 
 const onLogoChange = (event: Event): void => {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0] ?? null;
     form.logo = file;
     form.remove_logo = false;
+
     if (newLogoPreview.value) {
         URL.revokeObjectURL(newLogoPreview.value);
     }
+
     newLogoPreview.value = file ? URL.createObjectURL(file) : null;
 };
 
 const clearNewLogo = (): void => {
     form.logo = null;
+
     if (newLogoPreview.value) {
         URL.revokeObjectURL(newLogoPreview.value);
     }
+
     newLogoPreview.value = null;
 };
 
@@ -79,7 +81,9 @@ const submit = (): void => {
                 <div class="mt-4 grid gap-2">
                     <Label>Logo</Label>
                     <div class="flex items-start gap-4">
-                        <div class="flex size-24 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
+                        <div
+                            class="flex size-24 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30"
+                        >
                             <img
                                 v-if="newLogoPreview"
                                 :src="newLogoPreview"
@@ -92,7 +96,11 @@ const submit = (): void => {
                                 alt="Current logo"
                                 class="size-full object-contain"
                             />
-                            <span v-else class="px-2 text-center text-xs text-muted-foreground">No logo</span>
+                            <span
+                                v-else
+                                class="px-2 text-center text-xs text-muted-foreground"
+                                >No logo</span
+                            >
                         </div>
                         <div class="flex-1 space-y-2">
                             <input
@@ -101,8 +109,13 @@ const submit = (): void => {
                                 class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
                                 @change="onLogoChange"
                             />
-                            <p class="text-xs text-muted-foreground">JPEG, PNG, or WebP up to 5 MB.</p>
-                            <div v-if="currentLogo && !form.remove_logo" class="flex items-center gap-2">
+                            <p class="text-xs text-muted-foreground">
+                                JPEG, PNG, or WebP up to 5 MB.
+                            </p>
+                            <div
+                                v-if="currentLogo && !form.remove_logo"
+                                class="flex items-center gap-2"
+                            >
                                 <button
                                     type="button"
                                     class="text-xs text-destructive hover:opacity-80"
@@ -111,9 +124,18 @@ const submit = (): void => {
                                     Remove logo
                                 </button>
                             </div>
-                            <p v-if="form.remove_logo" class="text-xs text-amber-600 dark:text-amber-400">
+                            <p
+                                v-if="form.remove_logo"
+                                class="text-xs text-amber-600 dark:text-amber-400"
+                            >
                                 Will remove logo on save.
-                                <button type="button" class="underline" @click="form.remove_logo = false">Undo</button>
+                                <button
+                                    type="button"
+                                    class="underline"
+                                    @click="form.remove_logo = false"
+                                >
+                                    Undo
+                                </button>
                             </p>
                             <InputError :message="form.errors.logo" />
                         </div>
@@ -130,7 +152,11 @@ const submit = (): void => {
                                 type="color"
                                 class="h-9 w-12 cursor-pointer rounded border border-input bg-background"
                             />
-                            <Input id="primary-color" v-model="form.primary_color" class="flex-1" />
+                            <Input
+                                id="primary-color"
+                                v-model="form.primary_color"
+                                class="flex-1"
+                            />
                         </div>
                         <InputError :message="form.errors.primary_color" />
                     </div>
@@ -143,7 +169,11 @@ const submit = (): void => {
                                 type="color"
                                 class="h-9 w-12 cursor-pointer rounded border border-input bg-background"
                             />
-                            <Input id="secondary-color" v-model="form.secondary_color" class="flex-1" />
+                            <Input
+                                id="secondary-color"
+                                v-model="form.secondary_color"
+                                class="flex-1"
+                            />
                         </div>
                         <InputError :message="form.errors.secondary_color" />
                     </div>
@@ -151,7 +181,9 @@ const submit = (): void => {
             </section>
 
             <section class="rounded-lg border border-border bg-card p-5">
-                <h3 class="text-base font-medium text-foreground">Restaurant details</h3>
+                <h3 class="text-base font-medium text-foreground">
+                    Restaurant details
+                </h3>
                 <div class="mt-4 grid gap-4">
                     <div class="grid gap-2">
                         <Label for="name">Name</Label>
@@ -164,14 +196,18 @@ const submit = (): void => {
                             id="description"
                             v-model="form.description"
                             rows="3"
-                            class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+                            class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
                         />
                         <InputError :message="form.errors.description" />
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div class="grid gap-2">
                             <Label for="email">Email</Label>
-                            <Input id="email" v-model="form.email" type="email" />
+                            <Input
+                                id="email"
+                                v-model="form.email"
+                                type="email"
+                            />
                             <InputError :message="form.errors.email" />
                         </div>
                         <div class="grid gap-2">
@@ -191,7 +227,9 @@ const submit = (): void => {
                                 min="0"
                                 max="30"
                             />
-                            <InputError :message="form.errors.tax_rate_percent" />
+                            <InputError
+                                :message="form.errors.tax_rate_percent"
+                            />
                         </div>
                         <div class="grid gap-2">
                             <Label for="delivery-fee">Delivery fee ($)</Label>
@@ -210,12 +248,20 @@ const submit = (): void => {
             </section>
 
             <div class="flex items-center gap-3">
-                <Button type="submit" :disabled="form.processing">Save settings</Button>
-                <span v-if="form.recentlySuccessful" class="text-sm text-emerald-600 dark:text-emerald-400">Saved.</span>
+                <Button type="submit" :disabled="form.processing"
+                    >Save settings</Button
+                >
+                <span
+                    v-if="form.recentlySuccessful"
+                    class="text-sm text-emerald-600 dark:text-emerald-400"
+                    >Saved.</span
+                >
             </div>
         </form>
 
-        <section class="mt-10 max-w-md rounded-lg border border-border bg-card p-5">
+        <section
+            class="mt-10 max-w-md rounded-lg border border-border bg-card p-5"
+        >
             <h3 class="text-lg font-medium text-foreground">Invite admin</h3>
             <p class="mt-1 text-sm text-muted-foreground">
                 Send an invitation to a new admin for {{ restaurant.name }}.
@@ -239,7 +285,9 @@ const submit = (): void => {
                     />
                     <InputError :message="errors.email" />
                 </div>
-                <Button type="submit" :disabled="processing">Send invitation</Button>
+                <Button type="submit" :disabled="processing"
+                    >Send invitation</Button
+                >
             </Form>
         </section>
     </TenantAdminLayout>

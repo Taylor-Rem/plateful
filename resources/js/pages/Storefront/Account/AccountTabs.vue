@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import {
     Home,
     ReceiptText,
@@ -11,6 +10,7 @@ import {
     KeyRound,
     LogOut,
 } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 defineProps<{
     active:
@@ -25,7 +25,12 @@ defineProps<{
 
 const tabs = computed(() => [
     { key: 'overview', label: 'Overview', href: '/account', icon: Home },
-    { key: 'orders', label: 'Orders', href: '/account/orders', icon: ReceiptText },
+    {
+        key: 'orders',
+        label: 'Orders',
+        href: '/account/orders',
+        icon: ReceiptText,
+    },
     {
         key: 'addresses',
         label: 'Addresses',
@@ -80,7 +85,10 @@ const logout = (): void => {
             "
             :style="
                 active === t.key
-                    ? { borderColor: 'var(--brand-primary)', color: 'var(--brand-primary)' }
+                    ? {
+                          borderColor: 'var(--brand-primary)',
+                          color: 'var(--brand-primary)',
+                      }
                     : {}
             "
         >

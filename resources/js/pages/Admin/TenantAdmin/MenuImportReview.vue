@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { AlertTriangle, ArrowLeft, Plus, Trash2 } from 'lucide-vue-next';
 import { computed, reactive } from 'vue';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type DraftItem = {
     name: string;
@@ -50,6 +50,7 @@ const draft = reactive<{ categories: DraftCategory[] }>({
 
 const priceCents = (price: string): number => {
     const parsed = Number.parseFloat(price.replace(/[$,\s]/g, ''));
+
     return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
 };
 
@@ -60,13 +61,19 @@ const itemCount = computed(() =>
 const missingPrices = computed(() =>
     draft.categories.reduce(
         (sum, category) =>
-            sum + category.items.filter((item) => priceCents(item.price) <= 0).length,
+            sum +
+            category.items.filter((item) => priceCents(item.price) <= 0).length,
         0,
     ),
 );
 
 const addItem = (category: DraftCategory): void => {
-    category.items.push({ name: '', description: '', price: '', price_note: null });
+    category.items.push({
+        name: '',
+        description: '',
+        price: '',
+        price_note: null,
+    });
 };
 
 const removeItem = (category: DraftCategory, index: number): void => {
@@ -74,7 +81,10 @@ const removeItem = (category: DraftCategory, index: number): void => {
 };
 
 const addCategory = (): void => {
-    draft.categories.push({ name: '', items: [{ name: '', description: '', price: '', price_note: null }] });
+    draft.categories.push({
+        name: '',
+        items: [{ name: '', description: '', price: '', price_note: null }],
+    });
 };
 
 const removeCategory = (index: number): void => {
@@ -83,10 +93,16 @@ const removeCategory = (index: number): void => {
 
 type ConfirmCategory = {
     name: string;
-    items: Array<{ name: string; description: string | null; price_cents: number }>;
+    items: Array<{
+        name: string;
+        description: string | null;
+        price_cents: number;
+    }>;
 };
 
-const confirmForm = useForm<{ categories: ConfirmCategory[] }>({ categories: [] });
+const confirmForm = useForm<{ categories: ConfirmCategory[] }>({
+    categories: [],
+});
 
 const submit = (): void => {
     confirmForm.categories = draft.categories
@@ -96,11 +112,17 @@ const submit = (): void => {
                 .filter((item) => item.name.trim() !== '')
                 .map((item) => ({
                     name: item.name,
-                    description: item.description.trim() === '' ? null : item.description,
+                    description:
+                        item.description.trim() === ''
+                            ? null
+                            : item.description,
                     price_cents: priceCents(item.price),
                 })),
         }))
-        .filter((category) => category.name.trim() !== '' && category.items.length > 0);
+        .filter(
+            (category) =>
+                category.name.trim() !== '' && category.items.length > 0,
+        );
 
     confirmForm.post(
         `/${props.restaurant.subdomain}/menu-import/${props.menuImport.id}/confirm`,
@@ -112,9 +134,14 @@ const errorMessages = computed(() =>
 );
 
 const discard = (): void => {
-    if (!window.confirm('Discard this import? Your uploaded files and the extracted menu will be deleted.')) {
+    if (
+        !window.confirm(
+            'Discard this import? Your uploaded files and the extracted menu will be deleted.',
+        )
+    ) {
         return;
     }
+
     router.post(
         `/${props.restaurant.subdomain}/menu-import/${props.menuImport.id}/discard`,
     );
@@ -125,8 +152,12 @@ const discard = (): void => {
     <div class="min-h-screen bg-background text-foreground">
         <Head :title="`Review your menu — ${restaurant.name}`" />
 
-        <header class="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
-            <div class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+        <header
+            class="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur"
+        >
+            <div
+                class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4"
+            >
                 <div class="flex items-center gap-3">
                     <a
                         :href="`/${restaurant.subdomain}/onboarding`"
@@ -138,7 +169,8 @@ const discard = (): void => {
                     <div>
                         <h1 class="text-lg font-semibold">Review your menu</h1>
                         <p class="text-xs text-muted-foreground">
-                            Check names and prices, fix anything we misread, then import.
+                            Check names and prices, fix anything we misread,
+                            then import.
                         </p>
                     </div>
                 </div>
@@ -152,11 +184,16 @@ const discard = (): void => {
                     </button>
                     <Button
                         type="button"
-                        :disabled="confirmForm.processing || itemCount === 0 || missingPrices > 0"
+                        :disabled="
+                            confirmForm.processing ||
+                            itemCount === 0 ||
+                            missingPrices > 0
+                        "
                         data-test="confirm-import-button"
                         @click="submit"
                     >
-                        Import {{ itemCount }} {{ itemCount === 1 ? 'item' : 'items' }}
+                        Import {{ itemCount }}
+                        {{ itemCount === 1 ? 'item' : 'items' }}
                     </Button>
                 </div>
             </div>
@@ -168,8 +205,11 @@ const discard = (): void => {
                 class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
                 data-test="missing-prices-banner"
             >
-                <strong class="font-semibold">{{ missingPrices }}
-                    {{ missingPrices === 1 ? 'item needs' : 'items need' }} a price</strong>
+                <strong class="font-semibold"
+                    >{{ missingPrices }}
+                    {{ missingPrices === 1 ? 'item needs' : 'items need' }} a
+                    price</strong
+                >
                 before you can import — they're highlighted below.
             </div>
 
@@ -182,11 +222,16 @@ const discard = (): void => {
                     Worth double-checking
                 </p>
                 <ul class="ml-6 list-disc text-sm text-muted-foreground">
-                    <li v-for="(warning, i) in menuImport.warnings" :key="i">{{ warning }}</li>
+                    <li v-for="(warning, i) in menuImport.warnings" :key="i">
+                        {{ warning }}
+                    </li>
                 </ul>
             </div>
 
-            <div v-if="menuImport.fileUrls.length" class="flex gap-2 overflow-x-auto pb-1">
+            <div
+                v-if="menuImport.fileUrls.length"
+                class="flex gap-2 overflow-x-auto pb-1"
+            >
                 <a
                     v-for="(url, i) in menuImport.fileUrls"
                     :key="url"
@@ -202,7 +247,10 @@ const discard = (): void => {
                 </a>
             </div>
 
-            <p v-if="errorMessages.length" class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <p
+                v-if="errorMessages.length"
+                class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+            >
                 {{ errorMessages.join(' ') }}
             </p>
 
@@ -212,7 +260,9 @@ const discard = (): void => {
                 class="rounded-lg border border-border bg-card"
                 :data-test="`review-category-${catIndex}`"
             >
-                <div class="flex items-center justify-between gap-3 border-b border-border p-4">
+                <div
+                    class="flex items-center justify-between gap-3 border-b border-border p-4"
+                >
                     <Input
                         v-model="category.name"
                         type="text"
@@ -235,7 +285,9 @@ const discard = (): void => {
                         :key="itemIndex"
                         :class="[
                             'grid gap-2 p-4 sm:grid-cols-[1fr_auto]',
-                            priceCents(item.price) <= 0 ? 'bg-red-50 dark:bg-red-950/30' : '',
+                            priceCents(item.price) <= 0
+                                ? 'bg-red-50 dark:bg-red-950/30'
+                                : '',
                         ]"
                     >
                         <div class="space-y-2">
@@ -302,13 +354,23 @@ const discard = (): void => {
                 Add category
             </Button>
 
-            <div class="sticky bottom-0 -mx-1 flex justify-end bg-background/80 py-3 backdrop-blur">
+            <div
+                class="sticky bottom-0 -mx-1 flex justify-end bg-background/80 py-3 backdrop-blur"
+            >
                 <Button
                     type="button"
-                    :disabled="confirmForm.processing || itemCount === 0 || missingPrices > 0"
+                    :disabled="
+                        confirmForm.processing ||
+                        itemCount === 0 ||
+                        missingPrices > 0
+                    "
                     @click="submit"
                 >
-                    {{ confirmForm.processing ? 'Importing…' : `Import ${itemCount} ${itemCount === 1 ? 'item' : 'items'}` }}
+                    {{
+                        confirmForm.processing
+                            ? 'Importing…'
+                            : `Import ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`
+                    }}
                 </Button>
             </div>
         </main>

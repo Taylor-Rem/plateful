@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
+import { Pencil, Trash2, Plus } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
-import { Pencil, Trash2, Plus } from 'lucide-vue-next';
 
-const props = defineProps<{
+defineProps<{
     restaurant: App.Data.RestaurantData;
     addresses: App.Data.AddressData[];
 }>();
@@ -88,7 +88,10 @@ const submit = (): void => {
 };
 
 const remove = (a: App.Data.AddressData): void => {
-    if (!confirm('Delete this address?')) return;
+    if (!confirm('Delete this address?')) {
+        return;
+    }
+
     router.delete(`/account/addresses/${a.id}`, { preserveScroll: true });
 };
 </script>
@@ -111,7 +114,9 @@ const remove = (a: App.Data.AddressData): void => {
             <AccountTabs active="addresses" />
 
             <div v-if="addresses.length === 0 && !showForm" class="mb-4">
-                <div class="rounded-lg border border-dashed border-border bg-card p-10 text-center">
+                <div
+                    class="rounded-lg border border-dashed border-border bg-card p-10 text-center"
+                >
                     <p class="text-sm text-muted-foreground">
                         No saved addresses yet.
                     </p>
@@ -131,7 +136,7 @@ const remove = (a: App.Data.AddressData): void => {
                             </p>
                             <span
                                 v-if="a.isDefault"
-                                class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                                class="rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
                                 :style="{
                                     backgroundColor: 'var(--brand-primary)',
                                     color: 'var(--brand-primary-foreground)',
@@ -141,11 +146,15 @@ const remove = (a: App.Data.AddressData): void => {
                             </span>
                         </div>
                         <p class="mt-1 text-sm text-muted-foreground">
-                            {{ a.street }}<span v-if="a.street2">, {{ a.street2 }}</span
+                            {{ a.street
+                            }}<span v-if="a.street2">, {{ a.street2 }}</span
                             ><br />
                             {{ a.city }}, {{ a.state }} {{ a.postalCode }}
                         </p>
-                        <p v-if="a.instructions" class="mt-1 text-xs text-muted-foreground">
+                        <p
+                            v-if="a.instructions"
+                            class="mt-1 text-xs text-muted-foreground"
+                        >
                             {{ a.instructions }}
                         </p>
                     </div>
@@ -193,27 +202,43 @@ const remove = (a: App.Data.AddressData): void => {
                 </h2>
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label class="mb-1 block text-sm font-medium">Label (optional)</label>
+                        <label class="mb-1 block text-sm font-medium"
+                            >Label (optional)</label
+                        >
                         <input
                             v-model="form.label"
                             type="text"
                             placeholder="Home, Work…"
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         />
-                        <p v-if="form.errors.label" class="mt-1 text-xs text-destructive">{{ form.errors.label }}</p>
+                        <p
+                            v-if="form.errors.label"
+                            class="mt-1 text-xs text-destructive"
+                        >
+                            {{ form.errors.label }}
+                        </p>
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="mb-1 block text-sm font-medium">Street</label>
+                        <label class="mb-1 block text-sm font-medium"
+                            >Street</label
+                        >
                         <input
                             v-model="form.street"
                             type="text"
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             required
                         />
-                        <p v-if="form.errors.street" class="mt-1 text-xs text-destructive">{{ form.errors.street }}</p>
+                        <p
+                            v-if="form.errors.street"
+                            class="mt-1 text-xs text-destructive"
+                        >
+                            {{ form.errors.street }}
+                        </p>
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="mb-1 block text-sm font-medium">Apt / suite (optional)</label>
+                        <label class="mb-1 block text-sm font-medium"
+                            >Apt / suite (optional)</label
+                        >
                         <input
                             v-model="form.street2"
                             type="text"
@@ -221,39 +246,62 @@ const remove = (a: App.Data.AddressData): void => {
                         />
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium">City</label>
+                        <label class="mb-1 block text-sm font-medium"
+                            >City</label
+                        >
                         <input
                             v-model="form.city"
                             type="text"
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             required
                         />
-                        <p v-if="form.errors.city" class="mt-1 text-xs text-destructive">{{ form.errors.city }}</p>
+                        <p
+                            v-if="form.errors.city"
+                            class="mt-1 text-xs text-destructive"
+                        >
+                            {{ form.errors.city }}
+                        </p>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="mb-1 block text-sm font-medium">State</label>
+                            <label class="mb-1 block text-sm font-medium"
+                                >State</label
+                            >
                             <input
                                 v-model="form.state"
                                 type="text"
                                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 required
                             />
-                            <p v-if="form.errors.state" class="mt-1 text-xs text-destructive">{{ form.errors.state }}</p>
+                            <p
+                                v-if="form.errors.state"
+                                class="mt-1 text-xs text-destructive"
+                            >
+                                {{ form.errors.state }}
+                            </p>
                         </div>
                         <div>
-                            <label class="mb-1 block text-sm font-medium">ZIP</label>
+                            <label class="mb-1 block text-sm font-medium"
+                                >ZIP</label
+                            >
                             <input
                                 v-model="form.postal_code"
                                 type="text"
                                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                 required
                             />
-                            <p v-if="form.errors.postal_code" class="mt-1 text-xs text-destructive">{{ form.errors.postal_code }}</p>
+                            <p
+                                v-if="form.errors.postal_code"
+                                class="mt-1 text-xs text-destructive"
+                            >
+                                {{ form.errors.postal_code }}
+                            </p>
                         </div>
                     </div>
                     <div class="sm:col-span-2">
-                        <label class="mb-1 block text-sm font-medium">Delivery instructions (optional)</label>
+                        <label class="mb-1 block text-sm font-medium"
+                            >Delivery instructions (optional)</label
+                        >
                         <textarea
                             v-model="form.instructions"
                             rows="2"
@@ -262,7 +310,11 @@ const remove = (a: App.Data.AddressData): void => {
                     </div>
                     <div class="sm:col-span-2">
                         <label class="inline-flex items-center gap-2 text-sm">
-                            <input v-model="form.is_default" type="checkbox" class="rounded" />
+                            <input
+                                v-model="form.is_default"
+                                type="checkbox"
+                                class="rounded"
+                            />
                             Set as default
                         </label>
                     </div>

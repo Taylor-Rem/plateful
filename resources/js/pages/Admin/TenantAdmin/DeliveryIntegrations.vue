@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
-import { Button } from '@/components/ui/button';
 import { Truck } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { Button } from '@/components/ui/button';
+import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 
 type DeliveryProviderCard = {
     provider: string;
@@ -76,7 +76,10 @@ const form = useForm({
 const disconnectForm = useForm({});
 
 const save = (): void => {
-    if (!uber?.saveUrl) return;
+    if (!uber?.saveUrl) {
+        return;
+    }
+
     form.post(uber.saveUrl, {
         preserveScroll: true,
         onSuccess: () => {
@@ -257,9 +260,9 @@ const statusClasses: Record<string, string> = {
                                 </option>
                             </select>
                             <p class="mt-1 text-xs text-muted-foreground">
-                                On courier-network deliveries the tip always goes
-                                to the courier, so this only applies to your own
-                                drivers.
+                                On courier-network deliveries the tip always
+                                goes to the courier, so this only applies to
+                                your own drivers.
                             </p>
                         </div>
 
@@ -282,8 +285,16 @@ const statusClasses: Record<string, string> = {
                         </div>
                     </template>
 
-                    <Button type="submit" size="sm" :disabled="settingsForm.processing">
-                        {{ settingsForm.processing ? 'Saving…' : 'Save settings' }}
+                    <Button
+                        type="submit"
+                        size="sm"
+                        :disabled="settingsForm.processing"
+                    >
+                        {{
+                            settingsForm.processing
+                                ? 'Saving…'
+                                : 'Save settings'
+                        }}
                     </Button>
                 </form>
             </section>
@@ -311,23 +322,34 @@ const statusClasses: Record<string, string> = {
                                         statusClasses.disconnected
                                     "
                                 >
-                                    {{ statusLabels[card.status] ?? card.status }}
+                                    {{
+                                        statusLabels[card.status] ?? card.status
+                                    }}
                                 </span>
                             </h3>
                             <p
-                                v-if="card.customerId && card.status === 'connected'"
+                                v-if="
+                                    card.customerId &&
+                                    card.status === 'connected'
+                                "
                                 class="mt-1 font-mono text-xs text-muted-foreground"
                             >
                                 Customer ID {{ card.customerId }}
                             </p>
                             <p
-                                v-if="card.status === 'connected' && !card.hasWebhookKey"
+                                v-if="
+                                    card.status === 'connected' &&
+                                    !card.hasWebhookKey
+                                "
                                 class="mt-1 text-sm text-amber-700"
                             >
                                 Deliveries will dispatch, but no live courier
                                 updates — add a webhook signing key below.
                             </p>
-                            <p v-if="card.lastError" class="mt-1 text-sm text-red-600">
+                            <p
+                                v-if="card.lastError"
+                                class="mt-1 text-sm text-red-600"
+                            >
                                 {{ card.lastError }}
                             </p>
                             <p
@@ -360,7 +382,9 @@ const statusClasses: Record<string, string> = {
                 </div>
 
                 <form
-                    v-if="card.provider === 'uber' && card.available && showForm"
+                    v-if="
+                        card.provider === 'uber' && card.available && showForm
+                    "
                     class="mt-4 space-y-4 border-t border-border pt-4"
                     @submit.prevent="save"
                 >
@@ -378,7 +402,9 @@ const statusClasses: Record<string, string> = {
                     </p>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium" for="client_id"
+                        <label
+                            class="mb-1 block text-sm font-medium"
+                            for="client_id"
                             >Client ID</label
                         >
                         <input
@@ -389,13 +415,18 @@ const statusClasses: Record<string, string> = {
                             spellcheck="false"
                             class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
                         />
-                        <p v-if="form.errors.client_id" class="mt-1 text-xs text-destructive">
+                        <p
+                            v-if="form.errors.client_id"
+                            class="mt-1 text-xs text-destructive"
+                        >
                             {{ form.errors.client_id }}
                         </p>
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium" for="client_secret"
+                        <label
+                            class="mb-1 block text-sm font-medium"
+                            for="client_secret"
                             >Client Secret</label
                         >
                         <input
@@ -415,7 +446,9 @@ const statusClasses: Record<string, string> = {
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium" for="customer_id"
+                        <label
+                            class="mb-1 block text-sm font-medium"
+                            for="customer_id"
                             >Customer ID</label
                         >
                         <input
@@ -478,8 +511,16 @@ const statusClasses: Record<string, string> = {
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <Button type="submit" size="sm" :disabled="form.processing">
-                            {{ form.processing ? 'Checking with Uber…' : 'Save and connect' }}
+                        <Button
+                            type="submit"
+                            size="sm"
+                            :disabled="form.processing"
+                        >
+                            {{
+                                form.processing
+                                    ? 'Checking with Uber…'
+                                    : 'Save and connect'
+                            }}
                         </Button>
                         <Button
                             v-if="card.status === 'connected'"

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, ref, watchEffect } from 'vue';
+import { Check, Copy, ExternalLink, PartyPopper } from 'lucide-vue-next';
 import QRCode from 'qrcode';
+import { computed, ref, watchEffect } from 'vue';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Check, Copy, ExternalLink, PartyPopper } from 'lucide-vue-next';
 import StepBasics from './Onboarding/StepBasics.vue';
 import StepHours from './Onboarding/StepHours.vue';
 import StepMenu from './Onboarding/StepMenu.vue';
@@ -61,12 +61,15 @@ const goto = (key: string): void => {
 
 const advance = (): void => {
     const next = stepOrder[currentIndex.value + 1];
+
     if (next) {
         currentKey.value = next;
     }
 };
 
-const setupSteps = computed(() => props.steps.filter((s) => s.key !== 'review'));
+const setupSteps = computed(() =>
+    props.steps.filter((s) => s.key !== 'review'),
+);
 const completedCount = computed(
     () => setupSteps.value.filter((s) => s.complete).length,
 );
@@ -115,9 +118,15 @@ const copyUrl = async (): Promise<void> => {
         <Head :title="`Set up ${restaurant.name}`" />
 
         <header class="border-b border-border bg-card">
-            <div class="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
+            <div
+                class="mx-auto flex max-w-3xl items-center justify-between px-6 py-4"
+            >
                 <h1 class="text-lg font-semibold">
-                    {{ restaurant.isLive ? restaurant.name : `Set up ${restaurant.name}` }}
+                    {{
+                        restaurant.isLive
+                            ? restaurant.name
+                            : `Set up ${restaurant.name}`
+                    }}
                 </h1>
                 <div class="flex items-center gap-4">
                     <a
@@ -152,7 +161,9 @@ const copyUrl = async (): Promise<void> => {
                 >
                     <PartyPopper class="mx-auto size-10 text-primary" />
                     <h2 class="mt-4 text-2xl font-semibold">You're live!</h2>
-                    <p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                    <p
+                        class="mx-auto mt-2 max-w-md text-sm text-muted-foreground"
+                    >
                         {{ restaurant.name }} is open for orders and listed on
                         the Plateful homepage. Share your link — or let
                         customers scan the code from a flyer or table tent.
@@ -174,7 +185,10 @@ const copyUrl = async (): Promise<void> => {
                             :aria-label="copied ? 'Copied' : 'Copy link'"
                             @click="copyUrl"
                         >
-                            <Check v-if="copied" class="size-4 text-green-600" />
+                            <Check
+                                v-if="copied"
+                                class="size-4 text-green-600"
+                            />
                             <Copy v-else class="size-4" />
                         </button>
                     </div>
@@ -202,20 +216,29 @@ const copyUrl = async (): Promise<void> => {
             <!-- ============== Pre-live: wizard ============== -->
             <template v-else>
                 <section>
-                    <p class="text-xs tracking-wide text-muted-foreground uppercase">
+                    <p
+                        class="text-xs tracking-wide text-muted-foreground uppercase"
+                    >
                         Welcome to Plateful
                     </p>
                     <h2 class="mt-1 text-2xl font-semibold">
                         Let's get your storefront live
                     </h2>
                     <div class="mt-4 flex items-center gap-3">
-                        <div class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                            class="h-2 flex-1 overflow-hidden rounded-full bg-muted"
+                        >
                             <div
                                 class="h-full rounded-full bg-primary transition-all"
-                                :style="{ width: `${(completedCount / setupSteps.length) * 100}%` }"
+                                :style="{
+                                    width: `${(completedCount / setupSteps.length) * 100}%`,
+                                }"
                             ></div>
                         </div>
-                        <span class="text-sm text-muted-foreground" data-test="wizard-progress">
+                        <span
+                            class="text-sm text-muted-foreground"
+                            data-test="wizard-progress"
+                        >
                             {{ completedCount }} of {{ setupSteps.length }} done
                         </span>
                     </div>
@@ -257,7 +280,9 @@ const copyUrl = async (): Promise<void> => {
                     :data-test="`wizard-step-${currentKey}`"
                 >
                     <div class="mb-5 flex items-baseline justify-between">
-                        <h3 class="text-lg font-semibold">{{ currentStep.title }}</h3>
+                        <h3 class="text-lg font-semibold">
+                            {{ currentStep.title }}
+                        </h3>
                         <span
                             v-if="!currentStep.required"
                             class="text-xs text-muted-foreground"
@@ -311,9 +336,10 @@ const copyUrl = async (): Promise<void> => {
                     <div>
                         <h3 class="text-sm font-medium">Custom domain</h3>
                         <p class="mt-1 text-sm text-muted-foreground">
-                            Use your own domain (like <code>pizzajoint.com</code>)
-                            instead of a Plateful address. We set up DNS and TLS,
-                            usually within a business day.
+                            Use your own domain (like
+                            <code>pizzajoint.com</code>) instead of a Plateful
+                            address. We set up DNS and TLS, usually within a
+                            business day.
                         </p>
 
                         <p
@@ -338,10 +364,18 @@ const copyUrl = async (): Promise<void> => {
                             class="mt-3"
                             @click="showDomain = true"
                         >
-                            {{ onboarding.pendingCustomDomain ? 'Change request' : 'Request custom domain' }}
+                            {{
+                                onboarding.pendingCustomDomain
+                                    ? 'Change request'
+                                    : 'Request custom domain'
+                            }}
                         </Button>
 
-                        <form v-if="showDomain" class="mt-3 space-y-2" @submit.prevent="submitDomain">
+                        <form
+                            v-if="showDomain"
+                            class="mt-3 space-y-2"
+                            @submit.prevent="submitDomain"
+                        >
                             <Label for="pending_custom_domain">Domain</Label>
                             <Input
                                 id="pending_custom_domain"
@@ -356,10 +390,19 @@ const copyUrl = async (): Promise<void> => {
                                 {{ domainForm.errors.pending_custom_domain }}
                             </p>
                             <div class="flex gap-2">
-                                <Button type="submit" size="sm" :disabled="domainForm.processing">
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    :disabled="domainForm.processing"
+                                >
                                     Request
                                 </Button>
-                                <Button type="button" size="sm" variant="ghost" @click="showDomain = false">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    @click="showDomain = false"
+                                >
                                     Cancel
                                 </Button>
                             </div>

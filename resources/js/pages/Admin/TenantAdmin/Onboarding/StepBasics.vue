@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { computed, ref } from 'vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -27,15 +27,19 @@ const form = useForm({
 });
 
 const newLogoPreview = ref<string | null>(null);
-const currentLogo = computed(() => newLogoPreview.value ?? props.restaurant.logoMediumUrl);
+const currentLogo = computed(
+    () => newLogoPreview.value ?? props.restaurant.logoMediumUrl,
+);
 
 const onLogoChange = (event: Event): void => {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0] ?? null;
     form.logo = file;
+
     if (newLogoPreview.value) {
         URL.revokeObjectURL(newLogoPreview.value);
     }
+
     newLogoPreview.value = file ? URL.createObjectURL(file) : null;
 };
 
@@ -51,8 +55,8 @@ const submit = (): void => {
 <template>
     <form class="space-y-6" @submit.prevent="submit">
         <p class="text-sm text-muted-foreground">
-            This is what customers see first — a logo and a sentence or two go
-            a long way. Everything here can be changed later.
+            This is what customers see first — a logo and a sentence or two go a
+            long way. Everything here can be changed later.
         </p>
 
         <div class="grid gap-2">
@@ -118,7 +122,12 @@ const submit = (): void => {
 
         <div class="grid gap-2">
             <Label for="basics-phone">Phone</Label>
-            <Input id="basics-phone" v-model="form.phone" type="tel" autocomplete="tel" />
+            <Input
+                id="basics-phone"
+                v-model="form.phone"
+                type="tel"
+                autocomplete="tel"
+            />
             <InputError :message="form.errors.phone" />
         </div>
 
@@ -148,7 +157,11 @@ const submit = (): void => {
                 </div>
                 <div class="grid gap-2">
                     <Label for="basics-postal">ZIP</Label>
-                    <Input id="basics-postal" v-model="form.postal_code" type="text" />
+                    <Input
+                        id="basics-postal"
+                        v-model="form.postal_code"
+                        type="text"
+                    />
                     <InputError :message="form.errors.postal_code" />
                 </div>
             </div>
@@ -162,7 +175,11 @@ const submit = (): void => {
             >
                 Skip for now
             </button>
-            <Button type="submit" :disabled="form.processing" data-test="save-basics-button">
+            <Button
+                type="submit"
+                :disabled="form.processing"
+                data-test="save-basics-button"
+            >
                 {{ form.processing ? 'Saving...' : 'Save & continue' }}
             </Button>
         </div>

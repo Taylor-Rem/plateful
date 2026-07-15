@@ -34,7 +34,10 @@ const form = useForm({
 });
 
 function sanitizeSubdomain(value: string): string {
-    return value.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-');
+    return value
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-{2,}/g, '-');
 }
 
 const subdomainModel = computed({
@@ -50,6 +53,7 @@ const subdomainReserved = computed(() =>
 
 const subdomainPreview = computed(() => {
     const sub = form.subdomain || 'subdomain';
+
     return `${sub}.${props.primaryDomain}`;
 });
 
@@ -62,7 +66,9 @@ function submit() {
     <div class="min-h-screen bg-background text-foreground">
         <Head title="Create restaurant" />
         <header class="border-b border-border bg-card">
-            <div class="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
+            <div
+                class="mx-auto flex max-w-3xl items-center justify-between px-6 py-4"
+            >
                 <div class="flex items-center gap-4">
                     <Link
                         href="/super/restaurants"
@@ -70,7 +76,9 @@ function submit() {
                     >
                         ←
                     </Link>
-                    <h1 class="text-lg font-semibold text-foreground">Create restaurant</h1>
+                    <h1 class="text-lg font-semibold text-foreground">
+                        Create restaurant
+                    </h1>
                 </div>
                 <AppearanceTabs />
             </div>
@@ -79,7 +87,9 @@ function submit() {
         <main class="mx-auto max-w-3xl px-6 py-8">
             <form @submit.prevent="submit" class="space-y-8">
                 <section class="rounded-lg border border-border bg-card p-6">
-                    <h2 class="text-base font-semibold text-foreground">Basics</h2>
+                    <h2 class="text-base font-semibold text-foreground">
+                        Basics
+                    </h2>
                     <div class="mt-4 grid gap-4">
                         <div class="grid gap-2">
                             <Label for="name">Restaurant name</Label>
@@ -96,13 +106,16 @@ function submit() {
                             />
                             <p class="text-xs text-muted-foreground">
                                 Will be:
-                                <span class="font-mono text-foreground">{{ subdomainPreview }}</span>
+                                <span class="font-mono text-foreground">{{
+                                    subdomainPreview
+                                }}</span>
                             </p>
                             <p
                                 v-if="subdomainReserved"
                                 class="text-xs text-amber-600 dark:text-amber-400"
                             >
-                                "{{ form.subdomain }}" is reserved — please choose another.
+                                "{{ form.subdomain }}" is reserved — please
+                                choose another.
                             </p>
                             <InputError :message="form.errors.subdomain" />
                         </div>
@@ -110,7 +123,9 @@ function submit() {
                 </section>
 
                 <section class="rounded-lg border border-border bg-card p-6">
-                    <h2 class="text-base font-semibold text-foreground">Branding</h2>
+                    <h2 class="text-base font-semibold text-foreground">
+                        Branding
+                    </h2>
                     <div class="mt-4 grid gap-4">
                         <div class="grid gap-2 sm:grid-cols-2">
                             <div class="grid gap-2">
@@ -122,12 +137,19 @@ function submit() {
                                         v-model="form.primary_color"
                                         class="h-9 w-12 rounded border border-input"
                                     />
-                                    <Input v-model="form.primary_color" class="flex-1 font-mono" />
+                                    <Input
+                                        v-model="form.primary_color"
+                                        class="flex-1 font-mono"
+                                    />
                                 </div>
-                                <InputError :message="form.errors.primary_color" />
+                                <InputError
+                                    :message="form.errors.primary_color"
+                                />
                             </div>
                             <div class="grid gap-2">
-                                <Label for="secondary_color">Secondary color</Label>
+                                <Label for="secondary_color"
+                                    >Secondary color</Label
+                                >
                                 <div class="flex items-center gap-2">
                                     <input
                                         id="secondary_color"
@@ -135,9 +157,14 @@ function submit() {
                                         v-model="form.secondary_color"
                                         class="h-9 w-12 rounded border border-input"
                                     />
-                                    <Input v-model="form.secondary_color" class="flex-1 font-mono" />
+                                    <Input
+                                        v-model="form.secondary_color"
+                                        class="flex-1 font-mono"
+                                    />
                                 </div>
-                                <InputError :message="form.errors.secondary_color" />
+                                <InputError
+                                    :message="form.errors.secondary_color"
+                                />
                             </div>
                         </div>
                         <div class="grid gap-2">
@@ -147,7 +174,7 @@ function submit() {
                                 v-model="form.description"
                                 rows="3"
                                 maxlength="1000"
-                                class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+                                class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
                             />
                             <InputError :message="form.errors.description" />
                         </div>
@@ -155,7 +182,9 @@ function submit() {
                 </section>
 
                 <section class="rounded-lg border border-border bg-card p-6">
-                    <h2 class="text-base font-semibold text-foreground">Contact</h2>
+                    <h2 class="text-base font-semibold text-foreground">
+                        Contact
+                    </h2>
                     <div class="mt-4 grid gap-4">
                         <div class="grid gap-2 sm:grid-cols-2">
                             <div class="grid gap-2">
@@ -197,24 +226,37 @@ function submit() {
                             </div>
                             <div class="grid gap-2">
                                 <Label for="postal_code">Postal code</Label>
-                                <Input id="postal_code" v-model="form.postal_code" />
-                                <InputError :message="form.errors.postal_code" />
+                                <Input
+                                    id="postal_code"
+                                    v-model="form.postal_code"
+                                />
+                                <InputError
+                                    :message="form.errors.postal_code"
+                                />
                             </div>
                         </div>
                     </div>
                 </section>
 
                 <section class="rounded-lg border border-border bg-card p-6">
-                    <h2 class="text-base font-semibold text-foreground">Operations</h2>
+                    <h2 class="text-base font-semibold text-foreground">
+                        Operations
+                    </h2>
                     <div class="mt-4 grid gap-4 sm:grid-cols-3">
                         <div class="grid gap-2">
                             <Label for="timezone">Timezone</Label>
                             <select
                                 id="timezone"
                                 v-model="form.timezone"
-                                class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+                                class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
                             >
-                                <option v-for="tz in timezones" :key="tz" :value="tz">{{ tz }}</option>
+                                <option
+                                    v-for="tz in timezones"
+                                    :key="tz"
+                                    :value="tz"
+                                >
+                                    {{ tz }}
+                                </option>
                             </select>
                             <InputError :message="form.errors.timezone" />
                         </div>
@@ -228,7 +270,9 @@ function submit() {
                                 max="30"
                                 v-model="form.tax_rate_percent"
                             />
-                            <InputError :message="form.errors.tax_rate_percent" />
+                            <InputError
+                                :message="form.errors.tax_rate_percent"
+                            />
                         </div>
                         <div class="grid gap-2">
                             <Label for="delivery_fee">Delivery fee ($)</Label>
@@ -246,7 +290,9 @@ function submit() {
                 </section>
 
                 <section class="rounded-lg border border-border bg-card p-6">
-                    <h2 class="text-base font-semibold text-foreground">Owner invite (optional)</h2>
+                    <h2 class="text-base font-semibold text-foreground">
+                        Owner invite (optional)
+                    </h2>
                     <div class="mt-4 grid gap-2">
                         <Label for="owner_email">Owner email</Label>
                         <Input
@@ -255,7 +301,8 @@ function submit() {
                             v-model="form.owner_email"
                         />
                         <p class="text-xs text-muted-foreground">
-                            Optional — if provided, we'll email them an invite to manage this restaurant.
+                            Optional — if provided, we'll email them an invite
+                            to manage this restaurant.
                         </p>
                         <InputError :message="form.errors.owner_email" />
                     </div>
@@ -266,7 +313,9 @@ function submit() {
                         <Button type="button" variant="outline">Cancel</Button>
                     </Link>
                     <Button type="submit" :disabled="form.processing">
-                        {{ form.processing ? 'Creating…' : 'Create restaurant' }}
+                        {{
+                            form.processing ? 'Creating…' : 'Create restaurant'
+                        }}
                     </Button>
                 </div>
             </form>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import { CheckCircle2 } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 type BrandPalette = {
     primary: string;
@@ -16,8 +16,7 @@ const props = defineProps<{
     brand: BrandPalette;
 }>();
 
-const formatPrice = (cents: number): string =>
-    `$${(cents / 100).toFixed(2)}`;
+const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 const isDelivery = computed(() => props.order.type === 'delivery');
 const addr = computed(() => props.order.deliveryAddress);
@@ -39,13 +38,15 @@ const addr = computed(() => props.order.deliveryAddress);
             </div>
 
             <p class="mt-2 text-muted-foreground">
-                We've received your order at <strong>{{ restaurant.name }}</strong>.
+                We've received your order at
+                <strong>{{ restaurant.name }}</strong
+                >.
             </p>
 
-            <div
-                class="mt-6 rounded-md border border-border bg-background p-5"
-            >
-                <p class="text-xs uppercase tracking-wide text-muted-foreground">
+            <div class="mt-6 rounded-md border border-border bg-background p-5">
+                <p
+                    class="text-xs tracking-wide text-muted-foreground uppercase"
+                >
                     Order number
                 </p>
                 <p
@@ -56,7 +57,7 @@ const addr = computed(() => props.order.deliveryAddress);
                 </p>
                 <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
                     <span
-                        class="rounded-full px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide"
+                        class="rounded-full px-2.5 py-0.5 text-xs font-medium tracking-wide uppercase"
                         :style="{
                             backgroundColor: 'var(--brand-primary)',
                             color: 'var(--brand-primary-foreground)',
@@ -71,25 +72,34 @@ const addr = computed(() => props.order.deliveryAddress);
             </div>
 
             <section class="mt-6">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2
+                    class="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+                >
                     Customer
                 </h2>
                 <p class="mt-1 text-sm">{{ order.customerName }}</p>
                 <p class="text-sm text-muted-foreground">
                     {{ order.customerEmail }}
                 </p>
-                <p v-if="order.customerPhone" class="text-sm text-muted-foreground">
+                <p
+                    v-if="order.customerPhone"
+                    class="text-sm text-muted-foreground"
+                >
                     {{ order.customerPhone }}
                 </p>
             </section>
 
             <section v-if="isDelivery && addr" class="mt-6">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2
+                    class="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+                >
                     Delivery to
                 </h2>
                 <p class="mt-1 text-sm">
                     {{ addr.street }}<br v-if="addr.street2" />
-                    <template v-if="addr.street2">{{ addr.street2 }}<br /></template>
+                    <template v-if="addr.street2"
+                        >{{ addr.street2 }}<br
+                    /></template>
                     {{ addr.city }}, {{ addr.state }} {{ addr.postal_code }}
                 </p>
                 <p
@@ -101,7 +111,9 @@ const addr = computed(() => props.order.deliveryAddress);
             </section>
 
             <section v-else class="mt-6">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2
+                    class="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+                >
                     Pickup
                 </h2>
                 <p class="mt-1 text-sm">
@@ -110,7 +122,9 @@ const addr = computed(() => props.order.deliveryAddress);
             </section>
 
             <section class="mt-6">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                <h2
+                    class="text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+                >
                     Items
                 </h2>
                 <ul class="mt-2 divide-y divide-border">

@@ -13,8 +13,12 @@ defineProps<{
         <Head title="Admin" />
 
         <header class="border-b border-border bg-card">
-            <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-                <h1 class="text-lg font-semibold text-foreground">Plateful Admin</h1>
+            <div
+                class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4"
+            >
+                <h1 class="text-lg font-semibold text-foreground">
+                    Plateful Admin
+                </h1>
                 <div class="flex items-center gap-4">
                     <AppearanceTabs />
                     <Link
@@ -40,10 +44,19 @@ defineProps<{
                     href="/super/restaurants"
                     class="flex flex-col rounded-lg border border-primary/30 bg-primary/5 p-5 shadow-sm transition hover:border-primary/60"
                 >
-                    <span class="text-xs font-medium uppercase tracking-wide text-primary">Platform</span>
-                    <span class="mt-2 text-lg font-semibold text-foreground">Manage platform</span>
-                    <span class="mt-1 text-sm text-muted-foreground">Restaurants, admins, invitations</span>
-                    <span class="mt-4 text-sm font-medium text-primary">Open →</span>
+                    <span
+                        class="text-xs font-medium tracking-wide text-primary uppercase"
+                        >Platform</span
+                    >
+                    <span class="mt-2 text-lg font-semibold text-foreground"
+                        >Manage platform</span
+                    >
+                    <span class="mt-1 text-sm text-muted-foreground"
+                        >Restaurants, admins, invitations</span
+                    >
+                    <span class="mt-4 text-sm font-medium text-primary"
+                        >Open →</span
+                    >
                 </Link>
 
                 <Link
@@ -58,9 +71,15 @@ defineProps<{
                         :alt="restaurant.name"
                         class="mb-3 h-12 w-12 rounded object-cover"
                     />
-                    <span class="text-lg font-semibold text-foreground">{{ restaurant.name }}</span>
-                    <span class="mt-1 text-sm text-muted-foreground">{{ restaurant.subdomain }}</span>
-                    <span class="mt-4 text-sm font-medium text-foreground">Manage →</span>
+                    <span class="text-lg font-semibold text-foreground">{{
+                        restaurant.name
+                    }}</span>
+                    <span class="mt-1 text-sm text-muted-foreground">{{
+                        restaurant.subdomain
+                    }}</span>
+                    <span class="mt-4 text-sm font-medium text-foreground"
+                        >Manage →</span
+                    >
                 </Link>
             </div>
 

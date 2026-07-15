@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Check, LoaderCircle } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { store } from '@/actions/App/Http/Controllers/OwnerSignupController';
 import AppWordmark from '@/components/AppWordmark.vue';
@@ -10,9 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { home } from '@/routes';
-import { Check, LoaderCircle } from 'lucide-vue-next';
 
-const props = defineProps<{
+defineProps<{
     primaryDomain: string;
 }>();
 
@@ -49,8 +49,12 @@ const subdomainEdited = ref(false);
 watch(
     () => form.restaurant_name,
     (name) => {
-        if (subdomainEdited.value) return;
+        if (subdomainEdited.value) {
+            return;
+        }
+
         form.subdomain = slugify(name);
+
         if (form.subdomain.length >= 2) {
             form.validate('subdomain');
         }
@@ -60,6 +64,7 @@ watch(
 const onSubdomainInput = (): void => {
     subdomainEdited.value = form.subdomain !== '';
     form.subdomain = form.subdomain.toLowerCase();
+
     if (form.subdomain.length >= 2) {
         form.validate('subdomain');
     }

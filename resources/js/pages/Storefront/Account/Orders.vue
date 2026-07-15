@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
 import { Bike, ShoppingBag } from 'lucide-vue-next';
+import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
 
 type Paginated<T> = {
     data: T[];
@@ -15,11 +15,13 @@ defineProps<{
     orders: Paginated<App.Data.OrderData>;
 }>();
 
-const formatPrice = (cents: number): string =>
-    `$${(cents / 100).toFixed(2)}`;
+const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 const formatDate = (iso: string | null): string => {
-    if (!iso) return '';
+    if (!iso) {
+        return '';
+    }
+
     return new Date(iso).toLocaleString(undefined, {
         month: 'short',
         day: 'numeric',
@@ -96,7 +98,11 @@ const statusColor = (s: string): string => {
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2 text-sm">
                                 <component
-                                    :is="order.type === 'delivery' ? Bike : ShoppingBag"
+                                    :is="
+                                        order.type === 'delivery'
+                                            ? Bike
+                                            : ShoppingBag
+                                    "
                                     class="size-4 text-muted-foreground"
                                 />
                                 <span
@@ -106,7 +112,7 @@ const statusColor = (s: string): string => {
                                     {{ order.number }}
                                 </span>
                                 <span
-                                    class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                                    class="rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
                                     :class="statusColor(order.status)"
                                 >
                                     {{ order.status }}
@@ -123,7 +129,9 @@ const statusColor = (s: string): string => {
                                 +{{ order.awardedLoyaltyPoints }} loyalty points
                             </p>
                         </div>
-                        <div class="text-right text-sm font-semibold tabular-nums">
+                        <div
+                            class="text-right text-sm font-semibold tabular-nums"
+                        >
                             {{ formatPrice(order.totalCents) }}
                         </div>
                     </Link>
@@ -139,7 +147,6 @@ const statusColor = (s: string): string => {
                     v-for="(link, i) in orders.links"
                     :key="i"
                     :href="link.url ?? ''"
-                    v-html="link.label"
                     class="rounded-md border border-border px-3 py-1.5 text-xs"
                     :class="
                         link.active
@@ -157,7 +164,11 @@ const statusColor = (s: string): string => {
                               }
                             : {}
                     "
-                />
+                >
+                    <!-- Paginator labels carry entities (&laquo;, &raquo;), so
+                         they render as HTML — on a span, not on the Link. -->
+                    <span v-html="link.label" />
+                </Link>
             </nav>
         </main>
     </div>

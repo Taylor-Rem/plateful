@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Clock, ImagePlus, MapPin, Pencil } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -13,12 +13,17 @@ const emit = defineEmits<{
 
 const hasImage = computed(() => Boolean(props.restaurant.heroImageUrl));
 
-const ctaLabel = computed(() => props.restaurant.heroCtaLabel?.trim() || 'Order online');
+const ctaLabel = computed(
+    () => props.restaurant.heroCtaLabel?.trim() || 'Order online',
+);
 const ctaHref = computed(() => props.restaurant.heroCtaUrl?.trim() || '/menu');
 
 const addressLine = computed(() => {
     const r = props.restaurant;
-    const parts = [r.street, r.city, r.state].filter((p): p is string => Boolean(p && p.trim()));
+    const parts = [r.street, r.city, r.state].filter((p): p is string =>
+        Boolean(p && p.trim()),
+    );
+
     return parts.join(', ');
 });
 
@@ -65,7 +70,7 @@ const ctaStyle = computed(() =>
         <button
             v-if="editMode"
             type="button"
-            class="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-card/95 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-card"
+            class="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-card/95 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm ring-1 ring-border hover:bg-card"
             aria-label="Edit hero"
             @click="emit('edit-hero')"
         >
@@ -90,7 +95,7 @@ const ctaStyle = computed(() =>
 
             <p
                 v-if="restaurant.heroTagline"
-                class="max-w-2xl text-lg sm:text-xl opacity-95"
+                class="max-w-2xl text-lg opacity-95 sm:text-xl"
             >
                 {{ restaurant.heroTagline }}
             </p>
@@ -104,24 +109,33 @@ const ctaStyle = computed(() =>
             <div class="flex flex-wrap items-center gap-3 text-sm">
                 <span
                     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1"
-                    :class="hasImage
-                        ? 'bg-black/40 text-white ring-white/20 backdrop-blur'
-                        : 'bg-black/10 ring-black/10'"
+                    :class="
+                        hasImage
+                            ? 'bg-black/40 text-white ring-white/20 backdrop-blur'
+                            : 'bg-black/10 ring-black/10'
+                    "
                 >
                     <span
                         class="size-2.5 rounded-full"
-                        :class="restaurant.isOpen ? 'bg-emerald-400' : 'bg-rose-400'"
+                        :class="
+                            restaurant.isOpen ? 'bg-emerald-400' : 'bg-rose-400'
+                        "
                         aria-hidden="true"
                     />
                     <Clock class="size-3.5" />
-                    {{ restaurant.openStatusLabel ?? (restaurant.isOpen ? 'Open now' : 'Closed') }}
+                    {{
+                        restaurant.openStatusLabel ??
+                        (restaurant.isOpen ? 'Open now' : 'Closed')
+                    }}
                 </span>
                 <span
                     v-if="addressLine"
                     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1"
-                    :class="hasImage
-                        ? 'bg-black/40 text-white ring-white/20 backdrop-blur'
-                        : 'bg-black/10 ring-black/10'"
+                    :class="
+                        hasImage
+                            ? 'bg-black/40 text-white ring-white/20 backdrop-blur'
+                            : 'bg-black/10 ring-black/10'
+                    "
                 >
                     <MapPin class="size-3.5" />
                     {{ addressLine }}
@@ -131,7 +145,7 @@ const ctaStyle = computed(() =>
             <div class="flex flex-wrap items-center gap-3">
                 <a
                     :href="ctaHref"
-                    class="inline-flex items-center justify-center rounded-md px-5 py-3 text-base font-semibold shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                    class="inline-flex items-center justify-center rounded-md px-5 py-3 text-base font-semibold shadow-sm transition hover:brightness-110 focus:ring-2 focus:ring-offset-2 focus:outline-none"
                     :style="ctaStyle"
                     @click.stop
                 >

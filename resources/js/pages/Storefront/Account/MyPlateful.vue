@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
 import { Store } from 'lucide-vue-next';
+import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
 
 interface PlatefulRestaurant {
     id: number;
@@ -20,7 +20,10 @@ defineProps<{
 }>();
 
 const formatDate = (iso: string | null): string => {
-    if (!iso) return '—';
+    if (!iso) {
+        return '—';
+    }
+
     return new Date(iso).toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
@@ -60,10 +63,7 @@ const formatMoney = (cents: number): string => {
                 You haven't ordered from any other Plateful restaurants yet.
             </div>
 
-            <ul
-                v-else
-                class="grid grid-cols-1 gap-3 sm:grid-cols-2"
-            >
+            <ul v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <li
                     v-for="r in restaurants"
                     :key="r.id"
@@ -80,7 +80,10 @@ const formatMoney = (cents: number): string => {
                                 :alt="r.name"
                                 class="size-full object-cover"
                             />
-                            <Store v-else class="size-6 text-muted-foreground" />
+                            <Store
+                                v-else
+                                class="size-6 text-muted-foreground"
+                            />
                         </div>
                         <div class="min-w-0 flex-1">
                             <a

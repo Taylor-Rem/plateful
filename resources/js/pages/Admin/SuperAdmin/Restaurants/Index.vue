@@ -12,7 +12,10 @@ defineProps<{
 }>();
 
 function formatDate(iso: string | null | undefined): string {
-    if (!iso) return '—';
+    if (!iso) {
+        return '—';
+    }
+
     try {
         return new Date(iso).toLocaleDateString();
     } catch {
@@ -25,17 +28,31 @@ function formatDate(iso: string | null | undefined): string {
     <div class="min-h-screen bg-background text-foreground">
         <Head title="Restaurants" />
         <header class="border-b border-border bg-card">
-            <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+            <div
+                class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4"
+            >
                 <div class="flex items-center gap-4">
-                    <Link href="/" class="text-sm text-muted-foreground hover:text-foreground">←</Link>
-                    <h1 class="text-lg font-semibold text-foreground">Restaurants</h1>
+                    <Link
+                        href="/"
+                        class="text-sm text-muted-foreground hover:text-foreground"
+                        >←</Link
+                    >
+                    <h1 class="text-lg font-semibold text-foreground">
+                        Restaurants
+                    </h1>
                 </div>
                 <div class="flex items-center gap-4">
                     <AppearanceTabs />
-                    <Link href="/super/earnings" class="text-sm text-muted-foreground hover:text-foreground">
+                    <Link
+                        href="/super/earnings"
+                        class="text-sm text-muted-foreground hover:text-foreground"
+                    >
                         Earnings
                     </Link>
-                    <Link href="/super/admins" class="text-sm text-muted-foreground hover:text-foreground">
+                    <Link
+                        href="/super/admins"
+                        class="text-sm text-muted-foreground hover:text-foreground"
+                    >
                         Admins
                     </Link>
                 </div>
@@ -46,7 +63,9 @@ function formatDate(iso: string | null | undefined): string {
             <div class="flex items-center justify-between">
                 <p class="text-sm text-muted-foreground">
                     {{ restaurants.length }}
-                    {{ restaurants.length === 1 ? 'restaurant' : 'restaurants' }}
+                    {{
+                        restaurants.length === 1 ? 'restaurant' : 'restaurants'
+                    }}
                 </p>
                 <Link href="/super/restaurants/create">
                     <Button>Create restaurant</Button>
@@ -64,7 +83,9 @@ function formatDate(iso: string | null | undefined): string {
                 v-else
                 class="w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-card"
             >
-                <thead class="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <thead
+                    class="bg-muted/40 text-left text-xs tracking-wide text-muted-foreground uppercase"
+                >
                     <tr>
                         <th class="px-4 py-3">Name</th>
                         <th class="px-4 py-3">Subdomain</th>
@@ -75,13 +96,22 @@ function formatDate(iso: string | null | undefined): string {
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border text-sm">
-                    <tr v-for="r in restaurants" :key="r.id" class="hover:bg-muted/30">
+                    <tr
+                        v-for="r in restaurants"
+                        :key="r.id"
+                        class="hover:bg-muted/30"
+                    >
                         <td class="px-4 py-3 font-medium text-foreground">
-                            <Link :href="`/super/restaurants/${r.subdomain}`" class="hover:underline">
+                            <Link
+                                :href="`/super/restaurants/${r.subdomain}`"
+                                class="hover:underline"
+                            >
                                 {{ r.name }}
                             </Link>
                         </td>
-                        <td class="px-4 py-3 text-muted-foreground">{{ r.subdomain }}</td>
+                        <td class="px-4 py-3 text-muted-foreground">
+                            {{ r.subdomain }}
+                        </td>
                         <td class="px-4 py-3">
                             <span
                                 v-if="r.isActive"
@@ -96,8 +126,12 @@ function formatDate(iso: string | null | undefined): string {
                                 Deactivated
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-muted-foreground">{{ r.adminsCount }}</td>
-                        <td class="px-4 py-3 text-muted-foreground">{{ formatDate(r.createdAt) }}</td>
+                        <td class="px-4 py-3 text-muted-foreground">
+                            {{ r.adminsCount }}
+                        </td>
+                        <td class="px-4 py-3 text-muted-foreground">
+                            {{ formatDate(r.createdAt) }}
+                        </td>
                         <td class="px-4 py-3 text-right">
                             <Link
                                 :href="`/super/restaurants/${r.subdomain}`"

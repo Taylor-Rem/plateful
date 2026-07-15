@@ -24,8 +24,13 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-    if (nowTimer) clearInterval(nowTimer);
-    if (pollTimer) clearInterval(pollTimer);
+    if (nowTimer) {
+        clearInterval(nowTimer);
+    }
+
+    if (pollTimer) {
+        clearInterval(pollTimer);
+    }
 });
 
 const columns = computed(() => [
@@ -59,6 +64,7 @@ const advance = (order: App.Data.OrderData, toStatus: string): void => {
     if (advancing.value.has(order.id)) {
         return;
     }
+
     advancing.value.add(order.id);
     router.post(
         `/${props.restaurant.subdomain}/orders/${order.number}/transitions`,
@@ -76,20 +82,27 @@ const elapsed = (placedAt: string | null): string => {
     if (!placedAt) {
         return '—';
     }
+
     const placed = new Date(placedAt).getTime();
+
     if (isNaN(placed)) {
         return '—';
     }
+
     const totalSeconds = Math.max(0, Math.floor((now.value - placed) / 1000));
     const minutes = Math.floor(totalSeconds / 60);
+
     if (minutes < 1) {
         return 'just now';
     }
+
     if (minutes < 60) {
         return `${minutes}m`;
     }
+
     const hours = Math.floor(minutes / 60);
     const rem = minutes % 60;
+
     return `${hours}h ${rem}m`;
 };
 
@@ -97,26 +110,52 @@ const elapsedTone = (placedAt: string | null, status: string): string => {
     if (!placedAt) {
         return 'text-muted-foreground';
     }
+
     const placed = new Date(placedAt).getTime();
     const minutes = (now.value - placed) / 60000;
     // Warn after 15min for new/preparing, after 5min for ready (sitting too long)
     const threshold = status === 'ready' ? 5 : 15;
-    if (minutes >= threshold * 2) return 'text-destructive font-semibold';
-    if (minutes >= threshold) return 'text-amber-600 dark:text-amber-400 font-semibold';
+
+    if (minutes >= threshold * 2) {
+        return 'text-destructive font-semibold';
+    }
+
+    if (minutes >= threshold) {
+        return 'text-amber-600 dark:text-amber-400 font-semibold';
+    }
+
     return 'text-muted-foreground';
 };
 
 const orderTypeLabel = (type: string): string => {
-    if (type === 'delivery') return 'Delivery';
-    if (type === 'pickup') return 'Pickup';
-    if (type === 'dine_in') return 'Dine in';
+    if (type === 'delivery') {
+        return 'Delivery';
+    }
+
+    if (type === 'pickup') {
+        return 'Pickup';
+    }
+
+    if (type === 'dine_in') {
+        return 'Dine in';
+    }
+
     return type;
 };
 
 const advanceLabel = (next: string): string => {
-    if (next === 'preparing') return 'Start preparing';
-    if (next === 'ready') return 'Mark ready';
-    if (next === 'completed') return 'Mark completed';
+    if (next === 'preparing') {
+        return 'Start preparing';
+    }
+
+    if (next === 'ready') {
+        return 'Mark ready';
+    }
+
+    if (next === 'completed') {
+        return 'Mark completed';
+    }
+
     return 'Advance';
 };
 </script>
@@ -134,9 +173,13 @@ const advanceLabel = (next: string): string => {
                     >
                         ←
                     </Link>
-                    <h1 class="text-xl font-semibold">{{ restaurant.name }} · Kitchen</h1>
+                    <h1 class="text-xl font-semibold">
+                        {{ restaurant.name }} · Kitchen
+                    </h1>
                 </div>
-                <div class="flex items-center gap-3 text-xs text-muted-foreground">
+                <div
+                    class="flex items-center gap-3 text-xs text-muted-foreground"
+                >
                     <span>Auto-refreshing every {{ POLL_MS / 1000 }}s</span>
                 </div>
             </div>
@@ -159,7 +202,10 @@ const advanceLabel = (next: string): string => {
                     </span>
                 </div>
 
-                <div v-if="col.orders.length === 0" class="rounded-lg border border-dashed border-border bg-background/40 p-6 text-center text-sm text-muted-foreground">
+                <div
+                    v-if="col.orders.length === 0"
+                    class="rounded-lg border border-dashed border-border bg-background/40 p-6 text-center text-sm text-muted-foreground"
+                >
                     Nothing here.
                 </div>
 
@@ -171,12 +217,20 @@ const advanceLabel = (next: string): string => {
                     >
                         <header class="flex items-start justify-between gap-2">
                             <div>
-                                <div class="text-2xl font-bold tracking-tight">#{{ order.number }}</div>
+                                <div class="text-2xl font-bold tracking-tight">
+                                    #{{ order.number }}
+                                </div>
                                 <div class="text-sm text-muted-foreground">
-                                    {{ order.customerName || 'Guest' }} · {{ orderTypeLabel(order.type) }}
+                                    {{ order.customerName || 'Guest' }} ·
+                                    {{ orderTypeLabel(order.type) }}
                                 </div>
                             </div>
-                            <div :class="['text-right text-sm', elapsedTone(order.placedAt, order.status)]">
+                            <div
+                                :class="[
+                                    'text-right text-sm',
+                                    elapsedTone(order.placedAt, order.status),
+                                ]"
+                            >
                                 {{ elapsed(order.placedAt) }}
                             </div>
                         </header>
@@ -187,7 +241,9 @@ const advanceLabel = (next: string): string => {
                                 :key="item.id"
                                 class="leading-snug"
                             >
-                                <span class="font-semibold">{{ item.quantity }}×</span>
+                                <span class="font-semibold"
+                                    >{{ item.quantity }}×</span
+                                >
                                 {{ item.name }}
                                 <span
                                     v-if="item.modifierSummary"
@@ -198,8 +254,12 @@ const advanceLabel = (next: string): string => {
                             </li>
                         </ul>
 
-                        <p v-if="order.notes" class="mt-3 rounded-md bg-muted px-2 py-1.5 text-xs text-muted-foreground">
-                            <strong class="text-foreground">Note:</strong> {{ order.notes }}
+                        <p
+                            v-if="order.notes"
+                            class="mt-3 rounded-md bg-muted px-2 py-1.5 text-xs text-muted-foreground"
+                        >
+                            <strong class="text-foreground">Note:</strong>
+                            {{ order.notes }}
                         </p>
 
                         <button
@@ -208,7 +268,11 @@ const advanceLabel = (next: string): string => {
                             :disabled="advancing.has(order.id)"
                             @click="advance(order, col.next)"
                         >
-                            {{ advancing.has(order.id) ? 'Working…' : advanceLabel(col.next) }}
+                            {{
+                                advancing.has(order.id)
+                                    ? 'Working…'
+                                    : advanceLabel(col.next)
+                            }}
                         </button>
                     </article>
                 </div>

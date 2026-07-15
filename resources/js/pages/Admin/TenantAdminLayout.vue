@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { computed } from 'vue';
+import AppearanceTabs from '@/components/AppearanceTabs.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -10,7 +10,9 @@ const props = defineProps<{
 const page = usePage<{ currentRestaurantRole: string | null }>();
 const isAdmin = computed(() => page.props.currentRestaurantRole === 'admin');
 
-const setupComplete = computed(() => props.restaurant.isLive && props.restaurant.isStripeReady);
+const setupComplete = computed(
+    () => props.restaurant.isLive && props.restaurant.isStripeReady,
+);
 </script>
 
 <template>
@@ -20,15 +22,26 @@ const setupComplete = computed(() => props.restaurant.isLive && props.restaurant
             class="border-b border-yellow-300 bg-yellow-100 text-yellow-900"
         >
             <div class="mx-auto max-w-5xl px-6 py-3 text-sm">
-                <strong class="font-semibold">This restaurant is currently deactivated.</strong>
-                Customers cannot place orders. Contact your platform administrator to reactivate.
+                <strong class="font-semibold"
+                    >This restaurant is currently deactivated.</strong
+                >
+                Customers cannot place orders. Contact your platform
+                administrator to reactivate.
             </div>
         </div>
         <header class="border-b border-border bg-card">
-            <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+            <div
+                class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4"
+            >
                 <div class="flex items-center gap-4">
-                    <Link href="/" class="text-sm text-muted-foreground hover:text-foreground">←</Link>
-                    <h1 class="text-lg font-semibold text-foreground">{{ restaurant.name }}</h1>
+                    <Link
+                        href="/"
+                        class="text-sm text-muted-foreground hover:text-foreground"
+                        >←</Link
+                    >
+                    <h1 class="text-lg font-semibold text-foreground">
+                        {{ restaurant.name }}
+                    </h1>
                 </div>
                 <div class="flex items-center gap-4">
                     <AppearanceTabs />
@@ -42,16 +55,30 @@ const setupComplete = computed(() => props.restaurant.isLive && props.restaurant
                     </Link>
                 </div>
             </div>
-            <nav class="mx-auto flex max-w-5xl gap-6 px-6 pb-3 text-sm text-muted-foreground">
+            <nav
+                class="mx-auto flex max-w-5xl gap-6 px-6 pb-3 text-sm text-muted-foreground"
+            >
                 <Link
                     :href="`/${restaurant.subdomain}/dashboard`"
                     class="hover:text-foreground"
                 >
                     Dashboard
                 </Link>
-                <Link :href="`/${restaurant.subdomain}/menu`" class="hover:text-foreground">Menu</Link>
-                <Link :href="`/${restaurant.subdomain}/orders`" class="hover:text-foreground">Orders</Link>
-                <Link :href="`/${restaurant.subdomain}/kitchen`" class="hover:text-foreground">Kitchen</Link>
+                <Link
+                    :href="`/${restaurant.subdomain}/menu`"
+                    class="hover:text-foreground"
+                    >Menu</Link
+                >
+                <Link
+                    :href="`/${restaurant.subdomain}/orders`"
+                    class="hover:text-foreground"
+                    >Orders</Link
+                >
+                <Link
+                    :href="`/${restaurant.subdomain}/kitchen`"
+                    class="hover:text-foreground"
+                    >Kitchen</Link
+                >
                 <Link
                     :href="`/${restaurant.subdomain}/hours`"
                     class="hover:text-foreground"

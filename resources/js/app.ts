@@ -24,6 +24,14 @@ createInertiaApp({
                 return AuthLayout;
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];
+            case name === 'Storefront/Unavailable':
+                // Served by ResolveTenant when there is no live tenant, so there
+                // is no restaurant to build storefront chrome from. Must sit
+                // above the Storefront/ case. A page-level `layout: null` cannot
+                // express this — Inertia resolves the effective layout with
+                // `page.layout ?? defaultLayout(...)`, so null falls through to
+                // here rather than opting out.
+                return null;
             case name.startsWith('Storefront/'):
                 return StorefrontLayout;
             case name === 'Admin/Login':

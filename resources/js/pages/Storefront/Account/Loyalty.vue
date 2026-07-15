@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
 import { Sparkles } from 'lucide-vue-next';
+import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
 
 defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -11,7 +11,10 @@ defineProps<{
 }>();
 
 const formatDate = (iso: string | null): string => {
-    if (!iso) return '';
+    if (!iso) {
+        return '';
+    }
+
     return new Date(iso).toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
@@ -46,7 +49,9 @@ const formatDate = (iso: string | null): string => {
             >
                 <div class="flex items-center gap-3">
                     <Sparkles class="size-6" />
-                    <span class="text-sm font-medium uppercase tracking-wide opacity-90">
+                    <span
+                        class="text-sm font-medium tracking-wide uppercase opacity-90"
+                    >
                         Your balance
                     </span>
                 </div>
@@ -55,7 +60,8 @@ const formatDate = (iso: string | null): string => {
                     <span class="text-2xl font-normal opacity-80">points</span>
                 </p>
                 <p class="mt-2 text-sm opacity-90">
-                    Earn {{ pointsPerDollar }} point per $1 spent at {{ restaurant.name }}.
+                    Earn {{ pointsPerDollar }} point per $1 spent at
+                    {{ restaurant.name }}.
                 </p>
             </div>
 
@@ -68,7 +74,10 @@ const formatDate = (iso: string | null): string => {
                     No completed orders yet. Points are awarded once your order
                     is marked completed.
                 </div>
-                <ul v-else class="divide-y divide-border rounded-lg border border-border bg-card">
+                <ul
+                    v-else
+                    class="divide-y divide-border rounded-lg border border-border bg-card"
+                >
                     <li
                         v-for="o in recentOrders"
                         :key="o.id"

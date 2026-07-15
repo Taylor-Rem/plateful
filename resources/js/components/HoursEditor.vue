@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-vue-next';
 import { reactive } from 'vue';
+import { Button } from '@/components/ui/button';
 
 type Window = { opens_at: string; closes_at: string };
 type WindowsByDay = Record<string, Window[]>;
@@ -51,7 +51,10 @@ const timezoneOptions = US_TIMEZONES.some(
 )
     ? US_TIMEZONES
     : [
-          { value: props.restaurant.timezone, label: props.restaurant.timezone },
+          {
+              value: props.restaurant.timezone,
+              label: props.restaurant.timezone,
+          },
           ...US_TIMEZONES,
       ];
 
@@ -61,11 +64,17 @@ const hasExistingHours = Object.values(props.restaurant.hoursByDay ?? {}).some(
 
 const initial = (): WindowsByDay => {
     const out: WindowsByDay = {};
+
     for (let d = 0; d < 7; d++) {
-        const arr = (props.restaurant.hoursByDay?.[d as unknown as keyof typeof props.restaurant.hoursByDay] as
-            | Array<{ opensAt: string; closesAt: string }>
-            | undefined) ?? [];
-        out[String(d)] = arr.map((w) => ({ opens_at: w.opensAt, closes_at: w.closesAt }));
+        const arr =
+            (props.restaurant.hoursByDay?.[
+                d as unknown as keyof typeof props.restaurant.hoursByDay
+            ] as Array<{ opensAt: string; closesAt: string }> | undefined) ??
+            [];
+        out[String(d)] = arr.map((w) => ({
+            opens_at: w.opensAt,
+            closes_at: w.closesAt,
+        }));
     }
 
     // Wizard mode: start from a common schedule instead of an empty grid, so
@@ -96,6 +105,7 @@ const state = reactive({
 const toggleClosed = (dow: number, closed: boolean): void => {
     const key = String(dow);
     state.closed[key] = closed;
+
     if (closed) {
         form.windows[key] = [];
     } else if ((form.windows[key] ?? []).length === 0) {
@@ -105,20 +115,30 @@ const toggleClosed = (dow: number, closed: boolean): void => {
 
 const addWindow = (dow: number): void => {
     const key = String(dow);
-    if (!form.windows[key]) form.windows[key] = [];
+
+    if (!form.windows[key]) {
+        form.windows[key] = [];
+    }
+
     form.windows[key].push({ opens_at: '09:00', closes_at: '21:00' });
 };
 
 const removeWindow = (dow: number, idx: number): void => {
     const key = String(dow);
     form.windows[key].splice(idx, 1);
+
     if (form.windows[key].length === 0) {
         state.closed[key] = true;
     }
 };
 
-const errorFor = (dow: number, idx: number, field: 'opens_at' | 'closes_at'): string | undefined => {
+const errorFor = (
+    dow: number,
+    idx: number,
+    field: 'opens_at' | 'closes_at',
+): string | undefined => {
     const key = `windows.${dow}.${idx}.${field}`;
+
     return (form.errors as unknown as Record<string, string>)[key];
 };
 
@@ -132,8 +152,14 @@ const submit = (): void => {
 
 <template>
     <form class="space-y-3" @submit.prevent="submit">
-        <div v-if="showTimezone" class="rounded-lg border border-border bg-card p-5">
-            <label for="hours-timezone" class="text-sm font-medium text-foreground">
+        <div
+            v-if="showTimezone"
+            class="rounded-lg border border-border bg-card p-5"
+        >
+            <label
+                for="hours-timezone"
+                class="text-sm font-medium text-foreground"
+            >
                 Timezone
             </label>
             <div class="mt-2 flex items-center gap-3">
@@ -143,12 +169,19 @@ const submit = (): void => {
                     class="rounded-md border border-input bg-background px-3 py-2 text-sm"
                     data-test="hours-timezone-select"
                 >
-                    <option v-for="tz in timezoneOptions" :key="tz.value" :value="tz.value">
+                    <option
+                        v-for="tz in timezoneOptions"
+                        :key="tz.value"
+                        :value="tz.value"
+                    >
                         {{ tz.label }}
                     </option>
                 </select>
             </div>
-            <p v-if="form.errors.timezone" class="mt-1 text-xs text-destructive">
+            <p
+                v-if="form.errors.timezone"
+                class="mt-1 text-xs text-destructive"
+            >
                 {{ form.errors.timezone }}
             </p>
         </div>
@@ -159,8 +192,12 @@ const submit = (): void => {
             class="rounded-lg border border-border bg-card p-5"
         >
             <div class="flex items-center justify-between gap-4">
-                <h3 class="text-base font-medium text-foreground">{{ label }}</h3>
-                <label class="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                <h3 class="text-base font-medium text-foreground">
+                    {{ label }}
+                </h3>
+                <label
+                    class="inline-flex items-center gap-2 text-sm text-muted-foreground"
+                >
                     <input
                         type="checkbox"
                         class="rounded"
@@ -176,10 +213,7 @@ const submit = (): void => {
                 </label>
             </div>
 
-            <div
-                v-if="!state.closed[String(dow)]"
-                class="mt-4 space-y-2"
-            >
+            <div v-if="!state.closed[String(dow)]" class="mt-4 space-y-2">
                 <div
                     v-for="(win, idx) in form.windows[String(dow)] ?? []"
                     :key="idx"
@@ -228,8 +262,14 @@ const submit = (): void => {
             </div>
         </section>
 
-        <div class="sticky bottom-0 z-10 -mx-1 flex justify-end bg-background/80 py-3 backdrop-blur">
-            <Button type="submit" :disabled="form.processing" data-test="save-hours-button">
+        <div
+            class="sticky bottom-0 z-10 -mx-1 flex justify-end bg-background/80 py-3 backdrop-blur"
+        >
+            <Button
+                type="submit"
+                :disabled="form.processing"
+                data-test="save-hours-button"
+            >
                 {{ form.processing ? 'Saving...' : submitLabel }}
             </Button>
         </div>

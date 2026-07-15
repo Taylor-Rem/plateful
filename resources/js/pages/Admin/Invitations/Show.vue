@@ -18,22 +18,36 @@ defineProps<{
 </script>
 
 <template>
-    <div class="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+    <div
+        class="flex min-h-screen items-center justify-center bg-background px-6 text-foreground"
+    >
         <Head title="Accept invitation" />
 
-        <div v-if="error || !invitation" class="max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center">
-            <h1 class="text-lg font-semibold text-destructive">Invitation invalid</h1>
-            <p class="mt-2 text-sm text-destructive/80">{{ error ?? 'This invitation is no longer valid.' }}</p>
+        <div
+            v-if="error || !invitation"
+            class="max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center"
+        >
+            <h1 class="text-lg font-semibold text-destructive">
+                Invitation invalid
+            </h1>
+            <p class="mt-2 text-sm text-destructive/80">
+                {{ error ?? 'This invitation is no longer valid.' }}
+            </p>
         </div>
 
         <div
             v-else
             class="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm"
         >
-            <h1 class="text-xl font-semibold text-foreground">Accept invitation</h1>
+            <h1 class="text-xl font-semibold text-foreground">
+                Accept invitation
+            </h1>
             <p class="mt-1 text-sm text-muted-foreground">
                 You've been invited to manage
-                <span class="font-medium text-foreground">{{ invitation.restaurantName ?? 'the Plateful platform' }}</span>.
+                <span class="font-medium text-foreground">{{
+                    invitation.restaurantName ?? 'the Plateful platform'
+                }}</span
+                >.
             </p>
 
             <Form
@@ -61,7 +75,12 @@ defineProps<{
 
                 <div class="grid gap-2">
                     <Label for="password">Password</Label>
-                    <PasswordInput id="password" name="password" required autocomplete="new-password" />
+                    <PasswordInput
+                        id="password"
+                        name="password"
+                        required
+                        autocomplete="new-password"
+                    />
                     <InputError :message="errors.password" />
                 </div>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 import HoursEditor from '@/components/HoursEditor.vue';
+import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 
 defineProps<{
     restaurant: App.Data.RestaurantData;
