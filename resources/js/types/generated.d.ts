@@ -223,6 +223,7 @@ export type DeliveryStatus = 'pending' | 'driver_assigned' | 'picked_up' | 'deli
 export type MenuImportStatus = 'queued' | 'processing' | 'needs_review' | 'completed' | 'failed';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type OrderType = 'delivery' | 'pickup';
+export type PaymentState = 'captured' | 'authorized' | 'voided';
 export type PosIntegrationStatus = 'connected' | 'disconnected' | 'token_expired' | 'error';
 export type PosProviderName = 'square' | 'clover';
 export type RestaurantRole = 'admin' | 'staff';

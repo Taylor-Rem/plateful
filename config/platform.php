@@ -108,6 +108,19 @@ return [
         'points_per_dollar' => 1,
     ],
 
+    'delivery' => [
+        /*
+         * How long a courier-network delivery may sit authorized-but-uncaptured
+         * while the provider looks for a driver. Past this, the hold is released
+         * and the order is cancelled.
+         *
+         * Generous on purpose: assignment usually resolves in a couple of
+         * minutes, and voiding a delivery that was about to be fine is a worse
+         * error than making the customer wait longer to hear bad news.
+         */
+        'courier_deadline_minutes' => (int) env('DELIVERY_COURIER_DEADLINE_MINUTES', 10),
+    ],
+
     'timezones' => [
         'America/New_York',
         'America/Chicago',

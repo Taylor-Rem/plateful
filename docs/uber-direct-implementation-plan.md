@@ -463,17 +463,27 @@ the only moment it is cheap to ask.
 The page also shows the Uber webhook URL to paste, and warns when the signing key is missing —
 deliveries still dispatch without it, you just get no status updates.
 
-## 8. Auth/capture — *last, and carefully*
+## 8. Auth/capture — **built 2026-07-15**
 
-**There is no bare PaymentIntent.** The flow is a Stripe-hosted Checkout Session
-(`StripeConnectService.php:34`) the customer is *redirected* to. Manual capture is settable via
-`payment_intent_data.capture_method`, but it cascades:
+**There is no bare PaymentIntent.** The flow is a Stripe-hosted Checkout Session the customer is
+*redirected* to. Manual capture goes on `payment_intent_data.capture_method`, and it cascaded
+exactly as predicted:
 
-- `CheckoutController.php:137` bounces the customer back to the cart unless
-  `payment_status === 'paid'`. Under manual capture a *successful authorization* reads `unpaid`, so
-  this check breaks the happy path until it's rewritten.
-- Orders currently only exist once paid. Auth/capture introduces an authorized-but-not-captured
-  order, and `OrderStatus` has no case for it.
+- The old return handler bounced the customer unless `payment_status === 'paid'`. Under manual
+  capture a *successful authorization* reads **`unpaid`** — indistinguishable from an abandoned
+  checkout by that measure. It now asks the PaymentIntent instead: `requires_capture` is
+  unambiguous, and it costs one API call on a path that already made one.
+- Orders only existed once paid. `PaymentState` (`captured` / `authorized` / `voided`) is a
+  **separate** column rather than an `OrderStatus` case, because `OrderStatus` is the *kitchen*
+  lifecycle — "authorized" is not something a cook can act on, and folding it in would force every
+  transition rule to reason about payments. Existing rows backfill to `captured`: until now an
+  order could not exist unless the money had already moved.
+
+### Scope: only orders that depend on a courier
+
+Pickup and self-delivery capture immediately. Their fulfilment is a promise the restaurant can
+already keep, and holding a customer's funds to wait for nothing would be pure downside. Only a
+courier-network delivery authorizes — mirroring §6, where only those orders need a quote.
 
 Target: **authorize** at checkout → create the Uber delivery → **capture** only once a courier is
 confirmed (via §4's webhook). If Uber can't find a driver, void the authorization: the customer sees
@@ -494,7 +504,32 @@ at the only moment availability is genuinely knowable. Courier assignment happen
 regardless of what any timer said — the timer and the courier search are unrelated events.
 
 Quote drift over the redirect window is settled in §0: freeze at session creation, clamp the session
-to 30 minutes, record `quote_fee_cents` vs `actual_fee_cents`, decide on a cap later with data.
+to 30 minutes (`StripeConnectService::SESSION_TTL_MINUTES` — Stripe's own floor), record
+`quote_fee_cents` vs `actual_fee_cents`, decide on a cap later with data.
+
+### A bug this uncovered in shipped code
+
+`OrderTransition::refundOnCancel()` **refunds** the PaymentIntent when an order is cancelled — and
+Stripe rejects a refund against an uncaptured intent. So an owner cancelling a delivery order before
+its courier was found would have hit a Stripe error, the refund would have silently failed (it is
+best-effort and swallows exceptions), and the hold would have sat on the customer's card until the
+bank dropped it a week later. It now voids instead.
+
+A test then caught the sharper half: matching on "not `Authorized`" sent **`Voided`** orders down
+the refund path too, refunding a charge that never existed. Only `Captured` money can be refunded,
+so that is what the condition now says.
+
+### Verification
+
+`DeliveryAuthCaptureTest` (10) + `AuthorizedCheckoutFlowTest` (9) + settlement cases in
+`UberDirectWebhookTest` + `CancelAuthorizedOrderTest` (4). They cover the three failures that cost
+real money: a capture that fails (stay `Authorized` — believing we hold money we never took is
+worse), a void that fails (cancel anyway and shout; the hold expires on its own, the order would
+not), and double-settlement (both entry points no-op unless still `Authorized`, because the webhook
+and the deadline race by design).
+
+Note the test harness mocks `StripeConnectService` **partially** — every money-moving method must be
+named in the mock string, or an unmocked capture fires at real Stripe from the test suite.
 
 ## 9. DoorDash Drive (later)
 
@@ -516,7 +551,8 @@ being captive at renegotiation.
 3. ~~**§4** — webhooks.~~ **Done 2026-07-14.** Ahead of auth/capture, which needs the
    courier-confirmed signal.
 4. ~~**§5–7** — the checkout rework.~~ **Done 2026-07-14.**
-5. **§8** — auth/capture. Separable; touches shipped payment code, so on its own. **Next.**
+5. ~~**§8** — auth/capture.~~ **Done 2026-07-15.** The Uber Direct plan is complete; §9 (DoorDash)
+   is the only section left, and it is deliberately later.
 
 ### Before production
 
@@ -525,7 +561,16 @@ being captive at renegotiation.
 - [ ] **Rotate the production Uber Client Secret** — exposed in a session transcript 2026-07-14.
 - [ ] **Restrict the Google Maps key** to the Places API (New) and to the production server's IP.
       It is a server-side key; an unrestricted one is a billing liability.
-- [ ] Each restaurant creates its own Uber webhook and pastes the signing key (§4).
+- [ ] Each restaurant creates its own Uber webhook and pastes the signing key (§4). Deliveries work
+      without it — the §8 deadline polls Uber directly before giving up, so a missing webhook costs
+      *latency* (every order waits out the deadline) rather than correctness. Writing that note is
+      what surfaced the design: without the poll, a restaurant that skipped the webhook step would
+      have had **every delivery silently cancel**, courier en route. The settings page warns when
+      the key is missing.
+- [ ] **A queue worker must be running.** Delivery dispatch and the §8 deadline are queued jobs on
+      `QUEUE_CONNECTION=database`. Without a worker, authorized orders never dispatch AND never
+      expire — holds sit on customer cards with nothing scheduled to release them. This is the one
+      operational dependency with no in-code backstop.
 
 **Getting sandbox credentials** (~10 min, self-serve): `direct.uber.com` → log in or create an Uber
 account → accept the Uber Direct Terms + API Terms of Use → skip billing (only required for

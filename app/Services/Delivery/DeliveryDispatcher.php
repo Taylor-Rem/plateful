@@ -7,6 +7,7 @@ use App\Enums\DeliveryFallbackAction;
 use App\Enums\DeliveryMode;
 use App\Enums\DeliveryProviderName;
 use App\Exceptions\DeliveryProviderException;
+use App\Models\DeliveryAssignment;
 use App\Models\Order;
 use App\Models\Restaurant;
 use Illuminate\Support\Facades\Log;
@@ -77,6 +78,42 @@ class DeliveryDispatcher
         }
 
         throw $lastError ?? DeliveryProviderException::driverNotAvailable('chain');
+    }
+
+    /**
+     * Ask the provider where a delivery actually stands, right now.
+     *
+     * The webhook is the fast path, but it is not a dependency: this is how we
+     * find out the truth when no event arrived — because the restaurant never
+     * configured a webhook, or the endpoint was down when Uber gave up retrying.
+     */
+    public function status(DeliveryAssignment $assignment): DeliveryAssignment
+    {
+        $provider = $this->providers[$assignment->provider->value] ?? null;
+
+        if ($provider === null) {
+            throw DeliveryProviderException::notConfigured($assignment->provider->value);
+        }
+
+        return $provider->status($assignment);
+    }
+
+    /**
+     * Call off a delivery already created with a provider.
+     *
+     * Used when giving up on a courier search: we must tell Uber to stop
+     * looking BEFORE releasing the customer's payment hold, or a courier could
+     * still turn up at a kitchen for an order that no longer exists.
+     */
+    public function cancel(DeliveryAssignment $assignment): void
+    {
+        $provider = $this->providers[$assignment->provider->value] ?? null;
+
+        if ($provider === null) {
+            throw DeliveryProviderException::notConfigured($assignment->provider->value);
+        }
+
+        $provider->cancel($assignment);
     }
 
     public function dispatch(Order $order): DeliveryDispatchResult

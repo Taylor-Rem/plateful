@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\DeliveryProviderName;
+use App\Enums\DeliveryStatus;
+use App\Enums\PaymentState;
 use App\Models\DeliveryAssignment;
 use App\Models\DeliveryIntegration;
 use App\Models\OrderEvent;
+use App\Services\Delivery\DeliverySettlement;
 use App\Services\Delivery\UberDirect\UberDirectStatusMap;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -123,6 +126,43 @@ class UberDirectWebhookController extends Controller
             if ($order !== null) {
                 OrderEvent::note($order, "Delivery {$status->value} (Uber)");
             }
+        }
+
+        $this->settlePayment($assignment->fresh(), $status, $data);
+    }
+
+    /**
+     * This webhook is where §8's whole design lands: the courier's existence is
+     * the signal that a held payment may become a real one.
+     *
+     * Both branches no-op unless the order is still Authorized, so a retried or
+     * duplicated event settles nothing twice.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function settlePayment(?DeliveryAssignment $assignment, DeliveryStatus $status, array $data): void
+    {
+        $order = $assignment?->order;
+
+        if ($order === null || $order->payment_state !== PaymentState::Authorized) {
+            return;
+        }
+
+        $settlement = app(DeliverySettlement::class);
+
+        // A courier exists and is coming. Take the money, print the ticket.
+        if (UberDirectStatusMap::hasCourier($status)) {
+            $settlement->onCourierConfirmed($order);
+
+            return;
+        }
+
+        // Uber gave up. Release the hold rather than leave it sitting.
+        if (in_array($status, [DeliveryStatus::Cancelled, DeliveryStatus::Failed], strict: true)) {
+            $reason = $this->stringOrNull($data['undeliverable_reason'] ?? null)
+                ?? 'the courier network cancelled the delivery';
+
+            $settlement->onCourierUnavailable($order, $reason);
         }
     }
 

@@ -6,9 +6,11 @@ use App\Enums\DeliveryFeeStrategy;
 use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Enums\PaymentState;
 use App\Enums\TipRecipient;
 use App\Exceptions\InvalidCheckoutException;
 use App\Jobs\DispatchDeliveryForOrder;
+use App\Jobs\ExpireAuthorizedDelivery;
 use App\Jobs\PushOrderToPos;
 use App\Mail\OrderConfirmationToCustomer;
 use App\Mail\OrderNotificationToRestaurant;
@@ -363,17 +365,19 @@ class OrderPlacement
      * and delivery dispatch. Runs on both the checkout-return and Stripe
      * webhook paths; the session-id idempotency short-circuit above prevents
      * replays from re-queueing.
+     *
+     * On an authorized-not-captured order the POS push is deliberately HELD.
+     * The money is only a hold, and Uber has not found a courier yet — printing
+     * a ticket now means the kitchen cooks a meal for an order we may be about
+     * to void. It is released by {@see DeliverySettlement::onCourierConfirmed()}
+     * off the same signal that captures the payment: the delivery is real now.
      */
     protected function queuePostPaymentFulfillment(Order $order): void
     {
         // A fulfillment failure must never break placement of a paid order —
         // on the sync queue driver the jobs run (and may throw) inline here.
-        try {
-            if (app(PosDispatcher::class)->shouldPush($order->restaurant)) {
-                PushOrderToPos::dispatch($order->id);
-            }
-        } catch (\Throwable $e) {
-            Log::error('Failed to queue POS push', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+        if ($order->payment_state !== PaymentState::Authorized) {
+            $this->queuePosPush($order);
         }
 
         try {
@@ -382,6 +386,36 @@ class OrderPlacement
             }
         } catch (\Throwable $e) {
             Log::error('Failed to queue delivery dispatch', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+        }
+
+        // The deadline for the whole authorize→courier→capture dance. Without
+        // it a hung courier search strands the order forever: no ticket, no
+        // charge, and a hold sitting on the customer's card.
+        if ($order->payment_state === PaymentState::Authorized) {
+            try {
+                ExpireAuthorizedDelivery::dispatch($order->id)
+                    ->delay(now()->addMinutes(ExpireAuthorizedDelivery::deadlineMinutes()));
+            } catch (\Throwable $e) {
+                Log::error('Failed to queue delivery authorization deadline', [
+                    'order_id' => $order->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Send the ticket to the kitchen. Public so the courier-confirmed path can
+     * release a push this class deliberately held.
+     */
+    public function queuePosPush(Order $order): void
+    {
+        try {
+            if (app(PosDispatcher::class)->shouldPush($order->restaurant)) {
+                PushOrderToPos::dispatch($order->id);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to queue POS push', ['order_id' => $order->id, 'error' => $e->getMessage()]);
         }
     }
 
@@ -497,6 +531,9 @@ class OrderPlacement
      */
     protected function createOrderWithUniqueNumber(array $snapshot, array $payment, Restaurant $restaurant): Order
     {
+        // Captured unless the caller says otherwise: every non-delivery order,
+        // and every path that predates auth/capture, takes the money outright.
+        $paymentState = $payment['payment_state'] ?? PaymentState::Captured;
         $attempts = 0;
         while (true) {
             $attempts++;
@@ -523,6 +560,9 @@ class OrderPlacement
                     'total_cents' => (int) $snapshot['total_cents'],
                     'stripe_payment_intent_id' => $payment['stripe_payment_intent_id'] ?? null,
                     'stripe_checkout_session_id' => $payment['stripe_checkout_session_id'] ?? null,
+                    'payment_state' => $paymentState,
+                    'authorized_at' => $paymentState === PaymentState::Authorized ? now() : null,
+                    'captured_at' => $paymentState === PaymentState::Captured ? now() : null,
                     'notes' => $snapshot['notes'] ?? null,
                     'placed_at' => now(),
                     'confirmation_token' => $snapshot['confirmation_token'],

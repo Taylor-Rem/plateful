@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\DeliveryMode;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
+use App\Enums\PaymentState;
 use App\Enums\PosProviderName;
 use App\Enums\TipRecipient;
 use App\Tenancy\BelongsToTenant;
@@ -37,10 +39,38 @@ class Order extends Model
             'refunded_at' => 'datetime',
             'refunded_cents' => 'integer',
             'delivery_address' => 'array',
+            'payment_state' => PaymentState::class,
+            'authorized_at' => 'datetime',
+            'captured_at' => 'datetime',
+            'voided_at' => 'datetime',
             'pos_provider' => PosProviderName::class,
             'pos_pushed_at' => 'datetime',
             'pos_push_failed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether fulfilling this order depends on a courier we don't employ.
+     *
+     * This is the line auth/capture is drawn on: a pickup order or one our own
+     * driver takes is knowable at checkout, so it charges immediately. A
+     * courier-network delivery is not — Uber only looks for a driver after the
+     * delivery is created — so it is authorized and captured later.
+     */
+    public function requiresCourier(): bool
+    {
+        if ($this->type !== OrderType::Delivery) {
+            return false;
+        }
+
+        $restaurant = $this->relationLoaded('restaurant')
+            ? $this->getRelation('restaurant')
+            : $this->restaurant()->first();
+
+        // A null mode means third-party to the dispatcher, so it must mean
+        // third-party here too or the two disagree about the same order.
+        return $restaurant !== null
+            && $restaurant->delivery_mode !== DeliveryMode::SelfDelivery;
     }
 
     public static function generateNumber(Restaurant $restaurant): string

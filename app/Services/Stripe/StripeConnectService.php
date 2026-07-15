@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Stripe\Account;
 use Stripe\Checkout\Session;
 use Stripe\Collection;
+use Stripe\PaymentIntent;
 use Stripe\Payout;
 use Stripe\Refund;
 use Stripe\StripeClient;
@@ -17,8 +18,21 @@ class StripeConnectService
     public function __construct(private StripeClient $stripe) {}
 
     /**
+     * Stripe's minimum session lifetime. Used to bound how long a delivery
+     * quote can drift while the customer sits on Stripe's hosted page: the
+     * quote lives 15 minutes and this is the tightest lid Stripe allows, so the
+     * exposure is bounded rather than the 24h default.
+     */
+    public const SESSION_TTL_MINUTES = 30;
+
+    /**
      * Create a Stripe-hosted Checkout Session as a DIRECT charge on the
      * restaurant's connected account, taking Plateful's application fee.
+     *
+     * `$manualCapture` places a HOLD instead of taking the money — used when
+     * fulfilment depends on a courier nobody has found yet. The session then
+     * completes with `payment_status: unpaid` and a PaymentIntent in
+     * `requires_capture`; see {@see capturePayment()} / {@see voidPayment()}.
      *
      * @param  array<string, string>  $urls  ['success_url', 'cancel_url']
      */
@@ -30,7 +44,14 @@ class StripeConnectService
         array $urls,
         string $idempotencyKey,
         int $pendingCheckoutId,
+        bool $manualCapture = false,
     ): Session {
+        $paymentIntentData = ['application_fee_amount' => $applicationFeeCents];
+
+        if ($manualCapture) {
+            $paymentIntentData['capture_method'] = 'manual';
+        }
+
         return $this->withSuppressedStripeNotices(fn () => $this->stripe->checkout->sessions->create([
             'mode' => 'payment',
             'line_items' => [[
@@ -41,17 +62,55 @@ class StripeConnectService
                 ],
                 'quantity' => 1,
             ]],
-            'payment_intent_data' => [
-                'application_fee_amount' => $applicationFeeCents,
-            ],
+            'payment_intent_data' => $paymentIntentData,
             'customer_email' => $customerEmail,
             'success_url' => $urls['success_url'],
             'cancel_url' => $urls['cancel_url'],
+            'expires_at' => now()->addMinutes(self::SESSION_TTL_MINUTES)->timestamp,
             'metadata' => ['pending_checkout_id' => (string) $pendingCheckoutId],
         ], [
             'stripe_account' => $restaurant->stripe_account_id,
             'idempotency_key' => $idempotencyKey,
         ]));
+    }
+
+    /**
+     * Turn a hold into money. Called once a courier is actually confirmed —
+     * the first moment anyone can honestly say the delivery will happen.
+     */
+    public function capturePayment(Order $order): PaymentIntent
+    {
+        return $this->withSuppressedStripeNotices(fn () => $this->stripe->paymentIntents->capture(
+            (string) $order->stripe_payment_intent_id,
+            [],
+            ['stripe_account' => $order->restaurant->stripe_account_id],
+        ));
+    }
+
+    /**
+     * Release a hold without ever charging.
+     *
+     * Stripe calls this cancelling the PaymentIntent, and it is NOT a refund: a
+     * refund requires a captured charge and Stripe rejects one on an
+     * uncaptured intent. The customer sees a pending hold disappear rather than
+     * a charge followed by a refund — which is the entire point of §8.
+     */
+    public function voidPayment(Order $order): PaymentIntent
+    {
+        return $this->withSuppressedStripeNotices(fn () => $this->stripe->paymentIntents->cancel(
+            (string) $order->stripe_payment_intent_id,
+            [],
+            ['stripe_account' => $order->restaurant->stripe_account_id],
+        ));
+    }
+
+    public function retrievePaymentIntent(Restaurant $restaurant, string $paymentIntentId): PaymentIntent
+    {
+        return $this->withSuppressedStripeNotices(fn () => $this->stripe->paymentIntents->retrieve(
+            $paymentIntentId,
+            [],
+            ['stripe_account' => $restaurant->stripe_account_id],
+        ));
     }
 
     /**

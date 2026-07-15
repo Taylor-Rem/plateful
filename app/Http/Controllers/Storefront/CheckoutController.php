@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Storefront;
 use App\Data\AddressData;
 use App\Data\CartData;
 use App\Data\RestaurantData;
+use App\Enums\DeliveryMode;
+use App\Enums\OrderType;
+use App\Enums\PaymentState;
 use App\Exceptions\InvalidCheckoutException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\CheckoutRequest;
 use App\Models\PendingCheckout;
+use App\Models\Restaurant;
 use App\Services\CartManager;
 use App\Services\OrderPlacement;
 use App\Services\Stripe\StripeConnectService;
@@ -19,6 +23,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Stripe\Checkout\Session;
+use Throwable;
 
 class CheckoutController extends Controller
 {
@@ -86,6 +92,13 @@ class CheckoutController extends Controller
             'status' => PendingCheckout::STATUS_AWAITING,
         ]);
 
+        // Hold rather than charge when fulfilment depends on a courier nobody
+        // has found yet. Uber only searches once the delivery is CREATED, which
+        // is after payment — so this is the only mechanism that can keep the
+        // promise that nobody pays for a delivery that didn't happen.
+        $manualCapture = OrderType::from($snapshot['type']) === OrderType::Delivery
+            && $restaurant->delivery_mode !== DeliveryMode::SelfDelivery;
+
         $session = $connect->createCheckoutSession(
             $restaurant,
             (int) $snapshot['total_cents'],
@@ -97,6 +110,7 @@ class CheckoutController extends Controller
             ],
             idempotencyKey: 'pending_checkout_'.$pending->id,
             pendingCheckoutId: $pending->id,
+            manualCapture: $manualCapture,
         );
 
         $pending->update(['stripe_checkout_session_id' => $session->id]);
@@ -133,15 +147,19 @@ class CheckoutController extends Controller
         }
 
         $session = $connect->retrieveCheckoutSession($restaurant, $sessionId);
+        $paymentIntentId = is_string($session->payment_intent) ? $session->payment_intent : null;
 
-        if (($session->payment_status ?? null) !== 'paid') {
+        $paymentState = $this->resolvePaymentState($connect, $restaurant, $session, $paymentIntentId);
+
+        if ($paymentState === null) {
             return redirect()->route('storefront.checkout.show')
                 ->with('error', 'Your payment wasn’t completed. Your cart is still here.');
         }
 
         $order = $placement->completeCheckout($pending, [
             'stripe_checkout_session_id' => $sessionId,
-            'stripe_payment_intent_id' => is_string($session->payment_intent) ? $session->payment_intent : null,
+            'stripe_payment_intent_id' => $paymentIntentId,
+            'payment_state' => $paymentState,
         ]);
 
         $cookies->queue($cookies->make(
@@ -159,5 +177,48 @@ class CheckoutController extends Controller
         return redirect()
             ->route('storefront.orders.show', ['number' => $order->number])
             ->with('success', 'Order placed!');
+    }
+
+    /**
+     * Decide whether this session actually represents money we can rely on, and
+     * in what state.
+     *
+     * `payment_status === 'paid'` used to be the whole test, but a manual-capture
+     * session completes as **`unpaid`** — a successful authorization looks
+     * identical to an abandoned checkout by that measure alone, so the old check
+     * would have bounced a customer who had just paid.
+     *
+     * Rather than infer from the session, ask the PaymentIntent: `requires_capture`
+     * is unambiguous, and it costs one API call on a path that already makes one.
+     *
+     * @return PaymentState|null null when the customer never completed payment
+     */
+    private function resolvePaymentState(
+        StripeConnectService $connect,
+        Restaurant $restaurant,
+        Session $session,
+        ?string $paymentIntentId,
+    ): ?PaymentState {
+        if (($session->payment_status ?? null) === 'paid') {
+            return PaymentState::Captured;
+        }
+
+        // Anything other than a completed session is an abandoned or expired
+        // checkout, whatever the payment_status says.
+        if (($session->status ?? null) !== 'complete' || $paymentIntentId === null) {
+            return null;
+        }
+
+        try {
+            $intent = $connect->retrievePaymentIntent($restaurant, $paymentIntentId);
+        } catch (Throwable $e) {
+            report($e);
+
+            return null;
+        }
+
+        return ($intent->status ?? null) === 'requires_capture'
+            ? PaymentState::Authorized
+            : null;
     }
 }

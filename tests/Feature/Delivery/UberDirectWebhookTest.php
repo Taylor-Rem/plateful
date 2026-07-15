@@ -2,9 +2,12 @@
 
 use App\Enums\DeliveryProviderName;
 use App\Enums\DeliveryStatus;
+use App\Enums\OrderStatus;
+use App\Enums\PaymentState;
 use App\Models\DeliveryAssignment;
 use App\Models\DeliveryIntegration;
 use App\Models\OrderEvent;
+use App\Services\Stripe\StripeConnectService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -244,6 +247,60 @@ it('maps a cancelled delivery through the webhook', function () {
     postUberWebhook(uberWebhookPayload(['status' => 'canceled']))->assertOk();
 
     expect($assignment->fresh()->status)->toBe(DeliveryStatus::Cancelled);
+});
+
+it('captures an authorized order when the webhook brings a courier', function () {
+    $assignment = seedUberWebhookFixture();
+    $assignment->order->forceFill([
+        'payment_state' => PaymentState::Authorized,
+        'authorized_at' => now(),
+        'stripe_payment_intent_id' => 'pi_hook_1',
+    ])->save();
+
+    $stripe = Mockery::mock(StripeConnectService::class);
+    app()->instance(StripeConnectService::class, $stripe);
+    $stripe->shouldReceive('capturePayment')->once();
+
+    // This webhook is where §8 lands: the courier's existence is the signal
+    // that a held payment may become a real one.
+    postUberWebhook(uberWebhookPayload(['status' => 'pickup']))->assertOk();
+
+    expect($assignment->order->fresh()->payment_state)->toBe(PaymentState::Captured);
+});
+
+it('voids an authorized order when the webhook says the delivery was cancelled', function () {
+    $assignment = seedUberWebhookFixture();
+    $assignment->order->forceFill([
+        'payment_state' => PaymentState::Authorized,
+        'authorized_at' => now(),
+        'stripe_payment_intent_id' => 'pi_hook_2',
+    ])->save();
+
+    $stripe = Mockery::mock(StripeConnectService::class);
+    app()->instance(StripeConnectService::class, $stripe);
+    $stripe->shouldReceive('voidPayment')->once();
+
+    postUberWebhook(uberWebhookPayload(
+        ['status' => 'canceled'],
+        ['undeliverable_reason' => 'no couriers available'],
+    ))->assertOk();
+
+    $order = $assignment->order->fresh();
+    expect($order->payment_state)->toBe(PaymentState::Voided);
+    expect($order->status)->toBe(OrderStatus::Cancelled);
+});
+
+it('does not touch the money on a captured order', function () {
+    $assignment = seedUberWebhookFixture();
+
+    $stripe = Mockery::mock(StripeConnectService::class);
+    app()->instance(StripeConnectService::class, $stripe);
+    // A pickup or self-delivery order was captured at checkout; a delivery
+    // status update must never re-charge or void it.
+    $stripe->shouldNotReceive('capturePayment');
+    $stripe->shouldNotReceive('voidPayment');
+
+    postUberWebhook(uberWebhookPayload(['status' => 'pickup']))->assertOk();
 });
 
 it('is exempt from CSRF so Uber can actually reach it', function () {
