@@ -60,8 +60,9 @@ git push origin main
 7. **Scheduler:** enable it. Cloud will run `schedule:run` every minute. Currently nothing is scheduled, but enabling it now means cron jobs added later "just work."
 8. **Queue worker: required.** On Starter the queue runs against the database — enable Cloud's queue
    worker. `QUEUE_CONNECTION=database` does **not** mean jobs run inline; with no worker they sit in
-   the `jobs` table forever. Order placement dispatches four of them (`PushOrderToPos`,
-   `DispatchDeliveryForOrder`, `ExpireAuthorizedDelivery`, plus confirmation mail), so without a
+   the `jobs` table forever. Order placement queues confirmation mail, `PushOrderToPos`,
+   `DispatchDeliveryForOrder`, and `ExpireAuthorizedDelivery` (which of them fire depends on the
+   order type — a courier delivery holds its POS push until the courier is confirmed), so without a
    worker: tickets never reach the kitchen, deliveries never dispatch, and — because courier-network
    orders authorize rather than capture — **authorization holds sit on customer cards with nothing
    scheduled to release them**. This is the one operational dependency with no in-code backstop.
@@ -115,6 +116,59 @@ On Growth+ with Redis/KV available, switch all three to `redis`.
 | `MAIL_FROM_ADDRESS` | `hello@your-verified-domain.com` |
 | `MAIL_FROM_NAME` | `Plateful` |
 | `RESEND_API_KEY` | the key from Step 2 |
+
+### Stripe (payments — nothing works without these)
+
+| Key | Value |
+|---|---|
+| `STRIPE_KEY` | live **publishable** key (`pk_live_…`) |
+| `STRIPE_SECRET` | live **secret** key (`sk_live_…`) |
+| `STRIPE_WEBHOOK_SECRET` | the `whsec_…` for the **live Connect webhook** pointed at `https://admin.<primary>/stripe/webhook` (create it in the Stripe dashboard; it must listen to *connected account* events — direct charges fire `checkout.session.completed` on the connected account) |
+| `STRIPE_CONNECT_COUNTRY` | `US` |
+
+`scripts/cloud-check.php` reports these as LIVE/TEST by prefix — run it after setting them.
+
+### POS — Square & Clover (⚠ both default to `sandbox`)
+
+`config/services.php` falls back to `sandbox` for both providers and the API/OAuth **hosts key off
+this value** — if production doesn't set these explicitly, every OAuth connect and every ticket
+push silently goes to the sandbox hosts and real registers never see an order.
+
+| Key | Value |
+|---|---|
+| `SQUARE_ENVIRONMENT` | `production` |
+| `SQUARE_APPLICATION_ID` / `SQUARE_APPLICATION_SECRET` | from the Square developer dashboard (production credentials, not sandbox) |
+| `SQUARE_REDIRECT_URI` | `https://admin.<primary>/pos/square/callback` (must match the URI registered on the Square app) |
+| `CLOVER_ENVIRONMENT` | `production` |
+| `CLOVER_APP_ID` / `CLOVER_APP_SECRET` | from the Clover developer dashboard |
+| `CLOVER_REDIRECT_URI` | `https://admin.<primary>/pos/clover/callback` (must match the Clover app registration) |
+
+### Delivery & address lookup
+
+| Key | Value |
+|---|---|
+| `GOOGLE_MAPS_API_KEY` | server-side Places API key (IP-restricted to the production server — it is proxied through the backend, never sent to browsers) |
+| `UBER_DIRECT_SANDBOX_*` | leave **unset** in production — Uber Direct credentials are per-restaurant and live encrypted in `delivery_integrations`; the sandbox vars exist only for local dev and the opt-in live test |
+
+### Google login (optional but wired)
+
+| Key | Value |
+|---|---|
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | from the Google Cloud OAuth client |
+| `GOOGLE_REDIRECT_URI` | `https://<primary>/auth/google/callback` (root host — Google forbids wildcard subdomains) |
+
+### AI menu import
+
+| Key | Value |
+|---|---|
+| `CLAUDE_API_KEY` | Anthropic API key — without it the menu photo/PDF import (`ExtractMenuJob`) fails and the "free setup" onboarding flow is dead |
+
+### Error monitoring
+
+| Key | Value |
+|---|---|
+| `SENTRY_LARAVEL_DSN` | project DSN (see "Consider adding later" below for details) |
+| `SENTRY_TRACES_SAMPLE_RATE` | `0.1` |
 
 ### Storage (restaurant assets → Cloud object storage)
 
@@ -173,7 +227,7 @@ Open Cloud's web console (or `cloud ssh` if available) and run:
 php artisan plateful:create-super-admin --email=you@example.com --name="Your Name"
 ```
 
-You'll be prompted for a password (min 12 chars). The command is idempotent: it errors clearly if the email already exists. It creates a user with `role=admin`, `is_super_admin=true`, `restaurant_id=null`, and a verified email.
+You'll be prompted for a password (min 12 chars). The command is idempotent: it errors clearly if the email already exists. It creates a user with `is_super_admin=true` and a verified email (there is no `role` column — admin access is per-restaurant via the `restaurant_user` pivot; `is_super_admin` bypasses it).
 
 ---
 
@@ -291,6 +345,6 @@ placeholders):
   - `SENTRY_TRACES_SAMPLE_RATE` — `0.1` to start (10% of requests traced); raise or lower as needed.
 
   Logging is unaffected — `LOG_CHANNEL=stderr` keeps working; Sentry is additive. After setting the vars, redeploy and confirm the next unhandled exception shows up in Sentry.
-- **Stripe billing**: Cashier is already installed but unused. When you're ready to charge restaurants, wire up `Billable` on `User` or `Restaurant` and configure Stripe.
 - **Custom queue worker**: as background work grows, move from `database` queue + sync to a dedicated Cloud queue worker on Growth.
+- **Scheduled cleanup**: nothing prunes `pending_checkouts` (each row is a full order snapshot; abandoned checkouts accumulate forever) or expired `delivery_quotes`. Add prune jobs once volume makes it matter — the scheduler is already enabled (Step 4).
 - **Backups**: Cloud Postgres is managed but verify the backup policy on Starter and set up an off-Cloud DB snapshot routine if needed.

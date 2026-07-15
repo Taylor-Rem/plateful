@@ -2,6 +2,13 @@
 
 _Status: revised draft · Last updated: 2026-07-09_
 
+> **Build-state note (2026-07-15):** this is the *strategy* document; its "code reality" remarks
+> and phased roadmap (§7–§9) are frozen at 2026-07-09 and have been overtaken by the build. Since
+> then: the per-tenant encrypted credential store (`pos_integrations`), the **Square and Clover
+> adapters** (OAuth connect + order push), and **Uber Direct delivery end-to-end** (per-restaurant
+> credentials, quote-before-payment, webhooks, auth/capture) have all shipped. For current build
+> state always read [todo.md](../todo.md); the strategy and pricing reasoning here still stand.
+
 This document started as a POS-integration brief centered on winning Toast restaurants by
 undercutting their fees. Working through the actual economics moved the strategy somewhere
 better and more honest. This revision captures where it landed. The short version:

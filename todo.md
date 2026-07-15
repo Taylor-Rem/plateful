@@ -22,6 +22,15 @@ _These gate real revenue and are independent of everything below. Do first._
 - [ ] **Stripe live mode**: swap to live keys, create live webhook + `STRIPE_WEBHOOK_SECRET`,
       have first restaurant (Marcos) complete **live** Connect onboarding, place one real
       end-to-end order and confirm application fee + payout land.
+- [ ] **POS environment vars — `SQUARE_ENVIRONMENT=production` + `CLOVER_ENVIRONMENT=production`
+      in Cloud.** Both default to `sandbox` in `config/services.php` and the API/OAuth hosts key
+      entirely off them — unset, every connect and ticket push silently goes to sandbox hosts and
+      real registers never see an order (the same silent-fallback class as the `MEDIA_DISK` item
+      below). Also set the production `SQUARE_*`/`CLOVER_*` app creds + redirect URIs.
+      `cloud-check.php` now checks all of these (added 2026-07-15). DEPLOY.md Step 5 documents them.
+- [ ] **Onboarding/delivery keys in Cloud**: `CLAUDE_API_KEY` (AI menu import dies silently
+      without it — kills the "free setup" pitch) and `GOOGLE_MAPS_API_KEY` (address capture +
+      delivery quotes). Both now checked by `cloud-check.php`.
 - [ ] **Resend transactional email**: sending subdomain (`send.plateful.fyi`) + SPF/DKIM,
       set `MAIL_*` / `RESEND_API_KEY` in Cloud, confirm a live password-reset delivers.
 - [ ] **Sentry error monitoring**: set `SENTRY_LARAVEL_DSN` in Cloud. `cloud-check.php` already
@@ -95,8 +104,9 @@ self-contained; unblocks the savings calculator and the whole fee story. Do earl
       `StripeConnectService` — it's passed in as `applicationFeeCents`. (config/platform.php:20)
 - [x] Computation at `OrderPlacement::prepare()` (`floor(subtotal × percent / 100)`,
       **food subtotal only**) flows the rate through — tips/tax excluded.
-- [x] `UpdateRestaurantFeeRequest` accepts `4`. (UpdateRestaurantFeeRequest.php:21) **Caveat:** the
-      accepted range is `0–100`, not the 0–15 sane range intended — see §8 for the tightening item.
+- [x] `UpdateRestaurantFeeRequest` accepts `4`, capped at 15%
+      (`MAX_PERCENT`, app/Http/Requests/Admin/SuperAdmin/UpdateRestaurantFeeRequest.php). The old
+      0–100 fat-finger range was tightened 2026-07-15 with boundary tests (RestaurantFeeTest).
 - [x] All restaurants (incl. Marco's) are at 4.00% in the DB — a migration backfilled old 1.00 rows.
 - [x] `.env` / `.env.example`: `PLATFORM_DEFAULT_APPLICATION_FEE_PERCENT` is unset, so config
       correctly falls back to `4.00`. Nothing to sync.
@@ -177,8 +187,11 @@ register.** Both live-sandbox tests skip for want of credentials; see the two it
       `SquareLiveSandboxTest` **skips** — it has never run. Neither adapter has pushed to a real
       register; only Uber Direct is genuinely sandbox-verified (its 5 live tests do run and pass
       locally, because the `UBER_DIRECT_SANDBOX_*` creds are in `.env`). §2c reads as though Square
-      is proven and only Clover is pending; they are in identical shape. Note the two skips are the
-      *only* skips in the suite, so a green run says nothing about either POS adapter.
+      is proven and only Clover is pending; they are in identical shape. Note (corrected
+      2026-07-15): there are **three** credential-gated live-sandbox suites, not two —
+      SquareLiveSandboxTest, CloverLiveSandboxTest, and UberDirectLiveSandboxTest. In CI all three
+      skip, so a green CI run says nothing about *any* live integration; locally only Uber's runs
+      (its creds are set).
 - [ ] **Clover live verification.** `CLOVER_*` app creds are entered in
       `.env` and verified resolving (authorize URL builds against the sandbox host). Still to do: (a)
       run the OAuth connect flow once against a sandbox test merchant to prove the handshake (redirect
@@ -310,14 +323,15 @@ pieces._
 ## 8. Code-hygiene / small guards (surfaced by the 2026-07-13 audit)
 _Low-effort correctness & cleanup items found while auditing the roadmap against the code._
 
-- [ ] **Tighten fee validation range.** `UpdateRestaurantFeeRequest` accepts `0–100`
-      (UpdateRestaurantFeeRequest.php:21); a fat-fingered 40% fee would pass. Narrow to the
-      intended sane range (e.g. 0–15) to prevent an accidental predatory rate.
+- [x] **Tighten fee validation range.** Done 2026-07-15: capped at 15%
+      (`UpdateRestaurantFeeRequest::MAX_PERCENT`, now in `app/Http/Requests/Admin/SuperAdmin/`),
+      with boundary tests in RestaurantFeeTest and a matching `max` on the fee input.
 - [ ] **`refunded_cents` is written but never read.** `OrderTransition` sets it to the full
       `total_cents` on a refunded cancel (`OrderTransition::refundOnCancel()`) and no code consults it. It's the
       natural hook for the §7 partial-refund proration — wire it there, or drop the column if
       partials stay out of scope. (Since §8, an order cancelled while only *authorized* is voided
       instead and correctly leaves this at 0 — nothing was charged, so nothing was refunded.)
+      **Audited 2026-07-15 and deliberately KEPT** — do not re-flag as dead; it's the §7 hook.
 - [x] ~~**`DeliveryDispatcher::quote()` has no caller.**~~ Closed 2026-07-14: the quote now gates
       checkout (§3), so it is called on every third-party delivery address.
 - [x] **Six pre-existing TypeScript errors.** Fixed 2026-07-15. `npm run types:check` is green.
@@ -347,16 +361,40 @@ _Low-effort correctness & cleanup items found while auditing the roadmap against
       `AuthCardLayout.vue`, `AuthSplitLayout.vue`, the orphaned `ui/{badge,collapsible,select,
       navigation-menu}`, and `tests/Unit/ExampleTest.php`. (`ui/tooltip` and `ui/skeleton` look
       orphaned but are used by the live sidebar — leave them.)
-- [ ] **More verified dead code, not yet removed.** All zero-reference, confirmed against the route
-      table: `routes/settings.php` (never loaded by `bootstrap/app.php`; its six routes are
-      duplicated at `routes/storefront.php:96-131`, which is where the live ones come from);
-      `RequirePlatformHost` + its `'platform'` alias (zero routes); `MenuItemReorderRequest` (no
-      route or controller); `orders.stripe_transfer_id` (zero references anywhere); write-only
-      columns `voided_at` / `captured_at` / `authorized_at` / `restaurants.suspension_reason`;
-      `restaurants.delivery_provider_priority` (read by `DeliveryDispatcher`, written only by tests,
-      so always NULL in production); ~10 superseded migrations incl. a 7-migration Cashier chain for
-      a package never in `composer.json`; `config('platform.admin_notification_email')` and
-      `services.stripe.key`, neither ever read.
+- [x] **Verified dead code — removed 2026-07-15** (re-verified zero-reference first): deleted
+      `routes/settings.php`, `RequirePlatformHost` + its `'platform'` alias, `MenuItemReorderRequest`,
+      `config('platform.admin_notification_email')`, the never-read `services.stripe.key` config line
+      (the `STRIPE_KEY` env var stays — cloud-check still verifies it), 11 superseded net-zero
+      migration files (the 7-migration Cashier chain, the 3-file `restaurant_signups`
+      create/alter/drop set, and the 1% fee-default migration superseded by the 4% one), and dropped
+      `orders.stripe_transfer_id` via a new migration. Also removed the unused `toBeOne`/`something()`
+      scaffolding from `tests/Pest.php`.
+      **Deliberately KEPT — do not re-flag:** `voided_at`/`captured_at`/`authorized_at` (payment
+      audit trail on the auth/capture feature), `restaurants.suspension_reason` (written by
+      `unmake:restaurant`, an audit field), `restaurants.delivery_provider_priority` (the
+      per-restaurant lever for the §3 DoorDash chain — becomes real the day a second provider
+      ships), and `refunded_cents` (above).
+- [x] **Checkout rate limit** (2026-07-15). `POST /orders` had no throttle while every hit creates
+      a real Stripe Checkout Session — a card-testing target the moment live keys exist. Now
+      `throttle:10,1`, matching the throttled quote/address endpoints beside it.
+- [x] **Stripe dispute webhook** (2026-07-15). `charge.dispute.created` now records a chargeback
+      note on the order timeline (`OrderEvent`) and logs at error level so monitoring sees it —
+      disputes were previously invisible. An admin *surface* for disputes is still open → §11.
+- [x] **Test-suite stray-HTTP guard** (2026-07-15). Global `Http::preventStrayRequests()` in
+      `tests/Pest.php` — an unfaked HTTP call now fails fast instead of silently hitting the
+      network. The three live-sandbox suites re-allow real requests per-file. Flushed out that
+      Inertia SSR was attempting a real render call per page test; SSR is now off in tests
+      (`INERTIA_SSR_ENABLED=false` in phpunit.xml).
+- [x] **CI matrix trimmed to PHP 8.4** (2026-07-15) — 8.5 was a flake source, not coverage;
+      production runs 8.4. Re-add when an upgrade is planned. Pest in CI now runs with
+      `memory_limit=512M`.
+- [ ] **Tip *amount* routing is untested.** `TipRecipientResolutionTest` +
+      `OrderPlacementTipRecipientTest` prove which recipient is *resolved*, but nothing asserts the
+      tip dollars actually flow/attribute to that recipient (staff vs. courier) — a routing
+      regression on a money path would pass CI.
+- [ ] **POS token expiry mid-push is untested.** OAuth-service refresh is covered
+      (CloverOAuthServiceTest etc.), but no test proves an expired/401 token *during*
+      `PushOrderToPos` triggers refresh-and-retry rather than a spurious permanent failure.
 
 ## 9. Menu availability & order pausing (surfaced 2026-07-14 while scoping §3 delivery)
 _Availability itself is built and enforced: `menu_items.is_available` + `item_template_options.is_available`,
@@ -463,10 +501,40 @@ what the Terms already describe. Build it and the Terms become true.
 - [ ] Tenant-admin UI to toggle rewards and set the rate.
 - [ ] The redemption path itself + the ledger.
 
-**Interim, independent of all of the above:** `Welcome.vue:323` promises "Redeem at the place you
-earned it" on the public marketing site. Redemption does not exist, and under the decided model it
-will be **per-restaurant** — so a blanket platform-level promise will still overstate it even after
-§10 ships. Soften the copy now; it's a one-line change.
+**Interim — DONE 2026-07-15:** the marketing/legal copy no longer promises redemption.
+`Welcome.vue`'s "Redeem at the place you earned it" is now "Rewards that stay local", and the
+Terms §6 now say points are *earned* with the restaurant and that ways to use them "are determined
+by each Restaurant as they are made available" — true today (earn-only) and still true under the
+decided §10 model.
+
+---
+
+## 11. Launch hardening — decisions surfaced by the 2026-07-15 audit
+_Gaps found auditing launch readiness beyond §0/§3. None blocks the first test order; all matter
+before onboarding restaurants at volume. The quick code fixes from the same audit are already
+shipped and logged in §8 (checkout throttle, dispute webhook, cloud-check coverage)._
+
+- [ ] **Email verification is not actually enforced.** `User` does not implement
+      `MustVerifyEmail`, so the `verified` middleware (routes/storefront.php) silently no-ops and
+      Fortify never sends the verification mail. Order confirmations go to unverified addresses.
+      Decide: require verification for customers (adds checkout friction) or drop the dead
+      `verified` middleware and own the decision explicitly.
+- [ ] **Dispute admin surface.** `charge.dispute.created` now lands on the order timeline + error
+      log (§8), but no admin UI lists open disputes or their evidence deadlines. Decide the surface
+      (super-admin list? tenant banner?) — a missed deadline is an auto-lost chargeback.
+- [ ] **Restaurant go-live checklist.** `Restaurant::scopePublic()` requires only
+      `status=Active` + `is_active` — a restaurant can be listed with Stripe onboarding incomplete
+      (checkout then hard-fails after the customer builds a cart) and zero hours rows (= silently
+      open 24/7, see §9). Add an activation gate or an explicit checklist in the admin: Stripe
+      enabled, hours set, delivery settings chosen, menu non-empty.
+- [ ] **`pending_checkouts` / `delivery_quotes` grow unbounded.** Each pending checkout stores a
+      full order snapshot; nothing prunes abandoned rows and nothing is scheduled at all (the
+      scheduler runs but is empty). Add prune jobs once real traffic exists — noted in DEPLOY.md
+      "Consider adding later".
+- [ ] **Stripe event-level idempotency + more event types.** Order materialization is idempotent
+      via `PendingCheckout` consumption, but there's no dedup on Stripe `evt_` ids and no handlers
+      for `charge.refunded` / `payment_intent.*` reconciliation. Fine for launch; revisit with the
+      §7 refund work.
 
 ---
 
@@ -478,7 +546,8 @@ will be **per-restaurant** — so a blanket platform-level promise will still ov
    order to the kitchen" and "deliver it") now have a shipped path.
 5. **Next: §0 launch blockers.** The build has outrun the launch prep — delivery is done and Stripe
    is still in test mode. §0 + §3's "Before this can take real money" list are what stand between
-   this and a paying restaurant.
+   this and a paying restaurant. The **§11 hardening decisions** (email verification, dispute
+   surface, restaurant go-live checklist) come before onboarding restaurants at volume.
 6. **§4 customer ownership** to make the pitch real; **§5 calculator** once pricing is locked.
    **§2d printer** widens the addressable set; **§6 onboarding automation** is an ongoing
    friction-reducer.
