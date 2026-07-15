@@ -417,10 +417,8 @@ const copyUrl = async (): Promise<void> => {
                             <a
                                 :href="`/${restaurant.subdomain}/settings/pos`"
                                 class="font-medium text-primary underline hover:opacity-80"
-                            >
-                                See POS integrations
-                            </a>
-                            — coming soon.
+                                >Connect your POS</a
+                            >.
                         </p>
                     </div>
                 </div>

@@ -207,7 +207,7 @@ function activate() {
                                 type="number"
                                 step="0.01"
                                 min="0"
-                                max="100"
+                                max="15"
                                 class="w-28 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                             />
                             <span class="text-sm text-muted-foreground">%</span>

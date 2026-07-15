@@ -237,6 +237,37 @@ _Head start: a `restaurant_customer` pivot already stores per-restaurant order c
 (`total_orders`, `total_spent_cents`, `first/last_ordered_at`), but it holds no contact info
 (email/phone live on `User`) and is surfaced only on the customer's own storefront loyalty view —
 never in the tenant admin. So this is a partial data foundation, not a blank slate._
+- [ ] **Loyalty redemption — points can be earned but never spent, and we advertise otherwise.**
+      (Surfaced 2026-07-15. The only gap found that was both user-visible and untracked.)
+      Built today: `LoyaltyService::awardForOrder()` grants `floor(subtotal_cents / 100) ×
+      platform.loyalty.points_per_dollar` (currently 1) when an order goes Completed
+      (`OrderTransition:51`), idempotent via `orders.awarded_loyalty_points`; `LoyaltyController`
+      shows the balance and recent earning orders. **`awardForOrder()` is the service's only
+      method** — there is no debit, redeem, or spend path anywhere in `app/`, and no reversal or
+      clawback on cancel/refund. Points accrue forever as an unbounded liability.
+      The problem isn't just the missing feature — we already promise it:
+      - `Welcome.vue:323` — "Redeem at the place you earned it" on the public landing page.
+      - `Legal/Terms.vue:107` — "Points are earned and redeemed with the specific Restaurant."
+        (Hedged: "Restaurants **may** offer… terms, value, and availability are set by each
+        Restaurant" — so this is softer than the landing-page claim, but still points at a
+        redemption flow that doesn't exist.)
+      Decide before building — these are product calls, not code ones:
+      - **What do points buy?** ($ off subtotal, a free item, tiers?) And who sets the rate —
+        platform-wide, or per-restaurant? Terms currently says the restaurant sets it, and
+        `points_per_dollar` is platform-wide config, so those already disagree.
+      - **Fee interaction.** Our 4% is on the food subtotal. If points discount the subtotal, our
+        fee shrinks with it and the restaurant eats the discount — confirm that's intended, and
+        that a fully-points-paid order can't produce a $0/negative charge.
+      - **Schema.** `loyalty_points` is a single mutable balance row per `(user_id, restaurant_id)`
+        — a bare integer, no ledger. Spending against it leaves no audit trail and no way to answer
+        "where did my points go", and it races under concurrent redemption
+        (`awardForOrder` already reaches for `lockForUpdate`). A redemption path probably wants an
+        events table, with the balance derived or reconciled — same shape as `fee_distributions`
+        in §7.
+      - **Reversal.** A refunded or cancelled order keeps its points today. Ties into §7's
+        partial-refund proration and §8's `refunded_cents` question — same underlying gap.
+      Interim option if this stays deferred: soften `Welcome.vue:323` so we stop promising a flow
+      that isn't built. Cheap, and it's the only part with a live customer-facing claim.
 - [ ] Surface a per-restaurant customer contact list (join `restaurant_customer` → `User` for
       email/phone) in the tenant admin; add CSV export. No admin customer page exists today.
 - [ ] Fee-free remarketing: email/SMS campaigns — core differentiator vs DoorDash/Toast.
@@ -353,6 +384,51 @@ pickup experience._
       checkout by `validateCartLines`, so it's a late failure rather than an ordering hole; the cart
       drawer surfaces it client-side via `CartItemData::isAvailable`. Move the check earlier.
 
+## 10. Loyalty — points are earned but can never be spent (surfaced 2026-07-15 by codebase audit)
+_The earn path is shipped and tested: `LoyaltyService::awardForOrder()` fires on the transition to
+`Completed` (`OrderTransition.php:51`), credits `floor(subtotal_cents / 100) × points_per_dollar`,
+is idempotent via `orders.awarded_loyalty_points`, skips guest orders, and is surfaced read-only at
+`/account/loyalty` (`LoyaltyController`). **`awardForOrder()` is the only method on the service.**
+There is no debit, redeem, or spend path anywhere in `app/` — grepping "redeem" repo-wide returns
+two hits, both marketing copy. Points accrue forever against a balance nobody can draw down._
+
+**Why this is not just a missing feature**
+- **The landing page already promises it.** `Welcome.vue:323` — "Redeem at the place you earned it."
+  A prospect reading the marketing site is told redemption exists today. It does not.
+- **Growing liability.** Every completed order adds points. The longer the gap runs, the larger the
+  balance you eventually have to honor — or explain away.
+- **`Terms.vue:104-112` contradicts the code.** It says "The terms, value, and availability of
+  rewards are set by each Restaurant." `points_per_dollar` is a **platform-wide constant**
+  (`config/platform.php:108`, value `1`) with no per-restaurant column or admin UI. No restaurant
+  sets anything. The Terms are hedged enough ("Restaurants *may* offer") to be defensible, but they
+  describe a system that isn't built.
+
+**Decisions to make before building any of it**
+- [ ] **Redemption mechanism.** Dollar-off at checkout, a free item at a threshold, or tiers? This
+      is the product decision everything else hangs off.
+- [ ] **Does redemption cut our fee? (ties to §1 — pricing.)** Our 4% is charged on the **food
+      subtotal**. If points redeem as dollars off that subtotal, then every redemption shrinks our
+      application fee *and* the restaurant absorbs the discount. If it applies after the fee is
+      computed, our fee holds and the restaurant still eats the discount. Neither is obviously
+      right, but it is a **pricing decision, not an implementation detail** — decide it explicitly
+      rather than discovering it in `OrderPlacement::prepare()`.
+- [ ] **Who sets the rate.** Either add per-restaurant loyalty config (matching what the Terms
+      already claim) or correct the Terms to say Plateful sets it. Today neither is true.
+- [ ] **Add a ledger.** `loyalty_points` is a single `points` integer per `(user_id, restaurant_id)`
+      (`2026_05_18_170004_create_orders_tables.php:45-52`) — a balance with **no transaction
+      history**. Earning-only survives that; spending does not. Without rows you cannot answer
+      "where did my points go", reverse a mistake, or reconcile a dispute.
+- [ ] **Clawback on refund.** Points are awarded at `Completed` and **never reversed** — nothing in
+      `OrderTransition` or `DeliverySettlement` touches them on cancel or refund, so a
+      completed-then-refunded order keeps its points. Free points for an order that generated no
+      revenue. Same family as §7's partial-refund proration and §8's `refunded_cents`.
+- [ ] **Expiry / breakage.** The Terms mention forfeiture on account termination; nothing else
+      expires. Decide whether points age out, and note that `unavailable_until`-style self-healing
+      (§9) is the same shape of problem.
+
+**Cheapest way to close the exposure today (no feature work):** soften `Welcome.vue:323` so the
+public site stops advertising redemption until it exists. Worth doing regardless of when §10 lands.
+
 ---
 
 ## Suggested sequence
@@ -367,6 +443,9 @@ pickup experience._
 6. **§4 customer ownership** to make the pitch real; **§5 calculator** once pricing is locked.
    **§2d printer** widens the addressable set; **§6 onboarding automation** is an ongoing
    friction-reducer.
+7. **§10 loyalty** is the one gap the marketing site already sells as shipped, so it sets its own
+   deadline. Its fee-base question belongs with **§1**, not after it — decide that while pricing is
+   still fresh. The one-line `Welcome.vue` copy fix closes the exposure until the feature lands.
 
 ---
 
