@@ -92,6 +92,9 @@
     --color-crimson-800: #5e1212;
     --color-crimson-900: #481010;
     --color-crimson-950: #2b0808;
+
+    /* Warm off-white used as the base surface on marketing pages. */
+    --color-cream: #faf8f4;
 }
 
 /*

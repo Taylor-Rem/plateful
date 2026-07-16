@@ -10,14 +10,14 @@ export type UseAppearanceReturn = {
     updateAppearance: (value: Appearance) => void;
 };
 
-const isTenantContext = (): boolean => {
+const isDarkModeLocked = (): boolean => {
     if (typeof document === 'undefined') {
         return false;
     }
 
     return (
-        document.documentElement.getAttribute('data-appearance-context') ===
-        'tenant'
+        document.documentElement.getAttribute('data-appearance-context') !==
+        'admin'
     );
 };
 
@@ -26,8 +26,9 @@ export function updateTheme(value: Appearance): void {
         return;
     }
 
-    // Tenant storefronts are locked to light mode regardless of preference.
-    if (isTenantContext()) {
+    // Only the admin console supports dark mode; tenant storefronts and the
+    // apex marketing pages are locked to light regardless of preference.
+    if (isDarkModeLocked()) {
         document.documentElement.classList.remove('dark');
 
         return;

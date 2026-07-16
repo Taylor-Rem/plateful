@@ -20,8 +20,10 @@ class HandleAppearance
         $context = AppearanceContext::forHost($request->getHost());
         $cookie = $request->cookie('appearance') ?? 'system';
 
-        // Tenant storefronts are always light; the cookie has no effect there.
-        $appearance = $context === AppearanceContext::TENANT ? 'light' : $cookie;
+        // Only the admin console supports dark mode. Tenant storefronts and
+        // the apex marketing pages are always light; the cookie has no
+        // effect there.
+        $appearance = $context === AppearanceContext::ADMIN ? $cookie : 'light';
 
         View::share('appearance', $appearance);
         View::share('appearanceContext', $context);
