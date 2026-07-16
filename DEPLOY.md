@@ -243,12 +243,12 @@ You'll be prompted for a password (min 12 chars). The command is idempotent: it 
 
 ## Step 10: Point a real domain at it (when ready)
 
-1. In Cloud → **Domains**, add your apex (e.g. `plateful.app`) and `*.plateful.app`.
+1. In Cloud → **Domains**, add your apex (e.g. `plateful.fyi`) and `*.plateful.fyi`.
 2. Add the CNAME / A records Cloud shows you at your DNS provider.
 3. Wait for cert issuance (Cloud handles Let's Encrypt automatically).
 4. Update env vars:
-   - `APP_URL=https://plateful.app`
-   - `PLATFORM_PRIMARY_DOMAIN=plateful.app`
+   - `APP_URL=https://plateful.fyi`
+   - `PLATFORM_PRIMARY_DOMAIN=plateful.fyi`
 5. Redeploy.
 
 ---

@@ -18,7 +18,8 @@ createInertiaApp({
                 // Standalone marketing/signup pages with their own chrome.
                 return null;
             case name.startsWith('Legal/'):
-                // Public legal pages wrap themselves in LegalLayout.
+            case name === 'Support':
+                // Public legal and support pages wrap themselves in LegalLayout.
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
