@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
       data-appearance-context="{{ $appearanceContext ?? 'apex' }}"
-      @class(['dark' => ($appearance ?? 'system') == 'dark' && ($appearanceContext ?? 'apex') !== 'tenant'])>
+      @class(['dark' => ($appearance ?? 'system') == 'dark' && ($appearanceContext ?? 'apex') === 'admin'])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,12 +36,13 @@
         @endisset
 
         {{-- Inline script to detect system dark mode preference and apply it immediately.
-             Tenant storefronts opt out entirely — they always render in light mode. --}}
+             Only the admin console supports dark mode — tenant storefronts and
+             the apex marketing pages always render in light mode. --}}
         <script>
             (function() {
                 const context = '{{ $appearanceContext ?? "apex" }}';
 
-                if (context === 'tenant') {
+                if (context !== 'admin') {
                     document.documentElement.classList.remove('dark');
                     return;
                 }

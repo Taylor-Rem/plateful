@@ -53,6 +53,17 @@ test('tenant storefront never renders the dark class even when appearance cookie
     expect($response->getContent())->toContain('data-appearance-context="tenant"');
 });
 
+test('apex marketing pages never render the dark class even when appearance cookie is dark', function () {
+    config(['platform.primary_domain' => 'plateful.test']);
+
+    $response = $this->withUnencryptedCookie('appearance', 'dark')
+        ->get('http://plateful.test/');
+
+    $response->assertOk();
+    expect($response->getContent())->not->toContain('class="dark"');
+    expect($response->getContent())->toContain('data-appearance-context="apex"');
+});
+
 test('admin host still applies the dark class when appearance cookie is dark', function () {
     config(['platform.primary_domain' => 'plateful.test']);
 

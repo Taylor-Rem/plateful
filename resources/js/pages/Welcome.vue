@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import {
+    ArrowRight,
+    Search,
+    Sparkles,
+    UserRound,
+    Store,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { landing as forRestaurantsLanding } from '@/actions/App/Http/Controllers/OwnerSignupController';
-import AppLogoIcon from '@/components/AppLogoIcon.vue';
-import AppWordmark from '@/components/AppWordmark.vue';
+import MarketingLayout from '@/layouts/MarketingLayout.vue';
 
 type RestaurantSummary = {
     name: string;
@@ -39,365 +45,392 @@ const filteredRestaurants = computed(() => {
         );
     });
 });
+
+const loyaltySteps = [
+    {
+        title: 'Order from any restaurant',
+        description:
+            'Sign up once at any Plateful restaurant. The same account works everywhere on the platform.',
+    },
+    {
+        title: 'Earn points automatically',
+        description:
+            'Every completed order earns loyalty points with that restaurant. No app, no card, no friction.',
+    },
+    {
+        title: 'Rewards that stay local',
+        description:
+            "Points are kept per restaurant — your local cafe's rewards stay with your local cafe.",
+    },
+];
 </script>
 
 <template>
     <Head title="Plateful — Order from local restaurants" />
 
-    <div
-        class="min-h-screen bg-[#FDFDFC] text-[#1b1b18] dark:bg-[#0a0a0a] dark:text-[#EDEDEC]"
-    >
-        <header class="border-b border-black/5 dark:border-white/10">
-            <div
-                class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5"
+    <MarketingLayout :admin-url="adminUrl">
+        <template #nav>
+            <a
+                href="#restaurants"
+                class="hidden rounded-full px-3.5 py-2 font-medium text-stone-600 transition hover:bg-stone-900/5 hover:text-stone-900 sm:inline-block"
             >
-                <Link href="/" class="flex items-center">
-                    <AppWordmark class-name="h-8 w-auto" />
-                </Link>
+                Restaurants
+            </a>
+            <a
+                href="#how-loyalty-works"
+                class="hidden rounded-full px-3.5 py-2 font-medium text-stone-600 transition hover:bg-stone-900/5 hover:text-stone-900 sm:inline-block"
+            >
+                How loyalty works
+            </a>
+            <Link
+                :href="forRestaurantsLanding()"
+                class="hidden rounded-full px-3.5 py-2 font-medium text-stone-600 transition hover:bg-stone-900/5 hover:text-stone-900 sm:inline-block"
+                data-test="for-restaurants-link"
+            >
+                For restaurants
+            </Link>
+        </template>
 
-                <nav class="flex items-center gap-2 text-sm">
-                    <a
-                        href="#restaurants"
-                        class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
-                    >
-                        Restaurants
-                    </a>
-                    <a
-                        href="#how-loyalty-works"
-                        class="hidden px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] sm:inline-block dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
-                    >
-                        How loyalty works
-                    </a>
-                    <Link
-                        :href="forRestaurantsLanding()"
-                        class="hidden rounded-md border border-[#19140035] px-3 py-1.5 hover:bg-black/5 sm:inline-block dark:border-[#3E3E3A] dark:hover:bg-white/5"
-                        data-test="for-restaurants-link"
-                    >
-                        For restaurants
-                    </Link>
-                    <a
-                        v-if="hasAdminAccess"
-                        :href="adminUrl"
-                        class="rounded-md bg-teal-600 px-3 py-1.5 text-white hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-500"
-                        data-test="nav-admin-console"
-                    >
-                        Admin console →
-                    </a>
-                    <a
-                        v-else-if="!authUserName"
-                        href="/login"
-                        class="px-3 py-1.5 text-[#1b1b18]/70 hover:text-[#1b1b18] dark:text-[#EDEDEC]/70 dark:hover:text-[#EDEDEC]"
-                        data-test="nav-sign-in"
-                    >
-                        Sign in
-                    </a>
-                </nav>
+        <template #actions>
+            <a
+                v-if="hasAdminAccess"
+                :href="adminUrl"
+                class="ml-2 inline-flex items-center gap-1.5 rounded-full bg-teal-700 px-4 py-2 font-medium text-white shadow-sm transition hover:bg-teal-800"
+                data-test="nav-admin-console"
+            >
+                Admin console
+                <ArrowRight class="size-3.5" />
+            </a>
+            <a
+                v-else-if="!authUserName"
+                href="/login"
+                class="ml-2 inline-flex items-center rounded-full border border-stone-900/10 bg-white px-4 py-2 font-medium text-stone-700 shadow-sm transition hover:border-stone-900/20 hover:text-stone-900"
+                data-test="nav-sign-in"
+            >
+                Sign in
+            </a>
+        </template>
+
+        <!-- Hero -->
+        <section class="relative overflow-hidden">
+            <div
+                aria-hidden="true"
+                class="pointer-events-none absolute inset-0"
+            >
+                <div
+                    class="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-teal-100/70 blur-3xl"
+                ></div>
+                <div
+                    class="absolute top-40 -left-32 h-80 w-80 rounded-full bg-crimson-100/50 blur-3xl"
+                ></div>
+                <!-- Plate motif echoing the logo -->
+                <svg
+                    class="absolute top-16 right-[-6rem] hidden h-[26rem] w-[26rem] text-teal-600/[0.07] lg:block"
+                    viewBox="0 0 200 200"
+                    fill="none"
+                >
+                    <circle
+                        cx="100"
+                        cy="100"
+                        r="96"
+                        stroke="currentColor"
+                        stroke-width="7"
+                    />
+                    <circle
+                        cx="100"
+                        cy="100"
+                        r="70"
+                        stroke="currentColor"
+                        stroke-width="5"
+                    />
+                    <circle cx="100" cy="100" r="42" fill="currentColor" />
+                </svg>
             </div>
-        </header>
 
-        <main>
-            <section class="mx-auto max-w-6xl px-6 py-20 sm:py-24">
-                <div class="grid items-center gap-12 lg:grid-cols-[1.2fr_1fr]">
-                    <div>
-                        <span
-                            class="inline-flex items-center rounded-full border border-crimson-600/20 bg-crimson-50 px-3 py-1 text-xs font-medium text-crimson-700 dark:border-crimson-400/30 dark:bg-crimson-950/40 dark:text-crimson-400"
-                        >
-                            Order direct. No middlemen.
-                        </span>
-                        <h1
-                            class="mt-5 text-4xl leading-tight font-semibold tracking-tight sm:text-5xl"
-                        >
-                            Find the restaurants
-                            <span class="text-crimson-600 dark:text-crimson-400"
-                                >you love.</span
-                            >
-                        </h1>
-                        <p
-                            class="mt-5 max-w-xl text-lg text-[#1b1b18]/70 dark:text-[#EDEDEC]/70"
-                        >
-                            Plateful is direct online ordering for independent
-                            restaurants. Order from any restaurant on Plateful
-                            with one account — and earn loyalty points
-                            everywhere you go.
-                        </p>
+            <div
+                class="relative mx-auto max-w-6xl px-6 pt-20 pb-24 sm:pt-28 sm:pb-32"
+            >
+                <div class="max-w-2xl">
+                    <span
+                        class="inline-flex items-center gap-1.5 rounded-full border border-crimson-600/15 bg-crimson-50 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-crimson-700"
+                    >
+                        <Sparkles class="size-3.5" />
+                        Order direct · No middlemen
+                    </span>
 
-                        <form
-                            @submit.prevent
-                            class="mt-8 flex max-w-lg items-center gap-2"
+                    <h1
+                        class="mt-6 text-5xl leading-[1.05] font-bold tracking-tight text-stone-900 sm:text-6xl"
+                    >
+                        Find the restaurants
+                        <span class="text-teal-700">you love.</span>
+                    </h1>
+
+                    <p
+                        class="mt-6 max-w-xl text-lg leading-relaxed text-stone-600"
+                    >
+                        Plateful is direct online ordering for independent
+                        restaurants. Order from any restaurant on Plateful with
+                        one account — and earn loyalty points everywhere you go.
+                    </p>
+
+                    <form @submit.prevent class="mt-10 max-w-lg">
+                        <label class="sr-only" for="restaurant-search"
+                            >Search restaurants</label
                         >
-                            <label class="sr-only" for="restaurant-search"
-                                >Search restaurants</label
-                            >
+                        <div class="relative">
+                            <Search
+                                class="pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2 text-stone-400"
+                            />
                             <input
                                 id="restaurant-search"
                                 v-model="query"
                                 type="search"
                                 placeholder="Search by name, city, or cuisine"
-                                class="w-full rounded-md border border-[#19140035] bg-white px-4 py-2.5 text-sm placeholder:text-[#1b1b18]/40 dark:border-[#3E3E3A] dark:bg-white/5 dark:placeholder:text-[#EDEDEC]/40"
+                                class="w-full rounded-full border border-stone-900/10 bg-white py-4 pr-6 pl-13 text-base text-stone-900 shadow-lg shadow-stone-900/5 transition outline-none placeholder:text-stone-400 focus:border-teal-600/40 focus:ring-4 focus:ring-teal-600/10"
                                 data-test="restaurant-search-input"
                             />
-                        </form>
-                    </div>
-
-                    <div
-                        class="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/5"
-                    >
-                        <p
-                            class="text-xs font-medium tracking-wide text-[#1b1b18]/60 uppercase dark:text-[#EDEDEC]/60"
-                        >
-                            One account, every restaurant
-                        </p>
-                        <p class="mt-3 text-sm">
-                            Sign up at any Plateful restaurant and your account
-                            works at all of them. Saved addresses, payment
-                            methods, and a single rewards profile across the
-                            platform.
-                        </p>
-
-                        <p
-                            v-if="authUserName"
-                            class="mt-4 rounded-md bg-teal-50 px-3 py-2 text-xs text-[#1b1b18] dark:bg-teal-950/40 dark:text-[#EDEDEC]"
-                            data-test="auth-greeting"
-                        >
-                            Welcome back, {{ authUserName }}.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <section
-                id="restaurants"
-                class="border-t border-black/5 bg-white py-20 dark:border-white/10 dark:bg-[#0f0f0e]"
-            >
-                <div class="mx-auto max-w-6xl px-6">
-                    <div class="flex items-end justify-between">
-                        <div>
-                            <h2 class="text-3xl font-semibold tracking-tight">
-                                Restaurants on Plateful
-                            </h2>
-                            <p
-                                class="mt-2 text-[#1b1b18]/70 dark:text-[#EDEDEC]/70"
-                            >
-                                {{ filteredRestaurants.length }}
-                                {{
-                                    filteredRestaurants.length === 1
-                                        ? 'place'
-                                        : 'places'
-                                }}
-                                to order from
-                            </p>
                         </div>
-                    </div>
+                    </form>
 
-                    <div
-                        v-if="filteredRestaurants.length === 0"
-                        class="mt-10 rounded-lg border border-dashed border-black/10 bg-white p-10 text-center text-sm text-[#1b1b18]/60 dark:border-white/10 dark:bg-white/5 dark:text-[#EDEDEC]/60"
-                        data-test="no-restaurants"
+                    <p
+                        v-if="authUserName"
+                        class="mt-5 inline-flex items-center gap-2 rounded-full bg-teal-50 px-4 py-2 text-sm font-medium text-teal-800"
+                        data-test="auth-greeting"
                     >
-                        <template v-if="restaurants.length === 0">
-                            No restaurants on Plateful just yet. Are you a
-                            restaurant owner?
-                            <Link
-                                :href="forRestaurantsLanding()"
-                                class="font-medium text-teal-700 underline-offset-4 hover:underline dark:text-teal-300"
-                            >
-                                Get started </Link
-                            >.
-                        </template>
-                        <template v-else>
-                            No matches for "{{ query }}".
-                        </template>
-                    </div>
-
-                    <div
-                        v-else
-                        class="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
-                        data-test="restaurant-grid"
-                    >
-                        <a
-                            v-for="restaurant in filteredRestaurants"
-                            :key="restaurant.url"
-                            :href="restaurant.url"
-                            class="group flex flex-col rounded-lg border border-black/5 bg-white p-6 transition hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-[#161615] dark:hover:border-white/30"
-                        >
-                            <div class="flex items-center gap-4">
-                                <div
-                                    class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-teal-50 dark:bg-teal-950/40"
-                                >
-                                    <img
-                                        v-if="restaurant.logoUrl"
-                                        :src="restaurant.logoUrl"
-                                        :alt="`${restaurant.name} logo`"
-                                        class="h-full w-full object-cover"
-                                    />
-                                    <span
-                                        v-else
-                                        class="text-lg font-semibold text-teal-700 dark:text-teal-300"
-                                    >
-                                        {{ restaurant.name.charAt(0) }}
-                                    </span>
-                                </div>
-                                <div class="min-w-0">
-                                    <h3
-                                        class="truncate text-base font-semibold group-hover:text-teal-700 dark:group-hover:text-teal-300"
-                                    >
-                                        {{ restaurant.name }}
-                                    </h3>
-                                    <p
-                                        class="text-sm text-[#1b1b18]/60 dark:text-[#EDEDEC]/60"
-                                    >
-                                        {{ restaurant.city
-                                        }}<span v-if="restaurant.state"
-                                            >, {{ restaurant.state }}</span
-                                        >
-                                    </p>
-                                </div>
-                            </div>
-                            <p
-                                v-if="restaurant.description"
-                                class="mt-4 line-clamp-3 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70"
-                            >
-                                {{ restaurant.description }}
-                            </p>
-                            <span
-                                class="mt-4 inline-flex items-center text-sm font-medium text-teal-700 dark:text-teal-300"
-                            >
-                                Order now →
-                            </span>
-                        </a>
-                    </div>
-                </div>
-            </section>
-
-            <section
-                id="how-loyalty-works"
-                class="border-t border-black/5 py-20 dark:border-white/10"
-            >
-                <div class="mx-auto max-w-6xl px-6">
-                    <h2 class="text-3xl font-semibold tracking-tight">
-                        How loyalty works on Plateful
-                    </h2>
-                    <div class="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-                        <div
-                            class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]"
-                        >
-                            <span
-                                class="font-mono text-sm text-teal-700 dark:text-teal-300"
-                                >01</span
-                            >
-                            <h3 class="mt-3 text-lg font-semibold">
-                                Order from any restaurant
-                            </h3>
-                            <p
-                                class="mt-2 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70"
-                            >
-                                Sign up once at any Plateful restaurant. The
-                                same account works everywhere on the platform.
-                            </p>
-                        </div>
-                        <div
-                            class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]"
-                        >
-                            <span
-                                class="font-mono text-sm text-teal-700 dark:text-teal-300"
-                                >02</span
-                            >
-                            <h3 class="mt-3 text-lg font-semibold">
-                                Earn points automatically
-                            </h3>
-                            <p
-                                class="mt-2 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70"
-                            >
-                                Every completed order earns loyalty points with
-                                that restaurant. No app, no card, no friction.
-                            </p>
-                        </div>
-                        <div
-                            class="rounded-lg border border-black/5 bg-white p-6 dark:border-white/10 dark:bg-[#161615]"
-                        >
-                            <span
-                                class="font-mono text-sm text-teal-700 dark:text-teal-300"
-                                >03</span
-                            >
-                            <h3 class="mt-3 text-lg font-semibold">
-                                Rewards that stay local
-                            </h3>
-                            <p
-                                class="mt-2 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70"
-                            >
-                                Points are kept per restaurant — your local
-                                cafe's rewards stay with your local cafe.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section
-                class="border-t border-black/5 bg-[#1b1b18] py-16 text-white dark:border-white/10 dark:bg-[#161615]"
-            >
-                <div
-                    class="mx-auto flex max-w-4xl flex-col items-center px-6 text-center"
-                >
-                    <h2
-                        class="text-2xl font-semibold tracking-tight sm:text-3xl"
-                    >
-                        Own a restaurant?
-                    </h2>
-                    <p class="mt-3 max-w-xl text-white/70">
-                        Get your own branded ordering site, take orders direct,
-                        and keep loyalty in-house. Sign up in a couple of
-                        minutes.
+                        <UserRound class="size-4" />
+                        Welcome back, {{ authUserName }}.
                     </p>
-                    <Link
-                        :href="forRestaurantsLanding()"
-                        class="mt-6 inline-flex items-center rounded-md bg-teal-600 px-6 py-3 text-sm font-medium text-white hover:bg-teal-700"
-                        data-test="footer-for-restaurants-cta"
-                    >
-                        Learn more →
-                    </Link>
-                </div>
-            </section>
-        </main>
 
-        <footer
-            class="border-t border-black/5 py-10 text-sm text-[#1b1b18]/60 dark:border-white/10 dark:text-[#EDEDEC]/60"
-        >
-            <div
-                class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row"
-            >
-                <div class="flex items-center gap-2">
-                    <AppLogoIcon class-name="h-5 w-5" />
-                    <span>© {{ new Date().getFullYear() }} Plateful</span>
-                </div>
-                <div class="flex flex-wrap items-center justify-center gap-5">
-                    <a
-                        href="#restaurants"
-                        class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                        >Restaurants</a
+                    <div
+                        class="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm font-medium text-stone-500"
                     >
-                    <Link
-                        :href="forRestaurantsLanding()"
-                        class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                        >For restaurants</Link
-                    >
-                    <Link
-                        href="/terms"
-                        class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                        >Terms</Link
-                    >
-                    <Link
-                        href="/privacy"
-                        class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                        >Privacy</Link
-                    >
-                    <a
-                        :href="adminUrl"
-                        class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
-                        >Admin</a
-                    >
+                        <span class="inline-flex items-center gap-2">
+                            <span
+                                class="size-1.5 rounded-full bg-teal-600"
+                            ></span>
+                            One account, every restaurant
+                        </span>
+                        <span class="inline-flex items-center gap-2">
+                            <span
+                                class="size-1.5 rounded-full bg-teal-600"
+                            ></span>
+                            Loyalty points on every order
+                        </span>
+                        <span class="inline-flex items-center gap-2">
+                            <span
+                                class="size-1.5 rounded-full bg-teal-600"
+                            ></span>
+                            Your money goes to the restaurant
+                        </span>
+                    </div>
                 </div>
             </div>
-        </footer>
-    </div>
+        </section>
+
+        <!-- Restaurants -->
+        <section
+            id="restaurants"
+            class="border-t border-stone-900/5 bg-white py-20 sm:py-24"
+        >
+            <div class="mx-auto max-w-6xl px-6">
+                <div class="max-w-2xl">
+                    <h2
+                        class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl"
+                    >
+                        Restaurants on Plateful
+                    </h2>
+                    <p class="mt-3 text-stone-600">
+                        {{ filteredRestaurants.length }}
+                        {{
+                            filteredRestaurants.length === 1
+                                ? 'place'
+                                : 'places'
+                        }}
+                        to order from
+                    </p>
+                </div>
+
+                <div
+                    v-if="filteredRestaurants.length === 0"
+                    class="mt-12 rounded-2xl border border-dashed border-stone-300 bg-cream/60 p-12 text-center text-sm text-stone-500"
+                    data-test="no-restaurants"
+                >
+                    <template v-if="restaurants.length === 0">
+                        No restaurants on Plateful just yet. Are you a
+                        restaurant owner?
+                        <Link
+                            :href="forRestaurantsLanding()"
+                            class="font-semibold text-teal-700 underline-offset-4 hover:underline"
+                        >
+                            Get started </Link
+                        >.
+                    </template>
+                    <template v-else> No matches for "{{ query }}". </template>
+                </div>
+
+                <div
+                    v-else
+                    class="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                    data-test="restaurant-grid"
+                >
+                    <a
+                        v-for="restaurant in filteredRestaurants"
+                        :key="restaurant.url"
+                        :href="restaurant.url"
+                        class="group flex flex-col rounded-2xl bg-white p-6 ring-1 ring-stone-900/5 transition duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-stone-900/5 hover:ring-stone-900/10"
+                    >
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-teal-500 to-teal-700 ring-2 ring-white"
+                            >
+                                <img
+                                    v-if="restaurant.logoUrl"
+                                    :src="restaurant.logoUrl"
+                                    :alt="`${restaurant.name} logo`"
+                                    class="h-full w-full object-cover"
+                                />
+                                <span
+                                    v-else
+                                    class="text-xl font-bold text-white"
+                                >
+                                    {{ restaurant.name.charAt(0) }}
+                                </span>
+                            </div>
+                            <div class="min-w-0">
+                                <h3
+                                    class="truncate text-base font-semibold text-stone-900 group-hover:text-teal-700"
+                                >
+                                    {{ restaurant.name }}
+                                </h3>
+                                <p class="text-sm text-stone-500">
+                                    {{ restaurant.city
+                                    }}<span v-if="restaurant.state"
+                                        >, {{ restaurant.state }}</span
+                                    >
+                                </p>
+                            </div>
+                        </div>
+                        <p
+                            v-if="restaurant.description"
+                            class="mt-4 line-clamp-3 text-sm leading-relaxed text-stone-600"
+                        >
+                            {{ restaurant.description }}
+                        </p>
+                        <span
+                            class="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-teal-700"
+                        >
+                            Order now
+                            <ArrowRight
+                                class="size-4 transition-transform group-hover:translate-x-0.5"
+                            />
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loyalty -->
+        <section id="how-loyalty-works" class="py-20 sm:py-24">
+            <div class="mx-auto max-w-6xl px-6">
+                <div class="max-w-2xl">
+                    <h2
+                        class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl"
+                    >
+                        How loyalty works on Plateful
+                    </h2>
+                    <p class="mt-3 text-stone-600">
+                        One rewards profile that follows you to every
+                        independent restaurant on the platform.
+                    </p>
+                </div>
+
+                <div class="mt-14 grid grid-cols-1 gap-10 md:grid-cols-3">
+                    <div
+                        v-for="(step, index) in loyaltySteps"
+                        :key="step.title"
+                        class="relative"
+                    >
+                        <div
+                            class="flex h-11 w-11 items-center justify-center rounded-full bg-teal-700 text-sm font-bold text-white shadow-md shadow-teal-900/20"
+                        >
+                            {{ index + 1 }}
+                        </div>
+                        <h3 class="mt-5 text-lg font-semibold text-stone-900">
+                            {{ step.title }}
+                        </h3>
+                        <p class="mt-2 text-sm leading-relaxed text-stone-600">
+                            {{ step.description }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Owner CTA -->
+        <section class="pb-20 sm:pb-24">
+            <div class="mx-auto max-w-6xl px-6">
+                <div
+                    class="relative overflow-hidden rounded-3xl bg-teal-900 px-8 py-16 text-center sm:px-16"
+                >
+                    <div
+                        aria-hidden="true"
+                        class="pointer-events-none absolute inset-0"
+                    >
+                        <svg
+                            class="absolute -bottom-24 -left-16 h-72 w-72 text-white/[0.06]"
+                            viewBox="0 0 200 200"
+                            fill="none"
+                        >
+                            <circle
+                                cx="100"
+                                cy="100"
+                                r="96"
+                                stroke="currentColor"
+                                stroke-width="7"
+                            />
+                            <circle
+                                cx="100"
+                                cy="100"
+                                r="70"
+                                stroke="currentColor"
+                                stroke-width="5"
+                            />
+                        </svg>
+                        <div
+                            class="absolute -top-20 -right-10 h-64 w-64 rounded-full bg-teal-400/10 blur-2xl"
+                        ></div>
+                    </div>
+
+                    <div
+                        class="relative mx-auto flex max-w-xl flex-col items-center"
+                    >
+                        <span
+                            class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-teal-100"
+                        >
+                            <Store class="size-3.5" />
+                            For restaurant owners
+                        </span>
+                        <h2
+                            class="mt-5 text-3xl font-bold tracking-tight text-white sm:text-4xl"
+                        >
+                            Own a restaurant?
+                        </h2>
+                        <p class="mt-4 text-teal-100/80">
+                            Get your own branded ordering site, take orders
+                            direct, and keep loyalty in-house. Sign up in a
+                            couple of minutes.
+                        </p>
+                        <Link
+                            :href="forRestaurantsLanding()"
+                            class="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-semibold text-teal-900 shadow-lg transition hover:bg-teal-50"
+                            data-test="footer-for-restaurants-cta"
+                        >
+                            Learn more
+                            <ArrowRight class="size-4" />
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </MarketingLayout>
 </template>
