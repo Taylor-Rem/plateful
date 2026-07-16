@@ -50,6 +50,7 @@ Route::domain(config('platform.primary_domain'))->group(function () {
 
     Route::get('/terms', fn () => Inertia::render('Legal/Terms'))->name('terms');
     Route::get('/privacy', fn () => Inertia::render('Legal/Privacy'))->name('privacy');
+    Route::get('/support', fn () => Inertia::render('Support'))->name('support');
 
     /*
     |---------------------------------------------------------------------------
