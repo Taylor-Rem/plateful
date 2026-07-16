@@ -28,7 +28,10 @@ export const ORDER_STATUS_LABELS: Record<OrderStatusValue, string> = {
  * Legal forward transitions, mirroring App\Enums\OrderStatus::transitionMap()
  * on the PHP side.
  */
-export const ORDER_STATUS_TRANSITIONS: Record<OrderStatusValue, OrderStatusValue[]> = {
+export const ORDER_STATUS_TRANSITIONS: Record<
+    OrderStatusValue,
+    OrderStatusValue[]
+> = {
     pending: ['confirmed', 'cancelled'],
     confirmed: ['preparing', 'cancelled'],
     preparing: ['ready', 'cancelled'],
@@ -60,30 +63,42 @@ export function formatRelativeTime(iso: string | null | undefined): string {
     if (!iso) {
         return '';
     }
+
     const ts = new Date(iso).getTime();
+
     if (Number.isNaN(ts)) {
         return '';
     }
+
     const diffMs = Date.now() - ts;
     const diffSec = Math.round(diffMs / 1000);
+
     if (diffSec < 5) {
         return 'just now';
     }
+
     if (diffSec < 60) {
         return `${diffSec}s ago`;
     }
+
     const diffMin = Math.round(diffSec / 60);
+
     if (diffMin < 60) {
         return `${diffMin}m ago`;
     }
+
     const diffHr = Math.round(diffMin / 60);
+
     if (diffHr < 24) {
         return `${diffHr}h ago`;
     }
+
     const diffDay = Math.round(diffHr / 24);
+
     if (diffDay < 30) {
         return `${diffDay}d ago`;
     }
+
     return new Date(iso).toLocaleDateString();
 }
 
@@ -91,6 +106,8 @@ export function formatCents(cents: number): string {
     return `$${(cents / 100).toFixed(2)}`;
 }
 
-export function nextActions(status: OrderStatusValue | string): OrderStatusValue[] {
+export function nextActions(
+    status: OrderStatusValue | string,
+): OrderStatusValue[] {
     return ORDER_STATUS_TRANSITIONS[status as OrderStatusValue] ?? [];
 }

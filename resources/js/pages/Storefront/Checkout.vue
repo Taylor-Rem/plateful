@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { Head, useForm, useHttp, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import AddressAutocomplete, {
-    type AddressSnapshot,
-} from '@/pages/Storefront/components/AddressAutocomplete.vue';
 import deliveryQuote from '@/actions/App/Http/Controllers/Storefront/DeliveryQuoteController';
+import AddressAutocomplete from '@/pages/Storefront/components/AddressAutocomplete.vue';
+import type { AddressSnapshot } from '@/pages/Storefront/components/AddressAutocomplete.vue';
 
 type BrandPalette = {
     primary: string;
@@ -21,11 +20,12 @@ const props = defineProps<{
     brand: BrandPalette;
 }>();
 
-const page = usePage<{ auth?: { user?: { name: string; email: string } | null } }>();
+const page = usePage<{
+    auth?: { user?: { name: string; email: string } | null };
+}>();
 const authUser = computed(() => page.props.auth?.user ?? null);
 
-const formatPrice = (cents: number): string =>
-    `$${(cents / 100).toFixed(2)}`;
+const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 type CheckoutForm = {
     customer_name: string;
@@ -57,7 +57,10 @@ type LiveQuote = {
     expiresAt: string | null;
 };
 
-const defaultAddress = props.savedAddresses.find((a) => a.isDefault) ?? props.savedAddresses[0] ?? null;
+const defaultAddress =
+    props.savedAddresses.find((a) => a.isDefault) ??
+    props.savedAddresses[0] ??
+    null;
 
 const form = useForm<CheckoutForm>({
     customer_name: authUser.value?.name ?? '',
@@ -81,14 +84,27 @@ const form = useForm<CheckoutForm>({
     delivery_quote_token: null,
 });
 
+// `restaurant_closed` is raised by OrderPlacement as a form-level error, not a
+// field on CheckoutForm, so it isn't in the inferred error type.
+const restaurantClosedError = computed(
+    () => (form.errors as Record<string, string>).restaurant_closed,
+);
+
 const useNewAddress = ref(props.savedAddresses.length === 0);
 
 watch(
     () => form.address_id,
     (id) => {
-        if (id === null) return;
+        if (id === null) {
+            return;
+        }
+
         const sel = props.savedAddresses.find((a) => a.id === id);
-        if (!sel) return;
+
+        if (!sel) {
+            return;
+        }
+
         form.delivery_address.street = sel.street;
         form.delivery_address.street2 = sel.street2 ?? '';
         form.delivery_address.city = sel.city;
@@ -118,12 +134,18 @@ const onAddressResolved = (address: AddressSnapshot): void => {
 
 const onAddressChanged = (): void => {
     clearQuote();
-    if (needsQuote.value && addressIsComplete.value) void fetchQuote();
+
+    if (needsQuote.value && addressIsComplete.value) {
+        void fetchQuote();
+    }
 };
 
 /** The typed text no longer matches a resolved address. */
 const onAddressCleared = (): void => {
-    if (!needsQuote.value) return;
+    if (!needsQuote.value) {
+        return;
+    }
+
     form.delivery_address.street = '';
     clearQuote();
 };
@@ -172,6 +194,7 @@ const startCountdown = (expiresAt: string): void => {
             (new Date(expiresAt).getTime() - Date.now()) / 1000,
         );
         secondsLeft.value = Math.max(0, remaining);
+
         if (remaining <= 0) {
             stopCountdown();
             // Expired: re-quote rather than let a stale price be submitted. The
@@ -185,7 +208,9 @@ const startCountdown = (expiresAt: string): void => {
 };
 
 const fetchQuote = async (): Promise<void> => {
-    if (!needsQuote.value || !addressIsComplete.value) return;
+    if (!needsQuote.value || !addressIsComplete.value) {
+        return;
+    }
 
     quoting.value = true;
     quoteError.value = null;
@@ -202,12 +227,14 @@ const fetchQuote = async (): Promise<void> => {
         // gets a countdown. The timer promises a PRICE, never availability —
         // Uber only looks for a courier once the delivery is created, and that
         // search can fail against a perfectly valid quote.
-        if (quote.expiresAt) startCountdown(quote.expiresAt);
+        if (quote.expiresAt) {
+            startCountdown(quote.expiresAt);
+        }
     } catch (e) {
         clearQuote();
         quoteError.value =
-            (e as { response?: { data?: { message?: string } } })?.response?.data
-                ?.message ??
+            (e as { response?: { data?: { message?: string } } })?.response
+                ?.data?.message ??
             'We can’t deliver to that address right now. You can still choose pickup.';
     } finally {
         quoting.value = false;
@@ -221,9 +248,13 @@ watch(
     () => {
         if (!needsQuote.value) {
             clearQuote();
+
             return;
         }
-        if (addressIsComplete.value) void fetchQuote();
+
+        if (addressIsComplete.value) {
+            void fetchQuote();
+        }
     },
 );
 
@@ -241,10 +272,15 @@ const taxCents = computed(() =>
     Math.round((subtotalCents.value * props.restaurant.taxRatePercent) / 100),
 );
 const deliveryFeeCents = computed(() => {
-    if (form.type !== 'delivery') return 0;
+    if (form.type !== 'delivery') {
+        return 0;
+    }
+
     // The quote is the price under third-party delivery; the restaurant's
     // advertised fee only applies when it IS the one delivering.
-    if (needsQuote.value) return liveQuote.value?.feeCents ?? 0;
+    if (needsQuote.value) {
+        return liveQuote.value?.feeCents ?? 0;
+    }
 
     return props.restaurant.deliveryFeeCents;
 });
@@ -260,8 +296,13 @@ const tipCents = computed(() => {
     if (form.tip_preset === 'custom') {
         return Math.max(0, form.tip_custom_cents ?? 0);
     }
+
     const pct = Number(form.tip_preset);
-    if (!Number.isFinite(pct) || pct === 0) return 0;
+
+    if (!Number.isFinite(pct) || pct === 0) {
+        return 0;
+    }
+
     return Math.round((subtotalCents.value * pct) / 100);
 });
 const totalCents = computed(
@@ -294,13 +335,16 @@ const submit = (): void => {
         tip_custom_cents: form.tip_custom_cents,
         save_address: form.save_address,
     };
+
     if (form.type === 'delivery') {
         payload.delivery_address = form.delivery_address;
         payload.delivery_quote_token = form.delivery_quote_token;
+
         if (!useNewAddress.value && form.address_id) {
             payload.address_id = form.address_id;
         }
     }
+
     form.transform(() => payload).post('/orders', {
         preserveScroll: true,
     });
@@ -323,15 +367,15 @@ const submit = (): void => {
             class="mb-6 rounded-md border border-amber-300 bg-amber-100 px-4 py-3 text-sm text-amber-900"
         >
             <strong class="font-semibold">We're currently closed.</strong>
-            {{ restaurant.nextOpenLabel }}. You can still keep items in your cart, but
-            you'll need to wait until we open to check out.
+            {{ restaurant.nextOpenLabel }}. You can still keep items in your
+            cart, but you'll need to wait until we open to check out.
         </div>
 
         <p
-            v-if="form.errors.restaurant_closed"
+            v-if="restaurantClosedError"
             class="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
         >
-            {{ form.errors.restaurant_closed }}
+            {{ restaurantClosedError }}
         </p>
 
         <div
@@ -359,9 +403,7 @@ const submit = (): void => {
             <!-- LEFT: form -->
             <div class="space-y-6">
                 <!-- Customer info -->
-                <section
-                    class="rounded-lg border border-border bg-card p-5"
-                >
+                <section class="rounded-lg border border-border bg-card p-5">
                     <h2 class="mb-4 text-base font-semibold">Your info</h2>
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div class="sm:col-span-2">
@@ -482,10 +524,16 @@ const submit = (): void => {
                     v-if="form.type === 'delivery'"
                     class="rounded-lg border border-border bg-card p-5"
                 >
-                    <h2 class="mb-4 text-base font-semibold">Delivery address</h2>
+                    <h2 class="mb-4 text-base font-semibold">
+                        Delivery address
+                    </h2>
 
                     <div
-                        v-if="authUser && savedAddresses.length > 0 && !useNewAddress"
+                        v-if="
+                            authUser &&
+                            savedAddresses.length > 0 &&
+                            !useNewAddress
+                        "
                         class="mb-4 space-y-2"
                     >
                         <label
@@ -564,7 +612,9 @@ const submit = (): void => {
                             />
                         </div>
                         <div v-if="authUser" class="sm:col-span-2">
-                            <label class="inline-flex items-center gap-2 text-sm">
+                            <label
+                                class="inline-flex items-center gap-2 text-sm"
+                            >
                                 <input
                                     v-model="form.save_address"
                                     type="checkbox"
@@ -577,11 +627,11 @@ const submit = (): void => {
 
                     <!-- The live quote. Delivery has no price until an address
                          exists, so this is where the fee becomes knowable. -->
-                    <div v-if="needsQuote" class="mt-4 border-t border-border pt-4">
-                        <p
-                            v-if="quoting"
-                            class="text-sm text-muted-foreground"
-                        >
+                    <div
+                        v-if="needsQuote"
+                        class="mt-4 border-t border-border pt-4"
+                    >
+                        <p v-if="quoting" class="text-sm text-muted-foreground">
                             Checking delivery availability…
                         </p>
                         <p
@@ -792,7 +842,9 @@ const submit = (): void => {
                         }"
                         :disabled="!canSubmit"
                     >
-                        {{ form.processing ? 'Placing order...' : 'Place order' }}
+                        {{
+                            form.processing ? 'Placing order...' : 'Place order'
+                        }}
                     </button>
 
                     <p

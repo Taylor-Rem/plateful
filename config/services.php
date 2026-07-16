@@ -40,7 +40,9 @@ return [
     ],
 
     'stripe' => [
-        'key' => env('STRIPE_KEY'),
+        // Note: STRIPE_KEY (publishable) is not read via config anywhere —
+        // checkout is Stripe-hosted, so no Stripe.js runs in the browser.
+        // scripts/cloud-check.php still verifies the env var is set.
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
         // Country the Express connected accounts are created under.

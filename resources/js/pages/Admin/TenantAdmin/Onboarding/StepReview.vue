@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
 import { Check, Circle, ExternalLink } from 'lucide-vue-next';
 import { computed } from 'vue';
+import { Button } from '@/components/ui/button';
 
 type Step = {
     key: string;
@@ -21,7 +21,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{ goto: [key: string] }>();
 
-const setupSteps = computed(() => props.steps.filter((s) => s.key !== 'review'));
+const setupSteps = computed(() =>
+    props.steps.filter((s) => s.key !== 'review'),
+);
 
 const goLiveForm = useForm({});
 const goLive = (): void => {

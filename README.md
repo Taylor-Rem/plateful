@@ -4,9 +4,12 @@ Multi-tenant online ordering for restaurants. Each restaurant gets its own brand
 storefront on a subdomain; customers order and pay there, and the restaurant runs
 operations (menu, orders, kitchen, payouts) from an admin console.
 
-**Pricing model:** 4% flat per order, charged on the food subtotal only via a Stripe Connect
-application fee (on top of the restaurant's own Stripe processing). No subscriptions, no tiers.
-The restaurant is the merchant of record.
+**Pricing model:** 4% flat per order — **4% of the post-redemption food subtotal**, i.e. what the
+customer actually pays for food. Tax, tip, and the delivery fee are excluded, always. Charged via a
+Stripe Connect application fee on top of the restaurant's own Stripe processing. No subscriptions,
+no tiers. The restaurant is the merchant of record. (Rationale and the rules for pitching it:
+roadmap §1. Loyalty redemption itself is not built yet — until roadmap §10 ships, the
+post-redemption subtotal is simply the food subtotal.)
 
 ## Stack
 
@@ -56,10 +59,23 @@ Test card: `4242 4242 4242 4242`, any future expiry/CVC/ZIP.
 1. Storefront checkout snapshots the prospective order to `pending_checkouts`
    (pay-first: no `orders` row until payment succeeds).
 2. A Checkout Session is created **on the restaurant's connected account** with
-   `application_fee_amount` = 4% of the food subtotal (not tax/tip/delivery).
+   `application_fee_amount` = 4% of the post-redemption food subtotal (never tax/tip/delivery).
+   Pickup and self-delivery orders capture immediately; **courier-network deliveries use
+   `capture_method: manual`** — the customer's card is only *held* until Uber confirms a courier.
 3. The order materializes idempotently from both the `checkout.session.completed`
-   webhook and the success-URL return (unique `orders.stripe_checkout_session_id`).
-4. Cancelling a paid order issues a full refund and reverses the application fee.
+   webhook and the success-URL return (unique `orders.stripe_checkout_session_id`), with
+   `payment_state` = `captured` or `authorized` (`PaymentState` is separate from the kitchen
+   `OrderStatus`).
+4. For authorized orders, `DeliverySettlement` captures the payment (and releases the held POS
+   push) when the courier is confirmed, or **voids the hold** if no courier materializes — the
+   `ExpireAuthorizedDelivery` deadline job polls Uber before giving up, so a missed webhook costs
+   latency, not correctness.
+5. Cancelling a **captured** order issues a full refund and reverses the application fee.
+   Cancelling an order that is only **authorized** voids the hold instead — nothing was charged,
+   so nothing is refunded.
+
+All of this rides queued jobs (`QUEUE_CONNECTION=database`) — a queue worker must be running or
+orders never push to the POS, deliveries never dispatch, and card holds never release.
 
 A restaurant can't go live until Stripe Connect onboarding is complete
 (`stripe_account_status = enabled`).

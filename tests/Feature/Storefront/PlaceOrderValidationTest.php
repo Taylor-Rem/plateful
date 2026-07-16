@@ -8,6 +8,7 @@ use App\Models\PendingCheckout;
 use App\Services\CartManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 require_once __DIR__.'/CartTestHelpers.php';
@@ -321,4 +322,12 @@ test('order number collisions are retried until unique', function () {
     expect($newOrder)->not->toBeNull();
     expect($newOrder->number)->toBe('MAR-BBBBB');
     expect($calls)->toBeGreaterThanOrEqual(2);
+});
+
+test('order placement is rate limited', function () {
+    // Every hit to this endpoint creates a real Stripe Checkout Session, so it
+    // must never be unmetered once live keys exist (card-testing target).
+    $route = Route::getRoutes()->getByName('storefront.orders.store');
+
+    expect($route->gatherMiddleware())->toContain('throttle:10,1');
 });

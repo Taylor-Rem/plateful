@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { Head, usePage } from '@inertiajs/vue3';
-import { computed, inject, ref, type Ref } from 'vue';
 import { Clock } from 'lucide-vue-next';
-import HeroSection from '@/pages/Storefront/components/HeroSection.vue';
-import HeroEditDrawer from '@/pages/Storefront/components/HeroEditDrawer.vue';
-import QuickInfoBand from '@/pages/Storefront/components/QuickInfoBand.vue';
-import FeaturedItemsSection from '@/pages/Storefront/components/FeaturedItemsSection.vue';
-import AboutSection from '@/pages/Storefront/components/AboutSection.vue';
+import { computed, inject, ref } from 'vue';
+import type { Ref } from 'vue';
 import AboutEditDrawer from '@/pages/Storefront/components/AboutEditDrawer.vue';
-import LocationSection from '@/pages/Storefront/components/LocationSection.vue';
-import GallerySection from '@/pages/Storefront/components/GallerySection.vue';
+import AboutSection from '@/pages/Storefront/components/AboutSection.vue';
+import FeaturedItemsSection from '@/pages/Storefront/components/FeaturedItemsSection.vue';
 import GalleryManagerDrawer from '@/pages/Storefront/components/GalleryManagerDrawer.vue';
+import GallerySection from '@/pages/Storefront/components/GallerySection.vue';
+import HeroEditDrawer from '@/pages/Storefront/components/HeroEditDrawer.vue';
+import HeroSection from '@/pages/Storefront/components/HeroSection.vue';
+import LocationSection from '@/pages/Storefront/components/LocationSection.vue';
+import QuickInfoBand from '@/pages/Storefront/components/QuickInfoBand.vue';
 
 type BrandPalette = {
     primary: string;
@@ -45,10 +46,14 @@ const galleryDrawerOpen = ref(false);
             v-if="restaurant.isOpen === false"
             class="border-b border-amber-300 bg-amber-100 text-amber-900"
         >
-            <div class="mx-auto flex max-w-5xl items-center gap-2 px-6 py-3 text-sm">
+            <div
+                class="mx-auto flex max-w-5xl items-center gap-2 px-6 py-3 text-sm"
+            >
                 <Clock class="size-4 shrink-0" />
                 <span>
-                    <strong class="font-semibold">We're currently closed.</strong>
+                    <strong class="font-semibold"
+                        >We're currently closed.</strong
+                    >
                     {{ restaurant.nextOpenLabel }}
                 </span>
             </div>

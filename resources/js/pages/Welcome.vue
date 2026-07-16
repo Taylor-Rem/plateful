@@ -320,7 +320,7 @@ const filteredRestaurants = computed(() => {
                                 >03</span
                             >
                             <h3 class="mt-3 text-lg font-semibold">
-                                Redeem at the place you earned it
+                                Rewards that stay local
                             </h3>
                             <p
                                 class="mt-2 text-sm text-[#1b1b18]/70 dark:text-[#EDEDEC]/70"

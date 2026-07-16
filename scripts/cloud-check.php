@@ -88,6 +88,38 @@ stripeKey('STRIPE_SECRET', $vars);
 present('STRIPE_WEBHOOK_SECRET', $vars, 'whsec_');
 show('STRIPE_CONNECT_COUNTRY', $vars);
 
+// ---- POS (Square / Clover) ---------------------------------------------------
+// Both default to 'sandbox' in config/services.php, and host selection keys
+// entirely off these vars — if production doesn't set them explicitly, every
+// OAuth connect and ticket push silently goes to the sandbox hosts and real
+// registers never see an order. Same silent-fallback class as the media disk.
+section('POS (Square / Clover)');
+show('SQUARE_ENVIRONMENT', $vars, expect: 'production');
+present('SQUARE_APPLICATION_ID', $vars);
+present('SQUARE_APPLICATION_SECRET', $vars);
+show('SQUARE_REDIRECT_URI', $vars);
+show('CLOVER_ENVIRONMENT', $vars, expect: 'production');
+present('CLOVER_APP_ID', $vars);
+present('CLOVER_APP_SECRET', $vars);
+show('CLOVER_REDIRECT_URI', $vars);
+
+// ---- Onboarding & delivery ---------------------------------------------------
+section('Onboarding & delivery');
+// AI menu import (the "free setup" pitch) dies silently without this.
+present('CLAUDE_API_KEY', $vars);
+// Places autocomplete + delivery quotes need the server-side Maps key.
+present('GOOGLE_MAPS_API_KEY', $vars);
+
+// ---- Queue -------------------------------------------------------------------
+// POS pushes, delivery dispatch, and the auth/capture deadline are all queued
+// jobs. QUEUE_CONNECTION=database with no worker means orders never push,
+// deliveries never dispatch, and card holds never release — with no in-code
+// backstop. The worker itself can't be seen from env vars; confirm it in the
+// Cloud dashboard (see DEPLOY.md).
+section('Queue');
+show('QUEUE_CONNECTION', $vars);
+line('  NOTE: a queue worker must be provisioned — env vars cannot prove one is running.');
+
 // ---- Mail (Resend) ---------------------------------------------------------
 section('Mail');
 show('MAIL_MAILER', $vars, expect: 'resend');
@@ -100,8 +132,8 @@ present('SENTRY_LARAVEL_DSN', $vars);
 
 // ---- Storage ---------------------------------------------------------------
 section('Storage');
-show('FILESYSTEM_DISK', $vars);
-show('FILESYSTEM_RESTAURANT_ASSETS_DRIVER', $vars, expect: 's3');
+show('FILESYSTEM_DISK', $vars, expect: 's3');
+mediaDisk($vars);
 present('AWS_ACCESS_KEY_ID', $vars);
 present('AWS_BUCKET', $vars);
 
@@ -216,6 +248,37 @@ function show(string $key, array $vars, ?string $expect = null): void
     $val = $vars[$key];
     $flag = $expect !== null ? (strtolower((string) $val) === strtolower($expect) ? ' [ok]' : ' [expected '.$expect.']') : '';
     line(sprintf('  %-38s %s%s', $key, $val, $flag));
+}
+
+/**
+ * Report the disk restaurant media actually resolves to.
+ *
+ * Mirrors config/media.php: MEDIA_DISK if set, otherwise FILESYSTEM_DISK, otherwise
+ * "local". Checking the env vars in isolation is not enough — media rides the
+ * fallback, so FILESYSTEM_DISK=local with MEDIA_DISK unset silently parks every
+ * logo and menu photo on the container's ephemeral disk.
+ */
+function mediaDisk(array $vars): void
+{
+    $media = (string) ($vars['MEDIA_DISK'] ?? '');
+    $default = (string) ($vars['FILESYSTEM_DISK'] ?? '');
+
+    if ($media !== '') {
+        $effective = $media;
+        $source = 'MEDIA_DISK';
+    } else {
+        $effective = $default !== '' ? $default : 'local';
+        $source = 'FILESYSTEM_DISK fallback';
+    }
+
+    $ok = strtolower($effective) === 's3';
+    line(sprintf(
+        '  %-38s %s (via %s)%s',
+        'media disk (effective)',
+        $effective,
+        $source,
+        $ok ? ' [ok]' : ' [expected s3 — uploads are NOT durable]'
+    ));
 }
 
 /** Report Stripe key as LIVE / TEST by prefix, never the value. */

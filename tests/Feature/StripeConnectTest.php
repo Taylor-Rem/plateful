@@ -9,6 +9,8 @@ use Stripe\Account;
 use Stripe\Service\AccountService;
 use Stripe\StripeClient;
 
+require_once __DIR__.'/Admin/AdminOrderTestHelpers.php';
+
 const STRIPE_ADMIN = 'http://admin.plateful.test';
 
 beforeEach(function () {
@@ -236,6 +238,66 @@ it('updates account status from an account.updated webhook', function () {
     )->assertOk();
 
     expect($restaurant->fresh()->stripe_account_status)->toBe(Restaurant::STRIPE_ENABLED);
+});
+
+it('records a chargeback on the order timeline from a charge.dispute.created webhook', function () {
+    $restaurant = Restaurant::factory()->approved()->create();
+    $order = makeOrder($restaurant, ['stripe_payment_intent_id' => 'pi_disputed_1']);
+
+    $payload = json_encode([
+        'id' => 'evt_dispute_1',
+        'object' => 'event',
+        'type' => 'charge.dispute.created',
+        'data' => ['object' => [
+            'id' => 'dp_1',
+            'object' => 'dispute',
+            'payment_intent' => 'pi_disputed_1',
+            'reason' => 'fraudulent',
+            'amount' => 1100,
+        ]],
+    ]);
+
+    $timestamp = time();
+    $signature = hash_hmac('sha256', "{$timestamp}.{$payload}", 'whsec_test_dummy');
+
+    $this->call(
+        'POST',
+        STRIPE_ADMIN.'/stripe/webhook',
+        [], [], [],
+        ['HTTP_STRIPE_SIGNATURE' => "t={$timestamp},v1={$signature}", 'CONTENT_TYPE' => 'application/json'],
+        $payload,
+    )->assertOk();
+
+    $note = $order->events()->latest('id')->first()?->note;
+    expect($note)->toContain('disputed')
+        ->and($note)->toContain('11.00')
+        ->and($note)->toContain('fraudulent');
+});
+
+it('acknowledges a dispute whose payment intent matches no order', function () {
+    $payload = json_encode([
+        'id' => 'evt_dispute_2',
+        'object' => 'event',
+        'type' => 'charge.dispute.created',
+        'data' => ['object' => [
+            'id' => 'dp_2',
+            'object' => 'dispute',
+            'payment_intent' => 'pi_unknown',
+            'reason' => 'fraudulent',
+            'amount' => 500,
+        ]],
+    ]);
+
+    $timestamp = time();
+    $signature = hash_hmac('sha256', "{$timestamp}.{$payload}", 'whsec_test_dummy');
+
+    $this->call(
+        'POST',
+        STRIPE_ADMIN.'/stripe/webhook',
+        [], [], [],
+        ['HTTP_STRIPE_SIGNATURE' => "t={$timestamp},v1={$signature}", 'CONTENT_TYPE' => 'application/json'],
+        $payload,
+    )->assertOk();
 });
 
 it('rejects a webhook with a bad signature', function () {

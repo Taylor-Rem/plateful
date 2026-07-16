@@ -12,13 +12,22 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div class="border-b border-amber-400 bg-amber-50 text-amber-900 shadow-sm dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
-        <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-2 text-sm">
+    <div
+        class="border-b border-amber-400 bg-amber-50 text-amber-900 shadow-sm dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+    >
+        <div
+            class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-6 py-2 text-sm"
+        >
             <div class="flex items-center gap-2 font-medium">
-                <span class="rounded bg-amber-200 px-1.5 py-0.5 text-xs uppercase tracking-wide text-amber-900 dark:bg-amber-800 dark:text-amber-100">
+                <span
+                    class="rounded bg-amber-200 px-1.5 py-0.5 text-xs tracking-wide text-amber-900 uppercase dark:bg-amber-800 dark:text-amber-100"
+                >
                     Admin
                 </span>
-                <span v-if="editMode">Edit mode is on — changes are visible to customers immediately.</span>
+                <span v-if="editMode"
+                    >Edit mode is on — changes are visible to customers
+                    immediately.</span
+                >
                 <span v-else>Viewing as a customer.</span>
             </div>
             <Button

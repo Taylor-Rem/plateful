@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { useForm } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import InputError from '@/components/InputError.vue';
-import { useForm } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import {
+    Sheet,
+    SheetContent,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 
 const props = defineProps<{
     open: boolean;
@@ -27,7 +33,12 @@ const buildInitial = () => ({
 const form = useForm(buildInitial());
 
 const newImagePreview = ref<string | null>(null);
-const currentImage = computed(() => props.restaurant.heroImageMediumUrl ?? props.restaurant.heroImageUrl ?? null);
+const currentImage = computed(
+    () =>
+        props.restaurant.heroImageMediumUrl ??
+        props.restaurant.heroImageUrl ??
+        null,
+);
 
 watch(
     () => props.open,
@@ -35,6 +46,7 @@ watch(
         if (isOpen) {
             Object.assign(form, buildInitial());
             form.clearErrors();
+
             if (newImagePreview.value) {
                 URL.revokeObjectURL(newImagePreview.value);
                 newImagePreview.value = null;
@@ -48,15 +60,18 @@ const onImageChange = (event: Event): void => {
     const file = target.files?.[0] ?? null;
     form.image = file;
     form.remove_image = false;
+
     if (newImagePreview.value) {
         URL.revokeObjectURL(newImagePreview.value);
     }
+
     newImagePreview.value = file ? URL.createObjectURL(file) : null;
 };
 
 const markRemoveImage = (): void => {
     form.remove_image = true;
     form.image = null;
+
     if (newImagePreview.value) {
         URL.revokeObjectURL(newImagePreview.value);
         newImagePreview.value = null;
@@ -89,10 +104,25 @@ const submit = (): void => {
                 <div class="grid gap-2">
                     <Label>Background image</Label>
                     <div class="space-y-2">
-                        <div class="aspect-[16/7] w-full overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
-                            <img v-if="newImagePreview" :src="newImagePreview" class="size-full object-cover" alt="" />
-                            <img v-else-if="currentImage && !form.remove_image" :src="currentImage" class="size-full object-cover" alt="" />
-                            <div v-else class="flex size-full items-center justify-center text-xs text-muted-foreground">
+                        <div
+                            class="aspect-[16/7] w-full overflow-hidden rounded-md border border-dashed border-border bg-muted/30"
+                        >
+                            <img
+                                v-if="newImagePreview"
+                                :src="newImagePreview"
+                                class="size-full object-cover"
+                                alt=""
+                            />
+                            <img
+                                v-else-if="currentImage && !form.remove_image"
+                                :src="currentImage"
+                                class="size-full object-cover"
+                                alt=""
+                            />
+                            <div
+                                v-else
+                                class="flex size-full items-center justify-center text-xs text-muted-foreground"
+                            >
                                 No image — a brand-color background will be used
                             </div>
                         </div>
@@ -102,12 +132,26 @@ const submit = (): void => {
                             class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
                             @change="onImageChange"
                         />
-                        <button v-if="currentImage && !form.remove_image" type="button" class="text-xs text-destructive hover:opacity-80" @click="markRemoveImage">
+                        <button
+                            v-if="currentImage && !form.remove_image"
+                            type="button"
+                            class="text-xs text-destructive hover:opacity-80"
+                            @click="markRemoveImage"
+                        >
                             Remove image
                         </button>
-                        <p v-if="form.remove_image" class="text-xs text-amber-600">
+                        <p
+                            v-if="form.remove_image"
+                            class="text-xs text-amber-600"
+                        >
                             Will remove on save.
-                            <button type="button" class="underline" @click="undoRemoveImage">Undo</button>
+                            <button
+                                type="button"
+                                class="underline"
+                                @click="undoRemoveImage"
+                            >
+                                Undo
+                            </button>
                         </p>
                         <InputError :message="form.errors.image" />
                     </div>
@@ -115,26 +159,47 @@ const submit = (): void => {
 
                 <div class="grid gap-2">
                     <Label for="hero-tagline">Tagline</Label>
-                    <Input id="hero-tagline" v-model="form.hero_tagline" maxlength="255" placeholder="A short line under your name" />
+                    <Input
+                        id="hero-tagline"
+                        v-model="form.hero_tagline"
+                        maxlength="255"
+                        placeholder="A short line under your name"
+                    />
                     <InputError :message="form.errors.hero_tagline" />
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div class="grid gap-2">
                         <Label for="hero-cta-label">Button label</Label>
-                        <Input id="hero-cta-label" v-model="form.hero_cta_label" maxlength="64" placeholder="Order online" />
+                        <Input
+                            id="hero-cta-label"
+                            v-model="form.hero_cta_label"
+                            maxlength="64"
+                            placeholder="Order online"
+                        />
                         <InputError :message="form.errors.hero_cta_label" />
                     </div>
                     <div class="grid gap-2">
                         <Label for="hero-cta-url">Button link</Label>
-                        <Input id="hero-cta-url" v-model="form.hero_cta_url" maxlength="255" placeholder="#menu" />
+                        <Input
+                            id="hero-cta-url"
+                            v-model="form.hero_cta_url"
+                            maxlength="255"
+                            placeholder="#menu"
+                        />
                         <InputError :message="form.errors.hero_cta_url" />
                     </div>
                 </div>
 
-                <SheetFooter class="flex-row items-center justify-end gap-2 pt-2">
-                    <Button type="button" variant="outline" @click="close">Cancel</Button>
-                    <Button type="submit" :disabled="form.processing">Save changes</Button>
+                <SheetFooter
+                    class="flex-row items-center justify-end gap-2 pt-2"
+                >
+                    <Button type="button" variant="outline" @click="close"
+                        >Cancel</Button
+                    >
+                    <Button type="submit" :disabled="form.processing"
+                        >Save changes</Button
+                    >
                 </SheetFooter>
             </form>
         </SheetContent>

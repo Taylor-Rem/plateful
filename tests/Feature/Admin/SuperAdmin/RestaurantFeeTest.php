@@ -138,10 +138,34 @@ test('fee validation rejects invalid values', function (mixed $value) {
     expect((float) $restaurant->fresh()->application_fee_percent)->toBe(1.00);
 })->with([
     'negative' => -1,
+    'just over the ceiling' => 15.01,
+    // The reason the ceiling exists: 40% is a plausible fat finger, and it is
+    // the rate the delivery apps charge — exactly what Plateful undercuts.
+    'a fat-fingered predatory rate' => 40,
     'over 100' => 101,
     'too many decimals' => 1.234,
     'non-numeric' => 'abc',
     'null' => null,
+]);
+
+test('fee validation accepts values up to the ceiling', function (mixed $value) {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $restaurant = Restaurant::factory()->create([
+        'subdomain' => 'marcos',
+        'application_fee_percent' => 1.00,
+    ]);
+
+    $response = $this->actingAs($superAdmin)
+        ->put(SUPER_FEE_BASE."/super/restaurants/{$restaurant->subdomain}/fee", [
+            'application_fee_percent' => $value,
+        ]);
+
+    $response->assertSessionHasNoErrors();
+    expect((float) $restaurant->fresh()->application_fee_percent)->toBe((float) $value);
+})->with([
+    'zero (a comped restaurant)' => 0,
+    'the locked 4 percent' => 4,
+    'the ceiling itself' => 15,
 ]);
 
 test('placed order computes the application fee from the per-restaurant rate', function () {

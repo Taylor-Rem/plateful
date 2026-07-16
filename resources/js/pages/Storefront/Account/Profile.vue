@@ -41,7 +41,9 @@ const submit = (): void => {
             >
                 <div class="grid gap-4">
                     <div>
-                        <label class="mb-1 block text-sm font-medium" for="name">Name</label>
+                        <label class="mb-1 block text-sm font-medium" for="name"
+                            >Name</label
+                        >
                         <input
                             id="name"
                             v-model="form.name"
@@ -49,10 +51,19 @@ const submit = (): void => {
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             required
                         />
-                        <p v-if="form.errors.name" class="mt-1 text-xs text-destructive">{{ form.errors.name }}</p>
+                        <p
+                            v-if="form.errors.name"
+                            class="mt-1 text-xs text-destructive"
+                        >
+                            {{ form.errors.name }}
+                        </p>
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium" for="email">Email</label>
+                        <label
+                            class="mb-1 block text-sm font-medium"
+                            for="email"
+                            >Email</label
+                        >
                         <input
                             id="email"
                             v-model="form.email"
@@ -60,17 +71,31 @@ const submit = (): void => {
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                             required
                         />
-                        <p v-if="form.errors.email" class="mt-1 text-xs text-destructive">{{ form.errors.email }}</p>
+                        <p
+                            v-if="form.errors.email"
+                            class="mt-1 text-xs text-destructive"
+                        >
+                            {{ form.errors.email }}
+                        </p>
                     </div>
                     <div>
-                        <label class="mb-1 block text-sm font-medium" for="phone">Phone (optional)</label>
+                        <label
+                            class="mb-1 block text-sm font-medium"
+                            for="phone"
+                            >Phone (optional)</label
+                        >
                         <input
                             id="phone"
                             v-model="form.phone"
                             type="tel"
                             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         />
-                        <p v-if="form.errors.phone" class="mt-1 text-xs text-destructive">{{ form.errors.phone }}</p>
+                        <p
+                            v-if="form.errors.phone"
+                            class="mt-1 text-xs text-destructive"
+                        >
+                            {{ form.errors.phone }}
+                        </p>
                     </div>
                 </div>
                 <button

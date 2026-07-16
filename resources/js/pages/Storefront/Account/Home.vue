@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
 import { ReceiptText, MapPin, Sparkles, User } from 'lucide-vue-next';
+import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
 
 defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -35,7 +35,10 @@ defineProps<{
                 >
                     <div class="flex items-center gap-3 text-muted-foreground">
                         <ReceiptText class="size-5" />
-                        <span class="text-sm font-medium uppercase tracking-wide">Orders</span>
+                        <span
+                            class="text-sm font-medium tracking-wide uppercase"
+                            >Orders</span
+                        >
                     </div>
                     <p class="mt-3 text-3xl font-semibold">
                         {{ summary.orderCount }}
@@ -51,14 +54,20 @@ defineProps<{
                 >
                     <div class="flex items-center gap-3 text-muted-foreground">
                         <Sparkles class="size-5" />
-                        <span class="text-sm font-medium uppercase tracking-wide">Loyalty</span>
+                        <span
+                            class="text-sm font-medium tracking-wide uppercase"
+                            >Loyalty</span
+                        >
                     </div>
                     <p
                         class="mt-3 text-3xl font-semibold"
                         :style="{ color: 'var(--brand-primary)' }"
                     >
                         {{ summary.loyaltyPoints }}
-                        <span class="text-base font-normal text-muted-foreground">pts</span>
+                        <span
+                            class="text-base font-normal text-muted-foreground"
+                            >pts</span
+                        >
                     </p>
                     <p class="mt-1 text-xs text-muted-foreground">
                         Earn more on every order
@@ -71,7 +80,10 @@ defineProps<{
                 >
                     <div class="flex items-center gap-3 text-muted-foreground">
                         <MapPin class="size-5" />
-                        <span class="text-sm font-medium uppercase tracking-wide">Addresses</span>
+                        <span
+                            class="text-sm font-medium tracking-wide uppercase"
+                            >Addresses</span
+                        >
                     </div>
                     <p class="mt-3 text-3xl font-semibold">
                         {{ summary.addressCount }}
@@ -94,12 +106,20 @@ defineProps<{
                 >
                     <div class="flex items-center gap-3 text-muted-foreground">
                         <User class="size-5" />
-                        <span class="text-sm font-medium uppercase tracking-wide">Profile</span>
+                        <span
+                            class="text-sm font-medium tracking-wide uppercase"
+                            >Profile</span
+                        >
                     </div>
                     <div class="mt-3 space-y-1 text-sm">
                         <p>{{ summary.userName }}</p>
-                        <p class="text-muted-foreground">{{ summary.userEmail }}</p>
-                        <p v-if="summary.userPhone" class="text-muted-foreground">
+                        <p class="text-muted-foreground">
+                            {{ summary.userEmail }}
+                        </p>
+                        <p
+                            v-if="summary.userPhone"
+                            class="text-muted-foreground"
+                        >
                             {{ summary.userPhone }}
                         </p>
                     </div>

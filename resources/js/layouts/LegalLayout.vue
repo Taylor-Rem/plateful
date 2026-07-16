@@ -70,6 +70,11 @@ defineProps<{
                         >Privacy</Link
                     >
                     <Link
+                        href="/support"
+                        class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
+                        >Support</Link
+                    >
+                    <Link
                         href="/"
                         class="hover:text-[#1b1b18] dark:hover:text-[#EDEDEC]"
                         >Home</Link

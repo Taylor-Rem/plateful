@@ -48,7 +48,11 @@ const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
                         </div>
                         <div class="flex items-start justify-between gap-3 p-4">
                             <div class="min-w-0">
-                                <h3 class="truncate font-medium text-foreground">{{ item.name }}</h3>
+                                <h3
+                                    class="truncate font-medium text-foreground"
+                                >
+                                    {{ item.name }}
+                                </h3>
                                 <p
                                     v-if="item.description"
                                     class="mt-1 line-clamp-2 text-sm text-muted-foreground"
@@ -57,7 +61,7 @@ const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
                                 </p>
                             </div>
                             <span
-                                class="whitespace-nowrap font-semibold"
+                                class="font-semibold whitespace-nowrap"
                                 :style="{ color: 'var(--brand-primary)' }"
                             >
                                 {{ formatPrice(item.priceCents) }}
@@ -82,7 +86,7 @@ const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
         <div v-else class="text-center">
             <Link
                 href="/menu"
-                class="inline-flex items-center justify-center gap-2 rounded-md px-6 py-3 text-base font-semibold shadow-sm transition hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                class="inline-flex items-center justify-center gap-2 rounded-md px-6 py-3 text-base font-semibold shadow-sm transition hover:brightness-110 focus:ring-2 focus:ring-offset-2 focus:outline-none"
                 :style="{
                     backgroundColor: 'var(--brand-primary)',
                     color: 'var(--brand-primary-foreground)',

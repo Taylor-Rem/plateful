@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
 import { onBeforeUnmount, ref, watch } from 'vue';
-import { resolve, suggest } from '@/actions/App/Http/Controllers/Storefront/AddressLookupController';
+import {
+    resolve,
+    suggest,
+} from '@/actions/App/Http/Controllers/Storefront/AddressLookupController';
 
 export type AddressSnapshot = {
     street: string;
@@ -77,6 +80,7 @@ watch(query, (value) => {
 
     if (value.trim().length < 3) {
         clearSuggestions();
+
         return;
     }
 
@@ -92,15 +96,21 @@ const search = async (): Promise<void> => {
             suggest(),
         )) as { suggestions: Suggestion[] };
 
-        if (queryId !== latestQueryId) return;
+        if (queryId !== latestQueryId) {
+            return;
+        }
 
         suggestions.value = results;
         highlighted.value = results.length > 0 ? 0 : -1;
         open.value = results.length > 0;
     } catch {
-        if (queryId === latestQueryId) clearSuggestions();
+        if (queryId === latestQueryId) {
+            clearSuggestions();
+        }
     } finally {
-        if (queryId === latestQueryId) loading.value = false;
+        if (queryId === latestQueryId) {
+            loading.value = false;
+        }
     }
 };
 
@@ -141,7 +151,9 @@ const closeSoon = (): void => {
 };
 
 const onKeydown = (event: KeyboardEvent): void => {
-    if (!open.value || suggestions.value.length === 0) return;
+    if (!open.value || suggestions.value.length === 0) {
+        return;
+    }
 
     if (event.key === 'ArrowDown') {
         event.preventDefault();
@@ -155,7 +167,10 @@ const onKeydown = (event: KeyboardEvent): void => {
         // Enter picks a suggestion rather than submitting the checkout form.
         event.preventDefault();
         const choice = suggestions.value[highlighted.value];
-        if (choice) void choose(choice);
+
+        if (choice) {
+            void choose(choice);
+        }
     } else if (event.key === 'Escape') {
         clearSuggestions();
     }

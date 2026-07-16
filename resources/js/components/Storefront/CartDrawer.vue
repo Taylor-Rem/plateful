@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { Minus, Plus, Trash2 } from 'lucide-vue-next';
+import { computed } from 'vue';
+import { Button } from '@/components/ui/button';
 import {
     Sheet,
     SheetContent,
@@ -6,17 +10,13 @@ import {
     SheetTitle,
     SheetFooter,
 } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Minus, Plus, Trash2 } from 'lucide-vue-next';
-import { Link, router, usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
 
 type PageProps = {
     restaurant?: App.Data.RestaurantData;
     cart?: App.Data.CartData | null;
 };
 
-const props = defineProps<{
+defineProps<{
     open: boolean;
 }>();
 
@@ -28,9 +28,7 @@ const page = usePage<PageProps>();
 const cart = computed(() => page.props.cart ?? null);
 const restaurant = computed(() => page.props.restaurant);
 const items = computed(() => cart.value?.items ?? []);
-const hasUnavailable = computed(() =>
-    items.value.some((i) => !i.isAvailable),
-);
+const hasUnavailable = computed(() => items.value.some((i) => !i.isAvailable));
 const isClosed = computed(() => restaurant.value?.isOpen === false);
 const canCheckout = computed(
     () => items.value.length > 0 && !hasUnavailable.value && !isClosed.value,
@@ -57,7 +55,10 @@ const removeLine = (item: App.Data.CartItemData): void => {
 };
 
 const clearCart = (): void => {
-    if (!window.confirm('Remove all items from cart?')) return;
+    if (!window.confirm('Remove all items from cart?')) {
+        return;
+    }
+
     router.delete('/cart', { preserveScroll: true, preserveState: true });
 };
 </script>
@@ -94,7 +95,9 @@ const clearCart = (): void => {
                         :key="item.id"
                         class="flex gap-3 rounded-md border border-border bg-card p-3"
                     >
-                        <div class="size-16 shrink-0 overflow-hidden rounded-md bg-muted">
+                        <div
+                            class="size-16 shrink-0 overflow-hidden rounded-md bg-muted"
+                        >
                             <img
                                 v-if="item.imageThumbUrl"
                                 :src="item.imageThumbUrl"
@@ -105,7 +108,9 @@ const clearCart = (): void => {
                         <div class="min-w-0 flex-1">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <p class="truncate text-sm font-semibold text-foreground">
+                                    <p
+                                        class="truncate text-sm font-semibold text-foreground"
+                                    >
                                         {{ item.menuItemName }}
                                     </p>
                                     <p
@@ -116,7 +121,7 @@ const clearCart = (): void => {
                                     </p>
                                     <span
                                         v-if="!item.isAvailable"
-                                        class="mt-1 inline-block rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-destructive"
+                                        class="mt-1 inline-block rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-destructive uppercase"
                                     >
                                         No longer available
                                     </span>
@@ -138,11 +143,15 @@ const clearCart = (): void => {
                                         class="grid size-7 place-items-center rounded border border-border text-foreground hover:bg-muted disabled:opacity-50"
                                         :disabled="item.quantity <= 1"
                                         :aria-label="`Decrease ${item.menuItemName}`"
-                                        @click="updateQty(item, item.quantity - 1)"
+                                        @click="
+                                            updateQty(item, item.quantity - 1)
+                                        "
                                     >
                                         <Minus class="size-3" />
                                     </button>
-                                    <span class="min-w-6 text-center text-sm tabular-nums">
+                                    <span
+                                        class="min-w-6 text-center text-sm tabular-nums"
+                                    >
                                         {{ item.quantity }}
                                     </span>
                                     <button
@@ -150,14 +159,17 @@ const clearCart = (): void => {
                                         class="grid size-7 place-items-center rounded border border-border text-foreground hover:bg-muted disabled:opacity-50"
                                         :disabled="item.quantity >= 50"
                                         :aria-label="`Increase ${item.menuItemName}`"
-                                        @click="updateQty(item, item.quantity + 1)"
+                                        @click="
+                                            updateQty(item, item.quantity + 1)
+                                        "
                                     >
                                         <Plus class="size-3" />
                                     </button>
                                 </div>
                                 <div class="text-right text-sm">
                                     <div class="text-xs text-muted-foreground">
-                                        {{ formatPrice(item.unitPriceCents) }} ea
+                                        {{ formatPrice(item.unitPriceCents) }}
+                                        ea
                                     </div>
                                     <div class="font-semibold text-foreground">
                                         {{ formatPrice(item.lineTotalCents) }}
@@ -215,7 +227,10 @@ const clearCart = (): void => {
                         class="text-center text-xs text-amber-700"
                     >
                         We're closed — come back after
-                        {{ restaurant?.nextOpenLabel?.replace(/^Opens\s*/, '') }} to check out.
+                        {{
+                            restaurant?.nextOpenLabel?.replace(/^Opens\s*/, '')
+                        }}
+                        to check out.
                     </p>
                     <button
                         type="button"

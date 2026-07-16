@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { router, useForm } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
 import {
     Check,
     ExternalLink,
@@ -12,6 +11,7 @@ import {
     X,
 } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { Button } from '@/components/ui/button';
 
 type MenuImportState = {
     id: number;
@@ -45,7 +45,10 @@ const onFilesPicked = (event: Event): void => {
         0,
         props.menuImportLimits.maxFiles,
     );
-    if (fileInput.value) fileInput.value.value = '';
+
+    if (fileInput.value) {
+        fileInput.value.value = '';
+    }
 };
 
 const removeFile = (index: number): void => {
@@ -85,11 +88,16 @@ watch(
 );
 
 onBeforeUnmount(() => {
-    if (poller) clearInterval(poller);
+    if (poller) {
+        clearInterval(poller);
+    }
 });
 
 const discardImport = (): void => {
-    if (!props.menuImport) return;
+    if (!props.menuImport) {
+        return;
+    }
+
     router.post(
         `/${props.restaurant.subdomain}/menu-import/${props.menuImport.id}/discard`,
         {},
@@ -131,7 +139,11 @@ const applyPreset = (preset: string): void => {
                         Your menu has {{ menuSummary.items }}
                         {{ menuSummary.items === 1 ? 'item' : 'items' }} in
                         {{ menuSummary.categories }}
-                        {{ menuSummary.categories === 1 ? 'category' : 'categories' }}.
+                        {{
+                            menuSummary.categories === 1
+                                ? 'category'
+                                : 'categories'
+                        }}.
                     </p>
                     <p class="mt-1 text-sm text-muted-foreground">
                         Rename, re-price, or reorganize anytime in the menu
@@ -148,7 +160,11 @@ const applyPreset = (preset: string): void => {
                     Open the menu builder
                     <ExternalLink class="size-3.5" />
                 </a>
-                <Button type="button" data-test="menu-continue-button" @click="emit('advance')">
+                <Button
+                    type="button"
+                    data-test="menu-continue-button"
+                    @click="emit('advance')"
+                >
                     Continue
                 </Button>
             </div>
@@ -196,7 +212,9 @@ const applyPreset = (preset: string): void => {
                     Discard and start over
                 </button>
                 <Button as-child data-test="review-import-button">
-                    <a :href="`/${restaurant.subdomain}/menu-import/${menuImport.id}/review`">
+                    <a
+                        :href="`/${restaurant.subdomain}/menu-import/${menuImport.id}/review`"
+                    >
                         Review {{ menuImport.itemCount }} items
                     </a>
                 </Button>
@@ -210,7 +228,10 @@ const applyPreset = (preset: string): void => {
                 class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
                 data-test="menu-import-failed"
             >
-                {{ menuImport.error ?? 'Something went wrong while reading your menu.' }}
+                {{
+                    menuImport.error ??
+                    'Something went wrong while reading your menu.'
+                }}
             </div>
 
             <p class="text-sm text-muted-foreground">
@@ -253,7 +274,9 @@ const applyPreset = (preset: string): void => {
                     @click="path = 'preset'"
                 >
                     <UtensilsCrossed class="size-5 text-muted-foreground" />
-                    <span class="text-sm font-semibold">Start from a template</span>
+                    <span class="text-sm font-semibold"
+                        >Start from a template</span
+                    >
                     <span class="text-xs text-muted-foreground">
                         A full sample menu for your cuisine, ready to edit.
                     </span>
@@ -265,7 +288,9 @@ const applyPreset = (preset: string): void => {
                     data-test="menu-path-scratch"
                 >
                     <FileText class="size-5 text-muted-foreground" />
-                    <span class="text-sm font-semibold">Build from scratch</span>
+                    <span class="text-sm font-semibold"
+                        >Build from scratch</span
+                    >
                     <span class="text-xs text-muted-foreground">
                         Add categories and items one by one in the builder.
                     </span>
@@ -273,7 +298,10 @@ const applyPreset = (preset: string): void => {
             </div>
 
             <!-- Import: upload panel -->
-            <div v-if="path === 'import'" class="space-y-3 rounded-lg border border-border bg-background p-4">
+            <div
+                v-if="path === 'import'"
+                class="space-y-3 rounded-lg border border-border bg-background p-4"
+            >
                 <p class="text-sm text-muted-foreground">
                     Upload up to {{ menuImportLimits.maxFiles }} menu photos or
                     a PDF. Clear, well-lit, straight-on photos work best.
@@ -310,7 +338,11 @@ const applyPreset = (preset: string): void => {
                         variant="outline"
                         @click="fileInput?.click()"
                     >
-                        {{ uploadForm.files.length ? 'Add more files' : 'Choose files' }}
+                        {{
+                            uploadForm.files.length
+                                ? 'Add more files'
+                                : 'Choose files'
+                        }}
                     </Button>
                     <Button
                         v-if="uploadForm.files.length"
@@ -319,23 +351,35 @@ const applyPreset = (preset: string): void => {
                         data-test="start-menu-import-button"
                         @click="startImport"
                     >
-                        <LoaderCircle v-if="uploadForm.processing" class="size-4 animate-spin" />
+                        <LoaderCircle
+                            v-if="uploadForm.processing"
+                            class="size-4 animate-spin"
+                        />
                         Read my menu
                     </Button>
                 </div>
-                <p v-if="uploadForm.progress" class="text-xs text-muted-foreground">
+                <p
+                    v-if="uploadForm.progress"
+                    class="text-xs text-muted-foreground"
+                >
                     Uploading… {{ uploadForm.progress.percentage }}%
                 </p>
-                <p v-if="uploadForm.errors.files" class="text-sm text-destructive">
+                <p
+                    v-if="uploadForm.errors.files"
+                    class="text-sm text-destructive"
+                >
                     {{ uploadForm.errors.files }}
                 </p>
             </div>
 
             <!-- Presets panel -->
-            <div v-if="path === 'preset'" class="space-y-3 rounded-lg border border-border bg-background p-4">
+            <div
+                v-if="path === 'preset'"
+                class="space-y-3 rounded-lg border border-border bg-background p-4"
+            >
                 <p class="text-sm text-muted-foreground">
-                    Pick a cuisine — we'll build a full menu with categories
-                    and prices you can edit item by item.
+                    Pick a cuisine — we'll build a full menu with categories and
+                    prices you can edit item by item.
                 </p>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <button
@@ -348,10 +392,15 @@ const applyPreset = (preset: string): void => {
                         @click="applyPreset(preset.value)"
                     >
                         <UtensilsCrossed class="size-5 text-muted-foreground" />
-                        {{ applying === preset.value ? 'Adding…' : preset.label }}
+                        {{
+                            applying === preset.value ? 'Adding…' : preset.label
+                        }}
                     </button>
                 </div>
-                <p v-if="presetForm.errors.preset" class="text-sm text-destructive">
+                <p
+                    v-if="presetForm.errors.preset"
+                    class="text-sm text-destructive"
+                >
                     {{ presetForm.errors.preset }}
                 </p>
             </div>

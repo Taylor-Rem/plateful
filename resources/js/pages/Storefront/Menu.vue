@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { toast } from 'vue-sonner';
-import { computed, inject, ref, type Ref } from 'vue';
 import { Clock, Pencil, Plus } from 'lucide-vue-next';
+import { computed, inject, ref } from 'vue';
+import type { Ref } from 'vue';
+import { toast } from 'vue-sonner';
 import ItemConfiguratorModal from '@/pages/Storefront/components/ItemConfiguratorModal.vue';
-import MenuItemEditDrawer from '@/pages/Storefront/components/MenuItemEditDrawer.vue';
 import MenuItemDeleteDialog from '@/pages/Storefront/components/MenuItemDeleteDialog.vue';
+import MenuItemEditDrawer from '@/pages/Storefront/components/MenuItemEditDrawer.vue';
 
 type BrandPalette = {
     primary: string;
@@ -27,7 +28,9 @@ const props = defineProps<{
 }>();
 
 const page = usePage<{ auth?: { canEditMenu?: boolean } }>();
-const canEditMenu = computed(() => Boolean(page.props.auth?.canEditMenu) && props.editor !== null);
+const canEditMenu = computed(
+    () => Boolean(page.props.auth?.canEditMenu) && props.editor !== null,
+);
 
 // Edit mode is provided by StorefrontLayout (persisted in localStorage).
 const editModeRef = inject<Ref<boolean>>('storefrontEditMode', ref(false));
@@ -62,13 +65,17 @@ const onDeleteRequested = (item: App.Data.MenuItemData): void => {
 const onItemClick = (item: App.Data.MenuItemData): void => {
     if (editMode.value) {
         openEdit(item);
+
         return;
     }
+
     if (item.template) {
         activeItem.value = item;
         configuratorOpen.value = true;
+
         return;
     }
+
     router.post(
         `/cart/items/${item.id}`,
         { quantity: 1, option_ids: [] },
@@ -81,7 +88,11 @@ const onItemClick = (item: App.Data.MenuItemData): void => {
     );
 };
 
-const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: number; optionIds: number[] }>; unitPriceCents: number }): void => {
+const onAddToCart = (payload: {
+    itemId: number;
+    selections: Array<{ groupId: number; optionIds: number[] }>;
+    unitPriceCents: number;
+}): void => {
     const name = activeItem.value?.name ?? 'Item';
     const optionIds = payload.selections.flatMap((s) => s.optionIds);
     router.post(
@@ -105,10 +116,14 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
             v-if="restaurant.isOpen === false"
             class="border-b border-amber-300 bg-amber-100 text-amber-900"
         >
-            <div class="mx-auto flex max-w-5xl items-center gap-2 px-6 py-3 text-sm">
+            <div
+                class="mx-auto flex max-w-5xl items-center gap-2 px-6 py-3 text-sm"
+            >
                 <Clock class="size-4 shrink-0" />
                 <span>
-                    <strong class="font-semibold">We're currently closed.</strong>
+                    <strong class="font-semibold"
+                        >We're currently closed.</strong
+                    >
                     {{ restaurant.nextOpenLabel }}
                 </span>
             </div>
@@ -116,15 +131,25 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
 
         <header class="border-b border-border bg-card">
             <div class="mx-auto max-w-5xl px-6 py-8">
-                <h1 class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Menu</h1>
-                <p v-if="restaurant.openStatusLabel" class="mt-2 text-sm text-foreground/70">
+                <h1
+                    class="text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
+                >
+                    Menu
+                </h1>
+                <p
+                    v-if="restaurant.openStatusLabel"
+                    class="mt-2 text-sm text-foreground/70"
+                >
                     {{ restaurant.openStatusLabel }}
                 </p>
             </div>
         </header>
 
         <main class="mx-auto max-w-5xl px-6 py-10">
-            <p v-if="categories.length === 0" class="text-sm text-muted-foreground">
+            <p
+                v-if="categories.length === 0"
+                class="text-sm text-muted-foreground"
+            >
                 No menu items yet.
             </p>
             <section
@@ -142,7 +167,7 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
                     <li
                         v-for="item in category.items"
                         :key="item.id"
-                        class="group relative cursor-pointer overflow-hidden rounded-lg border border-border bg-card text-left shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+                        class="group relative cursor-pointer overflow-hidden rounded-lg border border-border bg-card text-left shadow-sm transition hover:shadow-md focus:ring-2 focus:ring-ring focus:outline-none"
                         :class="{ 'opacity-60': editMode && !item.isAvailable }"
                         tabindex="0"
                         role="button"
@@ -152,13 +177,13 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
                     >
                         <span
                             v-if="editMode && !item.isAvailable"
-                            class="absolute right-2 top-2 z-10 rounded bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-900"
+                            class="absolute top-2 right-2 z-10 rounded bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-900"
                         >
                             Unavailable
                         </span>
                         <span
                             v-if="editMode"
-                            class="absolute left-2 top-2 z-10 rounded-full bg-card/90 p-1 text-muted-foreground shadow-sm"
+                            class="absolute top-2 left-2 z-10 rounded-full bg-card/90 p-1 text-muted-foreground shadow-sm"
                             aria-hidden="true"
                         >
                             <Pencil class="size-3.5" />
@@ -186,13 +211,13 @@ const onAddToCart = (payload: { itemId: number; selections: Array<{ groupId: num
                                 </p>
                                 <p
                                     v-if="item.template"
-                                    class="mt-2 text-xs uppercase tracking-wide text-muted-foreground"
+                                    class="mt-2 text-xs tracking-wide text-muted-foreground uppercase"
                                 >
                                     Customize
                                 </p>
                             </div>
                             <span
-                                class="whitespace-nowrap font-semibold"
+                                class="font-semibold whitespace-nowrap"
                                 :style="{ color: 'var(--brand-primary)' }"
                             >
                                 {{ formatPrice(item.priceCents) }}

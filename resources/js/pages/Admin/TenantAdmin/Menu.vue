@@ -1,14 +1,26 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import {
+    GripVertical,
+    Pencil,
+    Trash2,
+    Plus,
+    ExternalLink,
+} from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import { VueDraggable } from 'vue-draggable-plus';
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import InputError from '@/components/InputError.vue';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { GripVertical, Pencil, Trash2, Plus, ExternalLink } from 'lucide-vue-next';
-import { VueDraggable } from 'vue-draggable-plus';
-import { computed, ref } from 'vue';
+import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -70,13 +82,16 @@ const openEditCategory = (category: App.Data.MenuCategoryData): void => {
 
 const submitCategory = (): void => {
     if (editingCategory.value) {
-        categoryForm.put(`${base.value}/menu/categories/${editingCategory.value.id}`, {
-            preserveScroll: true,
-            onSuccess: () => {
-                showCategoryModal.value = false;
-                refreshLocal();
+        categoryForm.put(
+            `${base.value}/menu/categories/${editingCategory.value.id}`,
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    showCategoryModal.value = false;
+                    refreshLocal();
+                },
             },
-        });
+        );
     } else {
         categoryForm.post(`${base.value}/menu/categories`, {
             preserveScroll: true,
@@ -93,9 +108,11 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
     if (category.items.length > 0) {
         return;
     }
+
     if (!confirm(`Delete category "${category.name}"?`)) {
         return;
     }
+
     router.delete(`${base.value}/menu/categories/${category.id}`, {
         preserveScroll: true,
         onSuccess: refreshLocal,
@@ -111,7 +128,12 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
             <h2 class="text-2xl font-semibold text-foreground">Menu</h2>
             <div v-if="isAdmin" class="flex items-center gap-2">
                 <Button as-child variant="default">
-                    <a :href="storefrontUrl" target="_blank" rel="noopener" class="gap-1">
+                    <a
+                        :href="storefrontUrl"
+                        target="_blank"
+                        rel="noopener"
+                        class="gap-1"
+                    >
                         <ExternalLink class="size-4" /> Edit items on storefront
                     </a>
                 </Button>
@@ -125,14 +147,24 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
         </div>
 
         <p class="mt-2 text-sm text-muted-foreground">
-            Menu item editing now lives on your storefront, so you can see changes the way customers do.
-            Categories and templates are still managed here.
+            Menu item editing now lives on your storefront, so you can see
+            changes the way customers do. Categories and templates are still
+            managed here.
         </p>
 
-        <div v-if="localCategories.length === 0" class="mt-12 rounded-lg border border-dashed border-border bg-card p-10 text-center">
-            <h3 class="text-base font-medium text-foreground">No categories yet</h3>
+        <div
+            v-if="localCategories.length === 0"
+            class="mt-12 rounded-lg border border-dashed border-border bg-card p-10 text-center"
+        >
+            <h3 class="text-base font-medium text-foreground">
+                No categories yet
+            </h3>
             <p class="mt-1 text-sm text-muted-foreground">
-                {{ isAdmin ? 'Create your first category to start building the menu.' : 'No menu items have been added yet.' }}
+                {{
+                    isAdmin
+                        ? 'Create your first category to start building the menu.'
+                        : 'No menu items have been added yet.'
+                }}
             </p>
             <Button v-if="isAdmin" class="mt-4" @click="openCreateCategory">
                 <Plus class="size-4" /> Add category
@@ -152,13 +184,27 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
                 :key="category.id"
                 class="rounded-lg border border-border bg-card"
             >
-                <header class="flex items-center justify-between border-b border-border px-4 py-3">
+                <header
+                    class="flex items-center justify-between border-b border-border px-4 py-3"
+                >
                     <div class="flex items-center gap-2">
-                        <button v-if="isAdmin" class="category-handle cursor-grab text-muted-foreground hover:text-foreground" type="button" aria-label="Drag category">
+                        <button
+                            v-if="isAdmin"
+                            class="category-handle cursor-grab text-muted-foreground hover:text-foreground"
+                            type="button"
+                            aria-label="Drag category"
+                        >
                             <GripVertical class="size-4" />
                         </button>
-                        <h3 class="text-lg font-medium text-foreground">{{ category.name }}</h3>
-                        <span class="text-xs text-muted-foreground">{{ category.items.length }} item<span v-if="category.items.length !== 1">s</span></span>
+                        <h3 class="text-lg font-medium text-foreground">
+                            {{ category.name }}
+                        </h3>
+                        <span class="text-xs text-muted-foreground"
+                            >{{ category.items.length }} item<span
+                                v-if="category.items.length !== 1"
+                                >s</span
+                            ></span
+                        >
                     </div>
                     <div v-if="isAdmin" class="flex items-center gap-1">
                         <button
@@ -173,7 +219,11 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
                             class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
                             type="button"
                             aria-label="Delete category"
-                            :title="category.items.length > 0 ? 'Move or delete items first' : 'Delete category'"
+                            :title="
+                                category.items.length > 0
+                                    ? 'Move or delete items first'
+                                    : 'Delete category'
+                            "
                             :disabled="category.items.length > 0"
                             @click="deleteCategory(category)"
                         >
@@ -182,7 +232,10 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
                     </div>
                 </header>
 
-                <div v-if="category.items.length === 0" class="px-4 py-6 text-center text-sm text-muted-foreground">
+                <div
+                    v-if="category.items.length === 0"
+                    class="px-4 py-6 text-center text-sm text-muted-foreground"
+                >
                     No items yet.
                 </div>
 
@@ -199,18 +252,24 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
                                 :alt="item.name"
                                 class="size-8 shrink-0 rounded object-cover"
                             />
-                            <span class="truncate text-foreground">{{ item.name }}</span>
+                            <span class="truncate text-foreground">{{
+                                item.name
+                            }}</span>
                             <span
                                 v-if="item.template"
                                 class="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary"
                                 :title="`Template: ${item.template.name}`"
-                            >Configurable</span>
+                                >Configurable</span
+                            >
                             <span
                                 v-if="!item.isAvailable"
                                 class="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
-                            >Unavailable</span>
+                                >Unavailable</span
+                            >
                         </div>
-                        <span class="text-foreground">{{ formatPrice(item.priceCents) }}</span>
+                        <span class="text-foreground">{{
+                            formatPrice(item.priceCents)
+                        }}</span>
                     </li>
                 </ul>
             </section>
@@ -219,12 +278,18 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
         <Dialog v-model:open="showCategoryModal">
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{{ editingCategory ? 'Edit category' : 'New category' }}</DialogTitle>
+                    <DialogTitle>{{
+                        editingCategory ? 'Edit category' : 'New category'
+                    }}</DialogTitle>
                 </DialogHeader>
                 <form class="space-y-4" @submit.prevent="submitCategory">
                     <div class="grid gap-2">
                         <Label for="category-name">Name</Label>
-                        <Input id="category-name" v-model="categoryForm.name" required />
+                        <Input
+                            id="category-name"
+                            v-model="categoryForm.name"
+                            required
+                        />
                         <InputError :message="categoryForm.errors.name" />
                     </div>
                     <div class="grid gap-2">
@@ -233,14 +298,31 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
                             id="category-description"
                             v-model="categoryForm.description"
                             rows="3"
-                            class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+                            class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
                         />
-                        <InputError :message="categoryForm.errors.description" />
+                        <InputError
+                            :message="categoryForm.errors.description"
+                        />
                     </div>
-                    <InputError :message="categoryForm.errors.category" />
+                    <!-- Server-level error (category still has items), not a form field. -->
+                    <InputError
+                        :message="
+                            (categoryForm.errors as Record<string, string>)
+                                .category
+                        "
+                    />
                     <DialogFooter>
-                        <Button type="button" variant="outline" @click="showCategoryModal = false">Cancel</Button>
-                        <Button type="submit" :disabled="categoryForm.processing">Save</Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            @click="showCategoryModal = false"
+                            >Cancel</Button
+                        >
+                        <Button
+                            type="submit"
+                            :disabled="categoryForm.processing"
+                            >Save</Button
+                        >
                     </DialogFooter>
                 </form>
             </DialogContent>

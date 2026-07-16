@@ -12,9 +12,7 @@ const tabs = [
 </script>
 
 <template>
-    <div
-        class="inline-flex gap-1 rounded-lg bg-muted p-1"
-    >
+    <div class="inline-flex gap-1 rounded-lg bg-muted p-1">
         <button
             v-for="{ value, Icon, label } in tabs"
             :key="value"

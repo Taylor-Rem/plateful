@@ -5,8 +5,13 @@ use App\Enums\PosProviderName;
 use App\Models\PosIntegration;
 use App\Services\Pos\Clover\CloverClient;
 use App\Services\Pos\Clover\CloverPosProvider;
+use Illuminate\Support\Facades\Http;
 
 require_once __DIR__.'/../Admin/AdminOrderTestHelpers.php';
+
+// The global Http::preventStrayRequests() guard (tests/Pest.php) would block
+// the real sandbox calls this opt-in suite exists to make.
+beforeEach(fn () => Http::preventStrayRequests(false));
 
 /**
  * Opt-in LIVE integration test — makes real calls to the Clover SANDBOX and is

@@ -114,9 +114,20 @@ class OrderPlacement
         $tipRecipient = TipRecipient::forOrder($restaurant, $type);
         $totalCents = $subtotalCents + $taxCents + $deliveryFeeCents + $tipCents;
 
-        // The application fee is the restaurant's rate (flat 4% default) applied
-        // to the FOOD SUBTOTAL only — not tax, tip, or delivery (those are
-        // pass-through and don't belong to Plateful).
+        // THE FEE RULE (pinned 2026-07-15, roadmap §1): the restaurant's rate
+        // (flat 4% default) applied to the FOOD SUBTOTAL only — never tax, tip,
+        // or delivery. Those are pass-through and don't belong to Plateful; a
+        // tip in particular is the staff's or the courier's money, never the
+        // restaurant's revenue (see TipRecipient::forOrder).
+        //
+        // The base is NET of any loyalty redemption: we take 4% of what the
+        // customer actually pays for food. When §10 lands, redemption must
+        // reduce $subtotalCents ABOVE this line — discount it afterwards and the
+        // fee silently reverts to charging on money nobody collected.
+        //
+        // Widening this base is a pricing decision, not a refactor.
+        // StripeCheckoutTest pins every exclusion; if you changed this and that
+        // suite is still green, you changed the wrong thing.
         $applicationFeeCents = (int) floor($subtotalCents * (float) $restaurant->application_fee_percent / 100);
 
         $addressId = null;

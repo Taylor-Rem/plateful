@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
-import { computed } from 'vue';
 
 type Person = { id: number; name: string } | null;
 type Earner = {
@@ -55,7 +55,9 @@ function savePlatformRoles() {
     <div class="min-h-screen bg-background text-foreground">
         <Head title="Earnings" />
         <header class="border-b border-border bg-card">
-            <div class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+            <div
+                class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4"
+            >
                 <div class="flex items-center gap-4">
                     <Link
                         href="/super/restaurants"
@@ -63,7 +65,9 @@ function savePlatformRoles() {
                     >
                         ←
                     </Link>
-                    <h1 class="text-lg font-semibold text-foreground">Earnings</h1>
+                    <h1 class="text-lg font-semibold text-foreground">
+                        Earnings
+                    </h1>
                 </div>
                 <AppearanceTabs />
             </div>
@@ -78,7 +82,9 @@ function savePlatformRoles() {
                 >
                     ← {{ prevMonth }}
                 </Link>
-                <h2 class="text-base font-semibold text-foreground">{{ monthLabel }}</h2>
+                <h2 class="text-base font-semibold text-foreground">
+                    {{ monthLabel }}
+                </h2>
                 <Link
                     :href="`/super/earnings?month=${nextMonth}`"
                     class="text-sm text-primary hover:underline"
@@ -90,8 +96,9 @@ function savePlatformRoles() {
             <!-- Earnings table -->
             <section class="rounded-lg border border-border bg-card p-6">
                 <p class="text-sm text-muted-foreground">
-                    What each person earned from the platform fee in {{ monthLabel }}, for
-                    direct-deposit payout. Fully-refunded orders are excluded.
+                    What each person earned from the platform fee in
+                    {{ monthLabel }}, for direct-deposit payout. Fully-refunded
+                    orders are excluded.
                 </p>
 
                 <div
@@ -104,7 +111,9 @@ function savePlatformRoles() {
                 <div v-else class="mt-4 overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead>
-                            <tr class="border-b border-border text-left text-xs text-muted-foreground">
+                            <tr
+                                class="border-b border-border text-left text-xs text-muted-foreground"
+                            >
                                 <th class="py-2 pr-4 font-medium">Person</th>
                                 <th
                                     v-for="role in roleColumns"
@@ -113,7 +122,9 @@ function savePlatformRoles() {
                                 >
                                     {{ titleCase(role) }}
                                 </th>
-                                <th class="py-2 text-right font-medium">Total</th>
+                                <th class="py-2 text-right font-medium">
+                                    Total
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -123,32 +134,49 @@ function savePlatformRoles() {
                                 class="border-b border-border/60"
                             >
                                 <td class="py-3 pr-4">
-                                    <div class="font-medium text-foreground">{{ earner.name }}</div>
-                                    <div v-if="earner.email" class="text-xs text-muted-foreground">
+                                    <div class="font-medium text-foreground">
+                                        {{ earner.name }}
+                                    </div>
+                                    <div
+                                        v-if="earner.email"
+                                        class="text-xs text-muted-foreground"
+                                    >
                                         {{ earner.email }}
                                     </div>
                                 </td>
                                 <td
                                     v-for="role in roleColumns"
                                     :key="role"
-                                    class="py-3 pr-4 text-right tabular-nums text-muted-foreground"
+                                    class="py-3 pr-4 text-right text-muted-foreground tabular-nums"
                                 >
-                                    {{ earner.roles[role] ? money(earner.roles[role]) : '—' }}
+                                    {{
+                                        earner.roles[role]
+                                            ? money(earner.roles[role])
+                                            : '—'
+                                    }}
                                 </td>
-                                <td class="py-3 text-right font-semibold tabular-nums text-foreground">
+                                <td
+                                    class="py-3 text-right font-semibold text-foreground tabular-nums"
+                                >
                                     {{ money(earner.totalCents) }}
                                 </td>
                             </tr>
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td class="py-3 pr-4 font-semibold text-foreground">Total</td>
+                                <td
+                                    class="py-3 pr-4 font-semibold text-foreground"
+                                >
+                                    Total
+                                </td>
                                 <td
                                     v-for="role in roleColumns"
                                     :key="role"
                                     class="py-3 pr-4"
                                 ></td>
-                                <td class="py-3 text-right font-semibold tabular-nums text-foreground">
+                                <td
+                                    class="py-3 text-right font-semibold text-foreground tabular-nums"
+                                >
                                     {{ money(totalCents) }}
                                 </td>
                             </tr>
@@ -159,16 +187,26 @@ function savePlatformRoles() {
 
             <!-- Platform role holders -->
             <section class="rounded-lg border border-border bg-card p-6">
-                <h2 class="text-base font-semibold text-foreground">Platform roles</h2>
+                <h2 class="text-base font-semibold text-foreground">
+                    Platform roles
+                </h2>
                 <p class="mt-1 text-sm text-muted-foreground">
-                    The Founder earns the {{ shares.founder ?? 0 }}% founder share on every
-                    restaurant. The Operator is the fallback overseer for any restaurant without
-                    one assigned — inheriting the {{ shares.overseer ?? 0 }}% overseer share there.
+                    The Founder earns the {{ shares.founder ?? 0 }}% founder
+                    share on every restaurant. The Operator is the fallback
+                    overseer for any restaurant without one assigned —
+                    inheriting the {{ shares.overseer ?? 0 }}% overseer share
+                    there.
                 </p>
 
-                <form class="mt-4 grid gap-4 sm:grid-cols-2" @submit.prevent="savePlatformRoles">
+                <form
+                    class="mt-4 grid gap-4 sm:grid-cols-2"
+                    @submit.prevent="savePlatformRoles"
+                >
                     <div>
-                        <label for="founder_id" class="block text-xs font-medium text-muted-foreground">
+                        <label
+                            for="founder_id"
+                            class="block text-xs font-medium text-muted-foreground"
+                        >
                             Founder
                         </label>
                         <select
@@ -176,14 +214,23 @@ function savePlatformRoles() {
                             v-model="platformForm.founder_id"
                             class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                         >
-                            <option :value="null" disabled>Select a user…</option>
-                            <option v-for="u in assignableUsers" :key="u.id" :value="u.id">
+                            <option :value="null" disabled>
+                                Select a user…
+                            </option>
+                            <option
+                                v-for="u in assignableUsers"
+                                :key="u.id"
+                                :value="u.id"
+                            >
                                 {{ u.name }}
                             </option>
                         </select>
                     </div>
                     <div>
-                        <label for="operator_id" class="block text-xs font-medium text-muted-foreground">
+                        <label
+                            for="operator_id"
+                            class="block text-xs font-medium text-muted-foreground"
+                        >
                             Operator
                         </label>
                         <select
@@ -191,24 +238,46 @@ function savePlatformRoles() {
                             v-model="platformForm.operator_id"
                             class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                         >
-                            <option :value="null" disabled>Select a user…</option>
-                            <option v-for="u in assignableUsers" :key="u.id" :value="u.id">
+                            <option :value="null" disabled>
+                                Select a user…
+                            </option>
+                            <option
+                                v-for="u in assignableUsers"
+                                :key="u.id"
+                                :value="u.id"
+                            >
                                 {{ u.name }}
                             </option>
                         </select>
                     </div>
-                    <div class="sm:col-span-2 flex items-center gap-3">
-                        <Button type="submit" :disabled="platformForm.processing">
-                            {{ platformForm.processing ? 'Saving…' : 'Save platform roles' }}
+                    <div class="flex items-center gap-3 sm:col-span-2">
+                        <Button
+                            type="submit"
+                            :disabled="platformForm.processing"
+                        >
+                            {{
+                                platformForm.processing
+                                    ? 'Saving…'
+                                    : 'Save platform roles'
+                            }}
                         </Button>
-                        <p v-if="platformForm.recentlySuccessful" class="text-sm text-green-600">
+                        <p
+                            v-if="platformForm.recentlySuccessful"
+                            class="text-sm text-green-600"
+                        >
                             Saved.
                         </p>
                         <p
-                            v-if="platformForm.errors.founder_id || platformForm.errors.operator_id"
+                            v-if="
+                                platformForm.errors.founder_id ||
+                                platformForm.errors.operator_id
+                            "
                             class="text-sm text-destructive"
                         >
-                            {{ platformForm.errors.founder_id || platformForm.errors.operator_id }}
+                            {{
+                                platformForm.errors.founder_id ||
+                                platformForm.errors.operator_id
+                            }}
                         </p>
                     </div>
                 </form>

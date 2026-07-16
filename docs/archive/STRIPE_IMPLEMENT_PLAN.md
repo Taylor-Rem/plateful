@@ -1,5 +1,12 @@
 # Stripe Connect implementation plan
 
+> **SUPERSEDED — historical record only (archived; migration shipped).** Everything below
+> describes the world *before* the Connect migration. The pricing it states (1%) was replaced
+> by the locked **4% flat** rule (todo.md §1, README), the Cashier/subscription wiring it plans
+> to remove is long gone, and its refund model ("full refund on cancel, always") was replaced by
+> capture/void semantics (todo.md §3). The still-open questions it raised were lifted into
+> todo.md "Open Stripe questions". Do not act on anything in this file.
+
 Plan for switching Plateful from a subscription billing model (Cashier-based,
 currently shipped) to a pure per-order application-fee model (Stripe Connect
 Express, to be built). This document is the authoritative plan; the codebase

@@ -3,23 +3,21 @@ name: tests
 on:
   push:
     branches:
-      - develop
       - main
-      - master
-      - workos
+      - dev
   pull_request:
     branches:
-      - develop
       - main
-      - master
-      - workos
+      - dev
 
 jobs:
   ci:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php-version: ['8.4', '8.5']
+        # Match production (PHP 8.4). Re-add 8.5 when an upgrade is planned —
+        # a bleeding-edge matrix entry is a flake source, not coverage.
+        php-version: ['8.4']
 
     steps:
       - name: Checkout code
@@ -52,5 +50,11 @@ jobs:
       - name: Build Assets
         run: npm run build
 
+      # Must follow the build: vue-tsc needs the Wayfinder-generated
+      # resources/js/{actions,routes}, which are gitignored and emitted by the
+      # Vite plugin. That's why this check lives here and not in linter.yml.
+      - name: Type check
+        run: npm run types:check
+
       - name: Tests
-        run: ./vendor/bin/pest
+        run: ./vendor/bin/pest -d memory_limit=512M

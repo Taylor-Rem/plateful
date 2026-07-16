@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { Button } from '@/components/ui/button';
 import { Check, ExternalLink } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -57,7 +57,11 @@ const connectStripe = (): void => {
                 data-test="connect-stripe-button"
                 @click="connectStripe"
             >
-                {{ stripeStatus === 'pending' ? 'Continue Stripe setup' : 'Connect Stripe' }}
+                {{
+                    stripeStatus === 'pending'
+                        ? 'Continue Stripe setup'
+                        : 'Connect Stripe'
+                }}
             </Button>
         </template>
     </div>

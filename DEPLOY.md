@@ -58,9 +58,14 @@ git push origin main
 6. **Deploy command (post-deploy hook):** `php artisan migrate --force && php artisan storage:link && php artisan config:cache && php artisan route:cache && php artisan view:cache`
    - **Important:** never use `migrate:fresh` or `db:seed` in production. Plateful has real photo data; only forward-only migrations are safe.
 7. **Scheduler:** enable it. Cloud will run `schedule:run` every minute. Currently nothing is scheduled, but enabling it now means cron jobs added later "just work."
-8. **Queue worker:** on Starter, the queue runs against the database. Either:
-   - Enable Cloud's in-process queue worker (recommended if available on Starter), or
-   - Leave `QUEUE_CONNECTION=database` and skip the worker for now — sync-style behavior is fine until you add jobs that must run async.
+8. **Queue worker: required.** On Starter the queue runs against the database — enable Cloud's queue
+   worker. `QUEUE_CONNECTION=database` does **not** mean jobs run inline; with no worker they sit in
+   the `jobs` table forever. Order placement queues confirmation mail, `PushOrderToPos`,
+   `DispatchDeliveryForOrder`, and `ExpireAuthorizedDelivery` (which of them fire depends on the
+   order type — a courier delivery holds its POS push until the courier is confirmed), so without a
+   worker: tickets never reach the kitchen, deliveries never dispatch, and — because courier-network
+   orders authorize rather than capture — **authorization holds sit on customer cards with nothing
+   scheduled to release them**. This is the one operational dependency with no in-code backstop.
 
 ---
 
@@ -112,16 +117,76 @@ On Growth+ with Redis/KV available, switch all three to `redis`.
 | `MAIL_FROM_NAME` | `Plateful` |
 | `RESEND_API_KEY` | the key from Step 2 |
 
+### Stripe (payments — nothing works without these)
+
+| Key | Value |
+|---|---|
+| `STRIPE_KEY` | live **publishable** key (`pk_live_…`) |
+| `STRIPE_SECRET` | live **secret** key (`sk_live_…`) |
+| `STRIPE_WEBHOOK_SECRET` | the `whsec_…` for the **live Connect webhook** pointed at `https://admin.<primary>/stripe/webhook` (create it in the Stripe dashboard; it must listen to *connected account* events — direct charges fire `checkout.session.completed` on the connected account) |
+| `STRIPE_CONNECT_COUNTRY` | `US` |
+
+`scripts/cloud-check.php` reports these as LIVE/TEST by prefix — run it after setting them.
+
+### POS — Square & Clover (⚠ both default to `sandbox`)
+
+`config/services.php` falls back to `sandbox` for both providers and the API/OAuth **hosts key off
+this value** — if production doesn't set these explicitly, every OAuth connect and every ticket
+push silently goes to the sandbox hosts and real registers never see an order.
+
+| Key | Value |
+|---|---|
+| `SQUARE_ENVIRONMENT` | `production` |
+| `SQUARE_APPLICATION_ID` / `SQUARE_APPLICATION_SECRET` | from the Square developer dashboard (production credentials, not sandbox) |
+| `SQUARE_REDIRECT_URI` | `https://admin.<primary>/pos/square/callback` (must match the URI registered on the Square app) |
+| `CLOVER_ENVIRONMENT` | `production` |
+| `CLOVER_APP_ID` / `CLOVER_APP_SECRET` | from the Clover developer dashboard |
+| `CLOVER_REDIRECT_URI` | `https://admin.<primary>/pos/clover/callback` (must match the Clover app registration) |
+
+### Delivery & address lookup
+
+| Key | Value |
+|---|---|
+| `GOOGLE_MAPS_API_KEY` | server-side Places API key (IP-restricted to the production server — it is proxied through the backend, never sent to browsers) |
+| `UBER_DIRECT_SANDBOX_*` | leave **unset** in production — Uber Direct credentials are per-restaurant and live encrypted in `delivery_integrations`; the sandbox vars exist only for local dev and the opt-in live test |
+
+### Google login (optional but wired)
+
+| Key | Value |
+|---|---|
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | from the Google Cloud OAuth client |
+| `GOOGLE_REDIRECT_URI` | `https://<primary>/auth/google/callback` (root host — Google forbids wildcard subdomains) |
+
+### AI menu import
+
+| Key | Value |
+|---|---|
+| `CLAUDE_API_KEY` | Anthropic API key — without it the menu photo/PDF import (`ExtractMenuJob`) fails and the "free setup" onboarding flow is dead |
+
+### Error monitoring
+
+| Key | Value |
+|---|---|
+| `SENTRY_LARAVEL_DSN` | project DSN (see "Consider adding later" below for details) |
+| `SENTRY_TRACES_SAMPLE_RATE` | `0.1` |
+
 ### Storage (restaurant assets → Cloud object storage)
 
 | Key | Value |
 |---|---|
-| `FILESYSTEM_DISK` | `local` |
-| `FILESYSTEM_RESTAURANT_ASSETS_DRIVER` | `s3` |
+| `FILESYSTEM_DISK` | `s3` |
+| `MEDIA_DISK` | leave **unset** |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_BUCKET`, `AWS_DEFAULT_REGION`, `AWS_URL` | *auto* (Cloud object storage) |
 | `AWS_USE_PATH_STYLE_ENDPOINT` | `false` (or whatever Cloud's docs recommend) |
 
-The `restaurant_assets` disk in `config/filesystems.php` already falls back to `AWS_*` when the `RESTAURANT_ASSETS_*` overrides aren't set, so this is all you need.
+Restaurant media (logos, menu-item images, hero/about images, gallery photos) resolves through
+`config/media.php`: `MEDIA_DISK` if set, otherwise `FILESYSTEM_DISK`. Leaving `MEDIA_DISK` unset in
+Cloud makes media follow the default disk onto the injected bucket, which is what you want — set it
+only to override media independently of the app default (locally it's `public`, so `Storage::url()`
+resolves via `storage:link`).
+
+**`FILESYSTEM_DISK` is the setting that matters.** Leave it at `local` and every uploaded logo and
+menu photo writes to the container's ephemeral disk and disappears on the next deploy.
 
 ### Platform / tenancy
 
@@ -162,7 +227,7 @@ Open Cloud's web console (or `cloud ssh` if available) and run:
 php artisan plateful:create-super-admin --email=you@example.com --name="Your Name"
 ```
 
-You'll be prompted for a password (min 12 chars). The command is idempotent: it errors clearly if the email already exists. It creates a user with `role=admin`, `is_super_admin=true`, `restaurant_id=null`, and a verified email.
+You'll be prompted for a password (min 12 chars). The command is idempotent: it errors clearly if the email already exists. It creates a user with `is_super_admin=true` and a verified email (there is no `role` column — admin access is per-restaurant via the `restaurant_user` pivot; `is_super_admin` bypasses it).
 
 ---
 
@@ -197,7 +262,7 @@ We deliberately leave `SESSION_DOMAIN=null` so each tenant subdomain (`admin.X`,
 `AppServiceProvider` calls `URL::forceScheme('https')` in production, and the app trusts all proxies via `bootstrap/app.php`. If you still see `http://` URLs, confirm `APP_ENV=production` and `APP_URL` starts with `https://`, then `php artisan config:clear`.
 
 ### Image URLs broken
-Check `Storage::disk('restaurant_assets')->url('some/path.jpg')` in Cloud's `php artisan tinker`. It should return an HTTPS URL pointing at the Cloud object storage bucket (or `AWS_URL` if you set a custom CDN). The accessors `MenuItem::image_url` and `Restaurant::logo_url` use this disk and don't hardcode anything.
+Check `config('media.disk')` in Cloud's `php artisan tinker` — it should report `s3`, not `local`. If it says `local`, `FILESYSTEM_DISK` is wrong (see Storage above). Then confirm `Storage::disk(config('media.disk'))->url('some/path.jpg')` returns an HTTPS URL pointing at the Cloud object storage bucket (or `AWS_URL` if you set a custom CDN). The accessors `MenuItem::image_url` and `Restaurant::logo_url` resolve through `config('media.disk')` and don't hardcode anything.
 
 ### "Unable to locate file in Vite manifest"
 The build step didn't run, or `public/build` wasn't deployed. Re-check the build command in Cloud and redeploy.
@@ -280,6 +345,6 @@ placeholders):
   - `SENTRY_TRACES_SAMPLE_RATE` — `0.1` to start (10% of requests traced); raise or lower as needed.
 
   Logging is unaffected — `LOG_CHANNEL=stderr` keeps working; Sentry is additive. After setting the vars, redeploy and confirm the next unhandled exception shows up in Sentry.
-- **Stripe billing**: Cashier is already installed but unused. When you're ready to charge restaurants, wire up `Billable` on `User` or `Restaurant` and configure Stripe.
 - **Custom queue worker**: as background work grows, move from `database` queue + sync to a dedicated Cloud queue worker on Growth.
+- **Scheduled cleanup**: nothing prunes `pending_checkouts` (each row is a full order snapshot; abandoned checkouts accumulate forever) or expired `delivery_quotes`. Add prune jobs once volume makes it matter — the scheduler is already enabled (Step 4).
 - **Backups**: Cloud Postgres is managed but verify the backup policy on Starter and set up an off-Cloud DB snapshot routine if needed.
