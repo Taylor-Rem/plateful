@@ -13,6 +13,7 @@ use App\Models\Restaurant;
 use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
 use App\Services\Delivery\DeliveryDispatcher;
+use App\Services\Delivery\DoorDash\DoorDashProvider;
 use App\Services\Delivery\SelfDeliveryProvider;
 use App\Services\Delivery\UberDirect\UberDirectProvider;
 use App\Services\Pos\Clover\CloverPosProvider;
@@ -47,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
             // DoorDash Drive), keyed by DeliveryProviderName value.
             return new DeliveryDispatcher([
                 DeliveryProviderName::Self->value => $app->make(SelfDeliveryProvider::class),
+                DeliveryProviderName::DoorDash->value => $app->make(DoorDashProvider::class),
                 DeliveryProviderName::Uber->value => $app->make(UberDirectProvider::class),
             ]);
         });

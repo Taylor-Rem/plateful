@@ -108,6 +108,23 @@ return [
          * error than making the customer wait longer to hear bad news.
          */
         'courier_deadline_minutes' => (int) env('DELIVERY_COURIER_DEADLINE_MINUTES', 10),
+
+        'doordash' => [
+            /*
+             * DoorDash Drive serves sandbox and production from the same host;
+             * the environment is a property of the credentials, not the URL.
+             * Overridable only so tests and any future host move have a seam.
+             */
+            'base_url' => env('DOORDASH_BASE_URL', 'https://openapi.doordash.com'),
+
+            /*
+             * DoorDash quote responses carry no expiry field; the docs say a
+             * quote must be accepted within ~5 minutes. We stamp a synthetic
+             * expiry this many minutes out so DeliveryDispatcher::quoteForDispatch
+             * re-quotes proactively rather than accepting a stale one.
+             */
+            'quote_accept_window_minutes' => (int) env('DOORDASH_QUOTE_ACCEPT_WINDOW_MINUTES', 5),
+        ],
     ],
 
     'timezones' => [
