@@ -11,6 +11,7 @@ use App\Models\DeliveryAssignment;
 use App\Models\DeliveryIntegration;
 use App\Models\Order;
 use App\Models\Restaurant;
+use App\Services\Delivery\DeliveryCancellation;
 use App\Services\Delivery\DeliveryQuote;
 use App\Services\Delivery\DeliveryQuoteRequest;
 use App\Services\Delivery\UberDirect\UberDirectProvider;
@@ -175,7 +176,7 @@ class DoorDashProvider implements DeliveryProvider
         return $assignment;
     }
 
-    public function cancel(DeliveryAssignment $assignment): void
+    public function cancel(DeliveryAssignment $assignment): DeliveryCancellation
     {
         $this->integrationOrFail($assignment->order->restaurant);
 
@@ -188,6 +189,51 @@ class DoorDashProvider implements DeliveryProvider
         }
 
         $assignment->forceFill(['status' => DeliveryStatus::Cancelled])->save();
+
+        return $this->parseCancellation((array) $response->json(), (int) $assignment->actual_fee_cents);
+    }
+
+    /**
+     * Read DoorDash's cancel response to learn whether the courier fee is
+     * recoverable. Cancel before the Dasher picks up and DoorDash charges
+     * nothing (fully refundable); cancel after pickup and DoorDash keeps the
+     * fee.
+     *
+     * The exact field DoorDash returns for a cancellation charge is unverified
+     * against a live cancel (plan Session 3/6 open item) — the Drive docs are
+     * thin here — so this reads the plausible candidates and, crucially,
+     * DEFAULTS TO RETAINED when the response is silent. Refunding the delivery
+     * line when DoorDash actually kept the fee would make Plateful eat it; the
+     * conservative default keeps Plateful whole. Confirm the field at portal
+     * setup and tighten this one method.
+     *
+     * @param  array<string, mixed>  $body
+     */
+    private function parseCancellation(array $body, int $courierFeeCents): DeliveryCancellation
+    {
+        // Candidate shapes: a boolean/flag saying the fee was waived, or an
+        // explicit cancellation-fee amount in cents.
+        $waived = $body['cancellation_fee_waived']
+            ?? $body['fee_waived']
+            ?? ($body['refund'] ?? null);
+
+        if ($waived === true) {
+            return DeliveryCancellation::fullyRefunded();
+        }
+
+        foreach (['cancellation_fee', 'cancellation_fee_cents', 'fee'] as $key) {
+            if (array_key_exists($key, $body) && is_numeric($body[$key])) {
+                $charged = (int) $body[$key];
+
+                return $charged <= 0
+                    ? DeliveryCancellation::fullyRefunded()
+                    : DeliveryCancellation::courierFeeRetained($charged);
+            }
+        }
+
+        // Response said nothing about a fee: assume DoorDash kept the courier
+        // fee. Never refund the delivery line on a guess.
+        return DeliveryCancellation::courierFeeRetained($courierFeeCents);
     }
 
     private function accept(string $externalDeliveryId, int $tipCents): Response

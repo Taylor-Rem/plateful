@@ -116,6 +116,37 @@ class RevenueSplitResolver
     }
 
     /**
+     * Undo the earning slices for revenue that was refunded on a cancellation
+     * (DoorDash plan Session 5). Commission and the delivery margin are reversed
+     * independently — a delivery-only refund gives back the margin while the
+     * food commission stays earned, and vice-versa.
+     *
+     * The rows are deleted rather than negated: the earnings report and the
+     * monthly cap both read live totals, and a slice that was never really kept
+     * should simply not be there. Called after the order's own
+     * platform_commission_cents / delivery_margin_cents are zeroed, so the two
+     * sources of truth stay in agreement.
+     */
+    public function reverse(Order $order, bool $commission, bool $margin): void
+    {
+        if (! $commission && ! $margin) {
+            return;
+        }
+
+        $query = FeeDistribution::query()->where('order_id', $order->id);
+
+        // When only one side is reversed, scope to it; when both are, delete
+        // every slice for the order.
+        if ($commission && ! $margin) {
+            $query->where('role', '!=', RevenueRole::DeliveryMargin->value);
+        } elseif ($margin && ! $commission) {
+            $query->where('role', RevenueRole::DeliveryMargin->value);
+        }
+
+        $query->delete();
+    }
+
+    /**
      * Attribute the delivery margin (0.04×D) 100% to the founder, as its OWN
      * ledger role rather than the founder's commission slice — the
      * (order, user, role) unique key forbids two founder rows per order, and a

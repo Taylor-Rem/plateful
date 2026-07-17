@@ -20,6 +20,11 @@ if (! function_exists('adminOrderRestaurant')) {
             'city' => 'NYC',
             'state' => 'NY',
             'postal_code' => '10001',
+            // These fixtures predate the Session 5 refund policy and assert the
+            // "captured cancel refunds" behaviour, so they model a restaurant
+            // that allows refunds. Policy-off behaviour has its own tests.
+            'pickup_refunds_enabled' => true,
+            'delivery_refunds_enabled' => true,
         ]);
     }
 }

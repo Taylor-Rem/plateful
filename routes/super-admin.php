@@ -62,6 +62,7 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             Route::middleware('admin.restaurant.admin')->group(function () {
                 Route::get('/onboarding', [TenantAdmin\OnboardingController::class, 'show'])->name('onboarding.show');
                 Route::put('/onboarding/basics', [TenantAdmin\OnboardingController::class, 'updateBasics'])->name('onboarding.basics');
+                Route::put('/onboarding/refund-policy', [TenantAdmin\OnboardingController::class, 'updateRefundPolicy'])->name('onboarding.refundPolicy');
                 Route::post('/onboarding/menu-preset', [TenantAdmin\OnboardingController::class, 'applyMenuPreset'])->name('onboarding.menuPreset');
                 Route::post('/onboarding/menu-import', [TenantAdmin\MenuImportController::class, 'store'])->name('menuImport.store');
                 Route::get('/menu-import/{menuImport}/review', [TenantAdmin\MenuImportController::class, 'review'])->name('menuImport.review');

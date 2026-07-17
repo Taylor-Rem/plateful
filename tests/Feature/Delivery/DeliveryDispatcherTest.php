@@ -9,6 +9,7 @@ use App\Enums\OrderType;
 use App\Models\DeliveryAssignment;
 use App\Models\Order;
 use App\Models\Restaurant;
+use App\Services\Delivery\DeliveryCancellation;
 use App\Services\Delivery\DeliveryDispatcher;
 use App\Services\Delivery\DeliveryQuote;
 use App\Services\Delivery\DeliveryQuoteRequest;
@@ -76,7 +77,10 @@ function fakeProvider(DeliveryProviderName $name, bool $supports = true, ?Throwa
             return $a;
         }
 
-        public function cancel(DeliveryAssignment $a): void {}
+        public function cancel(DeliveryAssignment $a): DeliveryCancellation
+        {
+            return DeliveryCancellation::fullyRefunded();
+        }
     };
 }
 

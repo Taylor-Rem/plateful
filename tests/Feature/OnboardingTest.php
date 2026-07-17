@@ -76,7 +76,7 @@ it('renders the onboarding wizard for the restaurant admin', function () {
             ->component('Admin/TenantAdmin/Onboarding')
             ->where('restaurant.subdomain', 'pizzajoint')
             ->where('canGoLive', false)
-            ->has('steps', 5)
+            ->has('steps', 6)
             ->has('menuPresets')
             ->where('menuSummary.items', 0));
 });
@@ -370,4 +370,51 @@ it('redirects single-restaurant owners with active restaurant to dashboard', fun
     $this->actingAs($owner)
         ->get(ADMIN_HOST)
         ->assertRedirect(ADMIN_HOST."/{$restaurant->subdomain}/dashboard");
+});
+
+test('the wizard exposes a refund policy step that starts incomplete and off', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
+        ->assertInertia(fn ($page) => $page
+            ->where('steps', fn ($steps) => collect($steps)->contains(
+                fn ($s) => $s['key'] === 'refunds' && $s['complete'] === false && $s['required'] === false,
+            ))
+        );
+
+    expect($restaurant->fresh()->pickup_refunds_enabled)->toBeFalse()
+        ->and($restaurant->fresh()->delivery_refunds_enabled)->toBeFalse()
+        ->and($restaurant->fresh()->refund_policy_reviewed_at)->toBeNull();
+});
+
+test('saving the refund policy step stores the toggles and marks it reviewed', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->put(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/refund-policy", [
+            'pickup_refunds_enabled' => false,
+            'delivery_refunds_enabled' => true,
+        ])
+        ->assertRedirect();
+
+    $restaurant->refresh();
+    expect($restaurant->pickup_refunds_enabled)->toBeFalse()
+        ->and($restaurant->delivery_refunds_enabled)->toBeTrue()
+        ->and($restaurant->refund_policy_reviewed_at)->not->toBeNull();
+});
+
+test('reviewing the refund policy with both off still completes the step', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->put(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/refund-policy", [
+            'pickup_refunds_enabled' => false,
+            'delivery_refunds_enabled' => false,
+        ])
+        ->assertRedirect();
+
+    // A deliberate "no refunds" choice is still a completed step (does not
+    // block go-live either, since the step is optional).
+    expect($restaurant->fresh()->refund_policy_reviewed_at)->not->toBeNull();
 });

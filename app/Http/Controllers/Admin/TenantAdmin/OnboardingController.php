@@ -141,6 +141,29 @@ class OnboardingController extends Controller
     }
 
     /**
+     * Wizard "Refund policy" step: two independent food-refund toggles (pickup
+     * and delivery), both off by default. Saving stamps `refund_policy_reviewed_at`
+     * so the step reads as complete even when the owner deliberately leaves both
+     * off — the delivery fee itself is always refunded when recoverable, so this
+     * only governs the food (DoorDash plan Session 5).
+     */
+    public function updateRefundPolicy(Request $request, Restaurant $restaurant): RedirectResponse
+    {
+        $validated = $request->validate([
+            'pickup_refunds_enabled' => ['required', 'boolean'],
+            'delivery_refunds_enabled' => ['required', 'boolean'],
+        ]);
+
+        $restaurant->update([
+            'pickup_refunds_enabled' => $validated['pickup_refunds_enabled'],
+            'delivery_refunds_enabled' => $validated['delivery_refunds_enabled'],
+            'refund_policy_reviewed_at' => now(),
+        ]);
+
+        return back()->with('success', 'Refund policy saved.');
+    }
+
+    /**
      * Hand the owner to their (possibly not-yet-live) storefront. Sessions are
      * host-scoped, so being logged in on the admin host means nothing on the
      * storefront host — a single-use token carries the login across, where
@@ -245,6 +268,13 @@ class OnboardingController extends Controller
                 'description' => $this->stripeStepDescription($restaurant),
                 'complete' => $restaurant->isStripeReady(),
                 'required' => true,
+            ],
+            [
+                'key' => 'refunds',
+                'title' => 'Refund policy',
+                'description' => 'Decide whether cancelled orders refund the food. Off by default.',
+                'complete' => $restaurant->refund_policy_reviewed_at !== null,
+                'required' => false,
             ],
             [
                 'key' => 'review',

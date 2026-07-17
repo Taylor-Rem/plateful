@@ -12,6 +12,7 @@ use App\Models\DeliveryIntegration;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Restaurant;
+use App\Services\Delivery\DeliveryCancellation;
 use App\Services\Delivery\DeliveryQuote;
 use App\Services\Delivery\DeliveryQuoteRequest;
 use Carbon\CarbonImmutable;
@@ -189,7 +190,7 @@ class UberDirectProvider implements DeliveryProvider
         return $assignment;
     }
 
-    public function cancel(DeliveryAssignment $assignment): void
+    public function cancel(DeliveryAssignment $assignment): DeliveryCancellation
     {
         $order = $assignment->order;
         $integration = $this->integrationOrFail($order->restaurant);
@@ -206,6 +207,11 @@ class UberDirectProvider implements DeliveryProvider
         }
 
         $assignment->forceFill(['status' => DeliveryStatus::Cancelled])->save();
+
+        // Uber bills the restaurant directly (pass-through), so Plateful never
+        // fronted the courier fee. There is nothing for Plateful to recover, and
+        // the delivery line follows the ordinary food-refund policy.
+        return DeliveryCancellation::fullyRefunded();
     }
 
     /**

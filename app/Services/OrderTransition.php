@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\PaymentState;
@@ -11,6 +12,10 @@ use App\Mail\OrderReadyForPickupToCustomer;
 use App\Models\Order;
 use App\Models\OrderEvent;
 use App\Models\User;
+use App\Services\Delivery\DeliveryCancellation;
+use App\Services\Delivery\DeliveryDispatcher;
+use App\Services\Refunds\RefundCalculator;
+use App\Services\Refunds\RefundPlan;
 use App\Services\Stripe\StripeConnectService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -20,6 +25,9 @@ class OrderTransition
     public function __construct(
         protected LoyaltyService $loyalty,
         protected StripeConnectService $connect,
+        protected DeliveryDispatcher $dispatcher,
+        protected RefundCalculator $refunds,
+        protected RevenueSplitResolver $revenueSplits,
     ) {}
 
     public function apply(
@@ -72,15 +80,23 @@ class OrderTransition
      * whichever mechanism actually applies. Best-effort: a Stripe failure must
      * not block the cancel.
      *
+     * Order of operations matters: the courier network is told to stop BEFORE
+     * any money moves, so a Dasher isn't still driving to a kitchen for an order
+     * that no longer exists — and its cancel response tells us whether the
+     * courier fee is recoverable.
+     *
      * An order awaiting a courier holds an AUTHORIZATION, not a charge, and
      * Stripe rejects a refund against an uncaptured intent. So the hold is
-     * released instead. Without this split, an owner cancelling a delivery
-     * order before its courier was found would hit a Stripe error, the refund
-     * would silently fail, and the hold would sit on the card until the bank
-     * dropped it.
+     * released instead. A captured order is refunded only what is recoverable
+     * (DoorDash plan Session 5): the food per the restaurant's policy, and the
+     * delivery line only when the courier fee came back — Plateful is never out
+     * of pocket.
      */
     protected function refundOnCancel(Order $order): void
     {
+        // Stop the courier first, whatever happens to the money next.
+        $cancellation = $this->cancelCourier($order);
+
         if (! $order->stripe_payment_intent_id) {
             return;
         }
@@ -99,14 +115,91 @@ class OrderTransition
             return;
         }
 
+        $plan = $this->refunds->for($order, $cancellation);
+
+        if (! $plan->refundsAnything()) {
+            OrderEvent::note($order, 'Order cancelled — no refund issued under the restaurant’s refund policy.');
+
+            return;
+        }
+
         try {
-            $this->connect->refundOrder($order);
-            $order->forceFill([
-                'refunded_at' => now(),
-                'refunded_cents' => (int) $order->total_cents,
-            ])->save();
+            if ($plan->isFullRefund) {
+                // A full refund can reverse the whole application fee in one
+                // call — cheaper and matches the pre-Session-5 behaviour exactly.
+                $this->connect->refundOrder($order);
+            } else {
+                $this->connect->refundOrderPartial(
+                    $order,
+                    $plan->customerRefundCents,
+                    $plan->applicationFeeReversalCents,
+                );
+            }
         } catch (\Throwable $e) {
             report($e);
+
+            return;
+        }
+
+        $this->applyRefund($order, $plan);
+    }
+
+    /**
+     * Persist the effect of a refund: what the customer got back, and which
+     * slices of Plateful's revenue were reversed. Zeroing the columns and
+     * deleting the matching ledger rows keeps the monthly cap and the earnings
+     * split honest — `refunded_at` is set only on a complete refund, so a
+     * partial (delivery-only or food-only) refund still counts its retained
+     * revenue toward month-to-date.
+     */
+    protected function applyRefund(Order $order, RefundPlan $plan): void
+    {
+        $order->refunded_cents = (int) $order->refunded_cents + $plan->customerRefundCents;
+
+        if ($plan->reverseCommission) {
+            $order->platform_commission_cents = 0;
+        }
+
+        if ($plan->reverseMargin) {
+            $order->delivery_margin_cents = 0;
+        }
+
+        if ($plan->isFullRefund) {
+            $order->refunded_at = now();
+        }
+
+        $order->save();
+
+        $this->revenueSplits->reverse($order, $plan->reverseCommission, $plan->reverseMargin);
+
+        OrderEvent::note($order, sprintf(
+            'Refunded $%s to the customer on cancellation.',
+            number_format($plan->customerRefundCents / 100, 2),
+        ));
+    }
+
+    /**
+     * Call off a dispatched courier before releasing the money, and report back
+     * what the provider did with its fee (null when there was no live courier).
+     *
+     * Best-effort: a failed cancel must not block the order cancel. When we
+     * can't confirm the outcome we assume the courier fee was kept, so the
+     * delivery line is never refunded on a guess — Plateful stays whole.
+     */
+    protected function cancelCourier(Order $order): ?DeliveryCancellation
+    {
+        $assignment = $order->deliveryAssignment;
+
+        if ($assignment === null || $assignment->status === DeliveryStatus::Cancelled) {
+            return null;
+        }
+
+        try {
+            return $this->dispatcher->cancel($assignment);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return DeliveryCancellation::courierFeeRetained((int) $assignment->actual_fee_cents);
         }
     }
 

@@ -291,6 +291,32 @@ it('cancels a delivery via PUT and marks the assignment cancelled', function () 
         && $req->url() === 'https://openapi.doordash.com/drive/v2/deliveries/pf-quote-1/cancel');
 });
 
+it('reads the cancel response to decide if the courier fee is recoverable', function (array $body, bool $recoverable) {
+    Http::fake(['openapi.doordash.com/*' => Http::response($body)]);
+
+    $r = doordashRestaurant();
+    $order = makeOrder($r);
+    $assignment = DeliveryAssignment::create([
+        'order_id' => $order->id,
+        'provider' => DeliveryProviderName::DoorDash,
+        'external_id' => 'pf-quote-1',
+        'status' => DeliveryStatus::Pending,
+        'actual_fee_cents' => 975,
+    ]);
+
+    $cancellation = app(DoorDashProvider::class)->cancel($assignment);
+
+    expect($cancellation->courierFeeRecoverable())->toBe($recoverable);
+})->with([
+    // Pre-pickup: DoorDash charges nothing → fully recoverable.
+    'no cancellation fee' => [['delivery_status' => 'cancelled', 'cancellation_fee' => 0], true],
+    'fee explicitly waived' => [['delivery_status' => 'cancelled', 'cancellation_fee_waived' => true], true],
+    // Post-pickup: DoorDash keeps the fee → not recoverable.
+    'fee charged' => [['delivery_status' => 'cancelled', 'cancellation_fee' => 975], false],
+    // Silent response → assume the fee was kept, never refund on a guess.
+    'silent response' => [['delivery_status' => 'cancelled'], false],
+]);
+
 it('supports only restaurants with a provisioned store', function () {
     $connected = doordashRestaurant('ddyes');
     $bare = adminOrderRestaurant('ddno');

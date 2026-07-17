@@ -106,7 +106,7 @@ class DeliveryDispatcher
      * looking BEFORE releasing the customer's payment hold, or a courier could
      * still turn up at a kitchen for an order that no longer exists.
      */
-    public function cancel(DeliveryAssignment $assignment): void
+    public function cancel(DeliveryAssignment $assignment): DeliveryCancellation
     {
         $provider = $this->providers[$assignment->provider->value] ?? null;
 
@@ -114,7 +114,7 @@ class DeliveryDispatcher
             throw DeliveryProviderException::notConfigured($assignment->provider->value);
         }
 
-        $provider->cancel($assignment);
+        return $provider->cancel($assignment);
     }
 
     public function dispatch(Order $order): DeliveryDispatchResult

@@ -23,6 +23,8 @@ const form = useForm({
     remove_logo: false as boolean,
     tax_rate_percent: props.restaurant.taxRatePercent ?? 0,
     delivery_fee: ((props.restaurant.deliveryFeeCents ?? 0) / 100).toFixed(2),
+    pickup_refunds_enabled: props.restaurant.pickupRefundsEnabled ?? false,
+    delivery_refunds_enabled: props.restaurant.deliveryRefundsEnabled ?? false,
 });
 
 const newLogoPreview = ref<string | null>(null);
@@ -244,6 +246,60 @@ const submit = (): void => {
                             <InputError :message="form.errors.delivery_fee" />
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <section class="rounded-lg border border-border bg-card p-5">
+                <h3 class="text-base font-medium text-foreground">
+                    Refund policy
+                </h3>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    When you cancel a paid order, choose whether the food is
+                    refunded to the customer. The delivery fee is always refunded
+                    when the courier can still be called off — this only controls
+                    the food. Both are off by default.
+                </p>
+                <div class="mt-4 grid gap-4">
+                    <label
+                        class="flex items-start gap-3"
+                        for="pickup-refunds"
+                    >
+                        <input
+                            id="pickup-refunds"
+                            v-model="form.pickup_refunds_enabled"
+                            type="checkbox"
+                            class="mt-1 h-4 w-4 rounded border-input"
+                        />
+                        <span class="grid gap-0.5">
+                            <span class="text-sm font-medium text-foreground"
+                                >Refund food on cancelled pickup orders</span
+                            >
+                            <span class="text-sm text-muted-foreground"
+                                >Customers get their food charge back if you
+                                cancel a pickup order.</span
+                            >
+                        </span>
+                    </label>
+                    <label
+                        class="flex items-start gap-3"
+                        for="delivery-refunds"
+                    >
+                        <input
+                            id="delivery-refunds"
+                            v-model="form.delivery_refunds_enabled"
+                            type="checkbox"
+                            class="mt-1 h-4 w-4 rounded border-input"
+                        />
+                        <span class="grid gap-0.5">
+                            <span class="text-sm font-medium text-foreground"
+                                >Refund food on cancelled delivery orders</span
+                            >
+                            <span class="text-sm text-muted-foreground"
+                                >Customers get their food charge back if you
+                                cancel a delivery order.</span
+                            >
+                        </span>
+                    </label>
                 </div>
             </section>
 

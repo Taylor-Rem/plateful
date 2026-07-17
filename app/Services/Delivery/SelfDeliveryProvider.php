@@ -47,8 +47,12 @@ class SelfDeliveryProvider implements DeliveryProvider
         return $assignment->fresh() ?? $assignment;
     }
 
-    public function cancel(DeliveryAssignment $assignment): void
+    public function cancel(DeliveryAssignment $assignment): DeliveryCancellation
     {
         $assignment->update(['status' => DeliveryStatus::Cancelled]);
+
+        // The restaurant runs its own courier; Plateful never fronted a fee, so
+        // there is nothing to recover and the delivery line follows food policy.
+        return DeliveryCancellation::fullyRefunded();
     }
 }

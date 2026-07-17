@@ -1,6 +1,22 @@
 # DoorDash Drive — Implementation Plan
 
-**Status:** planning · **Decision locked 2026-07-18** · Supersedes the Uber-first launch plan.
+**Status:** in progress · **Decision locked 2026-07-18** · Supersedes the Uber-first launch plan.
+
+### Progress (updated 2026-07-17)
+
+| Session | What | State |
+|---|---|---|
+| **1** | DoorDash adapter core (JWT, client, provider, status map) | ✅ **Done** — sandbox-verified live (quote `HTTP 200`) |
+| **4a** | Money model, platform side (cap, accounting columns, revenue-split fix) | ✅ **Done** |
+| **4b** | Money model, delivery recovery (customer gross-up + central-billing recovery) | ✅ **Done** — §1 model verified live to the cent |
+| **2** | Umbrella provisioning + one-click enable UX | ✅ **Done** (not yet run against live sandbox) |
+| **3** | Webhooks + provider-agnostic settlement | ✅ **Done** (signature scheme assumed — confirm at portal setup) |
+| **0** | Production access request | ⬜ Part A (interest form) + Part B (demo) — not code |
+| **5** | Refunds & cancellation policy | ✅ **Done** — recoverable-refund money model, two independent food-refund toggles (pickup/delivery), Settings UI + dedicated onboarding step; full suite green (867). One go-live item: confirm DoorDash's live cancel-fee response field |
+| **6** | Production go-live | ⬜ Not started |
+
+Full suite green at 848 tests. Remaining before real money: Session 5, Session 0/6 (prod access +
+Stripe live + a running queue worker). The money model (4a+4b) — the final money gate — is complete.
 
 DoorDash Drive is Plateful's **launch delivery provider**. The complete Uber Direct adapter stays
 in the tree **dormant** (behind the `DeliveryProvider` contract; `DeliveryFallbackAction` already
@@ -107,21 +123,23 @@ If the revenue split reads the gross, it would split DoorDash's money among foun
 
 ---
 
-## 2. Data-model changes (summary; migrations land in the sessions that use them)
+## 2. Data-model changes (summary) — ✅ all shipped except `refunds_enabled`
 
-- **`delivery_integrations`** (add, nullable, **not** encrypted — these are ids, not secrets):
+- ✅ **`delivery_integrations`** (nullable, **not** encrypted — ids, not secrets):
   `external_business_id`, `external_store_id`. DoorDash rows store these; `client_id`/`client_secret`/
-  `customer_id`/`access_token` stay null for DoorDash. (Platform JWT creds live in `.env`, not here.)
-- **`restaurants`** (add): `commission_monthly_cap_cents` (nullable int; default from config on create),
-  and a food-refund-policy flag `refunds_enabled` (bool, default per your call — see Open Decisions).
-- **`orders`** (add): `platform_commission_cents`, `delivery_margin_cents`, `courier_fee_cents`;
-  rename intent of `application_fee_cents` → keep the column but treat it as the Stripe gross (or add
-  `stripe_application_fee_cents` and migrate). Decide during Session 4 to minimize churn to the
-  earnings/refund code that reads it.
-- **config/platform.php**: `commission_monthly_cap_cents`, `stripe_variable_rate`, and a
-  `delivery.doordash` block (sandbox vs prod base URL, quote accept-window minutes).
-- **config/services.php** (or `platform.php`): `doordash.developer_id/key_id/signing_secret/
-  webhook_secret/environment` from `.env`.
+  `customer_id`/`access_token` stay null for DoorDash. Landed in **Session 1** (the adapter reads
+  `external_store_id`), not Session 2 as originally sequenced. (Platform JWT creds live in `.env`.)
+- **`restaurants`**: ✅ `commission_monthly_cap_cents` (nullable int; default from config on create,
+  grandfathered) added in 4a. ⬜ `refunds_enabled` (bool, default OFF) — Session 5.
+- ✅ **`orders`** (4a): added `platform_commission_cents`, `delivery_margin_cents`, `courier_fee_cents`
+  (with a backfill of `platform_commission_cents` from `application_fee_cents`). **Decided:** kept
+  `application_fee_cents` as the Stripe gross (its existing meaning) rather than adding
+  `stripe_application_fee_cents` — see Decision 5.
+- ✅ **config/platform.php** (4a/1): `commission_monthly_cap_cents`, `stripe_variable_rate`, and a
+  `delivery.doordash` block (`base_url` — single host for sandbox+prod, like Uber; quote accept-window
+  minutes).
+- ✅ **config/services.php**: `doordash.developer_id/key_id/signing_secret/webhook_secret` from `.env`
+  (no `environment` key — DoorDash serves sandbox and prod from the same host).
 
 ---
 
@@ -159,7 +177,15 @@ approval. Because the demo spans Sessions 1–5, schedule Part B once those are 
 
 ---
 
-## Session 1 — DoorDash adapter core (sandbox, no money changes)
+## Session 1 — DoorDash adapter core (sandbox, no money changes) — ✅ DONE (2026-07-17)
+
+> **Shipped.** `app/Services/Delivery/DoorDash/` (`DoorDashJwtService`, `DoorDashClient`,
+> `DoorDashProvider`, `DoorDashStatusMap`, `DoorDashAddress`), registered in `AppServiceProvider`,
+> default provider chain now `['doordash']`. The `delivery_integrations` id migration was pulled
+> forward from Session 2 (the adapter can't quote without `external_store_id`). Verified live against
+> the DoorDash sandbox: DD-JWT-V1 auth + `POST /drive/v2/quotes` returned `HTTP 200` with a real fee.
+> Tests: `DoorDashProviderTest`, `DoorDashJwtServiceTest`. Note: DoorDash `fee` **excludes** the tip
+> (unlike Uber), so no tip-stripping. `create()` re-quotes on accept failure (R1).
 
 **Goal:** a registered `DoorDashProvider` that quotes, dispatches, polls, and cancels a delivery in
 sandbox for a restaurant whose Business/Store is configured manually. Delivery works end-to-end
@@ -207,7 +233,18 @@ through the existing `DispatchDeliveryForOrder` job to the DoorDash sandbox and 
 
 ---
 
-## Session 2 — Umbrella provisioning + one-click enable UX
+## Session 2 — Umbrella provisioning + one-click enable UX — ✅ DONE (2026-07-17)
+
+> **Shipped.** `DoorDashProvisioningService::provisionStoreFor()` mints deterministic external ids
+> (`pf-biz-{id}` / `pf-store-{id}`), POSTs `/developer/v1/businesses` then `.../stores`, persists ids
+> + status Connected; **409 is treated as success** (idempotent re-enable). `DoorDashClient` gained
+> `developerPath()`. Controller: DoorDash added to `$connectable` (now **leads** the card list);
+> `enableDoorDash` (one-click, parks Error + reason on failure) + `disconnectDoorDash`. Routes named
+> `delivery.doordash.save`/`.disconnect` to match the card's saveUrl convention. Vue renders a single
+> **"Enable delivery"** button (`oneClick` flag), shows Store ID, hides the per-restaurant webhook-key
+> warning. Tests in `DeliveryIntegrationsTest`. The `external_business_id`/`external_store_id`
+> migration already landed in Session 1. **Not yet run against the live sandbox** (creates named
+> Business/Store records — deferred to a supervised check).
 
 **Goal:** a restaurant enables DoorDash delivery with **one click**; Plateful provisions its
 Business + Store via API and stores the ids. No secrets pasted.
@@ -244,7 +281,17 @@ businesses/stores. Gate the button copy accordingly if needed.
 
 ---
 
-## Session 3 — Webhooks + provider-agnostic settlement
+## Session 3 — Webhooks + provider-agnostic settlement — ✅ DONE (2026-07-17)
+
+> **Shipped.** `DoorDashWebhookController` on `POST /webhooks/doordash` (CSRF-exempt): verifies a
+> **platform-level** HMAC-SHA256 signature (`services.doordash.webhook_secret`, header
+> `x-doordash-signature`, **fail-closed** with no secret), resolves the assignment directly by
+> `external_delivery_id`, maps status, drops stale events, and drives the same `DeliverySettlement`
+> path. `hasCourier()` **generalized onto the `DeliveryStatus` enum**; static copies removed from both
+> status maps; the deadline job + both webhooks now call `$status->hasCourier()`. Tests:
+> `DoorDashWebhookTest`. **⚠ One unverified item:** the exact signature scheme (header + base64-vs-hex)
+> is assumed — the controller accepts both encodings and it's centralized in `signatureIsValid()`, but
+> confirm against the DoorDash portal at webhook setup (Session 6).
 
 **Goal:** DoorDash courier status updates drive auth/capture the way Uber's do, and remove the
 Uber-coupling in the shared settlement path.
@@ -276,7 +323,21 @@ Uber-coupling in the shared settlement path.
 
 ---
 
-## Session 4a — Money model, platform side (standalone; no DoorDash needed)
+## Session 4a — Money model, platform side (standalone; no DoorDash needed) — ✅ DONE (2026-07-17)
+
+> **Shipped.** New `orders` columns `platform_commission_cents` / `delivery_margin_cents` /
+> `courier_fee_cents` (+ backfill copying `application_fee_cents` → commission for existing rows) and
+> nullable `restaurants.commission_monthly_cap_cents` (grandfathered in `Restaurant::booted()`).
+> Config `platform.commission_monthly_cap_cents` (24900) + `platform.stripe_variable_rate` (0.029).
+> `MonthlyCommissionCap` caps commission at $249/mo in the **restaurant's local** calendar month,
+> excluding refunded orders. `RevenueSplitResolver` + PayoutsController YTD read
+> `platform_commission_cents`; EarningsController reads the ledger, so it followed automatically.
+> **Decisions taken** (see Open Decisions 1 & 5 below): (1) `application_fee_cents` **kept as the
+> Stripe gross** (its continuous meaning) with `platform_commission_cents` added as the true-revenue
+> column — reversing Open Decision 5's "add stripe_application_fee_cents" recommendation, for less
+> churn; (2) the delivery margin gets its **own `RevenueRole::DeliveryMargin`** (100% founder) because
+> the `(order,user,role)` unique key forbids a second founder row. Tests: `MonthlyCapTest`,
+> `RevenueSplitResolverTest`, `StripeCheckoutTest`.
 
 **Goal:** the cap, the accounting-column separation, and the revenue-split fix — the parts of §1 that
 depend on nothing about DoorDash and are fully unit-testable today against the existing checkout
@@ -310,7 +371,20 @@ pinned by tests, with no DoorDash involved.
 
 ---
 
-## Session 4b — Money model, delivery recovery (final gate to production)
+## Session 4b — Money model, delivery recovery (final gate to production) — ✅ DONE (2026-07-17)
+
+> **Shipped.** New `app/Services/Delivery/DeliveryMarkup.php`:
+> `customerFeeCents(D, pct) = round(D × (1+pct/100) / (1−rate))`, `marginCents(D, pct) = round(D×pct/100)`.
+> **Gated on `DeliveryProviderName::isCentrallyBilled()` (DoorDash only)** — Uber bills the restaurant
+> directly, so it stays pass-through and its tests are untouched. `OrderPlacement` sets
+> `courier_fee_cents = D`, `delivery_margin_cents`, and `application_fee_cents (Stripe gross) =
+> commission + D + margin + T` for a centrally-billed delivery; `DeliveryQuoteController` +
+> `customerDeliveryFeeCents` gross up so quoted and charged prices can't drift. **Generalized the
+> plan's literal 4% to the restaurant's `application_fee_percent`** (matches the worked example at 4%).
+> **Verified live:** a real sandbox quote `D=975` → `Dc=1044`, app fee `1634`, Plateful nets `159`,
+> restaurant nets ≈$29.91 bearing zero Stripe on the delivery line — §1.1 to the cent. Tests:
+> `DoorDashDeliveryMoneyTest`, `DeliveryMarkupTest`. Full Stripe-settlement end-to-end (real test
+> charge + running queue worker) remains a manual pre-go-live check.
 
 **Goal:** the DoorDash-specific half of §1 — the customer gross-up and central-billing recovery —
 observed **end-to-end** against the Session 1 sandbox adapter. **No production DoorDash orders until
@@ -340,7 +414,24 @@ customer/restaurant/Plateful/DoorDash splits are correct to the cent.
 
 ---
 
-## Session 5 — Refunds & cancellation policy
+## Session 5 — Refunds & cancellation policy — ✅ DONE (2026-07-17)
+
+> **Shipped.** Two **independent** food-refund toggles (Decision 4 refined): `pickup_refunds_enabled`
+> / `delivery_refunds_enabled` (+ `refund_policy_reviewed_at`), all default OFF, surfaced on the
+> Settings page **and** a dedicated optional onboarding step (`StepRefunds.vue`, `onboarding.refundPolicy`,
+> stamped reviewed so a deliberate "no refunds" still completes). New `DeliveryProvider::cancel()`
+> returns a `DeliveryCancellation` (courier-fee charged), parsed from DoorDash's cancel response;
+> `OrderTransition::refundOnCancel` cancels the courier first, then refunds only the **recoverable**
+> amount via `RefundCalculator` → `RefundPlan`: food per policy, delivery only when the courier fee
+> came back. Partial refunds use `StripeConnectService::refundOrderPartial` (explicit
+> Application-Fee-Refund amount, not the boolean); `RevenueSplitResolver::reverse` deletes the reversed
+> ledger slices and the reversed order columns are zeroed, so MTD/earnings stay honest.
+> `refunded_at` is set only on a **100%** refund, so a partial delivery/food refund still counts its
+> retained revenue. **Conservative default:** when the cancel response is silent the courier fee is
+> assumed kept (never refund on a guess → Plateful stays whole). Tests: `DeliveryRefundTest`,
+> `RefundCalculatorTest`, `DoorDashProviderTest` (cancel-parse), settings + onboarding tests.
+> **⚠ One go-live item:** DoorDash's exact cancel-response fee field is unverified — centralized in
+> `DoorDashProvider::parseCancellation()`; confirm at portal setup (Session 6).
 
 **Goal:** refunds mirror DoorDash (timing) + the restaurant's food-refund choice; Plateful never
 eats a refund; the 4% reverses proportionally.
@@ -382,22 +473,35 @@ never out of pocket.
 
 ## Decisions (resolved 2026-07-18)
 
-1. **Delivery margin in the revenue split** — DECIDED: **100% to the founder for now** (a separate
-   `FeeDistribution` row, role = founder), configurable later (e.g. `platform.delivery_margin_shares`).
-   Commission continues to split by the existing role shares.
-4. **`refunds_enabled` default** — DECIDED: **default OFF**, but the choice is **surfaced in the
-   onboarding setup flow** so owners decide deliberately (Session 5).
+1. **Delivery margin in the revenue split** — DECIDED: **100% to the founder for now**, configurable
+   later. **Implemented (4a)** as its own `RevenueRole::DeliveryMargin` ledger row rather than a
+   second founder row — the `(order, user, role)` unique key forbids two founder rows per order, so a
+   dedicated role is the faithful realization and stays splittable later (e.g.
+   `platform.delivery_margin_shares`). Commission still splits by the existing role shares.
+4. **`refunds_enabled` default** — DECIDED: **default OFF**, surfaced in the onboarding flow so owners
+   decide deliberately. ✅ **Implemented (Session 5), refined to TWO independent toggles**
+   (`pickup_refunds_enabled` / `delivery_refunds_enabled`) so a restaurant can allow refunds on one
+   channel but not the other; both default OFF, surfaced on Settings + a dedicated onboarding step.
 
-### Still defaulted unless overridden
-2. **Cap month boundary / timezone.** **Default: restaurant's local calendar month** (they'll
-   reason about "this month" in their own timezone). Alternative: platform UTC month.
-3. **`Absorb` fee strategy for third-party delivery.** **Recommend: third-party is always
-   pass-through-with-markup** (customer bears, per your model); keep `Absorb` only for self-delivery.
-4. **`refunds_enabled` default for new restaurants.** **Recommend: default ON** (offer refunds) so the
-   customer experience is good out of the box; owners can opt out.
-5. **`application_fee_cents` column** — repurpose in place as the Stripe gross, or add
-   `stripe_application_fee_cents` and migrate readers? **Recommend: add the new column** and migrate,
-   to avoid silently changing the meaning of existing data/tests. (Session 4 detail.)
+### Resolved during implementation
+2. **Cap month boundary / timezone.** ✅ **Implemented (4a): restaurant's local calendar month**
+   (`MonthlyCommissionCap` computes the local start-of-month, compares against stored UTC `placed_at`).
+3. **`Absorb` fee strategy for third-party delivery.** ✅ **Implemented (4b): a centrally-billed
+   provider (DoorDash) is always pass-through-with-markup**, keyed on
+   `DeliveryProviderName::isCentrallyBilled()`; the strategy is ignored for it. A pass-through provider
+   (Uber) keeps `Absorb`, and self-delivery keeps its flat fee. Scoped to central billing so dormant
+   Uber behaviour and its tests are unchanged.
+5. **`application_fee_cents` column** — ✅ **Implemented (4a), reversing this recommendation:** kept
+   `application_fee_cents` as the Stripe gross (its existing, continuous meaning — it has always been
+   "the Stripe application fee amount") and **added `platform_commission_cents`** as the new
+   true-revenue column. Less churn than adding `stripe_application_fee_cents` (CheckoutController
+   unchanged), and no silent meaning change since the gross only diverges from commission on the new
+   delivery case. Also added `delivery_margin_cents` / `courier_fee_cents`.
+
+### Still open
+- **DoorDash webhook signature scheme** (Session 3) — header/encoding assumed; confirm at portal setup.
+- **DoorDash cancel-response fee field** (Session 5) — the exact field for a cancellation charge is
+  assumed (conservative "kept" default); confirm at portal setup, alongside the webhook scheme.
 
 ## Risks
 

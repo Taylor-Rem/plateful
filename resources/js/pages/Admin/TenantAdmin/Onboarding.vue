@@ -11,6 +11,7 @@ import StepBasics from './Onboarding/StepBasics.vue';
 import StepHours from './Onboarding/StepHours.vue';
 import StepMenu from './Onboarding/StepMenu.vue';
 import StepPayments from './Onboarding/StepPayments.vue';
+import StepRefunds from './Onboarding/StepRefunds.vue';
 import StepReview from './Onboarding/StepReview.vue';
 
 type Step = {
@@ -44,7 +45,14 @@ const props = defineProps<{
     primaryDomain: string;
 }>();
 
-const stepOrder = ['basics', 'hours', 'menu', 'stripe', 'review'] as const;
+const stepOrder = [
+    'basics',
+    'hours',
+    'menu',
+    'stripe',
+    'refunds',
+    'review',
+] as const;
 
 const firstIncomplete = (): string =>
     props.steps.find((s) => !s.complete)?.key ?? 'review';
@@ -315,6 +323,11 @@ const copyUrl = async (): Promise<void> => {
                         :restaurant="restaurant"
                         :stripe-status="onboarding.stripeStatus"
                         :description="currentStep.description"
+                        @advance="advance"
+                    />
+                    <StepRefunds
+                        v-else-if="currentKey === 'refunds'"
+                        :restaurant="restaurant"
                         @advance="advance"
                     />
                     <StepReview
