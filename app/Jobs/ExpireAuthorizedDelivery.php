@@ -6,7 +6,6 @@ use App\Enums\PaymentState;
 use App\Models\Order;
 use App\Services\Delivery\DeliveryDispatcher;
 use App\Services\Delivery\DeliverySettlement;
-use App\Services\Delivery\UberDirect\UberDirectStatusMap;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -61,17 +60,17 @@ class ExpireAuthorizedDelivery implements ShouldQueue
 
         $assignment = $order->deliveryAssignment;
 
-        // Ask Uber directly before giving up. The webhook is the fast path, not
-        // a dependency: a restaurant that never configured one — or an endpoint
-        // that was down while Uber retried — would otherwise mean EVERY
-        // delivery silently voids at this deadline despite a courier being on
-        // their way. Polling once, here, is what keeps the webhook an
-        // optimization rather than a single point of failure for all deliveries.
+        // Ask the provider directly before giving up. The webhook is the fast
+        // path, not a dependency: a missing webhook — or an endpoint that was
+        // down while the provider retried — would otherwise mean EVERY delivery
+        // silently voids at this deadline despite a courier being on their way.
+        // Polling once, here, is what keeps the webhook an optimization rather
+        // than a single point of failure for all deliveries.
         if ($assignment !== null && $assignment->external_id !== null) {
             try {
                 $assignment = $dispatcher->status($assignment);
 
-                if (UberDirectStatusMap::hasCourier($assignment->status)) {
+                if ($assignment->status->hasCourier()) {
                     Log::info('Courier found at the deadline via polling — no webhook had arrived', [
                         'order_id' => $order->id,
                         'delivery_status' => $assignment->status->value,
@@ -90,8 +89,8 @@ class ExpireAuthorizedDelivery implements ShouldQueue
                 ]);
             }
 
-            // Tell Uber to stop looking before we release the money, or a
-            // courier could still turn up at a kitchen for a cancelled order.
+            // Tell the provider to stop looking before we release the money, or
+            // a courier could still turn up at a kitchen for a cancelled order.
             try {
                 $dispatcher->cancel($assignment);
             } catch (Throwable $e) {

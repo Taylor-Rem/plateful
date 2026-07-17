@@ -3,7 +3,6 @@
 namespace App\Services\Delivery\DoorDash;
 
 use App\Enums\DeliveryStatus;
-use App\Services\Delivery\UberDirect\UberDirectStatusMap;
 
 /**
  * DoorDash Drive's delivery lifecycle mapped onto Plateful's smaller vocabulary.
@@ -30,20 +29,5 @@ class DoorDashStatusMap
             'delivery_attempt_failed', 'returned', 'failed' => DeliveryStatus::Failed,
             default => DeliveryStatus::Pending,
         };
-    }
-
-    /**
-     * Whether a Dasher has been assigned — i.e. the delivery is real and someone
-     * is actually coming for it. Mirrors {@see UberDirectStatusMap::hasCourier()};
-     * Session 3 lifts this onto the shared DeliveryStatus enum so both providers
-     * and the deadline job call one method.
-     */
-    public static function hasCourier(DeliveryStatus $status): bool
-    {
-        return in_array($status, [
-            DeliveryStatus::DriverAssigned,
-            DeliveryStatus::PickedUp,
-            DeliveryStatus::Delivered,
-        ], strict: true);
     }
 }

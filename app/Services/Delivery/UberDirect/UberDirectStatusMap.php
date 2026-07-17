@@ -29,17 +29,4 @@ class UberDirectStatusMap
             default => DeliveryStatus::Pending,
         };
     }
-
-    /**
-     * Whether a courier has been assigned — i.e. the delivery is real and
-     * someone is actually coming for it.
-     */
-    public static function hasCourier(DeliveryStatus $status): bool
-    {
-        return in_array($status, [
-            DeliveryStatus::DriverAssigned,
-            DeliveryStatus::PickedUp,
-            DeliveryStatus::Delivered,
-        ], strict: true);
-    }
 }

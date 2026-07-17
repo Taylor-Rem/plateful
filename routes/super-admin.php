@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminInvitationController;
 use App\Http\Controllers\Admin\AdminLoginHandoffController;
 use App\Http\Controllers\Admin\SuperAdmin;
 use App\Http\Controllers\Admin\TenantAdmin;
+use App\Http\Controllers\DoorDashWebhookController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\UberDirectWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,11 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
     // payload's customer_id selects which restaurant's signing key to verify
     // against, since each restaurant owns its own Uber account and key.
     Route::post('/webhooks/uber', UberDirectWebhookController::class)->name('webhooks.uber');
+
+    // DoorDash Drive delivery-status webhooks. One URL for every restaurant;
+    // DoorDash is centrally billed, so a single platform-level secret verifies
+    // the signature and the delivery is resolved by external_delivery_id.
+    Route::post('/webhooks/doordash', DoorDashWebhookController::class)->name('webhooks.doordash');
 
     // Cross-host login handoff (e.g. straight after owner signup on the
     // primary host). Token-gated, so no auth middleware.

@@ -151,7 +151,7 @@ class UberDirectWebhookController extends Controller
         $settlement = app(DeliverySettlement::class);
 
         // A courier exists and is coming. Take the money, print the ticket.
-        if (UberDirectStatusMap::hasCourier($status)) {
+        if ($status->hasCourier()) {
             $settlement->onCourierConfirmed($order);
 
             return;
