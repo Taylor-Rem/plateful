@@ -12,7 +12,9 @@ type DeliveryProviderCard = {
     lastError: string | null;
     connectedAt: string | null;
     customerId: string | null;
+    storeId: string | null;
     hasWebhookKey: boolean;
+    oneClick: boolean;
     available: boolean;
     saveUrl: string | null;
     disconnectUrl: string | null;
@@ -75,6 +77,18 @@ const form = useForm({
 
 const disconnectForm = useForm({});
 
+// One-click providers (DoorDash) have no credential form — the button posts
+// straight to saveUrl and Plateful provisions the Business/Store behind it.
+const enableForm = useForm({});
+
+const enable = (card: DeliveryProviderCard): void => {
+    if (!card.saveUrl) {
+        return;
+    }
+
+    enableForm.post(card.saveUrl, { preserveScroll: true });
+};
+
 const save = (): void => {
     if (!uber?.saveUrl) {
         return;
@@ -122,8 +136,8 @@ const statusClasses: Record<string, string> = {
                 <h1 class="text-xl font-semibold">Delivery</h1>
                 <p class="mt-1 text-sm text-muted-foreground">
                     Connect a courier network so delivery orders are dispatched
-                    automatically. You keep your own account — Uber bills you
-                    directly for each delivery.
+                    automatically. DoorDash Drive enables in one click; Uber
+                    Direct uses your own account.
                 </p>
             </div>
 
@@ -338,6 +352,15 @@ const statusClasses: Record<string, string> = {
                             </p>
                             <p
                                 v-if="
+                                    card.storeId && card.status === 'connected'
+                                "
+                                class="mt-1 font-mono text-xs text-muted-foreground"
+                            >
+                                Store ID {{ card.storeId }}
+                            </p>
+                            <p
+                                v-if="
+                                    !card.oneClick &&
                                     card.status === 'connected' &&
                                     !card.hasWebhookKey
                                 "
@@ -370,6 +393,15 @@ const statusClasses: Record<string, string> = {
                         @click="disconnect(card)"
                     >
                         Disconnect
+                    </Button>
+                    <Button
+                        v-else-if="card.available && card.oneClick"
+                        type="button"
+                        size="sm"
+                        :disabled="enableForm.processing"
+                        @click="enable(card)"
+                    >
+                        {{ enableForm.processing ? 'Enabling…' : 'Enable delivery' }}
                     </Button>
                     <Button
                         v-else-if="card.available && !showForm"

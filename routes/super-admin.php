@@ -86,6 +86,13 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::post('/settings/delivery/uber', [TenantAdmin\DeliveryIntegrationsController::class, 'saveUber'])->name('delivery.uber.save');
                 Route::post('/settings/delivery/uber/disconnect', [TenantAdmin\DeliveryIntegrationsController::class, 'disconnectUber'])->name('delivery.uber.disconnect');
 
+                // DoorDash Drive is one-click: no credential form, so the "save"
+                // action provisions the Business/Store behind the scenes. Named
+                // `.save`/`.disconnect` to match the card's saveUrl/disconnectUrl
+                // convention in DeliveryIntegrationsController::show.
+                Route::post('/settings/delivery/doordash', [TenantAdmin\DeliveryIntegrationsController::class, 'enableDoorDash'])->name('delivery.doordash.save');
+                Route::post('/settings/delivery/doordash/disconnect', [TenantAdmin\DeliveryIntegrationsController::class, 'disconnectDoorDash'])->name('delivery.doordash.disconnect');
+
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');
                 Route::put('/menu/categories/{category}', [TenantAdmin\MenuCategoryController::class, 'update'])->name('categories.update');

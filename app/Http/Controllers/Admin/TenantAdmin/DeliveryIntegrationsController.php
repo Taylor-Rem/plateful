@@ -15,6 +15,7 @@ use App\Http\Requests\Admin\DeliverySettingsRequest;
 use App\Http\Requests\Admin\UberDirectCredentialsRequest;
 use App\Models\DeliveryIntegration;
 use App\Models\Restaurant;
+use App\Services\Delivery\DoorDash\DoorDashProvisioningService;
 use App\Services\Delivery\UberDirect\UberDirectTokenService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -34,7 +35,9 @@ class DeliveryIntegrationsController extends Controller
             ->keyBy(fn (DeliveryIntegration $integration): string => $integration->provider->value);
 
         // Providers with a built adapter. Others render as "coming soon".
-        $connectable = [DeliveryProviderName::Uber];
+        // DoorDash is the launch provider (one-click, platform-provisioned);
+        // Uber stays connectable for restaurants that bring their own account.
+        $connectable = [DeliveryProviderName::DoorDash, DeliveryProviderName::Uber];
 
         return Inertia::render('Admin/TenantAdmin/DeliveryIntegrations', [
             'restaurant' => RestaurantData::fromModel($restaurant),
@@ -76,7 +79,11 @@ class DeliveryIntegrationsController extends Controller
                         // only enough to show the owner which account is wired
                         // up and whether status updates are live.
                         'customerId' => $integration?->customer_id,
+                        'storeId' => $integration?->external_store_id,
                         'hasWebhookKey' => $integration?->webhook_signing_key !== null,
+                        // DoorDash is provisioned in one click with no pasted
+                        // credentials; Uber needs the owner's own account.
+                        'oneClick' => $provider === DeliveryProviderName::DoorDash,
                         'available' => $available,
                         'saveUrl' => $available
                             ? route("admin.restaurant.delivery.{$provider->value}.save", ['restaurant' => $restaurant->subdomain])
@@ -196,5 +203,56 @@ class DeliveryIntegrationsController extends Controller
             ])->save());
 
         return back()->with('success', 'Uber Direct disconnected.');
+    }
+
+    /**
+     * One-click DoorDash Drive enablement. Unlike Uber there is nothing to
+     * paste: Plateful provisions the restaurant's Business + Store under its own
+     * platform account and stores the ids. A failure is parked on the
+     * integration row (status Error + reason) so the owner sees why on the card,
+     * mirroring how Uber records a rejected credential.
+     */
+    public function enableDoorDash(
+        Restaurant $restaurant,
+        DoorDashProvisioningService $provisioning,
+    ): RedirectResponse {
+        try {
+            $provisioning->provisionStoreFor($restaurant);
+        } catch (DeliveryProviderException $e) {
+            DeliveryIntegration::updateOrCreate(
+                [
+                    'restaurant_id' => $restaurant->id,
+                    'provider' => DeliveryProviderName::DoorDash,
+                ],
+                [
+                    'status' => DeliveryIntegrationStatus::Error,
+                    'last_error' => $e->getMessage(),
+                ],
+            );
+
+            return back()->with('error', 'Could not enable DoorDash delivery. Please try again.');
+        }
+
+        return back()->with('success', 'DoorDash Drive enabled.');
+    }
+
+    /**
+     * Forget the restaurant's DoorDash Store. The Business/Store may still exist
+     * on DoorDash's side (re-enabling is idempotent), but Plateful stops
+     * dispatching to it: supports() requires a stored external_store_id.
+     */
+    public function disconnectDoorDash(Restaurant $restaurant): RedirectResponse
+    {
+        $restaurant->deliveryIntegrations()
+            ->where('provider', DeliveryProviderName::DoorDash)
+            ->get()
+            ->each(fn (DeliveryIntegration $integration) => $integration->forceFill([
+                'external_business_id' => null,
+                'external_store_id' => null,
+                'status' => DeliveryIntegrationStatus::Disconnected,
+                'last_error' => null,
+            ])->save());
+
+        return back()->with('success', 'DoorDash Drive disconnected.');
     }
 }

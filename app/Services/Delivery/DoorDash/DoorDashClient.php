@@ -46,6 +46,16 @@ class DoorDashClient
         return '/drive/'.self::API_VERSION.$suffix;
     }
 
+    /**
+     * A path under the Developer namespace, e.g. `/developer/v1/businesses`.
+     * This is the provisioning surface (creating Businesses/Stores), separate
+     * from the Drive delivery surface above.
+     */
+    public function developerPath(string $suffix = ''): string
+    {
+        return '/developer/v1'.$suffix;
+    }
+
     private function baseUrl(): string
     {
         return rtrim((string) config('platform.delivery.doordash.base_url', 'https://openapi.doordash.com'), '/');
