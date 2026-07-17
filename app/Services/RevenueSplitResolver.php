@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\PlatformRoleHolder;
 use App\Models\Restaurant;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
@@ -70,8 +71,14 @@ class RevenueSplitResolver
      */
     public function record(Order $order): void
     {
-        $feeCents = (int) $order->application_fee_cents;
-        if ($feeCents <= 0) {
+        // Split Plateful's TRUE revenue, never the Stripe gross: a delivery
+        // order's application_fee_cents also carries DoorDash's courier
+        // passthrough + tip (DoorDash plan §1.2), which is not Plateful's to
+        // distribute. platform_commission_cents is the commission alone.
+        $commissionCents = (int) $order->platform_commission_cents;
+        $marginCents = (int) $order->delivery_margin_cents;
+
+        if ($commissionCents <= 0 && $marginCents <= 0) {
             return;
         }
 
@@ -85,7 +92,7 @@ class RevenueSplitResolver
 
         $earnedAt = $order->placed_at ?? Carbon::now();
 
-        foreach ($this->splitFor($restaurant, $feeCents) as $slice) {
+        foreach ($this->splitFor($restaurant, $commissionCents) as $slice) {
             if ($slice['amountCents'] <= 0) {
                 continue;
             }
@@ -104,6 +111,41 @@ class RevenueSplitResolver
                 ],
             );
         }
+
+        $this->recordDeliveryMargin($order, $restaurant, $marginCents, $earnedAt);
+    }
+
+    /**
+     * Attribute the delivery margin (0.04×D) 100% to the founder, as its OWN
+     * ledger role rather than the founder's commission slice — the
+     * (order, user, role) unique key forbids two founder rows per order, and a
+     * dedicated role keeps the margin splittable differently later. Dormant
+     * until Session 4b populates delivery_margin_cents.
+     */
+    private function recordDeliveryMargin(Order $order, Restaurant $restaurant, int $marginCents, CarbonInterface $earnedAt): void
+    {
+        if ($marginCents <= 0) {
+            return;
+        }
+
+        $founder = PlatformRoleHolder::holder(RevenueRole::Founder);
+        if (! $founder) {
+            return;
+        }
+
+        FeeDistribution::query()->firstOrCreate(
+            [
+                'order_id' => $order->id,
+                'user_id' => $founder->id,
+                'role' => RevenueRole::DeliveryMargin->value,
+            ],
+            [
+                'restaurant_id' => $restaurant->id,
+                'percent' => 100,
+                'amount_cents' => $marginCents,
+                'earned_at' => $earnedAt,
+            ],
+        );
     }
 
     /**

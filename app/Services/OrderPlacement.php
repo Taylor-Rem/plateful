@@ -38,6 +38,7 @@ class OrderPlacement
     public function __construct(
         protected CartManager $carts,
         protected RevenueSplitResolver $revenueSplits,
+        protected MonthlyCommissionCap $commissionCap,
     ) {}
 
     /**
@@ -128,7 +129,18 @@ class OrderPlacement
         // Widening this base is a pricing decision, not a refactor.
         // StripeCheckoutTest pins every exclusion; if you changed this and that
         // suite is still green, you changed the wrong thing.
-        $applicationFeeCents = (int) floor($subtotalCents * (float) $restaurant->application_fee_percent / 100);
+        //
+        // The commission is then clamped to what remains under the restaurant's
+        // monthly cap (§1.3): once a restaurant has paid $249 of commission in
+        // its calendar month, further orders retain $0 commission. This is
+        // Plateful's TRUE revenue — persisted as platform_commission_cents and
+        // split by RevenueSplitResolver. For pickup / self-delivery the Stripe
+        // application fee equals it; a third-party delivery order grosses it up
+        // in Session 4b (application_fee_cents then also carries the courier
+        // passthrough + tip), so delivery_margin_cents / courier_fee_cents stay
+        // zero here.
+        $uncappedCommissionCents = (int) floor($subtotalCents * (float) $restaurant->application_fee_percent / 100);
+        $commissionCents = min($uncappedCommissionCents, $this->commissionCap->remainingFor($restaurant));
 
         $addressId = null;
         if ($user && isset($data['address_id'])) {
@@ -157,7 +169,13 @@ class OrderPlacement
             'subtotal_cents' => $subtotalCents,
             'tax_cents' => $taxCents,
             'delivery_fee_cents' => $deliveryFeeCents,
-            'application_fee_cents' => $applicationFeeCents,
+            // application_fee_cents is the Stripe gross (what Stripe pulls). For
+            // pickup / self-delivery that is exactly the commission; Session 4b
+            // grosses it up for third-party delivery.
+            'application_fee_cents' => $commissionCents,
+            'platform_commission_cents' => $commissionCents,
+            'delivery_margin_cents' => 0,
+            'courier_fee_cents' => 0,
             'total_cents' => $totalCents,
             'confirmation_token' => Str::random(64),
             'notes' => $data['notes'] ?? null,
@@ -568,6 +586,9 @@ class OrderPlacement
                     'delivery_fee_cents' => (int) $snapshot['delivery_fee_cents'],
                     'delivery_quote_token' => $snapshot['delivery_quote_token'] ?? null,
                     'application_fee_cents' => (int) $snapshot['application_fee_cents'],
+                    'platform_commission_cents' => (int) ($snapshot['platform_commission_cents'] ?? $snapshot['application_fee_cents']),
+                    'delivery_margin_cents' => (int) ($snapshot['delivery_margin_cents'] ?? 0),
+                    'courier_fee_cents' => (int) ($snapshot['courier_fee_cents'] ?? 0),
                     'total_cents' => (int) $snapshot['total_cents'],
                     'stripe_payment_intent_id' => $payment['stripe_payment_intent_id'] ?? null,
                     'stripe_checkout_session_id' => $payment['stripe_checkout_session_id'] ?? null,

@@ -33,6 +33,11 @@ class OrderFactory extends Factory
             'tip_cents' => 0,
             'delivery_fee_cents' => 0,
             'application_fee_cents' => (int) floor($subtotal * 0.04),
+            // Historically the Stripe fee WAS the commission; mirror that so
+            // factory orders drive the revenue split like real pickup orders.
+            'platform_commission_cents' => (int) floor($subtotal * 0.04),
+            'delivery_margin_cents' => 0,
+            'courier_fee_cents' => 0,
             'total_cents' => $subtotal,
             'placed_at' => now(),
             'confirmation_token' => Str::random(64),

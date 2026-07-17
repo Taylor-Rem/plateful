@@ -85,6 +85,12 @@ class Restaurant extends Model
             if (! isset($restaurant->attributes['application_fee_percent'])) {
                 $restaurant->application_fee_percent = config('platform.default_application_fee_percent');
             }
+
+            // Snapshot the platform cap so a later default change doesn't
+            // retroactively move this restaurant's ceiling (grandfathering).
+            if (! isset($restaurant->attributes['commission_monthly_cap_cents'])) {
+                $restaurant->commission_monthly_cap_cents = (int) config('platform.commission_monthly_cap_cents');
+            }
         });
     }
 
@@ -98,6 +104,7 @@ class Restaurant extends Model
             'onboarding_completed_at' => 'datetime',
             'custom_domain_requested_at' => 'datetime',
             'application_fee_percent' => 'decimal:2',
+            'commission_monthly_cap_cents' => 'integer',
             'tax_rate_percent' => 'decimal:2',
             'delivery_fee_cents' => 'integer',
             'delivery_enabled' => 'boolean',
