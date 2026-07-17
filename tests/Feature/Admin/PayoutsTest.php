@@ -40,7 +40,8 @@ function makePaidOrder(Restaurant $r, int $feeCents, array $overrides = []): Ord
         'status' => OrderStatus::Completed,
         'type' => OrderType::Pickup,
         'subtotal_cents' => 1000, 'tax_cents' => 0, 'tip_cents' => 0,
-        'delivery_fee_cents' => 0, 'application_fee_cents' => $feeCents, 'total_cents' => 1000,
+        'delivery_fee_cents' => 0, 'application_fee_cents' => $feeCents,
+        'platform_commission_cents' => $feeCents, 'total_cents' => 1000,
         'placed_at' => now(),
     ], $overrides));
 }

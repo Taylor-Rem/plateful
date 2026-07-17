@@ -151,6 +151,67 @@ class StripeConnectService
     }
 
     /**
+     * Partial refund of an order's charge, returning `$applicationFeeReversal`
+     * of Plateful's fee separately (DoorDash plan Session 5).
+     *
+     * A partial cancel refunds only the recoverable slice — the food per policy,
+     * the delivery only when the courier network gave its fee back. `Refund`'s
+     * boolean `refund_application_fee` would return the WHOLE fee, which under
+     * central billing includes the courier passthrough Plateful already paid
+     * DoorDash — so the fee is reversed by an explicit amount instead, via a
+     * separate Application Fee Refund. `$applicationFeeReversal` may be 0, in
+     * which case only the customer is refunded and no fee is reversed.
+     */
+    public function refundOrderPartial(Order $order, int $customerRefundCents, int $applicationFeeReversalCents): Refund
+    {
+        return $this->withSuppressedStripeNotices(function () use ($order, $customerRefundCents, $applicationFeeReversalCents): Refund {
+            $refund = $this->stripe->refunds->create([
+                'payment_intent' => $order->stripe_payment_intent_id,
+                'amount' => $customerRefundCents,
+                'refund_application_fee' => false,
+            ], [
+                'stripe_account' => $order->restaurant->stripe_account_id,
+            ]);
+
+            if ($applicationFeeReversalCents > 0) {
+                $applicationFeeId = $this->applicationFeeIdFor($order);
+
+                if ($applicationFeeId !== null) {
+                    $this->stripe->applicationFees->createRefund(
+                        $applicationFeeId,
+                        ['amount' => $applicationFeeReversalCents],
+                    );
+                }
+            }
+
+            return $refund;
+        });
+    }
+
+    /**
+     * The `fee_…` id of the application fee Stripe took on this order's charge,
+     * read off the PaymentIntent's charge. Needed to reverse the fee by an
+     * explicit amount. Null if the charge has no application fee recorded.
+     */
+    private function applicationFeeIdFor(Order $order): ?string
+    {
+        $intent = $this->stripe->paymentIntents->retrieve(
+            (string) $order->stripe_payment_intent_id,
+            ['expand' => ['latest_charge']],
+            ['stripe_account' => $order->restaurant->stripe_account_id],
+        );
+
+        $charge = $intent->latest_charge;
+        $fee = is_object($charge) ? ($charge->application_fee ?? null) : null;
+
+        if ($fee === null) {
+            return null;
+        }
+
+        return is_object($fee) ? $fee->id : (string) $fee;
+    }
+
+    /**
      * Create an Express connected account for the restaurant and persist its
      * id. Returns the `acct_…` id.
      */

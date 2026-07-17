@@ -100,7 +100,7 @@ test('record() writes one distribution per slice and is idempotent', function ()
 
     $order = Order::factory()->create([
         'restaurant_id' => $restaurant->id,
-        'application_fee_cents' => 1000,
+        'platform_commission_cents' => 1000,
     ]);
 
     $this->resolver->record($order);
@@ -108,6 +108,56 @@ test('record() writes one distribution per slice and is idempotent', function ()
 
     expect(FeeDistribution::where('order_id', $order->id)->count())->toBe(2);
     expect((int) FeeDistribution::where('order_id', $order->id)->sum('amount_cents'))->toBe(1000);
+});
+
+test('the split reads platform_commission_cents, not the Stripe gross', function () {
+    $taylor = User::factory()->create();
+    $ben = User::factory()->create();
+    PlatformRoleHolder::assign(RevenueRole::Founder, $taylor);
+    PlatformRoleHolder::assign(RevenueRole::Operator, $taylor);
+    $restaurant = Restaurant::factory()->create(['overseer_id' => $ben->id]);
+
+    // A delivery order whose Stripe gross (application_fee_cents) is far larger
+    // than the commission because it carries DoorDash's passthrough + tip.
+    $order = Order::factory()->create([
+        'restaurant_id' => $restaurant->id,
+        'application_fee_cents' => 5000,
+        'platform_commission_cents' => 1000,
+        'delivery_margin_cents' => 0,
+    ]);
+
+    $this->resolver->record($order);
+
+    // Only the 1000 commission is distributed — never the 5000 gross.
+    expect((int) FeeDistribution::where('order_id', $order->id)->sum('amount_cents'))->toBe(1000);
+});
+
+test('the delivery margin is attributed 100% to the founder as its own role', function () {
+    $taylor = User::factory()->create();
+    $ben = User::factory()->create();
+    PlatformRoleHolder::assign(RevenueRole::Founder, $taylor);
+    PlatformRoleHolder::assign(RevenueRole::Operator, $taylor);
+    $restaurant = Restaurant::factory()->create(['overseer_id' => $ben->id]);
+
+    $order = Order::factory()->create([
+        'restaurant_id' => $restaurant->id,
+        'platform_commission_cents' => 1000,
+        'delivery_margin_cents' => 36,
+    ]);
+
+    $this->resolver->record($order);
+    $this->resolver->record($order); // replay must not double-write the margin
+
+    $margin = FeeDistribution::where('order_id', $order->id)
+        ->where('role', RevenueRole::DeliveryMargin->value)
+        ->get();
+
+    expect($margin)->toHaveCount(1);
+    expect($margin->first()->user_id)->toBe($taylor->id);
+    expect((int) $margin->first()->amount_cents)->toBe(36);
+    // The margin row is SEPARATE from the founder's commission slice, so both
+    // coexist under the (order, user, role) unique key.
+    expect(FeeDistribution::where('order_id', $order->id)->where('user_id', $taylor->id)->count())->toBe(2);
 });
 
 test('no distributions are written when the fee rounds to zero', function () {
@@ -118,7 +168,7 @@ test('no distributions are written when the fee rounds to zero', function () {
 
     $order = Order::factory()->create([
         'restaurant_id' => $restaurant->id,
-        'application_fee_cents' => 0,
+        'platform_commission_cents' => 0,
     ]);
 
     $this->resolver->record($order);

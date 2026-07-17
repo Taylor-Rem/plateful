@@ -35,6 +35,8 @@ class SettingsController extends Controller
             'email' => $validated['email'] ?? $restaurant->email,
             'phone' => $validated['phone'] ?? null,
             'tax_rate_percent' => $validated['tax_rate_percent'] ?? 0,
+            'pickup_refunds_enabled' => $request->boolean('pickup_refunds_enabled'),
+            'delivery_refunds_enabled' => $request->boolean('delivery_refunds_enabled'),
         ]);
 
         if ($request->filled('delivery_fee')) {

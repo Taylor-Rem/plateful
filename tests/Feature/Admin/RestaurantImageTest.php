@@ -181,3 +181,35 @@ test('deleting a restaurant removes its asset directory', function () {
     expect($disk->exists($path))->toBeFalse();
     expect($disk->directoryExists("restaurants/{$r->id}"))->toBeFalse();
 });
+
+test('refund policy toggles default off and can be enabled independently', function () {
+    $r = settingsRestaurant();
+    $admin = settingsAdmin($r);
+
+    // Default: both off out of the box (read fresh so the DB default applies).
+    expect($r->fresh()->pickup_refunds_enabled)->toBeFalse()
+        ->and($r->fresh()->delivery_refunds_enabled)->toBeFalse();
+
+    // Enable delivery refunds only.
+    postSettings($admin, $r, [
+        'pickup_refunds_enabled' => false,
+        'delivery_refunds_enabled' => true,
+    ])->assertRedirect();
+
+    $r->refresh();
+    expect($r->pickup_refunds_enabled)->toBeFalse()
+        ->and($r->delivery_refunds_enabled)->toBeTrue();
+});
+
+test('omitting a refund toggle turns it off (unchecked checkbox sends nothing)', function () {
+    $r = settingsRestaurant();
+    $r->forceFill(['pickup_refunds_enabled' => true, 'delivery_refunds_enabled' => true])->save();
+    $admin = settingsAdmin($r);
+
+    // A form where both boxes were unchecked posts neither key.
+    postSettings($admin, $r, [])->assertRedirect();
+
+    $r->refresh();
+    expect($r->pickup_refunds_enabled)->toBeFalse()
+        ->and($r->delivery_refunds_enabled)->toBeFalse();
+});

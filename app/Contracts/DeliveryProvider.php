@@ -6,6 +6,7 @@ use App\Enums\DeliveryProviderName;
 use App\Models\DeliveryAssignment;
 use App\Models\Order;
 use App\Models\Restaurant;
+use App\Services\Delivery\DeliveryCancellation;
 use App\Services\Delivery\DeliveryQuote;
 use App\Services\Delivery\DeliveryQuoteRequest;
 
@@ -21,5 +22,9 @@ interface DeliveryProvider
 
     public function status(DeliveryAssignment $assignment): DeliveryAssignment;
 
-    public function cancel(DeliveryAssignment $assignment): void;
+    /**
+     * Call off a dispatched delivery. Returns what the provider did with the
+     * courier fee so the caller can decide what is safe to refund.
+     */
+    public function cancel(DeliveryAssignment $assignment): DeliveryCancellation;
 }

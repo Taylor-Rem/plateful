@@ -26,6 +26,7 @@ use App\Models\PendingCheckout;
 use App\Models\Restaurant;
 use App\Models\RestaurantCustomer;
 use App\Models\User;
+use App\Services\Delivery\DeliveryMarkup;
 use App\Services\Pos\PosDispatcher;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,7 @@ class OrderPlacement
     public function __construct(
         protected CartManager $carts,
         protected RevenueSplitResolver $revenueSplits,
+        protected MonthlyCommissionCap $commissionCap,
     ) {}
 
     /**
@@ -128,7 +130,36 @@ class OrderPlacement
         // Widening this base is a pricing decision, not a refactor.
         // StripeCheckoutTest pins every exclusion; if you changed this and that
         // suite is still green, you changed the wrong thing.
-        $applicationFeeCents = (int) floor($subtotalCents * (float) $restaurant->application_fee_percent / 100);
+        //
+        // The commission is then clamped to what remains under the restaurant's
+        // monthly cap (§1.3): once a restaurant has paid $249 of commission in
+        // its calendar month, further orders retain $0 commission. This is
+        // Plateful's TRUE revenue — persisted as platform_commission_cents and
+        // split by RevenueSplitResolver.
+        $uncappedCommissionCents = (int) floor($subtotalCents * (float) $restaurant->application_fee_percent / 100);
+        $commissionCents = min($uncappedCommissionCents, $this->commissionCap->remainingFor($restaurant));
+
+        // Central-billing recovery (§4b). When Plateful is the courier's payer of
+        // record (DoorDash), the Stripe application fee must also pull back the
+        // courier cost `D`, Plateful's delivery margin, and the tip `T` (which
+        // Plateful forwards to the Dasher). For pickup / self-delivery / a
+        // pass-through provider (Uber) none of this applies and the Stripe fee is
+        // simply the commission.
+        $courierFeeCents = 0;
+        $deliveryMarginCents = 0;
+        $isCentralDelivery = $deliveryQuote !== null && $deliveryQuote->provider->isCentrallyBilled();
+
+        if ($isCentralDelivery) {
+            $courierFeeCents = (int) $deliveryQuote->fee_cents;
+            $deliveryMarginCents = DeliveryMarkup::marginCents($courierFeeCents, (float) $restaurant->application_fee_percent);
+        }
+
+        // The Stripe gross. courier + margin = round(D × (1+pct/100)); adding the
+        // tip makes application_fee = commission + round(1.04D) + T at the 4%
+        // default, exactly as §1 specifies.
+        $stripeApplicationFeeCents = $isCentralDelivery
+            ? $commissionCents + $courierFeeCents + $deliveryMarginCents + $tipCents
+            : $commissionCents;
 
         $addressId = null;
         if ($user && isset($data['address_id'])) {
@@ -157,7 +188,13 @@ class OrderPlacement
             'subtotal_cents' => $subtotalCents,
             'tax_cents' => $taxCents,
             'delivery_fee_cents' => $deliveryFeeCents,
-            'application_fee_cents' => $applicationFeeCents,
+            // application_fee_cents is the Stripe gross (what Stripe pulls): the
+            // commission for pickup / self-delivery / pass-through providers, and
+            // commission + courier + margin + tip under central billing.
+            'application_fee_cents' => $stripeApplicationFeeCents,
+            'platform_commission_cents' => $commissionCents,
+            'delivery_margin_cents' => $deliveryMarginCents,
+            'courier_fee_cents' => $courierFeeCents,
             'total_cents' => $totalCents,
             'confirmation_token' => Str::random(64),
             'notes' => $data['notes'] ?? null,
@@ -240,10 +277,20 @@ class OrderPlacement
 
     /**
      * What the customer pays for delivery, which is not always what the courier
-     * costs — under `Absorb` the restaurant eats the difference.
+     * costs.
+     *
+     * A centrally-billed provider (DoorDash) grosses the courier cost up by
+     * Plateful's margin and Stripe's variable fee (plan §4b) — this is the price
+     * the quote endpoint showed, recomputed identically here from the same
+     * stored quote so it can never drift. A pass-through provider (Uber) keeps
+     * the restaurant's own strategy, under which `Absorb` lets it eat the delta.
      */
     protected function customerDeliveryFeeCents(Restaurant $restaurant, DeliveryQuote $quote): int
     {
+        if ($quote->provider->isCentrallyBilled()) {
+            return DeliveryMarkup::customerFeeCents((int) $quote->fee_cents, (float) $restaurant->application_fee_percent);
+        }
+
         $strategy = $restaurant->delivery_fee_strategy ?? DeliveryFeeStrategy::PassThrough;
 
         return $strategy->customerFeeCents((int) $quote->fee_cents, $restaurant);
@@ -568,6 +615,9 @@ class OrderPlacement
                     'delivery_fee_cents' => (int) $snapshot['delivery_fee_cents'],
                     'delivery_quote_token' => $snapshot['delivery_quote_token'] ?? null,
                     'application_fee_cents' => (int) $snapshot['application_fee_cents'],
+                    'platform_commission_cents' => (int) ($snapshot['platform_commission_cents'] ?? $snapshot['application_fee_cents']),
+                    'delivery_margin_cents' => (int) ($snapshot['delivery_margin_cents'] ?? 0),
+                    'courier_fee_cents' => (int) ($snapshot['courier_fee_cents'] ?? 0),
                     'total_cents' => (int) $snapshot['total_cents'],
                     'stripe_payment_intent_id' => $payment['stripe_payment_intent_id'] ?? null,
                     'stripe_checkout_session_id' => $payment['stripe_checkout_session_id'] ?? null,

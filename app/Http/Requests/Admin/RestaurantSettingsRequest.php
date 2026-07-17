@@ -28,6 +28,8 @@ class RestaurantSettingsRequest extends FormRequest
             'remove_logo' => ['nullable', 'boolean'],
             'tax_rate_percent' => ['nullable', 'numeric', 'between:0,30'],
             'delivery_fee' => ['nullable', 'numeric', 'between:0,500'],
+            'pickup_refunds_enabled' => ['nullable', 'boolean'],
+            'delivery_refunds_enabled' => ['nullable', 'boolean'],
         ];
     }
 

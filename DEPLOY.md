@@ -148,7 +148,10 @@ push silently goes to the sandbox hosts and real registers never see an order.
 | Key | Value |
 |---|---|
 | `GOOGLE_MAPS_API_KEY` | server-side Places API key (IP-restricted to the production server — it is proxied through the backend, never sent to browsers) |
-| `UBER_DIRECT_SANDBOX_*` | leave **unset** in production — Uber Direct credentials are per-restaurant and live encrypted in `delivery_integrations`; the sandbox vars exist only for local dev and the opt-in live test |
+| `DOORDASH_DEVELOPER_ID` / `DOORDASH_KEY_ID` / `DOORDASH_SIGNING_SECRET` | **launch delivery provider.** Platform-level DoorDash Drive credentials (one set for all restaurants; every request is signed with a per-request DD-JWT-V1). Use the **production** set once DoorDash grants prod access — until then these are sandbox creds. Restaurants paste nothing; Plateful provisions each Business/Store. |
+| `DOORDASH_WEBHOOK_SECRET` | shared secret for the DoorDash status webhook at `https://admin.<primary>/webhooks/doordash`. Register the URL in the DoorDash portal and **confirm the signature scheme** matches `DoorDashWebhookController::signatureIsValid()` (HMAC-SHA256; header + base64-vs-hex currently assumed). |
+| `DOORDASH_BASE_URL` | optional; defaults to `https://openapi.doordash.com` (same host for sandbox and prod — the environment is a property of the credentials). |
+| `UBER_DIRECT_SANDBOX_*` | Uber Direct is now the **dormant** fallback provider. Leave **unset** in production — Uber credentials are per-restaurant and live encrypted in `delivery_integrations`; the sandbox vars exist only for local dev and the opt-in live test. |
 
 ### Google login (optional but wired)
 

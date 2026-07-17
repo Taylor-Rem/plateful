@@ -91,6 +91,23 @@ return [
         'sandbox_customer_id' => env('UBER_DIRECT_SANDBOX_CUSTOMER_ID'),
     ],
 
+    'doordash' => [
+        // DoorDash Drive is an umbrella / central-billing integration: ONE set
+        // of platform credentials authenticates every restaurant's deliveries,
+        // unlike Uber Direct's per-restaurant credentials. Each request is
+        // signed with a freshly minted DD-JWT-V1 (HS256) token — see
+        // DoorDashJwtService — so nothing is stored per restaurant beyond the
+        // provisioned Business/Store ids on the integration row.
+        //
+        // Like Uber (and unlike Square/Clover) there is no host switch: sandbox
+        // and production share openapi.doordash.com, and test mode is a property
+        // of the credentials, not the URL. `webhook_secret` is used in Session 3.
+        'developer_id' => env('DOORDASH_DEVELOPER_ID'),
+        'key_id' => env('DOORDASH_KEY_ID'),
+        'signing_secret' => env('DOORDASH_SIGNING_SECRET'),
+        'webhook_secret' => env('DOORDASH_WEBHOOK_SECRET'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

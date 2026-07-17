@@ -28,6 +28,10 @@ beforeEach(function () {
     $this->restaurant->update([
         'delivery_enabled' => true,
         'delivery_mode' => DeliveryMode::ThirdParty,
+        // This suite exercises the Uber path (it fakes Uber's API), so it
+        // prioritizes Uber explicitly rather than riding the default chain,
+        // which is DoorDash (the launch provider).
+        'delivery_provider_priority' => ['uber'],
         'delivery_fee_strategy' => DeliveryFeeStrategy::PassThrough,
         'delivery_fee_cents' => 499,
         'tax_rate_percent' => 0,

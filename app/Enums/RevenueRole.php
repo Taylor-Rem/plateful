@@ -22,6 +22,17 @@ enum RevenueRole: string
     case Recruiter = 'recruiter';
     case Overseer = 'overseer';
 
+    /**
+     * The delivery margin (0.04×D) Plateful nets on a third-party delivery.
+     * Attributed 100% to the founder for now, but as its OWN ledger role rather
+     * than the founder's commission slice — the (order, user, role) unique key
+     * forbids two founder rows per order, and keeping it separate lets it be
+     * split differently later (e.g. a `platform.delivery_margin_shares` config)
+     * without disturbing the commission split. Not a share of config
+     * `revenue_shares`; populated only from Session 4b onward.
+     */
+    case DeliveryMargin = 'delivery_margin';
+
     public function label(): string
     {
         return match ($this) {
@@ -29,6 +40,7 @@ enum RevenueRole: string
             self::Operator => 'Operator',
             self::Recruiter => 'Recruiter',
             self::Overseer => 'Overseer',
+            self::DeliveryMargin => 'Delivery margin',
         };
     }
 

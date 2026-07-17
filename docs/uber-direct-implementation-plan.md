@@ -1,7 +1,15 @@
 # Uber Direct — Implementation Plan
 
+> **⚠ SUPERSEDED as the launch plan (2026-07-17).** DoorDash Drive is now Plateful's launch delivery
+> provider — see **[docs/doordash-drive-implementation-plan.md](doordash-drive-implementation-plan.md)**.
+> This Uber Direct adapter is **complete and kept DORMANT** behind the provider-agnostic
+> `DeliveryProvider` contract (it only runs for a restaurant that explicitly prioritizes `uber`); the
+> default provider chain is now `['doordash']`. Do **not** delete it — it's a free fallback / future
+> price-routing option. This document remains the source of truth for the auth/capture design and the
+> corrections the live Uber API forced, which the shared settlement path still relies on.
+
 Drafted 2026-07-14. Covers §3 of [todo.md](../todo.md) (delivery dispatch), Uber Direct half.
-DoorDash Drive follows the same shape once its certification clears — see §9 below.
+DoorDash Drive followed the same shape and is now the launch provider (its own plan above).
 
 **Strategy in one line:** the customer gets a real, committed delivery fee and ETA *before* they're
 charged, because the quote gates checkout instead of trailing it.
@@ -239,7 +247,10 @@ Uber Direct Terms). `UberDirectTokenService` maps `invalid_scope` to exactly thi
 > mint only `direct.organizations` — never `eats.deliveries`. So the sandbox working says nothing
 > about production; the same wall is waiting there. Provision it before go-live rather than
 > discovering it on the first real delivery. (Also from that mistake: **rotate that production
-> Client Secret** — it and a minted token were exposed in a session transcript.)
+> Client Secret** — it was exposed in a session transcript. Audited 2026-07-16: the secret was
+> found in the 2026-07-15 session transcript, not the 07-14 one, and **no minted token was
+> exposed** — the earlier note overstated it. All transcript copies have since been redacted, but
+> redaction is not rotation: the value is still live until you rotate it in the Uber dashboard.)
 
 ## 3. The adapter — **built 2026-07-14**
 

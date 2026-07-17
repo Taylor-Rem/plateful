@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DeliveryQuote;
 use App\Services\CartManager;
 use App\Services\Delivery\DeliveryDispatcher;
+use App\Services\Delivery\DeliveryMarkup;
 use App\Services\Delivery\DeliveryQuoteRequest;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Http\JsonResponse;
@@ -78,7 +79,15 @@ class DeliveryQuoteController extends Controller
         $record = DeliveryQuote::record($restaurant, $quote, $address);
 
         $strategy = $restaurant->delivery_fee_strategy ?? DeliveryFeeStrategy::PassThrough;
-        $customerFeeCents = $strategy->customerFeeCents($quote->feeCents, $restaurant);
+
+        // A centrally-billed provider (DoorDash) grosses the courier cost up so
+        // the restaurant bears no Stripe fee on delivery; the strategy does not
+        // apply (third-party is always pass-through-with-markup, plan §4b). A
+        // pass-through provider (Uber) keeps the restaurant's own strategy.
+        $centrallyBilled = $quote->provider->isCentrallyBilled();
+        $customerFeeCents = $centrallyBilled
+            ? DeliveryMarkup::customerFeeCents($quote->feeCents, (float) $restaurant->application_fee_percent)
+            : $strategy->customerFeeCents($quote->feeCents, $restaurant);
 
         return response()->json([
             'quote' => [
@@ -86,15 +95,16 @@ class DeliveryQuoteController extends Controller
                 // What the customer pays — not necessarily what the courier
                 // costs. Under Absorb the restaurant eats the difference.
                 'feeCents' => $customerFeeCents,
-                // Uber's ETA assumes the food is ready now, so the kitchen's
-                // prep time has to be added or the promise is wrong by the
-                // length of the ticket.
+                // The provider's ETA assumes the food is ready now, so the
+                // kitchen's prep time has to be added or the promise is wrong by
+                // the length of the ticket.
                 'etaMinutes' => $quote->etaMinutes === null
                     ? null
                     : $quote->etaMinutes + (int) $restaurant->prep_time_minutes,
-                // Only pass-through can move under the customer, so only
-                // pass-through gets a countdown. Absorb re-quotes silently.
-                'expiresAt' => $strategy->quoteIsCustomerVisible()
+                // Show a countdown whenever the customer's price can move on a
+                // re-quote: always under central billing, and under pass-through
+                // for a per-restaurant provider. Absorb re-quotes silently.
+                'expiresAt' => $centrallyBilled || $strategy->quoteIsCustomerVisible()
                     ? $record->expires_at?->toIso8601String()
                     : null,
             ],

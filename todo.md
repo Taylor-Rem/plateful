@@ -19,6 +19,24 @@ Stripe is still in test mode.
 ## 0. Launch blockers — clear before selling to anyone
 _These gate real revenue and are independent of everything below. Do first._
 
+- [ ] **Credential rotation (audit 2026-07-16).** A repo/machine-wide scan found **no secret in git
+      history and none in any tracked file** — `.env` has never been committed. But secret values
+      had accumulated in **7 local Claude session transcripts** (`~/.claude/projects/`), including
+      the production Uber Client Secret. Those transcripts are now **redacted in place**
+      (values replaced with `[REDACTED-<KEY>]`; sessions still intact) — but **redaction is not
+      rotation**: every value below is still live until rotated at its source. Priority order:
+      - [ ] `LARAVEL_CLOUD_TOKEN` — highest value: it can read the production env, which will soon
+            hold **live** Stripe keys. Rotate in the Laravel Cloud dashboard.
+      - [ ] **Production Uber Client Secret** — rotate when provisioning the prod account (§3).
+      - [ ] `CLAUDE_API_KEY` — live and billed; one click in the Anthropic console.
+      - [ ] Low value / rotate at leisure: `SQUARE_APPLICATION_SECRET`, `CLOVER_APP_SECRET`,
+            `GOOGLE_CLIENT_SECRET`, `GOOGLE_MAPS_API_KEY` (the IP restriction below matters more),
+            the Uber **sandbox** secret, and `APP_KEY` (rotating it invalidates existing sessions
+            and any `encrypted` cast — **do NOT rotate once `pos_integrations` /
+            `delivery_integrations` hold real tokens**; it would render them undecryptable).
+      - [ ] Stripe test keys: **do not bother rotating** — they're being replaced with live keys
+            anyway. **Set the live keys directly in the Cloud dashboard, never paste them into a
+            chat session**, or they land in a transcript too. Same rule for every secret above.
 - [ ] **Stripe live mode**: swap to live keys, create live webhook + `STRIPE_WEBHOOK_SECRET`,
       have first restaurant (Marcos) complete **live** Connect onboarding, place one real
       end-to-end order and confirm application fee + payout land.
@@ -212,16 +230,22 @@ and run CloverLiveSandboxTest.
 
 ---
 
-## 3. Delivery dispatch (Phase 2) — **Uber Direct COMPLETE (2026-07-15)**
+## 3. Delivery dispatch (Phase 2) — **Uber Direct COMPLETE (2026-07-15); DoorDash Drive the launch provider, mostly built (2026-07-17)**
 _Built end-to-end and verified against the real Uber sandbox: per-restaurant credentials, the
 adapter, status webhooks, Places address capture, quote-before-payment, and auth/capture. The
 customer now gets a committed fee and ETA before paying, and is only ever charged once a courier
-actually exists. `DeliveryFeeStrategy` is wired and `DeliveryDispatcher::quote()` has a caller.
-DoorDash (§9 of the plan) is all that remains, and is deliberately later._
+actually exists. `DeliveryFeeStrategy` is wired and `DeliveryDispatcher::quote()` has a caller._
 
-**Full plan: [docs/uber-direct-implementation-plan.md](docs/uber-direct-implementation-plan.md)**
-— kept current as it was built; carries the decisions, the corrections the live API forced, and the
-"Before production" checklist. **Read it before touching any of this.**
+**DoorDash Drive is now the launch delivery provider** (Uber kept dormant). As of 2026-07-17,
+Sessions 1, 4a, 4b, 2, 3 of the DoorDash plan are DONE (adapter, full money model, one-click
+provisioning, webhooks) — full suite 848 green, JWT+quote and the §1 money model both verified live
+against the sandbox. Remaining: Session 5 (refunds), Session 0/6 (prod access + go-live).
+
+**Full plans:**
+- **[docs/doordash-drive-implementation-plan.md](docs/doordash-drive-implementation-plan.md)** — the
+  active plan (launch provider), with a per-session progress table at the top. **Read this first.**
+- [docs/uber-direct-implementation-plan.md](docs/uber-direct-implementation-plan.md) — the Uber
+  adapter (now dormant); carries the auth/capture decisions and the corrections the live API forced.
 
 **Done 2026-07-14**
 - [x] Live bug: every storefront offered delivery regardless of `delivery_enabled`, charged the fee,
@@ -253,11 +277,27 @@ DoorDash (§9 of the plan) is all that remains, and is deliberately later._
       Stripe rejects when uncaptured — it failed silently (best-effort) and stranded the hold on the
       customer's card. Voided orders were being refunded for a charge that never existed too.
 
-**Next**
-- [ ] `DoorDashDriveProvider` — same contract, one line in `AppServiceProvider`. Drive production
-      access is GATED (certification + required live demo, no timeline). Start the
-      interest/certification request early, in parallel. Then add `'doordash'` to the
-      `DeliveryDispatcher` chain default and the admin `$connectable` list.
+**DoorDash Drive — done 2026-07-17** (details + progress table in the DoorDash plan)
+- [x] **Session 1** — `DoorDashProvider` (quote→accept→status→cancel), `DoorDashJwtService`
+      (DD-JWT-V1), `DoorDashClient`, status map; registered in `AppServiceProvider`; default chain now
+      `['doordash']`. Live sandbox: JWT auth + quote `HTTP 200`.
+- [x] **Session 4a** — monthly cap ($249, restaurant-local), accounting columns
+      (`platform_commission_cents`/`delivery_margin_cents`/`courier_fee_cents` + backfill),
+      revenue-split reads true commission, `RevenueRole::DeliveryMargin`.
+- [x] **Session 4b** — customer gross-up + central-billing recovery (`DeliveryMarkup`, gated on
+      `isCentrallyBilled()`); §1 money model verified live to the cent.
+- [x] **Session 2** — one-click umbrella provisioning (`DoorDashProvisioningService`) + enable/
+      disconnect UX; DoorDash leads the admin card list.
+- [x] **Session 3** — platform-secret webhooks (`DoorDashWebhookController`); `hasCourier()`
+      generalized onto the `DeliveryStatus` enum so the deadline job + both webhooks are provider-agnostic.
+
+**DoorDash Drive — remaining**
+- [ ] **Session 5** — refunds & cancellation: `restaurants.refunds_enabled` (default OFF, surfaced in
+      the onboarding wizard), partial refunds with proportional commission reversal, Plateful never out
+      of pocket.
+- [ ] **Session 0 / 6** — file the DoorDash production-access request (gated: certification + a live
+      Zoom demo, no timeline — start early), then go-live (swap to prod creds, confirm the webhook
+      secret + signature scheme in the DoorDash portal, keep the Uber adapter dormant).
 
 **Before this can take real money** (full list in the plan)
 - [ ] **A queue worker must be running.** Delivery dispatch and the auth/capture deadline are queued
@@ -265,12 +305,17 @@ DoorDash (§9 of the plan) is all that remains, and is deliberately later._
       never expire — holds sit on customer cards with nothing scheduled to release them. This is the
       one operational dependency with no in-code backstop. Worth a Sentry alert on
       `payment_state = 'authorized'` older than an hour.
+- [ ] **DoorDash go-live env** (launch provider): set production `DOORDASH_DEVELOPER_ID` / `KEY_ID` /
+      `SIGNING_SECRET` / `WEBHOOK_SECRET` once prod access is granted; register the webhook URL
+      (`/webhooks/doordash`) in the DoorDash portal and **confirm the signature scheme** matches
+      `DoorDashWebhookController::signatureIsValid()` (header + base64-vs-hex, currently assumed).
 - [ ] Provision Plateful's **production** Uber account — it can currently mint only
-      `direct.organizations`, not `eats.deliveries`. Sandbox working says nothing about it.
+      `direct.organizations`, not `eats.deliveries`. Only needed if Uber is un-dormanted; sandbox
+      working says nothing about it.
 - [ ] Rotate the production Uber Client Secret (exposed in a session transcript 2026-07-14).
 - [ ] Restrict the Google Maps key to Places API (New) + the production server's IP.
-- [ ] Each restaurant creates its own Uber webhook and pastes the signing key. Optional but wanted:
-      without it every delivery waits out the courier deadline before capturing.
+- [ ] (Uber only) Each restaurant creates its own Uber webhook and pastes the signing key. DoorDash's
+      webhook is platform-level (one secret), so this per-restaurant step does not apply to it.
 
 ---
 

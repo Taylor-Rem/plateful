@@ -35,12 +35,13 @@ class DeliveryDispatcher
             return [DeliveryProviderName::Self];
         }
 
-        // Default to the providers that actually have an adapter registered.
-        // This previously defaulted to ['doordash', 'uber'], which meant any
-        // restaurant switched to third-party mode got `provider_unsupported`
-        // and a permanently failed job, because no DoorDash adapter exists.
-        // Add 'doordash' here when §9 lands, not before.
-        $priority = $restaurant->delivery_provider_priority ?: ['uber'];
+        // DoorDash Drive is the launch delivery provider, so it is the default
+        // chain for any restaurant that hasn't set an explicit priority. The
+        // Uber adapter stays registered but dormant — it only runs for a
+        // restaurant that explicitly prioritizes it (having pasted its own Uber
+        // credentials). Both adapters exist, so neither yields
+        // `provider_unsupported` the way an unbuilt one would.
+        $priority = $restaurant->delivery_provider_priority ?: ['doordash'];
         $chain = [];
         foreach ($priority as $name) {
             $enum = DeliveryProviderName::tryFrom((string) $name);
@@ -105,7 +106,7 @@ class DeliveryDispatcher
      * looking BEFORE releasing the customer's payment hold, or a courier could
      * still turn up at a kitchen for an order that no longer exists.
      */
-    public function cancel(DeliveryAssignment $assignment): void
+    public function cancel(DeliveryAssignment $assignment): DeliveryCancellation
     {
         $provider = $this->providers[$assignment->provider->value] ?? null;
 
@@ -113,7 +114,7 @@ class DeliveryDispatcher
             throw DeliveryProviderException::notConfigured($assignment->provider->value);
         }
 
-        $provider->cancel($assignment);
+        return $provider->cancel($assignment);
     }
 
     public function dispatch(Order $order): DeliveryDispatchResult

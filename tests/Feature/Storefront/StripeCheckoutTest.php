@@ -75,6 +75,79 @@ it('computes the application fee from the food subtotal only', function () {
         ->and($order->total_cents)->toBeGreaterThan(1400);
 });
 
+it('populates the accounting columns on a pickup order under the cap', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    $cookie = addPep($this, $f);
+
+    fakeCheckoutSession();
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'pickup',
+        ]);
+
+    $order = payLatestCheckout();
+
+    // Under the cap the Stripe fee equals the commission, and no delivery money
+    // is involved on a pickup order.
+    expect($order->application_fee_cents)->toBe(56)
+        ->and($order->platform_commission_cents)->toBe(56)
+        ->and($order->delivery_margin_cents)->toBe(0)
+        ->and($order->courier_fee_cents)->toBe(0);
+});
+
+it('clamps the commission to the monthly cap', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    // A tiny cap so a single $14 order (fee 56) blows past it.
+    $r->forceFill(['commission_monthly_cap_cents' => 30])->save();
+    $cookie = addPep($this, $f);
+
+    fakeCheckoutSession();
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'pickup',
+        ]);
+
+    $order = payLatestCheckout();
+
+    // Commission clamped to the cap; the Stripe fee follows it (pickup order).
+    expect($order->platform_commission_cents)->toBe(30)
+        ->and($order->application_fee_cents)->toBe(30);
+});
+
+it('retains zero commission once the cap is already exhausted this month', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    $r->forceFill(['commission_monthly_cap_cents' => 100])->save();
+
+    // A prior order this month already used the whole cap.
+    Order::factory()->create([
+        'restaurant_id' => $r->id,
+        'platform_commission_cents' => 100,
+        'application_fee_cents' => 100,
+        'placed_at' => now(),
+    ]);
+
+    $cookie = addPep($this, $f);
+    fakeCheckoutSession();
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'pickup',
+        ]);
+
+    $order = payLatestCheckout();
+
+    expect($order->platform_commission_cents)->toBe(0)
+        ->and($order->application_fee_cents)->toBe(0);
+});
+
 /**
  * The delivery half of the same rule. Tax and tip are pinned above; without this
  * the delivery fee was the one exclusion nothing enforced — every other test

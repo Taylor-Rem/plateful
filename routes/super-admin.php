@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminInvitationController;
 use App\Http\Controllers\Admin\AdminLoginHandoffController;
 use App\Http\Controllers\Admin\SuperAdmin;
 use App\Http\Controllers\Admin\TenantAdmin;
+use App\Http\Controllers\DoorDashWebhookController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\UberDirectWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,11 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
     // payload's customer_id selects which restaurant's signing key to verify
     // against, since each restaurant owns its own Uber account and key.
     Route::post('/webhooks/uber', UberDirectWebhookController::class)->name('webhooks.uber');
+
+    // DoorDash Drive delivery-status webhooks. One URL for every restaurant;
+    // DoorDash is centrally billed, so a single platform-level secret verifies
+    // the signature and the delivery is resolved by external_delivery_id.
+    Route::post('/webhooks/doordash', DoorDashWebhookController::class)->name('webhooks.doordash');
 
     // Cross-host login handoff (e.g. straight after owner signup on the
     // primary host). Token-gated, so no auth middleware.
@@ -56,6 +62,7 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             Route::middleware('admin.restaurant.admin')->group(function () {
                 Route::get('/onboarding', [TenantAdmin\OnboardingController::class, 'show'])->name('onboarding.show');
                 Route::put('/onboarding/basics', [TenantAdmin\OnboardingController::class, 'updateBasics'])->name('onboarding.basics');
+                Route::put('/onboarding/refund-policy', [TenantAdmin\OnboardingController::class, 'updateRefundPolicy'])->name('onboarding.refundPolicy');
                 Route::post('/onboarding/menu-preset', [TenantAdmin\OnboardingController::class, 'applyMenuPreset'])->name('onboarding.menuPreset');
                 Route::post('/onboarding/menu-import', [TenantAdmin\MenuImportController::class, 'store'])->name('menuImport.store');
                 Route::get('/menu-import/{menuImport}/review', [TenantAdmin\MenuImportController::class, 'review'])->name('menuImport.review');
@@ -85,6 +92,13 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::put('/settings/delivery', [TenantAdmin\DeliveryIntegrationsController::class, 'updateSettings'])->name('delivery.settings.update');
                 Route::post('/settings/delivery/uber', [TenantAdmin\DeliveryIntegrationsController::class, 'saveUber'])->name('delivery.uber.save');
                 Route::post('/settings/delivery/uber/disconnect', [TenantAdmin\DeliveryIntegrationsController::class, 'disconnectUber'])->name('delivery.uber.disconnect');
+
+                // DoorDash Drive is one-click: no credential form, so the "save"
+                // action provisions the Business/Store behind the scenes. Named
+                // `.save`/`.disconnect` to match the card's saveUrl/disconnectUrl
+                // convention in DeliveryIntegrationsController::show.
+                Route::post('/settings/delivery/doordash', [TenantAdmin\DeliveryIntegrationsController::class, 'enableDoorDash'])->name('delivery.doordash.save');
+                Route::post('/settings/delivery/doordash/disconnect', [TenantAdmin\DeliveryIntegrationsController::class, 'disconnectDoorDash'])->name('delivery.doordash.disconnect');
 
                 Route::post('/menu/categories', [TenantAdmin\MenuCategoryController::class, 'store'])->name('categories.store');
                 Route::post('/menu/categories/reorder', [TenantAdmin\MenuCategoryController::class, 'reorder'])->name('categories.reorder');

@@ -20,6 +20,34 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Commission Monthly Cap
+    |---------------------------------------------------------------------------
+    |
+    | The most commission (in cents) Plateful retains from one restaurant in a
+    | single calendar month. Snapshotted onto each restaurant at creation
+    | (nullable `restaurants.commission_monthly_cap_cents` overrides it), so
+    | changing this default never alters an existing restaurant's cap
+    | (grandfathering), exactly like the fee percent above. Default $249/mo;
+    | breakeven is roughly $6,225/mo of food at the 4% rate.
+    |
+    */
+    'commission_monthly_cap_cents' => (int) env('PLATFORM_COMMISSION_MONTHLY_CAP_CENTS', 24900),
+
+    /*
+    |---------------------------------------------------------------------------
+    | Stripe Variable Rate
+    |---------------------------------------------------------------------------
+    |
+    | Stripe's variable per-charge percentage (as a fraction, e.g. 0.029 for
+    | 2.9%). Used from Session 4b to gross up the customer-facing delivery fee
+    | so the restaurant bears no Stripe cost on the delivery line. The fixed 30¢
+    | is deliberately excluded — it is the restaurant's normal card cost.
+    |
+    */
+    'stripe_variable_rate' => (float) env('PLATFORM_STRIPE_VARIABLE_RATE', 0.029),
+
+    /*
+    |---------------------------------------------------------------------------
     | Revenue Shares
     |---------------------------------------------------------------------------
     |
@@ -108,6 +136,23 @@ return [
          * error than making the customer wait longer to hear bad news.
          */
         'courier_deadline_minutes' => (int) env('DELIVERY_COURIER_DEADLINE_MINUTES', 10),
+
+        'doordash' => [
+            /*
+             * DoorDash Drive serves sandbox and production from the same host;
+             * the environment is a property of the credentials, not the URL.
+             * Overridable only so tests and any future host move have a seam.
+             */
+            'base_url' => env('DOORDASH_BASE_URL', 'https://openapi.doordash.com'),
+
+            /*
+             * DoorDash quote responses carry no expiry field; the docs say a
+             * quote must be accepted within ~5 minutes. We stamp a synthetic
+             * expiry this many minutes out so DeliveryDispatcher::quoteForDispatch
+             * re-quotes proactively rather than accepting a stale one.
+             */
+            'quote_accept_window_minutes' => (int) env('DOORDASH_QUOTE_ACCEPT_WINDOW_MINUTES', 5),
+        ],
     ],
 
     'timezones' => [

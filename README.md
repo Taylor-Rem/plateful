@@ -58,18 +58,21 @@ Test card: `4242 4242 4242 4242`, any future expiry/CVC/ZIP.
 
 1. Storefront checkout snapshots the prospective order to `pending_checkouts`
    (pay-first: no `orders` row until payment succeeds).
-2. A Checkout Session is created **on the restaurant's connected account** with
-   `application_fee_amount` = 4% of the post-redemption food subtotal (never tax/tip/delivery).
-   Pickup and self-delivery orders capture immediately; **courier-network deliveries use
-   `capture_method: manual`** — the customer's card is only *held* until Uber confirms a courier.
+2. A Checkout Session is created **on the restaurant's connected account** with an
+   `application_fee_amount` — 4% of the post-redemption food subtotal (never tax/tip/delivery) for
+   pickup/self-delivery, plus the courier passthrough + tip for a **centrally-billed** delivery
+   (DoorDash Drive, the launch provider, where Plateful pays the courier and recovers it via the fee;
+   see the DoorDash plan §1). Pickup and self-delivery capture immediately; **courier-network
+   deliveries use `capture_method: manual`** — the card is only *held* until the provider confirms a
+   courier.
 3. The order materializes idempotently from both the `checkout.session.completed`
    webhook and the success-URL return (unique `orders.stripe_checkout_session_id`), with
    `payment_state` = `captured` or `authorized` (`PaymentState` is separate from the kitchen
    `OrderStatus`).
 4. For authorized orders, `DeliverySettlement` captures the payment (and releases the held POS
    push) when the courier is confirmed, or **voids the hold** if no courier materializes — the
-   `ExpireAuthorizedDelivery` deadline job polls Uber before giving up, so a missed webhook costs
-   latency, not correctness.
+   `ExpireAuthorizedDelivery` deadline job polls the provider before giving up, so a missed webhook
+   costs latency, not correctness. (Provider-agnostic: DoorDash and Uber share this path.)
 5. Cancelling a **captured** order issues a full refund and reverses the application fee.
    Cancelling an order that is only **authorized** voids the hold instead — nothing was charged,
    so nothing is refunded.

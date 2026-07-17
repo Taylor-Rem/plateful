@@ -43,6 +43,10 @@ class RestaurantData extends Data
         public float $taxRatePercent,
         public float $applicationFeePercent,
         public int $deliveryFeeCents,
+        /** Refund the food on a cancelled PICKUP order (default off). */
+        public bool $pickupRefundsEnabled,
+        /** Refund the food on a cancelled DELIVERY order (default off). */
+        public bool $deliveryRefundsEnabled,
         public bool $deliveryEnabled,
         /** Own drivers rather than a courier network — no quote, and a Tips Act disclaimer. */
         public bool $selfDelivery,
@@ -110,6 +114,8 @@ class RestaurantData extends Data
             taxRatePercent: (float) $restaurant->tax_rate_percent,
             applicationFeePercent: (float) $restaurant->application_fee_percent,
             deliveryFeeCents: (int) $restaurant->delivery_fee_cents,
+            pickupRefundsEnabled: (bool) $restaurant->pickup_refunds_enabled,
+            deliveryRefundsEnabled: (bool) $restaurant->delivery_refunds_enabled,
             deliveryEnabled: (bool) $restaurant->delivery_enabled,
             selfDelivery: $restaurant->delivery_mode === DeliveryMode::SelfDelivery,
             isActive: (bool) $restaurant->is_active,

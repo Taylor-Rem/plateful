@@ -48,6 +48,9 @@ if (! function_exists('cartFixture')) {
         $r = Restaurant::create([
             'name' => "Marco's", 'subdomain' => $sub, 'email' => "$sub@m.test",
             'street' => '1', 'city' => 'NY', 'state' => 'NY', 'postal_code' => '1',
+            // Refund policy predates Session 5; the cancel-refund tests here model
+            // a restaurant that allows refunds. Policy-off cases have own tests.
+            'pickup_refunds_enabled' => true, 'delivery_refunds_enabled' => true,
         ]);
 
         // A live storefront has completed Stripe Connect onboarding.

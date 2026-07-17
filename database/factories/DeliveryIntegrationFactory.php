@@ -35,6 +35,26 @@ class DeliveryIntegrationFactory extends Factory
     }
 
     /**
+     * A provisioned DoorDash Drive integration: platform-authenticated, so it
+     * holds no per-restaurant credentials — only the Business/Store ids Plateful
+     * minted for it. The `external_store_id` is what DoorDashProvider keys on.
+     */
+    public function doordash(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'provider' => DeliveryProviderName::DoorDash,
+            'client_id' => null,
+            'client_secret' => null,
+            'customer_id' => null,
+            'access_token' => null,
+            'token_expires_at' => null,
+            'external_business_id' => 'biz_'.Str::random(12),
+            'external_store_id' => 'store_'.Str::random(12),
+            'status' => DeliveryIntegrationStatus::Connected,
+        ]);
+    }
+
+    /**
      * Credentials entered but never exercised — no token minted yet.
      */
     public function withoutToken(): static

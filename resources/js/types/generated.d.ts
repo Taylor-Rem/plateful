@@ -173,6 +173,8 @@ postalCode: string | null,
 taxRatePercent: number,
 applicationFeePercent: number,
 deliveryFeeCents: number,
+pickupRefundsEnabled: boolean,
+deliveryRefundsEnabled: boolean,
 deliveryEnabled: boolean,
 selfDelivery: boolean,
 isActive: boolean,
@@ -228,7 +230,7 @@ export type PosIntegrationStatus = 'connected' | 'disconnected' | 'token_expired
 export type PosProviderName = 'square' | 'clover';
 export type RestaurantRole = 'admin' | 'staff';
 export type RestaurantStatus = 'pending_review' | 'approved' | 'active' | 'suspended';
-export type RevenueRole = 'founder' | 'operator' | 'recruiter' | 'overseer';
+export type RevenueRole = 'founder' | 'operator' | 'recruiter' | 'overseer' | 'delivery_margin';
 export type SelfDeliveryTipRecipient = 'driver' | 'pool' | 'split_50_50';
 export type TipRecipient = 'pool' | 'driver' | 'split';
 }

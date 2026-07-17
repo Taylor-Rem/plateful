@@ -63,8 +63,10 @@ class PayoutsController extends Controller
     }
 
     /**
-     * Sum of application fees Plateful has retained this calendar year: paid
-     * orders that weren't refunded.
+     * Sum of commission Plateful has retained this calendar year: paid orders
+     * that weren't refunded. Reads platform_commission_cents (Plateful's true
+     * revenue), not application_fee_cents — under DoorDash Drive the latter also
+     * carries the courier passthrough + tip, which Plateful never keeps.
      */
     private function ytdPlatefulFeesCents(Restaurant $restaurant): int
     {
@@ -72,6 +74,6 @@ class PayoutsController extends Controller
             ->where('restaurant_id', $restaurant->id)
             ->whereNull('refunded_at')
             ->where('placed_at', '>=', CarbonImmutable::now()->startOfYear())
-            ->sum('application_fee_cents');
+            ->sum('platform_commission_cents');
     }
 }
