@@ -19,6 +19,13 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- Pin the host the tests assume. Without these, CI's `cp .env.example .env`
+             leaves PLATFORM_PRIMARY_DOMAIN=your-app.laravel.cloud, so every admin-host
+             route (Route::domain('admin.'.primary_domain)) binds to the wrong domain
+             and the admin/super-admin tests 404. Keep in sync with the hardcoded
+             admin.plateful.test in tests (e.g. AdminHomeTest's HOME_ADMIN_BASE). -->
+        <env name="APP_URL" value="http://plateful.test"/>
+        <env name="PLATFORM_PRIMARY_DOMAIN" value="plateful.test"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <!-- No SSR gateway runs in tests; without this every Inertia render
              attempts an HTTP call to 127.0.0.1:13714, which the global

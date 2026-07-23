@@ -255,15 +255,12 @@ const submit = (): void => {
                 </h3>
                 <p class="mt-1 text-sm text-muted-foreground">
                     When you cancel a paid order, choose whether the food is
-                    refunded to the customer. The delivery fee is always refunded
-                    when the courier can still be called off — this only controls
-                    the food. Both are off by default.
+                    refunded to the customer. The delivery fee is always
+                    refunded when the courier can still be called off — this
+                    only controls the food. Both are off by default.
                 </p>
                 <div class="mt-4 grid gap-4">
-                    <label
-                        class="flex items-start gap-3"
-                        for="pickup-refunds"
-                    >
+                    <label class="flex items-start gap-3" for="pickup-refunds">
                         <input
                             id="pickup-refunds"
                             v-model="form.pickup_refunds_enabled"

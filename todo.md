@@ -292,9 +292,16 @@ against the sandbox. Remaining: Session 5 (refunds), Session 0/6 (prod access + 
       generalized onto the `DeliveryStatus` enum so the deadline job + both webhooks are provider-agnostic.
 
 **DoorDash Drive — remaining**
-- [ ] **Session 5** — refunds & cancellation: `restaurants.refunds_enabled` (default OFF, surfaced in
-      the onboarding wizard), partial refunds with proportional commission reversal, Plateful never out
-      of pocket.
+- [x] **Session 5 — DONE (verified in code 2026-07-23).** Refunds & cancellation shipped: two
+      independent food-refund toggles (`pickup_refunds_enabled`/`delivery_refunds_enabled`, default
+      OFF) + `refund_policy_reviewed_at`, `RefundCalculator`/`RefundPlan`, partial refunds with
+      proportional commission reversal (`OrderTransition::applyRefund()` zeros commission/margin +
+      `revenueSplits->reverse()`), Settings UI + dedicated onboarding step. Covered by
+      DeliveryRefundTest + RefundCalculatorTest; full suite green (867). One go-live item folded into
+      Session 6: confirm DoorDash's live cancel-fee response field (`DoorDashProvider::parseCancellation()`
+      defaults to courier-fee-retained when silent). **Reader-side follow-ups NOT done** (tracked
+      elsewhere): earnings partial-refund proration (§7), `charge.refunded` webhook (§11), a
+      `refunded_cents` consumer (§8) — Session 5 shipped the refund engine, not these downstream hooks.
 - [ ] **Session 0 / 6** — file the DoorDash production-access request (gated: certification + a live
       Zoom demo, no timeline — start early), then go-live (swap to prod creds, confirm the webhook
       secret + signature scheme in the DoorDash portal, keep the Uber adapter dormant).

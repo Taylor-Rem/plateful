@@ -36,9 +36,7 @@ import LegalLayout from '@/layouts/LegalLayout.vue';
             <li>
                 The order number, if the problem relates to a specific order.
             </li>
-            <li>
-                Roughly when it happened, and a screenshot if you have one.
-            </li>
+            <li>Roughly when it happened, and a screenshot if you have one.</li>
         </ul>
 
         <h2>Common Questions</h2>
