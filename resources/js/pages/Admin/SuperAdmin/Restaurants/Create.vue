@@ -28,7 +28,9 @@ const form = useForm({
     primary_color: '#b91c1c',
     secondary_color: '#ffffff',
     description: '',
-    tax_rate_percent: '0',
+    // Blank, not '0' — the server fills in a location estimate when this is
+    // empty, and a hardcoded '0' would suppress that on every create.
+    tax_rate_percent: '',
     delivery_fee: '0',
     owner_email: '',
 });
@@ -269,7 +271,12 @@ function submit() {
                                 min="0"
                                 max="30"
                                 v-model="form.tax_rate_percent"
+                                placeholder="Estimated from state"
                             />
+                            <p class="text-xs text-muted-foreground">
+                                Leave blank to estimate from the state. The
+                                owner confirms it during onboarding.
+                            </p>
                             <InputError
                                 :message="form.errors.tax_rate_percent"
                             />

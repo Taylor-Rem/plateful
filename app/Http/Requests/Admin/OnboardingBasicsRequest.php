@@ -28,6 +28,7 @@ class OnboardingBasicsRequest extends FormRequest
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'size:2'],
             'postal_code' => ['nullable', 'string', 'max:16'],
+            'tax_rate_percent' => ['nullable', 'numeric', 'between:0,30'],
         ];
     }
 

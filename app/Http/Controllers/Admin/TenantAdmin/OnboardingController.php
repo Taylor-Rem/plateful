@@ -11,6 +11,7 @@ use App\Models\Restaurant;
 use App\Services\RestaurantImageService;
 use App\Support\Menus\MenuBuilder;
 use App\Support\Menus\MenuPresets;
+use App\Support\SalesTaxRates;
 use App\Support\StorefrontLoginHandoff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -57,6 +58,9 @@ class OnboardingController extends Controller
                 'maxFiles' => (int) config('menu_import.max_files'),
                 'maxFileKb' => (int) config('menu_import.max_file_kb'),
             ],
+            // Handed to the client whole so the Basics form can re-suggest a
+            // rate as the owner types their state, without a round trip.
+            'taxRateEstimates' => SalesTaxRates::all(),
             'primaryDomain' => config('platform.primary_domain'),
         ]);
     }
@@ -105,6 +109,12 @@ class OnboardingController extends Controller
             'city' => $validated['city'] ?? '',
             'state' => $validated['state'] ?? '',
             'postal_code' => $validated['postal_code'] ?? '',
+            // Absent means the field was left empty, not that the owner chose
+            // 0% — fall back to the location estimate rather than silently
+            // shipping a storefront that charges no tax.
+            'tax_rate_percent' => $validated['tax_rate_percent']
+                ?? SalesTaxRates::estimateFor($validated['state'] ?? null)
+                ?? $restaurant->tax_rate_percent,
         ]);
 
         if ($request->hasFile('logo')) {
