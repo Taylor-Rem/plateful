@@ -114,6 +114,29 @@ it('keeps the onboarding page accessible after the restaurant goes live', functi
             ->where('restaurant.isLive', true));
 });
 
+it('still reports the outstanding stripe step for a restaurant that went live without one', function () {
+    // Restaurants created before the Stripe gate existed are Active without a
+    // connected account. The nav shows a "Finish setup" dot for them, so the
+    // onboarding page has to keep reporting what's outstanding.
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+    addHours($restaurant);
+    addMenuItem($restaurant);
+    $restaurant->forceFill([
+        'status' => RestaurantStatus::Active,
+        'onboarding_completed_at' => now(),
+    ])->save();
+
+    $this->actingAs($owner)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('restaurant.isLive', true)
+            ->where('restaurant.isStripeReady', false)
+            ->where('steps.3.key', 'stripe')
+            ->where('steps.3.required', true)
+            ->where('steps.3.complete', false));
+});
+
 it('exposes live and stripe status with the admin role so the setup nav can render for admins', function () {
     [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
 
