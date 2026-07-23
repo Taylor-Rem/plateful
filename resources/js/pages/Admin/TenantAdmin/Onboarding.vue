@@ -48,6 +48,7 @@ const props = defineProps<{
         itemCount: number;
     } | null;
     menuImportLimits: { maxFiles: number; maxFileKb: number };
+    taxRateEstimates: Record<string, number>;
     primaryDomain: string;
 }>();
 
@@ -392,6 +393,7 @@ const copyUrl = async (): Promise<void> => {
                     <StepBasics
                         v-if="currentKey === 'basics'"
                         :restaurant="restaurant"
+                        :tax-rate-estimates="taxRateEstimates"
                         @advance="advance"
                     />
                     <StepHours

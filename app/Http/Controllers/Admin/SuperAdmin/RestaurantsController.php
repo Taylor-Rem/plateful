@@ -16,6 +16,7 @@ use App\Models\PlatformRoleHolder;
 use App\Models\Restaurant;
 use App\Models\User;
 use App\Services\RevenueSplitResolver;
+use App\Support\SalesTaxRates;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -68,7 +69,12 @@ class RestaurantsController extends Controller
             'primary_color' => $validated['primary_color'] ?? null,
             'secondary_color' => $validated['secondary_color'] ?? null,
             'description' => $validated['description'] ?? null,
-            'tax_rate_percent' => $validated['tax_rate_percent'] ?? 0,
+            // Left blank means "we don't know yet", not 0% — seed the location
+            // estimate so a skipped onboarding step can't leave a live
+            // storefront charging no tax. An explicit 0 is still honoured.
+            'tax_rate_percent' => $validated['tax_rate_percent']
+                ?? SalesTaxRates::estimateFor($validated['state'] ?? null)
+                ?? 0,
             'delivery_fee_cents' => $request->input('delivery_fee_cents', 0),
             'is_active' => true,
         ]);

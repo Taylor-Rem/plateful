@@ -311,6 +311,54 @@ it('saves the basics step and marks it complete', function () {
             ->where('steps.0.complete', true));
 });
 
+it('falls back to the location estimate when basics omits a tax rate', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->put(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/basics", [
+            'name' => 'Pizza Joint',
+            'state' => 'ny',
+        ])
+        ->assertRedirect();
+
+    expect((float) $restaurant->fresh()->tax_rate_percent)->toBe(8.54);
+});
+
+it('keeps a tax rate the owner typed, including an explicit zero', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->put(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/basics", [
+            'name' => 'Pizza Joint',
+            'state' => 'ny',
+            'tax_rate_percent' => 6.25,
+        ])
+        ->assertRedirect();
+
+    expect((float) $restaurant->fresh()->tax_rate_percent)->toBe(6.25);
+
+    // A deliberate 0 is a real answer, not a missing one — it must survive.
+    $this->actingAs($owner)
+        ->put(ADMIN_HOST."/{$restaurant->subdomain}/onboarding/basics", [
+            'name' => 'Pizza Joint',
+            'state' => 'ny',
+            'tax_rate_percent' => 0,
+        ])
+        ->assertRedirect();
+
+    expect((float) $restaurant->fresh()->tax_rate_percent)->toBe(0.0);
+});
+
+it('hands the tax rate estimates to the onboarding page', function () {
+    [$owner, $restaurant] = makeOwnerAndApprovedRestaurant();
+
+    $this->actingAs($owner)
+        ->get(ADMIN_HOST."/{$restaurant->subdomain}/onboarding")
+        ->assertInertia(fn ($page) => $page
+            ->where('taxRateEstimates.NY', 8.54)
+            ->where('taxRateEstimates.OR', 0));
+});
+
 it('blocks staff from saving the basics step', function () {
     [, $restaurant] = makeOwnerAndApprovedRestaurant();
     $staff = User::factory()->create();

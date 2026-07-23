@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
+    /** Combined state + average local rate, keyed by 2-letter state code. */
+    taxRateEstimates: Record<string, number>;
 }>();
 
 const emit = defineEmits<{ advance: [] }>();
@@ -24,7 +26,33 @@ const form = useForm({
     city: props.restaurant.city ?? '',
     state: props.restaurant.state ?? '',
     postal_code: props.restaurant.postalCode ?? '',
+    tax_rate_percent: props.restaurant.taxRatePercent ?? 0,
 });
+
+// ----- Sales tax -----
+// A rate the owner already set is theirs; a guess must never overwrite it.
+// Anything still sitting at the 0.00 column default is treated as unset.
+const ownerSetTaxRate = ref((props.restaurant.taxRatePercent ?? 0) > 0);
+
+const estimatedTaxRate = computed<number | null>(
+    () => props.taxRateEstimates[form.state.trim().toUpperCase()] ?? null,
+);
+
+/** The field is currently showing a guess rather than the owner's own number. */
+const taxRateIsEstimate = computed(
+    () => !ownerSetTaxRate.value && estimatedTaxRate.value !== null,
+);
+
+// Re-suggest as the address is typed, right up until the owner takes over.
+watch(
+    estimatedTaxRate,
+    (rate) => {
+        if (!ownerSetTaxRate.value && rate !== null) {
+            form.tax_rate_percent = rate;
+        }
+    },
+    { immediate: true },
+);
 
 const newLogoPreview = ref<string | null>(null);
 const currentLogo = computed(
@@ -166,6 +194,37 @@ const submit = (): void => {
                 </div>
             </div>
         </fieldset>
+
+        <div class="grid gap-2">
+            <Label for="basics-tax-rate">Sales tax rate %</Label>
+            <Input
+                id="basics-tax-rate"
+                v-model="form.tax_rate_percent"
+                type="number"
+                step="0.01"
+                min="0"
+                max="30"
+                class="max-w-40"
+                data-test="basics-tax-rate"
+                @input="ownerSetTaxRate = true"
+            />
+            <p
+                v-if="taxRateIsEstimate"
+                class="text-xs text-muted-foreground"
+                data-test="basics-tax-estimate-note"
+            >
+                Estimated from the average combined rate in
+                {{ form.state.trim().toUpperCase() }} — a guess based on your
+                location, not a guaranteed rate. Local rates vary by city and
+                county, and many states tax prepared food differently. Confirm
+                the right rate for your address and change it here.
+            </p>
+            <p v-else class="text-xs text-muted-foreground">
+                Applied to the food subtotal at checkout. Plateful's fee never
+                applies to tax — it's passed through to you in full.
+            </p>
+            <InputError :message="form.errors.tax_rate_percent" />
+        </div>
 
         <div class="flex items-center justify-between">
             <button

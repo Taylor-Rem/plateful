@@ -44,6 +44,34 @@ test('super admin can create a restaurant', function () {
     expect($restaurant->delivery_fee_cents)->toBe(350);
 });
 
+test('a blank tax rate is seeded from the state estimate', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    $this->actingAs($superAdmin)
+        ->post(SUPER_BASE.'/super/restaurants', validRestaurantPayload([
+            'state' => 'NY',
+            'tax_rate_percent' => null,
+        ]))
+        ->assertRedirect();
+
+    $restaurant = Restaurant::query()->where('subdomain', 'pasta')->first();
+    expect((float) $restaurant->tax_rate_percent)->toBe(8.54);
+});
+
+test('an explicit zero tax rate is honoured over the estimate', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    $this->actingAs($superAdmin)
+        ->post(SUPER_BASE.'/super/restaurants', validRestaurantPayload([
+            'state' => 'NY',
+            'tax_rate_percent' => '0',
+        ]))
+        ->assertRedirect();
+
+    $restaurant = Restaurant::query()->where('subdomain', 'pasta')->first();
+    expect((float) $restaurant->tax_rate_percent)->toBe(0.0);
+});
+
 test('non-super admin cannot create a restaurant', function () {
     $admin = User::factory()->admin()->create();
 
