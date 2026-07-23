@@ -47,10 +47,27 @@ it('rejects checkout when the restaurant is not Stripe-ready', function () {
             'customer_email' => 'a@a.test',
             'type' => 'pickup',
         ], ['Accept' => 'application/json'])
-        ->assertStatus(422);
+        ->assertStatus(422)
+        // The key the checkout page renders. Without it the rejection is
+        // invisible and "Place order" looks like a dead button.
+        ->assertJsonValidationErrors(['payment']);
 
     expect(Order::count())->toBe(0);
     expect(PendingCheckout::count())->toBe(0);
+});
+
+it('tells the checkout page when the restaurant cannot take payment', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    $r->forceFill(['stripe_account_status' => Restaurant::STRIPE_PENDING])->save();
+    $cookie = addPep($this, $f);
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->get("http://{$r->subdomain}.plateful.test/checkout")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Storefront/Checkout')
+            ->where('restaurant.isStripeReady', false));
 });
 
 it('computes the application fee from the food subtotal only', function () {
