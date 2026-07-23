@@ -32,7 +32,10 @@ const submit = (): void => {
         </p>
 
         <div class="grid gap-4">
-            <label class="flex items-start gap-3" for="onboarding-pickup-refunds">
+            <label
+                class="flex items-start gap-3"
+                for="onboarding-pickup-refunds"
+            >
                 <input
                     id="onboarding-pickup-refunds"
                     v-model="form.pickup_refunds_enabled"
@@ -73,7 +76,9 @@ const submit = (): void => {
         </div>
 
         <div class="flex items-center gap-3">
-            <Button type="submit" :disabled="form.processing">Save & continue</Button>
+            <Button type="submit" :disabled="form.processing"
+                >Save & continue</Button
+            >
             <span
                 v-if="form.recentlySuccessful"
                 class="text-sm text-emerald-600 dark:text-emerald-400"

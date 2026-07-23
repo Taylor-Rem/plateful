@@ -90,6 +90,31 @@ const restaurantClosedError = computed(
     () => (form.errors as Record<string, string>).restaurant_closed,
 );
 
+// The only error keys this page renders beside their field. Everything else —
+// `payment`, `cart`, `delivery_quote_token`, `items.N`, and the delivery
+// address fields other than street — has to surface somewhere or the 422 is
+// invisible and "Place order" reads as a dead button.
+const INLINE_ERROR_KEYS = new Set([
+    'customer_name',
+    'customer_email',
+    'type',
+    'delivery_address.street',
+    'restaurant_closed',
+]);
+
+const unshownErrors = computed(() =>
+    Object.entries(form.errors as Record<string, string>)
+        .filter(([key, message]) => !INLINE_ERROR_KEYS.has(key) && !!message)
+        .map(([, message]) => message),
+);
+
+/** An error did land somewhere, just not next to the button they clicked. */
+const hasInlineErrors = computed(() =>
+    Object.keys(form.errors as Record<string, string>).some(
+        (key) => key !== 'restaurant_closed' && INLINE_ERROR_KEYS.has(key),
+    ),
+);
+
 const useNewAddress = ref(props.savedAddresses.length === 0);
 
 watch(
@@ -285,11 +310,14 @@ const deliveryFeeCents = computed(() => {
     return props.restaurant.deliveryFeeCents;
 });
 
-// Delivery can't be paid for until it's been priced.
+// Delivery can't be paid for until it's been priced. And nothing can be paid
+// for at all until the restaurant's Connect account is enabled — store() rejects
+// that case, so let the page say so up front rather than after a dead click.
 const canSubmit = computed(
     () =>
         !form.processing &&
         props.restaurant.isOpen !== false &&
+        props.restaurant.isStripeReady &&
         (!needsQuote.value || liveQuote.value !== null),
 );
 const tipCents = computed(() => {
@@ -369,6 +397,17 @@ const submit = (): void => {
             <strong class="font-semibold">We're currently closed.</strong>
             {{ restaurant.nextOpenLabel }}. You can still keep items in your
             cart, but you'll need to wait until we open to check out.
+        </div>
+
+        <div
+            v-if="!restaurant.isStripeReady"
+            class="mb-6 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+            <strong class="font-semibold"
+                >Online payment isn't available.</strong
+            >
+            {{ restaurant.name }} can't take card payments right now, so orders
+            can't be placed here yet. Please contact them directly to order.
         </div>
 
         <p
@@ -833,6 +872,19 @@ const submit = (): void => {
                         </div>
                     </dl>
 
+                    <!-- Everything the form couldn't show beside a field. -->
+                    <div
+                        v-if="unshownErrors.length || hasInlineErrors"
+                        class="mt-5 space-y-1 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                    >
+                        <p v-for="(message, i) in unshownErrors" :key="i">
+                            {{ message }}
+                        </p>
+                        <p v-if="hasInlineErrors">
+                            Please correct the highlighted fields above.
+                        </p>
+                    </div>
+
                     <button
                         type="submit"
                         class="mt-5 w-full rounded-md px-4 py-3 text-sm font-semibold disabled:opacity-60"
@@ -848,7 +900,13 @@ const submit = (): void => {
                     </button>
 
                     <p
-                        v-if="restaurant.isOpen === false"
+                        v-if="!restaurant.isStripeReady"
+                        class="mt-3 text-center text-xs text-destructive"
+                    >
+                        This restaurant can't accept online payment yet.
+                    </p>
+                    <p
+                        v-else-if="restaurant.isOpen === false"
                         class="mt-3 text-center text-xs text-amber-700"
                     >
                         We're currently closed. {{ restaurant.nextOpenLabel }}.
@@ -864,7 +922,8 @@ const submit = (): void => {
                         v-else
                         class="mt-3 text-center text-xs text-muted-foreground"
                     >
-                        By placing this order you confirm the details above.
+                        You'll enter your card details on the next screen, on
+                        Stripe's secure checkout page.
                     </p>
                 </div>
             </aside>

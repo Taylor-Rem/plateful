@@ -110,6 +110,17 @@ present('CLAUDE_API_KEY', $vars);
 // Places autocomplete + delivery quotes need the server-side Maps key.
 present('GOOGLE_MAPS_API_KEY', $vars);
 
+// ---- Delivery: DoorDash Drive (launch provider) ------------------------------
+// Platform-level creds (not per-restaurant). Unset in production means the
+// launch delivery provider silently fails to mint JWTs / verify webhooks.
+section('Delivery — DoorDash Drive');
+present('DOORDASH_DEVELOPER_ID', $vars);
+present('DOORDASH_KEY_ID', $vars);
+present('DOORDASH_SIGNING_SECRET', $vars);
+// Webhook HMAC secret. Without it DoorDashWebhookController fails closed and
+// every delivery waits out the courier deadline instead of settling on signal.
+present('DOORDASH_WEBHOOK_SECRET', $vars);
+
 // ---- Queue -------------------------------------------------------------------
 // POS pushes, delivery dispatch, and the auth/capture deadline are all queued
 // jobs. QUEUE_CONNECTION=database with no worker means orders never push,

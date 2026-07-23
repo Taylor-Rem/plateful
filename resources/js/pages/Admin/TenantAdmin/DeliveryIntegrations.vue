@@ -401,7 +401,11 @@ const statusClasses: Record<string, string> = {
                         :disabled="enableForm.processing"
                         @click="enable(card)"
                     >
-                        {{ enableForm.processing ? 'Enabling…' : 'Enable delivery' }}
+                        {{
+                            enableForm.processing
+                                ? 'Enabling…'
+                                : 'Enable delivery'
+                        }}
                     </Button>
                     <Button
                         v-else-if="card.available && !showForm"
