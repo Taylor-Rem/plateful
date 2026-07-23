@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { Check, Copy, ExternalLink, PartyPopper } from 'lucide-vue-next';
+import {
+    Check,
+    Copy,
+    ExternalLink,
+    PartyPopper,
+    TriangleAlert,
+} from 'lucide-vue-next';
 import QRCode from 'qrcode';
 import { computed, ref, watchEffect } from 'vue';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
@@ -70,7 +76,8 @@ const goto = (key: string): void => {
 const advance = (): void => {
     const next = stepOrder[currentIndex.value + 1];
 
-    if (next) {
+    // `review` is hidden once live, so don't advance onto it.
+    if (next && visibleSteps.value.some((s) => s.key === next)) {
         currentKey.value = next;
     }
 };
@@ -80,6 +87,28 @@ const setupSteps = computed(() =>
 );
 const completedCount = computed(
     () => setupSteps.value.filter((s) => s.complete).length,
+);
+
+/**
+ * Required setup that is still outstanding. Going live is not a promise that it
+ * stays done: restaurants created before the Stripe gate existed are live
+ * without a connected account, and a Connect account can later be restricted.
+ * The "Finish setup" dot in the nav points here, so this page has to be able to
+ * say what the dot is for — otherwise it just says "You're live!" and the
+ * owner has no way to reach the step that's actually blocking orders.
+ */
+const outstandingSteps = computed(() =>
+    setupSteps.value.filter((s) => s.required && !s.complete),
+);
+
+const showWizard = computed(
+    () => !props.restaurant.isLive || outstandingSteps.value.length > 0,
+);
+
+// "Go live" has nothing to offer a restaurant that already is: the server
+// rejects a second go-live, so the step can only render a disabled button.
+const visibleSteps = computed(() =>
+    props.restaurant.isLive ? setupSteps.value : props.steps,
 );
 
 const currentStep = computed(
@@ -161,6 +190,59 @@ const copyUrl = async (): Promise<void> => {
         </header>
 
         <main class="mx-auto max-w-3xl space-y-8 px-6 py-8">
+            <!-- What the amber dot in the nav is for. Live doesn't mean done. -->
+            <section
+                v-if="restaurant.isLive && outstandingSteps.length"
+                class="rounded-lg border border-amber-300 bg-amber-50 p-5 dark:border-amber-700/50 dark:bg-amber-950/30"
+                data-test="setup-attention"
+            >
+                <div class="flex items-start gap-3">
+                    <TriangleAlert
+                        class="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-500"
+                    />
+                    <div class="flex-1">
+                        <h2
+                            class="text-base font-semibold text-amber-900 dark:text-amber-200"
+                        >
+                            Your setup isn't finished
+                        </h2>
+                        <p
+                            class="mt-1 text-sm text-amber-800 dark:text-amber-300"
+                        >
+                            {{ restaurant.name }} is live, but
+                            {{ outstandingSteps.length }}
+                            required
+                            {{
+                                outstandingSteps.length === 1 ? 'step' : 'steps'
+                            }}
+                            still need attention. Until they're done, customers
+                            may not be able to complete an order.
+                        </p>
+                        <ul class="mt-3 space-y-1.5">
+                            <li
+                                v-for="step in outstandingSteps"
+                                :key="step.key"
+                                class="text-sm"
+                            >
+                                <button
+                                    type="button"
+                                    class="font-medium text-amber-900 underline underline-offset-2 hover:opacity-80 dark:text-amber-200"
+                                    :data-test="`setup-attention-${step.key}`"
+                                    @click="goto(step.key)"
+                                >
+                                    {{ step.title }}
+                                </button>
+                                <span
+                                    class="text-amber-800 dark:text-amber-300"
+                                >
+                                    — {{ step.description }}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
             <!-- ============== Live: celebration ============== -->
             <template v-if="restaurant.isLive">
                 <section
@@ -221,16 +303,24 @@ const copyUrl = async (): Promise<void> => {
                 </section>
             </template>
 
-            <!-- ============== Pre-live: wizard ============== -->
-            <template v-else>
+            <!-- ============== Wizard ==============
+                 Also shown when live with required steps outstanding — that is
+                 the only route an owner has to the step that's blocking them. -->
+            <template v-if="showWizard">
                 <section>
                     <p
                         class="text-xs tracking-wide text-muted-foreground uppercase"
                     >
-                        Welcome to Plateful
+                        {{
+                            restaurant.isLive ? 'Setup' : 'Welcome to Plateful'
+                        }}
                     </p>
                     <h2 class="mt-1 text-2xl font-semibold">
-                        Let's get your storefront live
+                        {{
+                            restaurant.isLive
+                                ? 'Finish setting up'
+                                : "Let's get your storefront live"
+                        }}
                     </h2>
                     <div class="mt-4 flex items-center gap-3">
                         <div
@@ -254,7 +344,7 @@ const copyUrl = async (): Promise<void> => {
 
                 <nav class="flex flex-wrap gap-2" aria-label="Setup steps">
                     <button
-                        v-for="(step, idx) in steps"
+                        v-for="(step, idx) in visibleSteps"
                         :key="step.key"
                         type="button"
                         :class="[
