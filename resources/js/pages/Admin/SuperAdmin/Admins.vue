@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
+import { Form, Head } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
 
 type AdminRow = {
     id: number;
@@ -18,38 +18,15 @@ defineProps<{
     admins: AdminRow[];
     restaurants: { id: number; name: string; subdomain: string }[];
 }>();
+
+defineOptions({ layout: SuperAdminLayout });
 </script>
 
 <template>
-    <div class="min-h-screen bg-background text-foreground">
+    <div>
         <Head title="Admins" />
-        <header class="border-b border-border bg-card">
-            <div
-                class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4"
-            >
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                        >←</Link
-                    >
-                    <h1 class="text-lg font-semibold text-foreground">
-                        Admins
-                    </h1>
-                </div>
-                <div class="flex items-center gap-4">
-                    <AppearanceTabs />
-                    <Link
-                        href="/super/restaurants"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Restaurants
-                    </Link>
-                </div>
-            </div>
-        </header>
-
-        <main class="mx-auto max-w-5xl space-y-8 px-6 py-8">
+        <div class="space-y-8">
+            <h1 class="text-2xl font-semibold text-foreground">Admins</h1>
             <table
                 class="w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-card"
             >
@@ -148,6 +125,6 @@ defineProps<{
                     >
                 </Form>
             </section>
-        </main>
+        </div>
     </div>
 </template>

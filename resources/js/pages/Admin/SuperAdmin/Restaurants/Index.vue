@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -13,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
 
 type RestaurantRow = App.Data.RestaurantData & {
     adminsCount: number;
@@ -97,44 +97,15 @@ function confirmHardDelete(): void {
         },
     );
 }
+
+defineOptions({ layout: SuperAdminLayout });
 </script>
 
 <template>
-    <div class="min-h-screen bg-background text-foreground">
+    <div>
         <Head title="Restaurants" />
-        <header class="border-b border-border bg-card">
-            <div
-                class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4"
-            >
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                        >←</Link
-                    >
-                    <h1 class="text-lg font-semibold text-foreground">
-                        Restaurants
-                    </h1>
-                </div>
-                <div class="flex items-center gap-4">
-                    <AppearanceTabs />
-                    <Link
-                        href="/super/earnings"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Earnings
-                    </Link>
-                    <Link
-                        href="/super/admins"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Admins
-                    </Link>
-                </div>
-            </div>
-        </header>
-
-        <main class="mx-auto max-w-5xl space-y-6 px-6 py-8">
+        <div class="space-y-6">
+            <h1 class="text-2xl font-semibold text-foreground">Restaurants</h1>
             <div class="flex items-center justify-between">
                 <p class="text-sm text-muted-foreground">
                     {{ restaurants.length }}
@@ -293,7 +264,7 @@ function confirmHardDelete(): void {
                     </tbody>
                 </table>
             </section>
-        </main>
+        </div>
 
         <Dialog
             :open="hardDeleteTarget !== null"

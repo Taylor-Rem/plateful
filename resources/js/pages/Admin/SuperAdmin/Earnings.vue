@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
+import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
 
 type Person = { id: number; name: string } | null;
 type Earner = {
@@ -49,31 +49,15 @@ const platformForm = useForm({
 function savePlatformRoles() {
     platformForm.put('/super/platform-roles', { preserveScroll: true });
 }
+
+defineOptions({ layout: SuperAdminLayout });
 </script>
 
 <template>
-    <div class="min-h-screen bg-background text-foreground">
+    <div>
         <Head title="Earnings" />
-        <header class="border-b border-border bg-card">
-            <div
-                class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4"
-            >
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/super/restaurants"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        ←
-                    </Link>
-                    <h1 class="text-lg font-semibold text-foreground">
-                        Earnings
-                    </h1>
-                </div>
-                <AppearanceTabs />
-            </div>
-        </header>
-
-        <main class="mx-auto max-w-4xl space-y-6 px-6 py-8">
+        <div class="space-y-6">
+            <h1 class="text-2xl font-semibold text-foreground">Earnings</h1>
             <!-- Month navigation -->
             <div class="flex items-center justify-between">
                 <Link
@@ -282,6 +266,6 @@ function savePlatformRoles() {
                     </div>
                 </form>
             </section>
-        </main>
+        </div>
     </div>
 </template>

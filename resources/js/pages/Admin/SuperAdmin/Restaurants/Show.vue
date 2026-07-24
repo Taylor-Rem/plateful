@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
+import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
 
 type Person = { id: number; name: string } | null;
 
@@ -106,51 +106,31 @@ function softDelete() {
         },
     });
 }
+
+defineOptions({ layout: SuperAdminLayout });
 </script>
 
 <template>
-    <div class="min-h-screen bg-background text-foreground">
+    <div>
         <Head :title="restaurant.name" />
-        <header class="border-b border-border bg-card">
-            <div
-                class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4"
-            >
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/super/restaurants"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        ←
-                    </Link>
-                    <h1 class="text-lg font-semibold text-foreground">
-                        {{ restaurant.name }}
-                    </h1>
-                    <span
-                        v-if="restaurant.isActive"
-                        class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800"
-                    >
-                        Active
-                    </span>
-                    <span
-                        v-else
-                        class="inline-flex items-center rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700"
-                    >
-                        Deactivated
-                    </span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/super/earnings"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Earnings
-                    </Link>
-                    <AppearanceTabs />
-                </div>
+        <div class="space-y-6">
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-2xl font-semibold text-foreground">
+                    {{ restaurant.name }}
+                </h1>
+                <span
+                    v-if="restaurant.isActive"
+                    class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800"
+                >
+                    Active
+                </span>
+                <span
+                    v-else
+                    class="inline-flex items-center rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700"
+                >
+                    Deactivated
+                </span>
             </div>
-        </header>
-
-        <main class="mx-auto max-w-4xl space-y-6 px-6 py-8">
             <section class="rounded-lg border border-border bg-card p-6">
                 <h2 class="text-base font-semibold text-foreground">
                     Quick info
@@ -509,6 +489,6 @@ function softDelete() {
                     </div>
                 </div>
             </section>
-        </main>
+        </div>
     </div>
 </template>
