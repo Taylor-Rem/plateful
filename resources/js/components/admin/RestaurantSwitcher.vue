@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { ChevronsUpDown, Store } from 'lucide-vue-next';
+import { computed } from 'vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -13,12 +16,23 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from '@/components/ui/sidebar';
+import { dashboard } from '@/routes/admin/restaurant';
 
-defineProps<{
+type SwitcherRestaurant = { name: string; subdomain: string };
+
+const props = defineProps<{
     restaurant: App.Data.RestaurantData;
 }>();
 
 const { isMobile } = useSidebar();
+
+const page = usePage<{ adminRestaurants?: SwitcherRestaurant[] }>();
+
+const otherRestaurants = computed<SwitcherRestaurant[]>(() =>
+    (page.props.adminRestaurants ?? []).filter(
+        (r) => r.subdomain !== props.restaurant.subdomain,
+    ),
+);
 </script>
 
 <template>
@@ -61,6 +75,27 @@ const { isMobile } = useSidebar();
                     align="start"
                     :side-offset="4"
                 >
+                    <template v-if="otherRestaurants.length > 0">
+                        <DropdownMenuLabel
+                            class="text-xs text-muted-foreground"
+                        >
+                            Switch restaurant
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                            v-for="other in otherRestaurants"
+                            :key="other.subdomain"
+                            as-child
+                        >
+                            <Link
+                                :href="dashboard.url(other.subdomain)"
+                                class="w-full cursor-pointer"
+                            >
+                                <Store class="mr-2 size-4" />
+                                {{ other.name }}
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                    </template>
                     <DropdownMenuItem as-child>
                         <Link href="/" class="w-full cursor-pointer">
                             All restaurants

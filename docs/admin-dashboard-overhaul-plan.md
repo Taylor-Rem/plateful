@@ -1,6 +1,6 @@
 # Admin Dashboard Overhaul — Implementation Plan
 
-**Status:** in progress · **Scope locked 2026-07-24** with Taylor: full overhaul (nav/layout + shared UI + backend cleanup + real Dashboard), broken into independently shippable sessions, each with its own commit(s) and green tests.
+**Status: ✅ COMPLETE (2026-07-24)** · Scope locked 2026-07-24 with Taylor: full overhaul (nav/layout + shared UI + backend cleanup + real Dashboard), broken into independently shippable sessions, each with its own commit(s) and green tests. All ten sessions shipped same-day; full suite green at 921 tests (including a new real-browser smoke suite).
 
 ### Progress
 
@@ -16,7 +16,7 @@
 | **7** | Invitation consolidation (`AdminInvitationService`) + platform revoke | ✅ Done — also fixed the dropped platform-invite flash and a null `isSuperAdmin()` TypeError on fresh users |
 | **8** | Controller splits (`RestaurantLifecycleController`) + `OnboardingSteps` extraction | ✅ Done |
 | **9** | Real Dashboard: KPIs, recent orders, setup status (backend + frontend) | ✅ Done |
-| **10** | Restaurant switcher v2 + nav visibility tests + polish | ⬜ |
+| **10** | Restaurant switcher v2 + nav visibility tests + polish | ✅ Done — includes Pest browser plugin (approved) with 3 real-Chromium smoke tests; domain routing in browser tests works via `Playwright::setHost('admin.plateful.test')` |
 
 **Execution order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. Dependencies: S1 gates all
 Wayfinder-consuming frontend work (S3/S4/S6); S2 gates the global nav (S3/S4); S5 gates the

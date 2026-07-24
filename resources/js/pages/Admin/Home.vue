@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { dashboard } from '@/routes/admin/restaurant';
 import { index as superRestaurantsIndex } from '@/routes/admin/super/restaurants';
 
 defineProps<{
     restaurants: App.Data.RestaurantData[];
-    isSuperAdmin: boolean;
 }>();
+
+const page = usePage<{ auth: { isSuperAdmin?: boolean } }>();
+const isSuperAdmin = computed(() => Boolean(page.props.auth.isSuperAdmin));
 </script>
 
 <template>

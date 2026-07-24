@@ -28,7 +28,7 @@ test('super admin home shows all restaurants', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('Admin/Home')
-        ->where('isSuperAdmin', true)
+        ->where('auth.isSuperAdmin', true)
         ->has('restaurants', 2));
 });
 
@@ -53,7 +53,7 @@ test('admin with multiple restaurants sees the picker', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('Admin/Home')
-        ->where('isSuperAdmin', false)
+        ->where('auth.isSuperAdmin', false)
         ->has('restaurants', 2));
 });
 
