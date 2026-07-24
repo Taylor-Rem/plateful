@@ -14,7 +14,7 @@
 | **5** | Shared primitives (PageHeader/StatCard/SectionCard/EmptyState) + consistency sweep | ✅ Done — PageHeader/StatCard/EmptyState adopted everywhere applicable; SectionCard is the standard for new sections (existing identical-markup sections convert opportunistically as pages are touched) |
 | **6** | Wayfinder URL sweep (kill the ~45 hardcoded `/${subdomain}/...` strings) | ✅ Done |
 | **7** | Invitation consolidation (`AdminInvitationService`) + platform revoke | ✅ Done — also fixed the dropped platform-invite flash and a null `isSuperAdmin()` TypeError on fresh users |
-| **8** | Controller splits (`RestaurantLifecycleController`) + `OnboardingSteps` extraction | ⬜ |
+| **8** | Controller splits (`RestaurantLifecycleController`) + `OnboardingSteps` extraction | ✅ Done |
 | **9** | Real Dashboard: KPIs, recent orders, setup status (backend + frontend) | ⬜ |
 | **10** | Restaurant switcher v2 + nav visibility tests + polish | ⬜ |
 
