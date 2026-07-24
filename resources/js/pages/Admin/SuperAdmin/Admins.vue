@@ -1,12 +1,26 @@
 <script setup lang="ts">
-import { Form, Head, router } from '@inertiajs/vue3';
+import { Form, Head, router, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import PageHeader from '@/components/admin/PageHeader.vue';
 import SectionCard from '@/components/admin/SectionCard.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import {
+    destroy as adminsDestroy,
+    update as adminsUpdate,
+    updateSuperAdmin as adminsUpdateSuperAdmin,
+} from '@/routes/admin/super/admins';
 import {
     destroy as platformInvitationsDestroy,
     store as platformInvitationsStore,
@@ -33,6 +47,7 @@ defineProps<{
     admins: AdminRow[];
     restaurants: { id: number; name: string; subdomain: string }[];
     pendingInvitations: PendingInvitation[];
+    currentUserId: number;
 }>();
 
 const revoke = (invitation: PendingInvitation): void => {
@@ -44,6 +59,59 @@ const revoke = (invitation: PendingInvitation): void => {
         preserveScroll: true,
     });
 };
+
+// --- Editing an admin's name / email -------------------------------------
+const editing = ref<AdminRow | null>(null);
+const editForm = useForm({ name: '', email: '' });
+
+function openEdit(admin: AdminRow): void {
+    editing.value = admin;
+    editForm.clearErrors();
+    editForm.name = admin.name;
+    editForm.email = admin.email;
+}
+
+function closeEdit(): void {
+    editing.value = null;
+}
+
+function saveEdit(): void {
+    if (!editing.value) {
+        return;
+    }
+
+    editForm.put(adminsUpdate.url(editing.value.id), {
+        preserveScroll: true,
+        onSuccess: () => closeEdit(),
+    });
+}
+
+function toggleSuperAdmin(admin: AdminRow): void {
+    const makeSuper = !admin.isSuperAdmin;
+    const verb = makeSuper ? 'Grant super-admin access to' : 'Remove super-admin access from';
+
+    if (!confirm(`${verb} ${admin.name}?`)) {
+        return;
+    }
+
+    router.put(
+        adminsUpdateSuperAdmin.url(admin.id),
+        { is_super_admin: makeSuper },
+        { preserveScroll: true },
+    );
+}
+
+function removeAdmin(admin: AdminRow): void {
+    if (
+        !confirm(
+            `Remove all admin access from ${admin.name}? They will be detached from every restaurant and lose super-admin status. Their user account is kept.`,
+        )
+    ) {
+        return;
+    }
+
+    router.delete(adminsDestroy.url(admin.id), { preserveScroll: true });
+}
 
 const describe = (invitation: PendingInvitation): string => {
     if (invitation.asSuperAdmin) {
@@ -72,12 +140,18 @@ defineOptions({ layout: SuperAdminLayout });
                         <th class="px-4 py-3">Email</th>
                         <th class="px-4 py-3">Role</th>
                         <th class="px-4 py-3">Restaurants</th>
+                        <th class="px-4 py-3"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border text-sm">
                     <tr v-for="admin in admins" :key="admin.id">
                         <td class="px-4 py-3 font-medium text-foreground">
                             {{ admin.name }}
+                            <span
+                                v-if="admin.id === currentUserId"
+                                class="ml-1 text-xs text-muted-foreground"
+                                >(you)</span
+                            >
                         </td>
                         <td class="px-4 py-3 text-muted-foreground">
                             {{ admin.email }}
@@ -99,9 +173,86 @@ defineOptions({ layout: SuperAdminLayout });
                                 admin.restaurants.map((r) => r.name).join(', ')
                             }}</span>
                         </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    @click="openEdit(admin)"
+                                >
+                                    Edit
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    :disabled="admin.id === currentUserId"
+                                    @click="toggleSuperAdmin(admin)"
+                                >
+                                    {{
+                                        admin.isSuperAdmin
+                                            ? 'Revoke super'
+                                            : 'Make super'
+                                    }}
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    :disabled="admin.id === currentUserId"
+                                    @click="removeAdmin(admin)"
+                                >
+                                    Remove
+                                </Button>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
+
+            <Dialog
+                :open="editing !== null"
+                @update:open="(open: boolean) => !open && closeEdit()"
+            >
+                <DialogContent>
+                    <DialogHeader class="space-y-2">
+                        <DialogTitle>Edit admin</DialogTitle>
+                        <DialogDescription>
+                            Update this person's name and email. Changing the
+                            email changes how they sign in — they'll need to
+                            verify the new address.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form class="grid gap-4" @submit.prevent="saveEdit">
+                        <div class="grid gap-2">
+                            <Label for="edit-name">Name</Label>
+                            <Input id="edit-name" v-model="editForm.name" />
+                            <InputError :message="editForm.errors.name" />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="edit-email">Email</Label>
+                            <Input
+                                id="edit-email"
+                                v-model="editForm.email"
+                                type="email"
+                            />
+                            <InputError :message="editForm.errors.email" />
+                        </div>
+
+                        <DialogFooter class="gap-2">
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                @click="closeEdit"
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit" :disabled="editForm.processing">
+                                {{ editForm.processing ? 'Saving…' : 'Save' }}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
 
             <SectionCard
                 v-if="pendingInvitations.length > 0"
