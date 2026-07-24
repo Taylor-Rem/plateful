@@ -11,6 +11,9 @@ export type User = {
 
 export type Auth = {
     user: User;
+    isSuperAdmin?: boolean;
+    canEditMenu?: boolean;
+    canEditSite?: boolean;
 };
 
 export type TwoFactorConfigContent = {

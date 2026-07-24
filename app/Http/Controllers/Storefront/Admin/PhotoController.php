@@ -20,7 +20,7 @@ class PhotoController extends Controller
         RestaurantImageService $images,
     ): RedirectResponse {
         $restaurant = $tenant->get();
-        $this->authorize('updateSite', $restaurant);
+        $this->authorize('manage', $restaurant);
 
         $validated = $request->validated();
 
@@ -48,7 +48,7 @@ class PhotoController extends Controller
         CurrentTenant $tenant,
     ): RedirectResponse {
         $restaurant = $tenant->get();
-        $this->authorize('updateSite', $restaurant);
+        $this->authorize('manage', $restaurant);
         abort_if($photo->restaurant_id !== $restaurant->id, 404);
 
         $photo->update([
@@ -63,7 +63,7 @@ class PhotoController extends Controller
         CurrentTenant $tenant,
     ): RedirectResponse {
         $restaurant = $tenant->get();
-        $this->authorize('updateSite', $restaurant);
+        $this->authorize('manage', $restaurant);
 
         $ids = $request->validated()['ids'];
 
@@ -95,7 +95,7 @@ class PhotoController extends Controller
         RestaurantImageService $images,
     ): RedirectResponse {
         $restaurant = $tenant->get();
-        $this->authorize('updateSite', $restaurant);
+        $this->authorize('manage', $restaurant);
         abort_if($photo->restaurant_id !== $restaurant->id, 404);
 
         DB::transaction(function () use ($photo, $images): void {
