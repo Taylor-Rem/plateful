@@ -94,6 +94,18 @@ function activate() {
         },
     );
 }
+
+const confirmingDelete = ref(false);
+
+function softDelete() {
+    processing.value = true;
+    router.delete(`/super/restaurants/${props.restaurant.subdomain}`, {
+        onFinish: () => {
+            processing.value = false;
+            confirmingDelete.value = false;
+        },
+    });
+}
 </script>
 
 <template>
@@ -461,6 +473,40 @@ function activate() {
                                 : 'Reactivate restaurant'
                         }}
                     </Button>
+                </div>
+
+                <div class="mt-6 space-y-3 border-t border-border pt-6 text-sm">
+                    <p class="font-medium text-foreground">Delete restaurant</p>
+                    <p class="text-muted-foreground">
+                        Removes {{ restaurant.name }} from the roster and takes
+                        its storefront offline. Nothing is erased — you can
+                        restore it, or permanently delete it, from the deleted
+                        list on the Restaurants page.
+                    </p>
+                    <div v-if="!confirmingDelete">
+                        <Button
+                            variant="destructive"
+                            @click="confirmingDelete = true"
+                        >
+                            Delete restaurant
+                        </Button>
+                    </div>
+                    <div v-else class="flex items-center gap-3">
+                        <Button
+                            variant="destructive"
+                            :disabled="processing"
+                            @click="softDelete"
+                        >
+                            {{ processing ? 'Deleting…' : 'Yes, delete' }}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            :disabled="processing"
+                            @click="confirmingDelete = false"
+                        >
+                            Cancel
+                        </Button>
+                    </div>
                 </div>
             </section>
         </main>

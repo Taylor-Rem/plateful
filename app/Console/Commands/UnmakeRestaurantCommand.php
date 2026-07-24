@@ -65,7 +65,9 @@ class UnmakeRestaurantCommand extends Command
         }
 
         $name = $restaurant->name;
-        $restaurant->delete();
+        // The model soft-deletes by default; --hard means permanently remove the
+        // row so the cascade FKs drop its orders, menu, and members.
+        $restaurant->forceDelete();
 
         $this->info("Deleted [{$name}] and all related data (cascade).");
 

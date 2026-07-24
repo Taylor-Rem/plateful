@@ -133,6 +133,13 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             Route::put('/restaurants/{restaurant}/roles', [SuperAdmin\RestaurantsController::class, 'updateRoles'])->name('restaurants.updateRoles');
             Route::post('/restaurants/{restaurant}/deactivate', [SuperAdmin\RestaurantsController::class, 'deactivate'])->name('restaurants.deactivate');
             Route::post('/restaurants/{restaurant}/activate', [SuperAdmin\RestaurantsController::class, 'activate'])->name('restaurants.activate');
+            // Soft delete uses the standard {restaurant} binding (the restaurant is
+            // still live at this point). Restore / permanent delete operate on an
+            // already-trashed row, which the {restaurant} binding excludes, so they
+            // take the raw {subdomain} and resolve withTrashed() in the controller.
+            Route::delete('/restaurants/{restaurant}', [SuperAdmin\RestaurantsController::class, 'destroy'])->name('restaurants.destroy');
+            Route::post('/restaurants/{subdomain}/restore', [SuperAdmin\RestaurantsController::class, 'restore'])->name('restaurants.restore');
+            Route::delete('/restaurants/{subdomain}/force', [SuperAdmin\RestaurantsController::class, 'forceDelete'])->name('restaurants.forceDelete');
 
             Route::get('/earnings', [SuperAdmin\EarningsController::class, 'index'])->name('earnings');
             Route::put('/platform-roles', [SuperAdmin\PlatformRolesController::class, 'update'])->name('platformRoles.update');

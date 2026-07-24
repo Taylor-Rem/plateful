@@ -15,6 +15,7 @@ use App\Models\AdminInvitation;
 use App\Models\PlatformRoleHolder;
 use App\Models\Restaurant;
 use App\Models\User;
+use App\Services\RestaurantImageService;
 use App\Services\RevenueSplitResolver;
 use App\Support\SalesTaxRates;
 use Illuminate\Http\RedirectResponse;
@@ -36,8 +37,23 @@ class RestaurantsController extends Controller
             ])
             ->all();
 
+        // Soft-deleted restaurants drop off the main list but surface in their own
+        // section so a super admin can restore or permanently delete them.
+        $deletedRestaurants = Restaurant::onlyTrashed()
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn (Restaurant $r) => [
+                'id' => $r->id,
+                'name' => $r->name,
+                'subdomain' => $r->subdomain,
+                'deletedAt' => $r->deleted_at?->toIso8601String(),
+                'ordersCount' => (int) $r->orders()->count(),
+            ])
+            ->all();
+
         return Inertia::render('Admin/SuperAdmin/Restaurants/Index', [
             'restaurants' => $restaurants,
+            'deletedRestaurants' => $deletedRestaurants,
         ]);
     }
 
@@ -219,5 +235,55 @@ class RestaurantsController extends Controller
         return redirect()
             ->route('admin.super.restaurants.show', $restaurant)
             ->with('success', "{$restaurant->name} has been reactivated.");
+    }
+
+    /**
+     * Soft delete: the restaurant drops off the roster and its storefront and
+     * admin routes 404 (the tenant resolver and route binding both query without
+     * trashed rows), but every record is retained and can be restored.
+     */
+    public function destroy(Restaurant $restaurant): RedirectResponse
+    {
+        $name = $restaurant->name;
+        $restaurant->delete();
+
+        return redirect()
+            ->route('admin.super.restaurants.index')
+            ->with('success', "{$name} has been deleted. You can restore it from the deleted list.");
+    }
+
+    public function restore(string $subdomain): RedirectResponse
+    {
+        $restaurant = Restaurant::onlyTrashed()->where('subdomain', $subdomain)->firstOrFail();
+        $restaurant->restore();
+
+        return redirect()
+            ->route('admin.super.restaurants.show', $restaurant)
+            ->with('success', "{$restaurant->name} has been restored.");
+    }
+
+    /**
+     * Permanent delete. Guarded: a restaurant that has ever taken an order keeps
+     * financial and audit history we must not destroy, so hard delete is refused
+     * and the super admin is left with the (reversible) soft delete. With no
+     * orders, the cascade FKs clear the remaining rows and we drop the image dir.
+     */
+    public function forceDelete(string $subdomain, RestaurantImageService $images): RedirectResponse
+    {
+        $restaurant = Restaurant::onlyTrashed()->where('subdomain', $subdomain)->firstOrFail();
+
+        if ($restaurant->orders()->exists()) {
+            return redirect()
+                ->route('admin.super.restaurants.index')
+                ->with('error', "{$restaurant->name} has order history and can't be permanently deleted. It stays soft-deleted so its records are preserved.");
+        }
+
+        $name = $restaurant->name;
+        $images->deleteDirectoryForRestaurant($restaurant);
+        $restaurant->forceDelete();
+
+        return redirect()
+            ->route('admin.super.restaurants.index')
+            ->with('success', "{$name} has been permanently deleted.");
     }
 }
