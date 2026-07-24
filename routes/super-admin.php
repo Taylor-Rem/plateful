@@ -18,6 +18,7 @@ Route::domain('admin.'.config('platform.primary_domain'))
         Route::get('/restaurants/create', [SuperAdmin\RestaurantsController::class, 'create'])->name('restaurants.create');
         Route::post('/restaurants', [SuperAdmin\RestaurantsController::class, 'store'])->name('restaurants.store');
         Route::get('/restaurants/{restaurant:subdomain}', [SuperAdmin\RestaurantsController::class, 'show'])->name('restaurants.show');
+        Route::put('/restaurants/{restaurant:subdomain}/domain', [SuperAdmin\RestaurantsController::class, 'updateDomain'])->name('restaurants.updateDomain');
         Route::put('/restaurants/{restaurant:subdomain}/fee', [SuperAdmin\RestaurantsController::class, 'updateFee'])->name('restaurants.updateFee');
         Route::put('/restaurants/{restaurant:subdomain}/roles', [SuperAdmin\RestaurantsController::class, 'updateRoles'])->name('restaurants.updateRoles');
         Route::post('/restaurants/{restaurant:subdomain}/deactivate', [SuperAdmin\RestaurantLifecycleController::class, 'deactivate'])->name('restaurants.deactivate');
