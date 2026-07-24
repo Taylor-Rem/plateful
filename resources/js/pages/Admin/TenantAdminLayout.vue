@@ -111,6 +111,12 @@ const setupComplete = computed(
                         Team
                     </Link>
                     <Link
+                        :href="`/${restaurant.subdomain}/settings/delivery`"
+                        class="hover:text-foreground"
+                    >
+                        Delivery
+                    </Link>
+                    <Link
                         :href="`/${restaurant.subdomain}/settings`"
                         class="hover:text-foreground"
                     >
