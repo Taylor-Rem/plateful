@@ -246,6 +246,13 @@ test('enabling DoorDash sends the store address and a bearer token, never coordi
         expect($req->hasHeader('Authorization'))->toBeTrue();
         expect($req->header('Authorization')[0])->toStartWith('Bearer ');
 
+        if (str_ends_with($req->url(), '/businesses')) {
+            // DoorDash rejects a Business with no description, so we must always
+            // send a non-empty one, even when the restaurant left it blank.
+            expect($req['description'])->toBeString();
+            expect(trim((string) $req['description']))->not->toBe('');
+        }
+
         if (str_ends_with($req->url(), '/stores')) {
             expect($req['external_store_id'])->toBe('pf-store-'.$r->id);
             expect($req['address'])->toBeString();

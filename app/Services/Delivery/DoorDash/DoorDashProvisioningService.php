@@ -73,9 +73,22 @@ class DoorDashProvisioningService
         $response = $this->client->authed()->post($this->client->developerPath('/businesses'), [
             'external_business_id' => $businessId,
             'name' => $restaurant->name,
+            'description' => $this->businessDescriptionFor($restaurant),
         ]);
 
         $this->assertProvisioned('business', $response);
+    }
+
+    /**
+     * DoorDash requires a non-empty description to create a Business. Prefer the
+     * restaurant's own copy, but always fall back to a name-derived line so a
+     * restaurant that never filled in a description can still enable delivery.
+     */
+    private function businessDescriptionFor(Restaurant $restaurant): string
+    {
+        $description = trim((string) ($restaurant->seoDescription() ?? ''));
+
+        return $description !== '' ? $description : $restaurant->name.' on Plateful';
     }
 
     private function createStore(string $businessId, string $storeId, Restaurant $restaurant): void
