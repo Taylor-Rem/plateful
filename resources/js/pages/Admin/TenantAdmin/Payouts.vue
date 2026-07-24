@@ -4,6 +4,7 @@ import PageHeader from '@/components/admin/PageHeader.vue';
 import StatCard from '@/components/admin/StatCard.vue';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 import { formatCents } from '@/lib/orderStatus';
+import { index as payoutsIndex } from '@/routes/admin/restaurant/payouts';
 
 type Payout = {
     id: string;
@@ -135,7 +136,13 @@ defineOptions({ layout: TenantAdminLayout });
                     class="border-t border-border px-6 py-3 text-center"
                 >
                     <Link
-                        :href="`/${restaurant.subdomain}/payouts?starting_after=${lastPayoutId}`"
+                        :href="
+                            payoutsIndex.url(restaurant.subdomain, {
+                                query: {
+                                    starting_after: lastPayoutId ?? undefined,
+                                },
+                            })
+                        "
                         class="text-sm font-medium text-primary hover:opacity-80"
                     >
                         Load older payouts

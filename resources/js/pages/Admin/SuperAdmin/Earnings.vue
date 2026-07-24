@@ -4,6 +4,8 @@ import { computed } from 'vue';
 import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import { index as earningsIndex } from '@/routes/admin/super/earnings';
+import { update as platformRolesUpdate } from '@/routes/admin/super/platformRoles';
 
 type Person = { id: number; name: string } | null;
 type Earner = {
@@ -48,7 +50,7 @@ const platformForm = useForm({
 });
 
 function savePlatformRoles() {
-    platformForm.put('/super/platform-roles', { preserveScroll: true });
+    platformForm.put(platformRolesUpdate.url(), { preserveScroll: true });
 }
 
 defineOptions({ layout: SuperAdminLayout });
@@ -62,7 +64,7 @@ defineOptions({ layout: SuperAdminLayout });
             <!-- Month navigation -->
             <div class="flex items-center justify-between">
                 <Link
-                    :href="`/super/earnings?month=${prevMonth}`"
+                    :href="earningsIndex.url({ query: { month: prevMonth } })"
                     class="text-sm text-primary hover:underline"
                 >
                     ← {{ prevMonth }}
@@ -71,7 +73,7 @@ defineOptions({ layout: SuperAdminLayout });
                     {{ monthLabel }}
                 </h2>
                 <Link
-                    :href="`/super/earnings?month=${nextMonth}`"
+                    :href="earningsIndex.url({ query: { month: nextMonth } })"
                     class="text-sm text-primary hover:underline"
                 >
                     {{ nextMonth }} →

@@ -3,6 +3,16 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import { dashboard } from '@/routes/admin/restaurant';
+import { edit as settingsEdit } from '@/routes/admin/restaurant/settings';
+import { index as adminsIndex } from '@/routes/admin/super/admins';
+import {
+    activate as restaurantsActivate,
+    deactivate as restaurantsDeactivate,
+    destroy as restaurantsDestroy,
+    updateFee as restaurantsUpdateFee,
+    updateRoles as restaurantsUpdateRoles,
+} from '@/routes/admin/super/restaurants';
 
 type Person = { id: number; name: string } | null;
 
@@ -33,7 +43,7 @@ const feeForm = useForm({
 });
 
 function saveFee() {
-    feeForm.put(`/super/restaurants/${props.restaurant.subdomain}/fee`, {
+    feeForm.put(restaurantsUpdateFee.url(props.restaurant.subdomain), {
         preserveScroll: true,
     });
 }
@@ -49,7 +59,7 @@ function saveRoles() {
             recruiter_id: data.recruiter_id || null,
             overseer_id: data.overseer_id || null,
         }))
-        .put(`/super/restaurants/${props.restaurant.subdomain}/roles`, {
+        .put(restaurantsUpdateRoles.url(props.restaurant.subdomain), {
             preserveScroll: true,
         });
 }
@@ -69,7 +79,7 @@ function formatDate(iso: string | null | undefined): string {
 function deactivate() {
     processing.value = true;
     router.post(
-        `/super/restaurants/${props.restaurant.subdomain}/deactivate`,
+        restaurantsDeactivate.url(props.restaurant.subdomain),
         {},
         {
             preserveScroll: true,
@@ -84,7 +94,7 @@ function deactivate() {
 function activate() {
     processing.value = true;
     router.post(
-        `/super/restaurants/${props.restaurant.subdomain}/activate`,
+        restaurantsActivate.url(props.restaurant.subdomain),
         {},
         {
             preserveScroll: true,
@@ -99,7 +109,7 @@ const confirmingDelete = ref(false);
 
 function softDelete() {
     processing.value = true;
-    router.delete(`/super/restaurants/${props.restaurant.subdomain}`, {
+    router.delete(restaurantsDestroy.url(props.restaurant.subdomain), {
         onFinish: () => {
             processing.value = false;
             confirmingDelete.value = false;
@@ -158,13 +168,13 @@ defineOptions({ layout: SuperAdminLayout });
 
                 <div class="mt-5 flex flex-wrap gap-3">
                     <a
-                        :href="`/${restaurant.subdomain}/settings`"
+                        :href="settingsEdit.url(restaurant.subdomain)"
                         class="text-sm text-primary hover:underline"
                     >
                         Manage settings &amp; branding →
                     </a>
                     <a
-                        :href="`/${restaurant.subdomain}/dashboard`"
+                        :href="dashboard.url(restaurant.subdomain)"
                         class="text-sm text-primary hover:underline"
                     >
                         Open admin dashboard →
@@ -348,7 +358,7 @@ defineOptions({ layout: SuperAdminLayout });
                         Admins
                     </h2>
                     <Link
-                        href="/super/admins"
+                        :href="adminsIndex.url()"
                         class="text-sm text-primary hover:underline"
                     >
                         Invite admin →

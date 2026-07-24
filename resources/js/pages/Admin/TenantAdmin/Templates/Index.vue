@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { Pencil, Plus, Trash2 } from 'lucide-vue-next';
-import { computed } from 'vue';
 import EmptyState from '@/components/admin/EmptyState.vue';
 import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
+import { index as menuIndex } from '@/routes/admin/restaurant/menu';
+import {
+    create as templatesCreate,
+    destroy as templatesDestroy,
+    edit as templatesEdit,
+} from '@/routes/admin/restaurant/templates';
 
 type TemplateRow = {
     id: number;
@@ -21,8 +26,6 @@ const props = defineProps<{
     templates: TemplateRow[];
 }>();
 
-const base = computed(() => `/${props.restaurant.subdomain}`);
-
 const deleteTemplate = (t: TemplateRow): void => {
     if (t.menuItemsCount > 0) {
         alert(
@@ -36,9 +39,15 @@ const deleteTemplate = (t: TemplateRow): void => {
         return;
     }
 
-    router.delete(`${base.value}/menu/templates/${t.id}`, {
-        preserveScroll: true,
-    });
+    router.delete(
+        templatesDestroy.url({
+            restaurant: props.restaurant.subdomain,
+            template: t.id,
+        }),
+        {
+            preserveScroll: true,
+        },
+    );
 };
 
 defineOptions({ layout: TenantAdminLayout });
@@ -54,10 +63,12 @@ defineOptions({ layout: TenantAdminLayout });
         >
             <template #actions>
                 <Button as-child variant="outline">
-                    <Link :href="`${base}/menu`">Back to menu</Link>
+                    <Link :href="menuIndex.url(restaurant.subdomain)"
+                        >Back to menu</Link
+                    >
                 </Button>
                 <Link
-                    :href="`${base}/menu/templates/create`"
+                    :href="templatesCreate.url(restaurant.subdomain)"
                     class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
                     <Plus class="size-4" /> New template
@@ -73,7 +84,7 @@ defineOptions({ layout: TenantAdminLayout });
         >
             <template #actions>
                 <Button as-child>
-                    <Link :href="`${base}/menu/templates/create`">
+                    <Link :href="templatesCreate.url(restaurant.subdomain)">
                         <Plus class="size-4" /> New template
                     </Link>
                 </Button>
@@ -119,7 +130,12 @@ defineOptions({ layout: TenantAdminLayout });
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-1">
                                 <Link
-                                    :href="`${base}/menu/templates/${t.id}/edit`"
+                                    :href="
+                                        templatesEdit.url({
+                                            restaurant: restaurant.subdomain,
+                                            template: t.id,
+                                        })
+                                    "
                                     class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                                     aria-label="Edit template"
                                 >

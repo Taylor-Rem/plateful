@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { Button } from '@/components/ui/button';
+import { refundPolicy as onboardingRefundPolicy } from '@/routes/admin/restaurant/onboarding';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -15,7 +16,7 @@ const form = useForm({
 });
 
 const submit = (): void => {
-    form.post(`/${props.restaurant.subdomain}/onboarding/refund-policy`, {
+    form.post(onboardingRefundPolicy.url(props.restaurant.subdomain), {
         preserveScroll: true,
         onSuccess: () => emit('advance'),
     });

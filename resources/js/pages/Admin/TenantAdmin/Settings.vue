@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
+import { update as settingsUpdate } from '@/routes/admin/restaurant/settings';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -66,7 +67,7 @@ const markRemoveLogo = (): void => {
 };
 
 const submit = (): void => {
-    form.post(`/${props.restaurant.subdomain}/settings`, {
+    form.post(settingsUpdate.url(props.restaurant.subdomain), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {

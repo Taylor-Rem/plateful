@@ -20,6 +20,10 @@ import {
     statusBadgeClasses,
 } from '@/lib/orderStatus';
 import type { OrderStatusValue } from '@/lib/orderStatus';
+import {
+    index as ordersIndex,
+    transition as ordersTransition,
+} from '@/routes/admin/restaurant/orders';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -37,7 +41,10 @@ const submitting = ref(false);
 function transition(toStatus: OrderStatusValue, note?: string): void {
     submitting.value = true;
     router.post(
-        `/${props.restaurant.subdomain}/orders/${props.order.number}/transitions`,
+        ordersTransition.url({
+            restaurant: props.restaurant.subdomain,
+            order: props.order.number,
+        }),
         { to_status: toStatus, note: note ?? null },
         {
             preserveScroll: true,
@@ -95,7 +102,7 @@ defineOptions({ layout: TenantAdminLayout });
 
         <div class="flex items-center gap-2 text-sm">
             <Link
-                :href="`/${restaurant.subdomain}/orders`"
+                :href="ordersIndex.url(restaurant.subdomain)"
                 class="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
             >
                 <ArrowLeft class="size-3.5" />

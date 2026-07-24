@@ -3,6 +3,10 @@ import { useForm } from '@inertiajs/vue3';
 import { Check, Circle, ExternalLink } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
+import {
+    goLive as onboardingGoLive,
+    preview as onboardingPreview,
+} from '@/routes/admin/restaurant/onboarding';
 
 type Step = {
     key: string;
@@ -27,7 +31,7 @@ const setupSteps = computed(() =>
 
 const goLiveForm = useForm({});
 const goLive = (): void => {
-    goLiveForm.post(`/${props.restaurant.subdomain}/onboarding/go-live`);
+    goLiveForm.post(onboardingGoLive.url(props.restaurant.subdomain));
 };
 
 // `go_live` arrives from the server, not the (empty) form data, so it isn't
@@ -46,7 +50,7 @@ const goLiveError = computed(
             <p class="mt-1 flex items-center gap-2 font-mono">
                 {{ restaurant.subdomain }}.{{ primaryDomain }}
                 <a
-                    :href="`/${restaurant.subdomain}/onboarding/preview`"
+                    :href="onboardingPreview.url(restaurant.subdomain)"
                     target="_blank"
                     class="inline-flex items-center gap-1 font-sans text-xs font-medium text-primary hover:opacity-80"
                 >

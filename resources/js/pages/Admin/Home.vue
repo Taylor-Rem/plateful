@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
+import { dashboard } from '@/routes/admin/restaurant';
+import { index as superRestaurantsIndex } from '@/routes/admin/super/restaurants';
 
 defineProps<{
     restaurants: App.Data.RestaurantData[];
@@ -41,7 +43,7 @@ defineProps<{
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Link
                     v-if="isSuperAdmin"
-                    href="/super/restaurants"
+                    :href="superRestaurantsIndex.url()"
                     class="flex flex-col rounded-lg border border-primary/30 bg-primary/5 p-5 shadow-sm transition hover:border-primary/60"
                 >
                     <span
@@ -62,7 +64,7 @@ defineProps<{
                 <Link
                     v-for="restaurant in restaurants"
                     :key="restaurant.id"
-                    :href="`/${restaurant.subdomain}/dashboard`"
+                    :href="dashboard.url(restaurant.subdomain)"
                     class="flex flex-col rounded-lg border border-border bg-card p-5 shadow-sm transition hover:border-foreground/30"
                 >
                     <img

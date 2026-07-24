@@ -12,6 +12,10 @@ import {
     statusBadgeClasses,
 } from '@/lib/orderStatus';
 import type { OrderStatusValue } from '@/lib/orderStatus';
+import {
+    index as ordersIndex,
+    show as ordersShow,
+} from '@/routes/admin/restaurant/orders';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -85,7 +89,7 @@ function visitWithFilters(params: {
         query.page = String(params.page);
     }
 
-    router.get(`/${props.restaurant.subdomain}/orders`, query, {
+    router.get(ordersIndex.url(props.restaurant.subdomain), query, {
         preserveScroll: true,
         preserveState: true,
         replace: true,
@@ -212,7 +216,10 @@ defineOptions({ layout: TenantAdminLayout });
                         class="cursor-pointer transition hover:bg-muted/30"
                         @click="
                             router.visit(
-                                `/${restaurant.subdomain}/orders/${order.number}`,
+                                ordersShow.url({
+                                    restaurant: restaurant.subdomain,
+                                    order: order.number,
+                                }),
                             )
                         "
                     >

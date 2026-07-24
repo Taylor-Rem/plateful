@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import { store as platformInvitationsStore } from '@/routes/admin/super/admins/invitations';
 
 type AdminRow = {
     id: number;
@@ -78,7 +79,7 @@ defineOptions({ layout: SuperAdminLayout });
                 </h2>
 
                 <Form
-                    action="/super/admins/invitations"
+                    :action="platformInvitationsStore.url()"
                     method="post"
                     :reset-on-success="['email']"
                     v-slot="{ errors, processing }"

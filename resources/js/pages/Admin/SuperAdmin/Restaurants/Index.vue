@@ -15,6 +15,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import {
+    create as restaurantsCreate,
+    forceDelete as restaurantsForceDelete,
+    restore as restaurantsRestore,
+    show as restaurantsShow,
+} from '@/routes/admin/super/restaurants';
 
 type RestaurantRow = App.Data.RestaurantData & {
     adminsCount: number;
@@ -50,7 +56,7 @@ function formatDate(iso: string | null | undefined): string {
 function restore(subdomain: string): void {
     processing.value = true;
     router.post(
-        `/super/restaurants/${subdomain}/restore`,
+        restaurantsRestore.url(subdomain),
         {},
         {
             preserveScroll: true,
@@ -90,7 +96,7 @@ function confirmHardDelete(): void {
 
     processing.value = true;
     router.delete(
-        `/super/restaurants/${hardDeleteTarget.value.subdomain}/force`,
+        restaurantsForceDelete.url(hardDeleteTarget.value.subdomain),
         {
             onFinish: () => {
                 processing.value = false;
@@ -112,7 +118,7 @@ defineOptions({ layout: SuperAdminLayout });
                 :description="`${restaurants.length} ${restaurants.length === 1 ? 'restaurant' : 'restaurants'}`"
             >
                 <template #actions>
-                    <Link href="/super/restaurants/create">
+                    <Link :href="restaurantsCreate.url()">
                         <Button>Create restaurant</Button>
                     </Link>
                 </template>
@@ -148,7 +154,7 @@ defineOptions({ layout: SuperAdminLayout });
                     >
                         <td class="px-4 py-3 font-medium text-foreground">
                             <Link
-                                :href="`/super/restaurants/${r.subdomain}`"
+                                :href="restaurantsShow.url(r.subdomain)"
                                 class="hover:underline"
                             >
                                 {{ r.name }}
@@ -179,7 +185,7 @@ defineOptions({ layout: SuperAdminLayout });
                         </td>
                         <td class="px-4 py-3 text-right">
                             <Link
-                                :href="`/super/restaurants/${r.subdomain}`"
+                                :href="restaurantsShow.url(r.subdomain)"
                                 class="text-sm text-primary hover:opacity-80"
                             >
                                 Open →

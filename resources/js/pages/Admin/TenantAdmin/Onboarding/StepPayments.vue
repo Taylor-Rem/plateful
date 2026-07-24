@@ -2,6 +2,10 @@
 import { useForm } from '@inertiajs/vue3';
 import { Check, ExternalLink } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
+import {
+    connect as stripeConnect,
+    dashboard as stripeDashboard,
+} from '@/routes/admin/restaurant/stripe';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -13,7 +17,7 @@ const emit = defineEmits<{ advance: [] }>();
 
 const stripeForm = useForm({});
 const connectStripe = (): void => {
-    stripeForm.post(`/${props.restaurant.subdomain}/stripe/connect`);
+    stripeForm.post(stripeConnect.url(props.restaurant.subdomain));
 };
 </script>
 
@@ -34,7 +38,7 @@ const connectStripe = (): void => {
             </div>
             <div class="flex items-center justify-between">
                 <a
-                    :href="`/${restaurant.subdomain}/stripe/dashboard`"
+                    :href="stripeDashboard.url(restaurant.subdomain)"
                     class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
                 >
                     Manage on Stripe

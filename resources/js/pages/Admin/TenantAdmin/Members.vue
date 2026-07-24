@@ -1,12 +1,19 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
+import {
+    destroy as invitationsDestroy,
+    store as invitationsStore,
+} from '@/routes/admin/restaurant/invitations';
+import {
+    destroy as membersDestroy,
+    update as membersUpdate,
+} from '@/routes/admin/restaurant/members';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -15,15 +22,13 @@ const props = defineProps<{
     roles: Array<{ value: string; label: string }>;
 }>();
 
-const base = computed(() => `/${props.restaurant.subdomain}`);
-
 const inviteForm = useForm({
     email: '',
     role: 'staff',
 });
 
 const submitInvite = (): void => {
-    inviteForm.post(`${base.value}/invitations`, {
+    inviteForm.post(invitationsStore.url(props.restaurant.subdomain), {
         preserveScroll: true,
         onSuccess: () => inviteForm.reset(),
     });
@@ -31,7 +36,10 @@ const submitInvite = (): void => {
 
 const changeRole = (memberId: number, role: string): void => {
     router.put(
-        `${base.value}/members/${memberId}`,
+        membersUpdate.url({
+            restaurant: props.restaurant.subdomain,
+            member: memberId,
+        }),
         { role },
         { preserveScroll: true },
     );
@@ -42,9 +50,15 @@ const removeMember = (memberId: number, name: string): void => {
         return;
     }
 
-    router.delete(`${base.value}/members/${memberId}`, {
-        preserveScroll: true,
-    });
+    router.delete(
+        membersDestroy.url({
+            restaurant: props.restaurant.subdomain,
+            member: memberId,
+        }),
+        {
+            preserveScroll: true,
+        },
+    );
 };
 
 const revokeInvitation = (id: number, email: string): void => {
@@ -52,7 +66,13 @@ const revokeInvitation = (id: number, email: string): void => {
         return;
     }
 
-    router.delete(`${base.value}/invitations/${id}`, { preserveScroll: true });
+    router.delete(
+        invitationsDestroy.url({
+            restaurant: props.restaurant.subdomain,
+            invitation: id,
+        }),
+        { preserveScroll: true },
+    );
 };
 
 function formatDate(iso: string | null | undefined): string {

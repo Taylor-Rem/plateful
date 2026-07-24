@@ -12,7 +12,7 @@
 | **3** | Tenant admin sidebar layout (the big visible change) | ✅ Done |
 | **4** | Super admin sidebar layout | ✅ Done |
 | **5** | Shared primitives (PageHeader/StatCard/SectionCard/EmptyState) + consistency sweep | ✅ Done — PageHeader/StatCard/EmptyState adopted everywhere applicable; SectionCard is the standard for new sections (existing identical-markup sections convert opportunistically as pages are touched) |
-| **6** | Wayfinder URL sweep (kill the ~45 hardcoded `/${subdomain}/...` strings) | ⬜ |
+| **6** | Wayfinder URL sweep (kill the ~45 hardcoded `/${subdomain}/...` strings) | ✅ Done |
 | **7** | Invitation consolidation (`AdminInvitationService`) + platform revoke | ⬜ |
 | **8** | Controller splits (`RestaurantLifecycleController`) + `OnboardingSteps` extraction | ⬜ |
 | **9** | Real Dashboard: KPIs, recent orders, setup status (backend + frontend) | ⬜ |
@@ -164,8 +164,9 @@ visibility props; optionally (needs approval — new dependency) pest browser pl
 
 - **Webhook URLs are externally registered** — `RouteArchitectureTest` pins them; the paths
   never change, only which file they live in.
-- **Wayfinder bakes the host at generate time** — the deploy build must run `wayfinder:generate`
-  with production env (verify before Session 6 ships).
+- **Wayfinder bakes the host at generate time** — verified OK: Laravel Cloud's build command runs
+  `npm run build` after `composer install`, and the Wayfinder Vite plugin regenerates routes during
+  that build with production env, so generated URLs carry the production host.
 - **In-flight Stripe Account Links** at Session 1 deploy reference old `/onboarding/stripe/*`
   return URLs; links expire in minutes. Optional temporary redirects if deploying mid-onboarding.
 - **Persistent layout switch**: lifecycle-heavy pages (Kitchen polling, Onboarding) stay

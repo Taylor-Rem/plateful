@@ -23,6 +23,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
+import {
+    destroy as categoriesDestroy,
+    reorder as categoriesReorder,
+    store as categoriesStore,
+    update as categoriesUpdate,
+} from '@/routes/admin/restaurant/categories';
+import { index as templatesIndex } from '@/routes/admin/restaurant/templates';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -30,8 +37,6 @@ const props = defineProps<{
 }>();
 
 const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
-
-const base = computed(() => `/${props.restaurant.subdomain}`);
 
 const storefrontUrl = computed(() => {
     // Storefront lives on the tenant host. Subdomain-first; the link works for
@@ -52,7 +57,7 @@ const refreshLocal = (): void => {
 const onCategoryDragEnd = (): void => {
     const ids = localCategories.value.map((c) => c.id);
     router.post(
-        `${base.value}/menu/categories/reorder`,
+        categoriesReorder.url(props.restaurant.subdomain),
         { ids },
         { preserveScroll: true, preserveState: true, onSuccess: refreshLocal },
     );
@@ -85,7 +90,10 @@ const openEditCategory = (category: App.Data.MenuCategoryData): void => {
 const submitCategory = (): void => {
     if (editingCategory.value) {
         categoryForm.put(
-            `${base.value}/menu/categories/${editingCategory.value.id}`,
+            categoriesUpdate.url({
+                restaurant: props.restaurant.subdomain,
+                category: editingCategory.value.id,
+            }),
             {
                 preserveScroll: true,
                 onSuccess: () => {
@@ -95,7 +103,7 @@ const submitCategory = (): void => {
             },
         );
     } else {
-        categoryForm.post(`${base.value}/menu/categories`, {
+        categoryForm.post(categoriesStore.url(props.restaurant.subdomain), {
             preserveScroll: true,
             onSuccess: () => {
                 showCategoryModal.value = false;
@@ -115,10 +123,16 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
         return;
     }
 
-    router.delete(`${base.value}/menu/categories/${category.id}`, {
-        preserveScroll: true,
-        onSuccess: refreshLocal,
-    });
+    router.delete(
+        categoriesDestroy.url({
+            restaurant: props.restaurant.subdomain,
+            category: category.id,
+        }),
+        {
+            preserveScroll: true,
+            onSuccess: refreshLocal,
+        },
+    );
 };
 
 defineOptions({ layout: TenantAdminLayout });
@@ -144,7 +158,9 @@ defineOptions({ layout: TenantAdminLayout });
                     <Plus class="size-4" /> Add category
                 </Button>
                 <Button as-child variant="outline">
-                    <Link :href="`${base}/menu/templates`">Templates</Link>
+                    <Link :href="templatesIndex.url(restaurant.subdomain)"
+                        >Templates</Link
+                    >
                 </Button>
             </template>
         </PageHeader>

@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import {
+    index as restaurantsIndex,
+    store as restaurantsStore,
+} from '@/routes/admin/super/restaurants';
 
 const props = defineProps<{
     timezones: string[];
@@ -61,7 +65,7 @@ const subdomainPreview = computed(() => {
 });
 
 function submit() {
-    form.post('/super/restaurants');
+    form.post(restaurantsStore.url());
 }
 
 defineOptions({ layout: SuperAdminLayout });
@@ -301,7 +305,7 @@ defineOptions({ layout: SuperAdminLayout });
                 </section>
 
                 <div class="flex items-center justify-end gap-3">
-                    <Link href="/super/restaurants">
+                    <Link :href="restaurantsIndex.url()">
                         <Button type="button" variant="outline">Cancel</Button>
                     </Link>
                     <Button type="submit" :disabled="form.processing">
