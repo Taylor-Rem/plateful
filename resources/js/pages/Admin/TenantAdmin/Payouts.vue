@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 import { formatCents } from '@/lib/orderStatus';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 
 type Payout = {
     id: string;
@@ -37,10 +37,12 @@ function formatDate(iso: string | null): string {
 const lastPayoutId = props.payouts.length
     ? props.payouts[props.payouts.length - 1].id
     : null;
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`Payouts — ${restaurant.name}`" />
 
         <main class="mx-auto max-w-5xl space-y-6 px-6 py-8">
@@ -146,5 +148,5 @@ const lastPayoutId = props.payouts.length
                 </footer>
             </section>
         </main>
-    </TenantAdminLayout>
+    </div>
 </template>

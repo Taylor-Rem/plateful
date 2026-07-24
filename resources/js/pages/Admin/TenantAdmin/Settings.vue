@@ -5,7 +5,7 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -74,10 +74,12 @@ const submit = (): void => {
         },
     });
 };
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`${restaurant.name} Settings`" />
         <h2 class="text-2xl font-semibold text-foreground">Settings</h2>
 
@@ -257,8 +259,8 @@ const submit = (): void => {
             <section class="rounded-lg border border-border bg-card p-5">
                 <h3 class="text-base font-medium text-foreground">Address</h3>
                 <p class="mt-1 text-sm text-muted-foreground">
-                    Your pickup address. Delivery couriers (DoorDash) use this to
-                    collect orders, so it must be a real, deliverable street
+                    Your pickup address. Delivery couriers (DoorDash) use this
+                    to collect orders, so it must be a real, deliverable street
                     address — not a PO box.
                 </p>
                 <div class="mt-4 grid gap-4">
@@ -411,5 +413,5 @@ const submit = (): void => {
                 >
             </Form>
         </section>
-    </TenantAdminLayout>
+    </div>
 </template>

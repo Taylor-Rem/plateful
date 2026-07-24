@@ -11,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 import {
     formatCents,
     formatRelativeTime,
@@ -19,7 +20,6 @@ import {
     statusBadgeClasses,
 } from '@/lib/orderStatus';
 import type { OrderStatusValue } from '@/lib/orderStatus';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -85,10 +85,12 @@ function handleActionClick(status: OrderStatusValue): void {
 function confirmCancel(): void {
     transition('cancelled', cancelReason.value.trim() || undefined);
 }
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`Order ${order.number}`" />
 
         <div class="flex items-center gap-2 text-sm">
@@ -388,5 +390,5 @@ function confirmCancel(): void {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    </TenantAdminLayout>
+    </div>
 </template>

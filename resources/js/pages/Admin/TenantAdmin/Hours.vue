@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import HoursEditor from '@/components/HoursEditor.vue';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
 defineProps<{
     restaurant: App.Data.RestaurantData;
 }>();
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`${restaurant.name} Hours`" />
 
         <div class="flex items-baseline justify-between">
@@ -24,5 +26,5 @@ defineProps<{
         <div class="mt-6 max-w-2xl">
             <HoursEditor :restaurant="restaurant" show-timezone />
         </div>
-    </TenantAdminLayout>
+    </div>
 </template>

@@ -2,15 +2,17 @@
 import { Head } from '@inertiajs/vue3';
 import { ExternalLink } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
 defineProps<{
     restaurant: App.Data.RestaurantData;
 }>();
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`${restaurant.name} Dashboard`" />
         <div class="flex items-center justify-between">
             <h2 class="text-2xl font-semibold text-foreground">Dashboard</h2>
@@ -59,5 +61,5 @@ defineProps<{
                 <div class="mt-2 text-2xl font-semibold text-foreground">—</div>
             </div>
         </div>
-    </TenantAdminLayout>
+    </div>
 </template>

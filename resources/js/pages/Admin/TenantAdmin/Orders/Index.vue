@@ -3,6 +3,7 @@ import { Head, router, usePoll } from '@inertiajs/vue3';
 import { Bike, ShoppingBag } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { Input } from '@/components/ui/input';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 import {
     ORDER_STATUSES,
     ORDER_STATUS_LABELS,
@@ -11,7 +12,6 @@ import {
     statusBadgeClasses,
 } from '@/lib/orderStatus';
 import type { OrderStatusValue } from '@/lib/orderStatus';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -107,10 +107,12 @@ watch(search, (val) => {
 function goToPage(page: number): void {
     visitWithFilters({ page });
 }
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`${restaurant.name} Orders`" />
 
         <div class="flex items-center justify-between">
@@ -288,5 +290,5 @@ function goToPage(page: number): void {
                 </button>
             </div>
         </div>
-    </TenantAdminLayout>
+    </div>
 </template>

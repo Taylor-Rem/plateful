@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -118,10 +118,12 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
         onSuccess: refreshLocal,
     });
 };
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`${restaurant.name} Menu`" />
 
         <div class="flex items-center justify-between">
@@ -327,5 +329,5 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
                 </form>
             </DialogContent>
         </Dialog>
-    </TenantAdminLayout>
+    </div>
 </template>

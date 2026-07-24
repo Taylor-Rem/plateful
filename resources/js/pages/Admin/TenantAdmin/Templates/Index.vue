@@ -3,7 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { Pencil, Plus, Trash2 } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
 type TemplateRow = {
     id: number;
@@ -38,10 +38,12 @@ const deleteTemplate = (t: TemplateRow): void => {
         preserveScroll: true,
     });
 };
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`${restaurant.name} — Item templates`" />
 
         <div class="flex items-center justify-between">
@@ -149,5 +151,5 @@ const deleteTemplate = (t: TemplateRow): void => {
                 </tbody>
             </table>
         </div>
-    </TenantAdminLayout>
+    </div>
 </template>

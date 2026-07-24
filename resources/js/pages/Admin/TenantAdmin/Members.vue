@@ -5,7 +5,7 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -65,10 +65,12 @@ function formatDate(iso: string | null | undefined): string {
         return '—';
     }
 }
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`${restaurant.name} Team`" />
 
         <div class="space-y-8">
@@ -225,5 +227,5 @@ function formatDate(iso: string | null | undefined): string {
                 </ul>
             </section>
         </div>
-    </TenantAdminLayout>
+    </div>
 </template>

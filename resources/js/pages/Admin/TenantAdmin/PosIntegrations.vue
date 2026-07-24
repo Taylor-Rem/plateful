@@ -2,7 +2,7 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import { Plug } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
 type PosProviderCard = {
     provider: string;
@@ -52,10 +52,12 @@ const statusClasses: Record<string, string> = {
     token_expired: 'bg-amber-100 text-amber-800',
     error: 'bg-red-100 text-red-800',
 };
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`POS integrations — ${restaurant.name}`" />
 
         <main class="mx-auto max-w-3xl space-y-6 px-6 py-8">
@@ -131,5 +133,5 @@ const statusClasses: Record<string, string> = {
                 </div>
             </section>
         </main>
-    </TenantAdminLayout>
+    </div>
 </template>

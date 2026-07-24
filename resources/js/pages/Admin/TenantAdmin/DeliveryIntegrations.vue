@@ -3,7 +3,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import { Truck } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
 type DeliveryProviderCard = {
     provider: string;
@@ -125,10 +125,12 @@ const statusClasses: Record<string, string> = {
     disconnected: 'bg-muted text-muted-foreground',
     error: 'bg-red-100 text-red-800',
 };
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
+    <div>
         <Head :title="`Delivery — ${restaurant.name}`" />
 
         <main class="mx-auto max-w-3xl space-y-6 px-6 py-8">
@@ -571,5 +573,5 @@ const statusClasses: Record<string, string> = {
                 </form>
             </section>
         </main>
-    </TenantAdminLayout>
+    </div>
 </template>

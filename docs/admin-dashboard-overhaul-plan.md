@@ -9,7 +9,7 @@
 | **0** | This plan doc | ✅ Done (lands with Session 1's first commit) |
 | **1** | Route architecture: split the admin host route file; renames; `{restaurant:subdomain}` | ✅ Done — also fixed super-admin redirect 404s (id-based URLs) and guest 403s |
 | **2** | Shared props (`isSuperAdmin`) + authorization tidy (`RestaurantPolicy::manage`) | ✅ Done |
-| **3** | Tenant admin sidebar layout (the big visible change) | ⬜ |
+| **3** | Tenant admin sidebar layout (the big visible change) | ✅ Done |
 | **4** | Super admin sidebar layout | ⬜ |
 | **5** | Shared primitives (PageHeader/StatCard/SectionCard/EmptyState) + consistency sweep | ⬜ |
 | **6** | Wayfinder URL sweep (kill the ~45 hardcoded `/${subdomain}/...` strings) | ⬜ |
