@@ -47,6 +47,14 @@ selectionNames: string[],
 }[],
 isAvailable: boolean,
 };
+export type DashboardStatsData = {
+ordersToday: number,
+revenueTodayCents: number,
+avgTicketCents: number | null,
+pendingCount: number,
+date: string,
+timezone: string,
+};
 export type ItemTemplateData = {
 id: number,
 name: string,
@@ -136,6 +144,15 @@ modifierGroups: {
 groupName: string,
 selectionNames: string[],
 }[],
+};
+export type OrderSummaryData = {
+id: number,
+number: string,
+status: string,
+type: string,
+customerName: string,
+totalCents: number,
+placedAt: string | null,
 };
 export type PendingInvitationData = {
 id: number,

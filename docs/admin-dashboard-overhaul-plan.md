@@ -15,7 +15,7 @@
 | **6** | Wayfinder URL sweep (kill the ~45 hardcoded `/${subdomain}/...` strings) | ✅ Done |
 | **7** | Invitation consolidation (`AdminInvitationService`) + platform revoke | ✅ Done — also fixed the dropped platform-invite flash and a null `isSuperAdmin()` TypeError on fresh users |
 | **8** | Controller splits (`RestaurantLifecycleController`) + `OnboardingSteps` extraction | ✅ Done |
-| **9** | Real Dashboard: KPIs, recent orders, setup status (backend + frontend) | ⬜ |
+| **9** | Real Dashboard: KPIs, recent orders, setup status (backend + frontend) | ✅ Done |
 | **10** | Restaurant switcher v2 + nav visibility tests + polish | ⬜ |
 
 **Execution order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10. Dependencies: S1 gates all
