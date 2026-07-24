@@ -39,6 +39,20 @@ class SettingsController extends Controller
             'delivery_refunds_enabled' => $request->boolean('delivery_refunds_enabled'),
         ]);
 
+        // The settings form submits the whole address block together; only touch
+        // the fields the request actually carries so a partial update (e.g. the
+        // tax-only path) leaves the address alone. `street2` is nullable; the
+        // rest are NOT NULL, so coerce a cleared value to '' rather than null.
+        foreach (['street', 'city', 'state', 'postal_code'] as $field) {
+            if ($request->exists($field)) {
+                $restaurant->{$field} = $validated[$field] ?? '';
+            }
+        }
+
+        if ($request->exists('street2')) {
+            $restaurant->street2 = $validated['street2'] ?? null;
+        }
+
         if ($request->filled('delivery_fee')) {
             $restaurant->delivery_fee_cents = (int) round(((float) $request->input('delivery_fee')) * 100);
         } elseif ($request->exists('delivery_fee')) {
