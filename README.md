@@ -98,6 +98,12 @@ vendor/bin/pint --dirty --format agent              # PHP formatting
 npm run lint && npm run format                      # JS/Vue
 ```
 
+The suite includes real-browser tests (`tests/Browser/`, Pest v4 + Playwright). One-time
+setup: `npx playwright install chromium`. They need a fresh frontend build (`npm run build`)
+to assert against current JS. The admin host is domain-routed, so browser tests set
+`Playwright::setHost('admin.plateful.test')` and use relative `visit()` URLs — absolute
+URLs bypass the in-process test server and hit the live Herd site instead.
+
 If `php` isn't on your PATH, use Herd's binary:
 `"$HOME/Library/Application Support/Herd/bin/php84"`.
 

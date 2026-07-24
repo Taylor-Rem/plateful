@@ -579,6 +579,11 @@ shipped and logged in §8 (checkout throttle, dispute webhook, cloud-check cover
       (checkout then hard-fails after the customer builds a cart) and zero hours rows (= silently
       open 24/7, see §9). Add an activation gate or an explicit checklist in the admin: Stripe
       enabled, hours set, delivery settings chosen, menu non-empty.
+      _2026-07-24 partial: the admin overhaul added the checklist surface —
+      `App\Support\Onboarding\OnboardingSteps` drives both the wizard and a dashboard "finish
+      setup" card, and the wizard's goLive() enforces hours + menu + Stripe. Still open: the
+      activation gate for restaurants that skip the wizard (e.g. super-admin activate), which can
+      still go public incomplete._
 - [ ] **`pending_checkouts` / `delivery_quotes` grow unbounded.** Each pending checkout stores a
       full order snapshot; nothing prunes abandoned rows and nothing is scheduled at all (the
       scheduler runs but is empty). Add prune jobs once real traffic exists — noted in DEPLOY.md
