@@ -10,16 +10,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SuperAdmin\StoreRestaurantRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantFeeRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantRolesRequest;
-use App\Mail\AdminInvitationMail;
 use App\Models\AdminInvitation;
 use App\Models\PlatformRoleHolder;
 use App\Models\Restaurant;
 use App\Models\User;
+use App\Services\AdminInvitationService;
 use App\Services\RestaurantImageService;
 use App\Services\RevenueSplitResolver;
 use App\Support\SalesTaxRates;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -66,7 +65,7 @@ class RestaurantsController extends Controller
         ]);
     }
 
-    public function store(StoreRestaurantRequest $request): RedirectResponse
+    public function store(StoreRestaurantRequest $request, AdminInvitationService $invitations): RedirectResponse
     {
         $validated = $request->validated();
 
@@ -96,16 +95,13 @@ class RestaurantsController extends Controller
         ]);
 
         if (! empty($validated['owner_email'])) {
-            $invitation = AdminInvitation::create([
-                'email' => $validated['owner_email'],
-                'restaurant_id' => $restaurant->id,
-                'as_super_admin' => false,
-                'token' => AdminInvitation::generateToken(),
-                'invited_by_user_id' => $request->user()->id,
-                'expires_at' => now()->addDays(7),
-            ]);
-
-            Mail::to($invitation->email)->queue(new AdminInvitationMail($invitation));
+            $invitations->send(
+                email: $validated['owner_email'],
+                restaurant: $restaurant,
+                role: null,
+                asSuperAdmin: false,
+                invitedBy: $request->user(),
+            );
         }
 
         return redirect()

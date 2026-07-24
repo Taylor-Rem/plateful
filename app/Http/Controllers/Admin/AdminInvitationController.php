@@ -2,22 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Concerns\PasswordValidationRules;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AcceptInvitationRequest;
 use App\Models\AdminInvitation;
-use App\Models\User;
+use App\Services\AdminInvitationService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AdminInvitationController extends Controller
 {
-    use PasswordValidationRules;
-
     public function show(string $token): Response|RedirectResponse
     {
         $invitation = AdminInvitation::query()->where('token', $token)->first();
@@ -27,7 +22,7 @@ class AdminInvitationController extends Controller
         }
 
         if ($invitation->accepted_at !== null) {
-            return redirect()->route('login')->with('status', 'This invitation has already been accepted.');
+            return redirect()->route('login')->with('success', 'This invitation has already been accepted.');
         }
 
         if ($invitation->expires_at <= now()) {
@@ -49,7 +44,7 @@ class AdminInvitationController extends Controller
         ]);
     }
 
-    public function accept(Request $request, string $token): RedirectResponse
+    public function accept(AcceptInvitationRequest $request, string $token, AdminInvitationService $invitations): RedirectResponse
     {
         $invitation = AdminInvitation::query()->where('token', $token)->valid()->first();
 
@@ -57,32 +52,11 @@ class AdminInvitationController extends Controller
             abort(404);
         }
 
-        Validator::make($request->all(), [
-            'name' => ['required', 'string', 'max:255'],
-            'password' => $this->passwordRules(),
-        ])->validate();
-
-        $user = DB::transaction(function () use ($invitation, $request) {
-            $user = User::create([
-                'name' => $request->input('name'),
-                'email' => $invitation->email,
-                'password' => $request->input('password'),
-                'is_super_admin' => $invitation->as_super_admin,
-            ]);
-
-            if ($invitation->restaurant_id) {
-                $user->restaurants()->attach($invitation->restaurant_id, [
-                    'role' => $invitation->role?->value ?? 'admin',
-                ]);
-            }
-
-            $invitation->forceFill([
-                'accepted_at' => now(),
-                'accepted_user_id' => $user->id,
-            ])->save();
-
-            return $user;
-        });
+        $user = $invitations->accept(
+            $invitation,
+            $request->validated('name'),
+            $request->validated('password'),
+        );
 
         Auth::login($user);
 

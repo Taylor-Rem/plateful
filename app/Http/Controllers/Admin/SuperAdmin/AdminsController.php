@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin\SuperAdmin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminInvitation;
 use App\Models\Restaurant;
 use App\Models\User;
 use Inertia\Inertia;
@@ -46,9 +47,25 @@ class AdminsController extends Controller
             ])
             ->all();
 
+        $pendingInvitations = AdminInvitation::query()
+            ->valid()
+            ->with(['restaurant:id,name', 'invitedBy:id,name'])
+            ->latest('id')
+            ->get()
+            ->map(fn (AdminInvitation $invitation) => [
+                'id' => $invitation->id,
+                'email' => $invitation->email,
+                'restaurantName' => $invitation->restaurant?->name,
+                'asSuperAdmin' => $invitation->as_super_admin,
+                'expiresAt' => $invitation->expires_at?->toIso8601String(),
+                'invitedByName' => $invitation->invitedBy?->name,
+            ])
+            ->all();
+
         return Inertia::render('Admin/SuperAdmin/Admins', [
             'admins' => $admins,
             'restaurants' => $restaurants,
+            'pendingInvitations' => $pendingInvitations,
         ]);
     }
 }

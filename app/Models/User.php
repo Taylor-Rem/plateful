@@ -67,7 +67,9 @@ class User extends Authenticatable
 
     public function isSuperAdmin(): bool
     {
-        return $this->is_super_admin;
+        // Cast defensively: a freshly created model that never selected the
+        // column (e.g. mid-registration) has null here, not the DB default.
+        return (bool) $this->is_super_admin;
     }
 
     /**

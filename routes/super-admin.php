@@ -35,4 +35,5 @@ Route::domain('admin.'.config('platform.primary_domain'))
 
         Route::get('/admins', [SuperAdmin\AdminsController::class, 'index'])->name('admins.index');
         Route::post('/admins/invitations', [SuperAdmin\InvitationController::class, 'store'])->name('admins.invitations.store');
+        Route::delete('/admins/invitations/{invitation}', [SuperAdmin\InvitationController::class, 'destroy'])->name('admins.invitations.destroy');
     });
