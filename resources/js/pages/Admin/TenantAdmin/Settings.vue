@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Form, Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,8 +81,8 @@ defineOptions({ layout: TenantAdminLayout });
 
 <template>
     <div>
-        <Head :title="`${restaurant.name} Settings`" />
-        <h2 class="text-2xl font-semibold text-foreground">Settings</h2>
+        <Head title="Settings" />
+        <PageHeader title="Settings" />
 
         <form class="mt-6 max-w-2xl space-y-6" @submit.prevent="submit">
             <section class="rounded-lg border border-border bg-card p-5">
@@ -381,37 +382,5 @@ defineOptions({ layout: TenantAdminLayout });
                 >
             </div>
         </form>
-
-        <section
-            class="mt-10 max-w-md rounded-lg border border-border bg-card p-5"
-        >
-            <h3 class="text-lg font-medium text-foreground">Invite admin</h3>
-            <p class="mt-1 text-sm text-muted-foreground">
-                Send an invitation to a new admin for {{ restaurant.name }}.
-            </p>
-
-            <Form
-                :action="`/${restaurant.subdomain}/invitations`"
-                method="post"
-                :reset-on-success="['email']"
-                v-slot="{ errors, processing }"
-                class="mt-4 space-y-3"
-            >
-                <div class="grid gap-2">
-                    <Label for="invite-email">Email address</Label>
-                    <Input
-                        id="invite-email"
-                        name="email"
-                        type="email"
-                        required
-                        placeholder="admin@example.com"
-                    />
-                    <InputError :message="errors.email" />
-                </div>
-                <Button type="submit" :disabled="processing"
-                    >Send invitation</Button
-                >
-            </Form>
-        </section>
     </div>
 </template>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import EmptyState from '@/components/admin/EmptyState.vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -105,25 +107,22 @@ defineOptions({ layout: SuperAdminLayout });
     <div>
         <Head title="Restaurants" />
         <div class="space-y-6">
-            <h1 class="text-2xl font-semibold text-foreground">Restaurants</h1>
-            <div class="flex items-center justify-between">
-                <p class="text-sm text-muted-foreground">
-                    {{ restaurants.length }}
-                    {{
-                        restaurants.length === 1 ? 'restaurant' : 'restaurants'
-                    }}
-                </p>
-                <Link href="/super/restaurants/create">
-                    <Button>Create restaurant</Button>
-                </Link>
-            </div>
-
-            <div
-                v-if="restaurants.length === 0"
-                class="rounded-lg border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground"
+            <PageHeader
+                title="Restaurants"
+                :description="`${restaurants.length} ${restaurants.length === 1 ? 'restaurant' : 'restaurants'}`"
             >
-                No restaurants yet. Create your first one to get started.
-            </div>
+                <template #actions>
+                    <Link href="/super/restaurants/create">
+                        <Button>Create restaurant</Button>
+                    </Link>
+                </template>
+            </PageHeader>
+
+            <EmptyState
+                v-if="restaurants.length === 0"
+                title="No restaurants yet"
+                description="Create your first one to get started."
+            />
 
             <table
                 v-else

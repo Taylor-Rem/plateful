@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import HoursEditor from '@/components/HoursEditor.vue';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
@@ -12,16 +13,12 @@ defineOptions({ layout: TenantAdminLayout });
 
 <template>
     <div>
-        <Head :title="`${restaurant.name} Hours`" />
+        <Head title="Hours" />
 
-        <div class="flex items-baseline justify-between">
-            <div>
-                <h2 class="text-2xl font-semibold text-foreground">Hours</h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    All times in {{ restaurant.timezone }}.
-                </p>
-            </div>
-        </div>
+        <PageHeader
+            title="Hours"
+            :description="`All times in ${restaurant.timezone}.`"
+        />
 
         <div class="mt-6 max-w-2xl">
             <HoursEditor :restaurant="restaurant" show-timezone />

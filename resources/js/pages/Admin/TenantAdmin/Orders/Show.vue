@@ -104,9 +104,9 @@ defineOptions({ layout: TenantAdminLayout });
         </div>
 
         <div class="mt-3 flex flex-wrap items-center gap-3">
-            <h2 class="text-2xl font-semibold text-foreground">
+            <h1 class="text-2xl font-semibold text-foreground">
                 Order <span class="font-mono">#{{ order.number }}</span>
-            </h2>
+            </h1>
             <span
                 class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize"
                 :class="statusBadgeClasses(order.status)"

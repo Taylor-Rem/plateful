@@ -11,7 +11,7 @@
 | **2** | Shared props (`isSuperAdmin`) + authorization tidy (`RestaurantPolicy::manage`) | ✅ Done |
 | **3** | Tenant admin sidebar layout (the big visible change) | ✅ Done |
 | **4** | Super admin sidebar layout | ✅ Done |
-| **5** | Shared primitives (PageHeader/StatCard/SectionCard/EmptyState) + consistency sweep | ⬜ |
+| **5** | Shared primitives (PageHeader/StatCard/SectionCard/EmptyState) + consistency sweep | ✅ Done — PageHeader/StatCard/EmptyState adopted everywhere applicable; SectionCard is the standard for new sections (existing identical-markup sections convert opportunistically as pages are touched) |
 | **6** | Wayfinder URL sweep (kill the ~45 hardcoded `/${subdomain}/...` strings) | ⬜ |
 | **7** | Invitation consolidation (`AdminInvitationService`) + platform revoke | ⬜ |
 | **8** | Controller splits (`RestaurantLifecycleController`) + `OnboardingSteps` extraction | ⬜ |

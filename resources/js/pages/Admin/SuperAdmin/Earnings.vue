@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
 
@@ -57,7 +58,7 @@ defineOptions({ layout: SuperAdminLayout });
     <div>
         <Head title="Earnings" />
         <div class="space-y-6">
-            <h1 class="text-2xl font-semibold text-foreground">Earnings</h1>
+            <PageHeader title="Earnings" />
             <!-- Month navigation -->
             <div class="flex items-center justify-between">
                 <Link

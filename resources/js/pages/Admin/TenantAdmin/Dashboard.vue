@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import { ExternalLink } from 'lucide-vue-next';
+import PageHeader from '@/components/admin/PageHeader.vue';
+import StatCard from '@/components/admin/StatCard.vue';
 import { Button } from '@/components/ui/button';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
@@ -13,53 +15,26 @@ defineOptions({ layout: TenantAdminLayout });
 
 <template>
     <div>
-        <Head :title="`${restaurant.name} Dashboard`" />
-        <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-semibold text-foreground">Dashboard</h2>
-            <Button as-child variant="outline">
-                <a
-                    :href="restaurant.publicUrl"
-                    target="_blank"
-                    rel="noopener"
-                    class="inline-flex items-center gap-2"
-                >
-                    Visit storefront <ExternalLink class="size-4" />
-                </a>
-            </Button>
-        </div>
+        <Head title="Dashboard" />
+        <PageHeader title="Dashboard">
+            <template #actions>
+                <Button as-child variant="outline">
+                    <a
+                        :href="restaurant.publicUrl"
+                        target="_blank"
+                        rel="noopener"
+                        class="inline-flex items-center gap-2"
+                    >
+                        Visit storefront <ExternalLink class="size-4" />
+                    </a>
+                </Button>
+            </template>
+        </PageHeader>
         <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-lg border border-border bg-card p-4">
-                <div
-                    class="text-xs tracking-wide text-muted-foreground uppercase"
-                >
-                    Orders today
-                </div>
-                <div class="mt-2 text-2xl font-semibold text-foreground">—</div>
-            </div>
-            <div class="rounded-lg border border-border bg-card p-4">
-                <div
-                    class="text-xs tracking-wide text-muted-foreground uppercase"
-                >
-                    Revenue
-                </div>
-                <div class="mt-2 text-2xl font-semibold text-foreground">—</div>
-            </div>
-            <div class="rounded-lg border border-border bg-card p-4">
-                <div
-                    class="text-xs tracking-wide text-muted-foreground uppercase"
-                >
-                    Avg ticket
-                </div>
-                <div class="mt-2 text-2xl font-semibold text-foreground">—</div>
-            </div>
-            <div class="rounded-lg border border-border bg-card p-4">
-                <div
-                    class="text-xs tracking-wide text-muted-foreground uppercase"
-                >
-                    Pending
-                </div>
-                <div class="mt-2 text-2xl font-semibold text-foreground">—</div>
-            </div>
+            <StatCard label="Orders today" />
+            <StatCard label="Revenue" />
+            <StatCard label="Avg ticket" />
+            <StatCard label="Pending" />
         </div>
     </div>
 </template>

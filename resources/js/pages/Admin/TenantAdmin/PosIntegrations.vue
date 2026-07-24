@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { Plug } from 'lucide-vue-next';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
@@ -58,16 +59,13 @@ defineOptions({ layout: TenantAdminLayout });
 
 <template>
     <div>
-        <Head :title="`POS integrations — ${restaurant.name}`" />
+        <Head title="POS integrations" />
 
-        <main class="mx-auto max-w-3xl space-y-6 px-6 py-8">
-            <div>
-                <h1 class="text-xl font-semibold">POS integrations</h1>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Push online orders straight into your register so the
-                    kitchen sees them without a separate tablet.
-                </p>
-            </div>
+        <div class="mx-auto max-w-3xl space-y-6">
+            <PageHeader
+                title="POS integrations"
+                description="Push online orders straight into your register so the kitchen sees them without a separate tablet."
+            />
 
             <section class="space-y-3">
                 <div
@@ -132,6 +130,6 @@ defineOptions({ layout: TenantAdminLayout });
                     </Button>
                 </div>
             </section>
-        </main>
+        </div>
     </div>
 </template>

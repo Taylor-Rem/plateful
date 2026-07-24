@@ -9,6 +9,8 @@ import {
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
+import EmptyState from '@/components/admin/EmptyState.vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -124,11 +126,10 @@ defineOptions({ layout: TenantAdminLayout });
 
 <template>
     <div>
-        <Head :title="`${restaurant.name} Menu`" />
+        <Head title="Menu" />
 
-        <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-semibold text-foreground">Menu</h2>
-            <div v-if="isAdmin" class="flex items-center gap-2">
+        <PageHeader title="Menu">
+            <template v-if="isAdmin" #actions>
                 <Button as-child variant="default">
                     <a
                         :href="storefrontUrl"
@@ -145,8 +146,8 @@ defineOptions({ layout: TenantAdminLayout });
                 <Button as-child variant="outline">
                     <Link :href="`${base}/menu/templates`">Templates</Link>
                 </Button>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <p class="mt-2 text-sm text-muted-foreground">
             Menu item editing now lives on your storefront, so you can see
@@ -154,24 +155,22 @@ defineOptions({ layout: TenantAdminLayout });
             managed here.
         </p>
 
-        <div
+        <EmptyState
             v-if="localCategories.length === 0"
-            class="mt-12 rounded-lg border border-dashed border-border bg-card p-10 text-center"
+            class="mt-12"
+            title="No categories yet"
+            :description="
+                isAdmin
+                    ? 'Create your first category to start building the menu.'
+                    : 'No menu items have been added yet.'
+            "
         >
-            <h3 class="text-base font-medium text-foreground">
-                No categories yet
-            </h3>
-            <p class="mt-1 text-sm text-muted-foreground">
-                {{
-                    isAdmin
-                        ? 'Create your first category to start building the menu.'
-                        : 'No menu items have been added yet.'
-                }}
-            </p>
-            <Button v-if="isAdmin" class="mt-4" @click="openCreateCategory">
-                <Plus class="size-4" /> Add category
-            </Button>
-        </div>
+            <template v-if="isAdmin" #actions>
+                <Button @click="openCreateCategory">
+                    <Plus class="size-4" /> Add category
+                </Button>
+            </template>
+        </EmptyState>
 
         <VueDraggable
             v-else

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,9 +71,7 @@ defineOptions({ layout: SuperAdminLayout });
     <div>
         <Head title="Create restaurant" />
         <div class="mx-auto max-w-3xl space-y-6">
-            <h1 class="text-2xl font-semibold text-foreground">
-                Create restaurant
-            </h1>
+            <PageHeader title="Create restaurant" />
             <form @submit.prevent="submit" class="space-y-8">
                 <section class="rounded-lg border border-border bg-card p-6">
                     <h2 class="text-base font-semibold text-foreground">

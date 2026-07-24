@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,12 +72,10 @@ defineOptions({ layout: TenantAdminLayout });
 
 <template>
     <div>
-        <Head :title="`${restaurant.name} Team`" />
+        <Head title="Team" />
 
         <div class="space-y-8">
-            <div class="flex items-center justify-between">
-                <h2 class="text-2xl font-semibold text-foreground">Team</h2>
-            </div>
+            <PageHeader title="Team" />
 
             <section class="rounded-lg border border-border bg-card p-6">
                 <h3 class="text-base font-semibold text-foreground">

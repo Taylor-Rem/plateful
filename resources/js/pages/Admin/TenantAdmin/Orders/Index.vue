@@ -113,11 +113,11 @@ defineOptions({ layout: TenantAdminLayout });
 
 <template>
     <div>
-        <Head :title="`${restaurant.name} Orders`" />
+        <Head title="Orders" />
 
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <h2 class="text-2xl font-semibold text-foreground">Orders</h2>
+                <h1 class="text-2xl font-semibold text-foreground">Orders</h1>
                 <span
                     class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                 >
