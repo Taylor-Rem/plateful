@@ -2,8 +2,9 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import { Truck } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 
 type DeliveryProviderCard = {
     provider: string;
@@ -125,21 +126,19 @@ const statusClasses: Record<string, string> = {
     disconnected: 'bg-muted text-muted-foreground',
     error: 'bg-red-100 text-red-800',
 };
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
-        <Head :title="`Delivery — ${restaurant.name}`" />
+    <div>
+        <Head title="Delivery" />
 
-        <main class="mx-auto max-w-3xl space-y-6 px-6 py-8">
-            <div>
-                <h1 class="text-xl font-semibold">Delivery</h1>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Connect a courier network so delivery orders are dispatched
-                    automatically. DoorDash Drive enables in one click; Uber
-                    Direct uses your own account.
-                </p>
-            </div>
+        <div class="mx-auto max-w-3xl space-y-6">
+            <PageHeader
+                title="Delivery"
+                description="Connect a courier network so delivery orders are dispatched automatically. DoorDash Drive enables in one click; Uber Direct uses your own account."
+            />
 
             <!-- The behaviour flags. Every one of these lived in the schema
                  with no UI, so a restaurant could have delivery on with no mode
@@ -570,6 +569,6 @@ const statusClasses: Record<string, string> = {
                     </div>
                 </form>
             </section>
-        </main>
-    </TenantAdminLayout>
+        </div>
+    </div>
 </template>

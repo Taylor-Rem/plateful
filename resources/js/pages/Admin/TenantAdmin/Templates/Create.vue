@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import PageHeader from '@/components/admin/PageHeader.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 import TemplateForm from '@/pages/Admin/TenantAdmin/Templates/TemplateForm.vue';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
 
 defineProps<{
     restaurant: App.Data.RestaurantData;
     template: App.Data.ItemTemplateData | null;
 }>();
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
-        <Head :title="`${restaurant.name} — New template`" />
-        <h2 class="text-2xl font-semibold text-foreground">
-            New item template
-        </h2>
+    <div>
+        <Head title="New template" />
+        <PageHeader title="New item template" />
         <div class="mt-6 max-w-4xl">
             <TemplateForm :restaurant="restaurant" :template="template" />
         </div>
-    </TenantAdminLayout>
+    </div>
 </template>

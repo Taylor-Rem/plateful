@@ -13,7 +13,11 @@ class RequireSuperAdmin
     {
         $user = $request->user();
 
-        if (! $user || ! $user->isSuperAdmin()) {
+        if (! $user) {
+            return redirect()->guest(route('login'));
+        }
+
+        if (! $user->isSuperAdmin()) {
             throw new AccessDeniedHttpException;
         }
 

@@ -43,8 +43,9 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
-                'canEditMenu' => fn () => $this->resolveCanEditMenu($request),
-                'canEditSite' => fn () => $this->resolveCanEditMenu($request),
+                'isSuperAdmin' => (bool) $request->user()?->isSuperAdmin(),
+                'canEditMenu' => fn () => $this->resolveCanManageTenant($request),
+                'canEditSite' => fn () => $this->resolveCanManageTenant($request),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
@@ -57,10 +58,11 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * True when the current user can edit menu content on the current tenant
-     * storefront (restaurant Admin or super admin). False off the storefront.
+     * True when the current user manages the current tenant (restaurant Admin
+     * or super admin) — drives the storefront's menu/site edit modes. False
+     * off the storefront.
      */
-    protected function resolveCanEditMenu(Request $request): bool
+    protected function resolveCanManageTenant(Request $request): bool
     {
         $tenant = app(CurrentTenant::class)->get();
         $user = $request->user();

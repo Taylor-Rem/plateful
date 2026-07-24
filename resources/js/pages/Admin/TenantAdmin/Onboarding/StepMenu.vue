@@ -12,6 +12,13 @@ import {
 } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
+import { index as menuIndex } from '@/routes/admin/restaurant/menu';
+import {
+    discard as menuImportDiscard,
+    review as menuImportReview,
+    store as menuImportStore,
+} from '@/routes/admin/restaurant/menuImport';
+import { menuPreset as onboardingMenuPreset } from '@/routes/admin/restaurant/onboarding';
 
 type MenuImportState = {
     id: number;
@@ -56,7 +63,7 @@ const removeFile = (index: number): void => {
 };
 
 const startImport = (): void => {
-    uploadForm.post(`/${props.restaurant.subdomain}/onboarding/menu-import`, {
+    uploadForm.post(menuImportStore.url(props.restaurant.subdomain), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => uploadForm.reset(),
@@ -99,7 +106,10 @@ const discardImport = (): void => {
     }
 
     router.post(
-        `/${props.restaurant.subdomain}/menu-import/${props.menuImport.id}/discard`,
+        menuImportDiscard.url({
+            restaurant: props.restaurant.subdomain,
+            menuImport: props.menuImport.id,
+        }),
         {},
         { preserveScroll: true },
     );
@@ -112,7 +122,7 @@ const applying = ref<string | null>(null);
 const applyPreset = (preset: string): void => {
     applying.value = preset;
     presetForm.preset = preset;
-    presetForm.post(`/${props.restaurant.subdomain}/onboarding/menu-preset`, {
+    presetForm.post(onboardingMenuPreset.url(props.restaurant.subdomain), {
         preserveScroll: true,
         onFinish: () => {
             applying.value = null;
@@ -154,7 +164,7 @@ const applyPreset = (preset: string): void => {
 
             <div class="flex items-center justify-between">
                 <a
-                    :href="`/${restaurant.subdomain}/menu`"
+                    :href="menuIndex.url(restaurant.subdomain)"
                     class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
                 >
                     Open the menu builder
@@ -213,7 +223,12 @@ const applyPreset = (preset: string): void => {
                 </button>
                 <Button as-child data-test="review-import-button">
                     <a
-                        :href="`/${restaurant.subdomain}/menu-import/${menuImport.id}/review`"
+                        :href="
+                            menuImportReview.url({
+                                restaurant: restaurant.subdomain,
+                                menuImport: menuImport.id,
+                            })
+                        "
                     >
                         Review {{ menuImport.itemCount }} items
                     </a>
@@ -283,7 +298,7 @@ const applyPreset = (preset: string): void => {
                 </button>
 
                 <a
-                    :href="`/${restaurant.subdomain}/menu`"
+                    :href="menuIndex.url(restaurant.subdomain)"
                     class="flex flex-col items-start gap-2 rounded-lg border border-border bg-card p-4 text-left transition hover:border-primary/50"
                     data-test="menu-path-scratch"
                 >

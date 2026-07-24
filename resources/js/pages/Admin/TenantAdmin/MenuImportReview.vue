@@ -4,6 +4,11 @@ import { AlertTriangle, ArrowLeft, Plus, Trash2 } from 'lucide-vue-next';
 import { computed, reactive } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    confirm as menuImportConfirm,
+    discard as menuImportDiscard,
+} from '@/routes/admin/restaurant/menuImport';
+import { show as onboardingShow } from '@/routes/admin/restaurant/onboarding';
 
 type DraftItem = {
     name: string;
@@ -125,7 +130,10 @@ const submit = (): void => {
         );
 
     confirmForm.post(
-        `/${props.restaurant.subdomain}/menu-import/${props.menuImport.id}/confirm`,
+        menuImportConfirm.url({
+            restaurant: props.restaurant.subdomain,
+            menuImport: props.menuImport.id,
+        }),
     );
 };
 
@@ -143,7 +151,10 @@ const discard = (): void => {
     }
 
     router.post(
-        `/${props.restaurant.subdomain}/menu-import/${props.menuImport.id}/discard`,
+        menuImportDiscard.url({
+            restaurant: props.restaurant.subdomain,
+            menuImport: props.menuImport.id,
+        }),
     );
 };
 </script>
@@ -160,7 +171,7 @@ const discard = (): void => {
             >
                 <div class="flex items-center gap-3">
                     <a
-                        :href="`/${restaurant.subdomain}/onboarding`"
+                        :href="onboardingShow.url(restaurant.subdomain)"
                         class="text-muted-foreground hover:text-foreground"
                         aria-label="Back to setup"
                     >

@@ -11,6 +11,7 @@ use App\Models\Restaurant;
 use App\Services\RestaurantImageService;
 use App\Support\Menus\MenuBuilder;
 use App\Support\Menus\MenuPresets;
+use App\Support\Onboarding\OnboardingSteps;
 use App\Support\SalesTaxRates;
 use App\Support\StorefrontLoginHandoff;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,8 @@ use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse
 
 class OnboardingController extends Controller
 {
+    public function __construct(private OnboardingSteps $steps) {}
+
     /**
      * Render the setup wizard for an approved restaurant. Each step's status
      * is computed from existing data so the UI always reflects reality — the
@@ -40,8 +43,8 @@ class OnboardingController extends Controller
                 'onboardingCompletedAt' => $restaurant->onboarding_completed_at?->toIso8601String(),
                 'stripeStatus' => $restaurant->stripe_account_status,
             ],
-            'steps' => $this->steps($restaurant),
-            'canGoLive' => $this->canGoLive($restaurant),
+            'steps' => $this->steps->steps($restaurant),
+            'canGoLive' => $this->steps->canGoLive($restaurant),
             'menuPresets' => array_map(
                 fn (string $cuisine): array => [
                     'value' => $cuisine,
@@ -222,7 +225,7 @@ class OnboardingController extends Controller
             return back()->with('error', 'This restaurant is not in the approved state.');
         }
 
-        if (! $this->canGoLive($restaurant)) {
+        if (! $this->steps->canGoLive($restaurant)) {
             throw ValidationException::withMessages([
                 'go_live' => 'Finish the required onboarding steps before going live.',
             ]);
@@ -237,90 +240,5 @@ class OnboardingController extends Controller
         return redirect()
             ->route('admin.restaurant.onboarding.show', ['restaurant' => $restaurant->subdomain])
             ->with('success', "{$restaurant->name} is live!");
-    }
-
-    /**
-     * Compute the status of each wizard step from the restaurant's data.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function steps(Restaurant $restaurant): array
-    {
-        $hasHours = $restaurant->hours()->exists();
-        $hasMenuItem = $restaurant->menuItems()->exists();
-        $hasBranding = filled($restaurant->logo_path) || filled($restaurant->description);
-
-        return [
-            [
-                'key' => 'basics',
-                'title' => 'Basics',
-                'description' => 'Logo, description, contact info, and address.',
-                'complete' => $hasBranding,
-                'required' => false,
-            ],
-            [
-                'key' => 'hours',
-                'title' => 'Hours',
-                'description' => 'Tell customers when you’re open.',
-                'complete' => $hasHours,
-                'required' => true,
-            ],
-            [
-                'key' => 'menu',
-                'title' => 'Menu',
-                'description' => 'Customers can’t order from an empty menu.',
-                'complete' => $hasMenuItem,
-                'required' => true,
-            ],
-            [
-                'key' => 'stripe',
-                'title' => 'Payments',
-                'description' => $this->stripeStepDescription($restaurant),
-                'complete' => $restaurant->isStripeReady(),
-                'required' => true,
-            ],
-            [
-                'key' => 'refunds',
-                'title' => 'Refund policy',
-                'description' => 'Decide whether cancelled orders refund the food. Off by default.',
-                'complete' => $restaurant->refund_policy_reviewed_at !== null,
-                'required' => false,
-            ],
-            [
-                'key' => 'review',
-                'title' => 'Go live',
-                'description' => 'Review everything and open for orders.',
-                'complete' => $restaurant->isLive(),
-                'required' => true,
-            ],
-        ];
-    }
-
-    /**
-     * Status-aware copy for the Stripe onboarding step.
-     */
-    private function stripeStepDescription(Restaurant $restaurant): string
-    {
-        return match ($restaurant->stripe_account_status) {
-            Restaurant::STRIPE_ENABLED => 'Connected — you can take payments.',
-            Restaurant::STRIPE_RESTRICTED => 'Stripe needs more information before you can take payments.',
-            Restaurant::STRIPE_PENDING => 'Onboarding started. Finish it on Stripe to take payments.',
-            default => 'Required to take payments. Plateful takes a 4% fee per order.',
-        };
-    }
-
-    private function canGoLive(Restaurant $restaurant): bool
-    {
-        if ($restaurant->status !== RestaurantStatus::Approved) {
-            return false;
-        }
-
-        foreach ($this->steps($restaurant) as $step) {
-            if ($step['key'] !== 'review' && $step['required'] && ! $step['complete']) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

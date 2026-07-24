@@ -20,7 +20,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             Route::middleware('web')->group(base_path('routes/storefront.php'));
+            Route::middleware('web')->group(base_path('routes/webhooks.php'));
+            // super-admin.php registers before admin.php so /super/* can never
+            // be captured by admin.php's {restaurant} wildcard prefix.
             Route::middleware('web')->group(base_path('routes/super-admin.php'));
+            Route::middleware('web')->group(base_path('routes/admin.php'));
             Route::middleware('web')->group(base_path('routes/web.php'));
         },
     )

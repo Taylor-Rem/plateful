@@ -76,6 +76,30 @@ test('negative tax rate fails validation', function () {
         ->assertSessionHasErrors('tax_rate_percent');
 });
 
+test('admin can update the pickup address', function () {
+    $r = taxRestaurant();
+    $u = taxAdmin($r);
+
+    $this->actingAs($u)
+        ->put("http://admin.plateful.test/{$r->subdomain}/settings", [
+            'name' => $r->name,
+            'street' => '901 Market Street',
+            'street2' => 'Suite 600',
+            'city' => 'San Francisco',
+            'state' => 'CA',
+            'postal_code' => '94103',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $fresh = $r->fresh();
+    expect($fresh->street)->toBe('901 Market Street');
+    expect($fresh->street2)->toBe('Suite 600');
+    expect($fresh->city)->toBe('San Francisco');
+    expect($fresh->state)->toBe('CA');
+    expect($fresh->postal_code)->toBe('94103');
+});
+
 test('tax rate appears in RestaurantData on storefront response', function () {
     $r = taxRestaurant();
     $r->update(['tax_rate_percent' => 6.5]);

@@ -3,6 +3,7 @@ import { Head, router, usePoll } from '@inertiajs/vue3';
 import { Bike, ShoppingBag } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { Input } from '@/components/ui/input';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 import {
     ORDER_STATUSES,
     ORDER_STATUS_LABELS,
@@ -11,7 +12,10 @@ import {
     statusBadgeClasses,
 } from '@/lib/orderStatus';
 import type { OrderStatusValue } from '@/lib/orderStatus';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import {
+    index as ordersIndex,
+    show as ordersShow,
+} from '@/routes/admin/restaurant/orders';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -85,7 +89,7 @@ function visitWithFilters(params: {
         query.page = String(params.page);
     }
 
-    router.get(`/${props.restaurant.subdomain}/orders`, query, {
+    router.get(ordersIndex.url(props.restaurant.subdomain), query, {
         preserveScroll: true,
         preserveState: true,
         replace: true,
@@ -107,15 +111,17 @@ watch(search, (val) => {
 function goToPage(page: number): void {
     visitWithFilters({ page });
 }
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
-        <Head :title="`${restaurant.name} Orders`" />
+    <div>
+        <Head title="Orders" />
 
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <h2 class="text-2xl font-semibold text-foreground">Orders</h2>
+                <h1 class="text-2xl font-semibold text-foreground">Orders</h1>
                 <span
                     class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                 >
@@ -210,7 +216,10 @@ function goToPage(page: number): void {
                         class="cursor-pointer transition hover:bg-muted/30"
                         @click="
                             router.visit(
-                                `/${restaurant.subdomain}/orders/${order.number}`,
+                                ordersShow.url({
+                                    restaurant: restaurant.subdomain,
+                                    order: order.number,
+                                }),
                             )
                         "
                     >
@@ -288,5 +297,5 @@ function goToPage(page: number): void {
                 </button>
             </div>
         </div>
-    </TenantAdminLayout>
+    </div>
 </template>

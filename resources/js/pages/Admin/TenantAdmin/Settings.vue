@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Form, Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
+import { update as settingsUpdate } from '@/routes/admin/restaurant/settings';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -19,6 +21,11 @@ const form = useForm({
     secondary_color: props.restaurant.secondaryColor ?? '#ffffff',
     email: props.restaurant.email ?? '',
     phone: props.restaurant.phone ?? '',
+    street: props.restaurant.street ?? '',
+    street2: props.restaurant.street2 ?? '',
+    city: props.restaurant.city ?? '',
+    state: props.restaurant.state ?? '',
+    postal_code: props.restaurant.postalCode ?? '',
     logo: null as File | null,
     remove_logo: false as boolean,
     tax_rate_percent: props.restaurant.taxRatePercent ?? 0,
@@ -60,7 +67,7 @@ const markRemoveLogo = (): void => {
 };
 
 const submit = (): void => {
-    form.post(`/${props.restaurant.subdomain}/settings`, {
+    form.post(settingsUpdate.url(props.restaurant.subdomain), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
@@ -69,12 +76,14 @@ const submit = (): void => {
         },
     });
 };
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
-        <Head :title="`${restaurant.name} Settings`" />
-        <h2 class="text-2xl font-semibold text-foreground">Settings</h2>
+    <div>
+        <Head title="Settings" />
+        <PageHeader title="Settings" />
 
         <form class="mt-6 max-w-2xl space-y-6" @submit.prevent="submit">
             <section class="rounded-lg border border-border bg-card p-5">
@@ -250,6 +259,69 @@ const submit = (): void => {
             </section>
 
             <section class="rounded-lg border border-border bg-card p-5">
+                <h3 class="text-base font-medium text-foreground">Address</h3>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    Your pickup address. Delivery couriers (DoorDash) use this
+                    to collect orders, so it must be a real, deliverable street
+                    address — not a PO box.
+                </p>
+                <div class="mt-4 grid gap-4">
+                    <div class="grid gap-2">
+                        <Label for="street">Street address</Label>
+                        <Input
+                            id="street"
+                            v-model="form.street"
+                            autocomplete="address-line1"
+                        />
+                        <InputError :message="form.errors.street" />
+                    </div>
+                    <div class="grid gap-2">
+                        <Label for="street2"
+                            >Suite / unit
+                            <span class="text-muted-foreground"
+                                >(optional)</span
+                            ></Label
+                        >
+                        <Input
+                            id="street2"
+                            v-model="form.street2"
+                            autocomplete="address-line2"
+                        />
+                        <InputError :message="form.errors.street2" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div class="grid gap-2 sm:col-span-1">
+                            <Label for="city">City</Label>
+                            <Input
+                                id="city"
+                                v-model="form.city"
+                                autocomplete="address-level2"
+                            />
+                            <InputError :message="form.errors.city" />
+                        </div>
+                        <div class="grid gap-2 sm:col-span-1">
+                            <Label for="state">State</Label>
+                            <Input
+                                id="state"
+                                v-model="form.state"
+                                autocomplete="address-level1"
+                            />
+                            <InputError :message="form.errors.state" />
+                        </div>
+                        <div class="grid gap-2 sm:col-span-1">
+                            <Label for="postal-code">ZIP code</Label>
+                            <Input
+                                id="postal-code"
+                                v-model="form.postal_code"
+                                autocomplete="postal-code"
+                            />
+                            <InputError :message="form.errors.postal_code" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="rounded-lg border border-border bg-card p-5">
                 <h3 class="text-base font-medium text-foreground">
                     Refund policy
                 </h3>
@@ -311,37 +383,5 @@ const submit = (): void => {
                 >
             </div>
         </form>
-
-        <section
-            class="mt-10 max-w-md rounded-lg border border-border bg-card p-5"
-        >
-            <h3 class="text-lg font-medium text-foreground">Invite admin</h3>
-            <p class="mt-1 text-sm text-muted-foreground">
-                Send an invitation to a new admin for {{ restaurant.name }}.
-            </p>
-
-            <Form
-                :action="`/${restaurant.subdomain}/invitations`"
-                method="post"
-                :reset-on-success="['email']"
-                v-slot="{ errors, processing }"
-                class="mt-4 space-y-3"
-            >
-                <div class="grid gap-2">
-                    <Label for="invite-email">Email address</Label>
-                    <Input
-                        id="invite-email"
-                        name="email"
-                        type="email"
-                        required
-                        placeholder="admin@example.com"
-                    />
-                    <InputError :message="errors.email" />
-                </div>
-                <Button type="submit" :disabled="processing"
-                    >Send invitation</Button
-                >
-            </Form>
-        </section>
-    </TenantAdminLayout>
+    </div>
 </template>

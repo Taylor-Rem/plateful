@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
+import { Form, Head, router } from '@inertiajs/vue3';
+import PageHeader from '@/components/admin/PageHeader.vue';
+import SectionCard from '@/components/admin/SectionCard.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import {
+    destroy as platformInvitationsDestroy,
+    store as platformInvitationsStore,
+} from '@/routes/admin/super/admins/invitations';
 
 type AdminRow = {
     id: number;
@@ -14,42 +20,47 @@ type AdminRow = {
     restaurants: { id: number; name: string; subdomain: string }[];
 };
 
+type PendingInvitation = {
+    id: number;
+    email: string;
+    restaurantName: string | null;
+    asSuperAdmin: boolean;
+    expiresAt: string | null;
+    invitedByName: string | null;
+};
+
 defineProps<{
     admins: AdminRow[];
     restaurants: { id: number; name: string; subdomain: string }[];
+    pendingInvitations: PendingInvitation[];
 }>();
+
+const revoke = (invitation: PendingInvitation): void => {
+    if (!confirm(`Revoke the invitation for ${invitation.email}?`)) {
+        return;
+    }
+
+    router.delete(platformInvitationsDestroy.url(invitation.id), {
+        preserveScroll: true,
+    });
+};
+
+const describe = (invitation: PendingInvitation): string => {
+    if (invitation.asSuperAdmin) {
+        return 'Super admin';
+    }
+
+    return invitation.restaurantName ?? 'Platform';
+};
+
+defineOptions({ layout: SuperAdminLayout });
 </script>
 
 <template>
-    <div class="min-h-screen bg-background text-foreground">
+    <div>
         <Head title="Admins" />
-        <header class="border-b border-border bg-card">
-            <div
-                class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4"
-            >
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                        >←</Link
-                    >
-                    <h1 class="text-lg font-semibold text-foreground">
-                        Admins
-                    </h1>
-                </div>
-                <div class="flex items-center gap-4">
-                    <AppearanceTabs />
-                    <Link
-                        href="/super/restaurants"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Restaurants
-                    </Link>
-                </div>
-            </div>
-        </header>
-
-        <main class="mx-auto max-w-5xl space-y-8 px-6 py-8">
+        <div class="space-y-8">
+            <PageHeader title="Admins" />
             <table
                 class="w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-card"
             >
@@ -92,6 +103,39 @@ defineProps<{
                 </tbody>
             </table>
 
+            <SectionCard
+                v-if="pendingInvitations.length > 0"
+                title="Pending invitations"
+                description="Sent but not yet accepted. Revoking one invalidates its link."
+            >
+                <ul class="divide-y divide-border text-sm">
+                    <li
+                        v-for="invitation in pendingInvitations"
+                        :key="invitation.id"
+                        class="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                    >
+                        <div>
+                            <div class="font-medium text-foreground">
+                                {{ invitation.email }}
+                            </div>
+                            <div class="text-xs text-muted-foreground">
+                                {{ describe(invitation) }}
+                                <template v-if="invitation.invitedByName">
+                                    · invited by {{ invitation.invitedByName }}
+                                </template>
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="revoke(invitation)"
+                        >
+                            Revoke
+                        </Button>
+                    </li>
+                </ul>
+            </SectionCard>
+
             <section
                 class="max-w-md rounded-lg border border-border bg-card p-5"
             >
@@ -100,7 +144,7 @@ defineProps<{
                 </h2>
 
                 <Form
-                    action="/super/admins/invitations"
+                    :action="platformInvitationsStore.url()"
                     method="post"
                     :reset-on-success="['email']"
                     v-slot="{ errors, processing }"
@@ -148,6 +192,6 @@ defineProps<{
                     >
                 </Form>
             </section>
-        </main>
+        </div>
     </div>
 </template>

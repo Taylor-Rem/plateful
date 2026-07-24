@@ -319,7 +319,7 @@ placeholders):
 
 **Before push**
 
-- [ ] Tests green: `php artisan test --compact`
+- [ ] Tests green: `php artisan test --compact` (includes `tests/Browser/` — needs the one-time `npx playwright install chromium`)
 - [ ] PHP formatting: `vendor/bin/pint --dirty --format agent`
 - [ ] JS lint/format: `npm run lint && npm run format`
 - [ ] If routes changed: `php artisan wayfinder:generate`

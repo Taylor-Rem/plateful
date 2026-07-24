@@ -3,33 +3,41 @@
 namespace App\Http\Controllers\Admin\SuperAdmin;
 
 use App\Http\Controllers\Controller;
-use App\Mail\AdminInvitationMail;
+use App\Http\Requests\Admin\SuperAdmin\StorePlatformInvitationRequest;
 use App\Models\AdminInvitation;
+use App\Models\Restaurant;
+use App\Services\AdminInvitationService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 
 class InvitationController extends Controller
 {
-    public function store(Request $request): RedirectResponse
+    public function store(StorePlatformInvitationRequest $request, AdminInvitationService $invitations): RedirectResponse
     {
-        $data = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
-            'restaurant_id' => ['nullable', 'integer', 'exists:restaurants,id'],
-            'as_super_admin' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validated();
 
-        $invitation = AdminInvitation::create([
-            'email' => $data['email'],
-            'restaurant_id' => $data['restaurant_id'] ?? null,
-            'as_super_admin' => (bool) ($data['as_super_admin'] ?? false),
-            'token' => AdminInvitation::generateToken(),
-            'invited_by_user_id' => $request->user()->id,
-            'expires_at' => now()->addDays(7),
-        ]);
+        $invitation = $invitations->send(
+            email: $data['email'],
+            restaurant: isset($data['restaurant_id']) && $data['restaurant_id']
+                ? Restaurant::findOrFail($data['restaurant_id'])
+                : null,
+            role: null,
+            asSuperAdmin: (bool) ($data['as_super_admin'] ?? false),
+            invitedBy: $request->user(),
+        );
 
-        Mail::to($invitation->email)->queue(new AdminInvitationMail($invitation));
+        return back()->with('success', "Invitation sent to {$invitation->email}.");
+    }
 
-        return back()->with('status', "Invitation sent to {$invitation->email}.");
+    /**
+     * Super admins may revoke any pending invitation, platform-level or
+     * restaurant-scoped.
+     */
+    public function destroy(AdminInvitation $invitation): RedirectResponse
+    {
+        abort_if($invitation->accepted_at !== null, 404);
+
+        $invitation->delete();
+
+        return back()->with('success', 'Invitation revoked.');
     }
 }

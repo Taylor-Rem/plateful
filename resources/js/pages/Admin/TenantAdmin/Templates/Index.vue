@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { Pencil, Plus, Trash2 } from 'lucide-vue-next';
-import { computed } from 'vue';
+import EmptyState from '@/components/admin/EmptyState.vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
+import { index as menuIndex } from '@/routes/admin/restaurant/menu';
+import {
+    create as templatesCreate,
+    destroy as templatesDestroy,
+    edit as templatesEdit,
+} from '@/routes/admin/restaurant/templates';
 
 type TemplateRow = {
     id: number;
@@ -19,8 +26,6 @@ const props = defineProps<{
     templates: TemplateRow[];
 }>();
 
-const base = computed(() => `/${props.restaurant.subdomain}`);
-
 const deleteTemplate = (t: TemplateRow): void => {
     if (t.menuItemsCount > 0) {
         alert(
@@ -34,55 +39,57 @@ const deleteTemplate = (t: TemplateRow): void => {
         return;
     }
 
-    router.delete(`${base.value}/menu/templates/${t.id}`, {
-        preserveScroll: true,
-    });
+    router.delete(
+        templatesDestroy.url({
+            restaurant: props.restaurant.subdomain,
+            template: t.id,
+        }),
+        {
+            preserveScroll: true,
+        },
+    );
 };
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
-        <Head :title="`${restaurant.name} — Item templates`" />
+    <div>
+        <Head title="Item templates" />
 
-        <div class="flex items-center justify-between">
-            <div>
-                <h2 class="text-2xl font-semibold text-foreground">
-                    Item templates
-                </h2>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Reusable groups of options that menu items can offer.
-                </p>
-            </div>
-            <div class="flex items-center gap-2">
+        <PageHeader
+            title="Item templates"
+            description="Reusable groups of options that menu items can offer."
+        >
+            <template #actions>
                 <Button as-child variant="outline">
-                    <Link :href="`${base}/menu`">Back to menu</Link>
+                    <Link :href="menuIndex.url(restaurant.subdomain)"
+                        >Back to menu</Link
+                    >
                 </Button>
                 <Link
-                    :href="`${base}/menu/templates/create`"
+                    :href="templatesCreate.url(restaurant.subdomain)"
                     class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
                     <Plus class="size-4" /> New template
                 </Link>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
-        <div
+        <EmptyState
             v-if="templates.length === 0"
-            class="mt-12 rounded-lg border border-dashed border-border bg-card p-10 text-center"
+            class="mt-12"
+            title="No templates yet"
+            description="Create a template (e.g. Pizza) to share configuration across menu items."
         >
-            <h3 class="text-base font-medium text-foreground">
-                No templates yet
-            </h3>
-            <p class="mt-1 text-sm text-muted-foreground">
-                Create a template (e.g. Pizza) to share configuration across
-                menu items.
-            </p>
-            <Button as-child class="mt-4">
-                <Link :href="`${base}/menu/templates/create`">
-                    <Plus class="size-4" /> New template
-                </Link>
-            </Button>
-        </div>
+            <template #actions>
+                <Button as-child>
+                    <Link :href="templatesCreate.url(restaurant.subdomain)">
+                        <Plus class="size-4" /> New template
+                    </Link>
+                </Button>
+            </template>
+        </EmptyState>
 
         <div
             v-else
@@ -123,7 +130,12 @@ const deleteTemplate = (t: TemplateRow): void => {
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-1">
                                 <Link
-                                    :href="`${base}/menu/templates/${t.id}/edit`"
+                                    :href="
+                                        templatesEdit.url({
+                                            restaurant: restaurant.subdomain,
+                                            template: t.id,
+                                        })
+                                    "
                                     class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
                                     aria-label="Edit template"
                                 >
@@ -149,5 +161,5 @@ const deleteTemplate = (t: TemplateRow): void => {
                 </tbody>
             </table>
         </div>
-    </TenantAdminLayout>
+    </div>
 </template>

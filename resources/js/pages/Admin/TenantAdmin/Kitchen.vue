@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { dashboard } from '@/routes/admin/restaurant';
+import { transition as ordersTransition } from '@/routes/admin/restaurant/orders';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -67,7 +69,10 @@ const advance = (order: App.Data.OrderData, toStatus: string): void => {
 
     advancing.value.add(order.id);
     router.post(
-        `/${props.restaurant.subdomain}/orders/${order.number}/transitions`,
+        ordersTransition.url({
+            restaurant: props.restaurant.subdomain,
+            order: order.number,
+        }),
         { to_status: toStatus },
         {
             preserveScroll: true,
@@ -168,7 +173,7 @@ const advanceLabel = (next: string): string => {
             <div class="flex items-center justify-between px-6 py-3">
                 <div class="flex items-center gap-3">
                     <Link
-                        :href="`/${restaurant.subdomain}/dashboard`"
+                        :href="dashboard.url(restaurant.subdomain)"
                         class="text-sm text-muted-foreground hover:text-foreground"
                     >
                         ←

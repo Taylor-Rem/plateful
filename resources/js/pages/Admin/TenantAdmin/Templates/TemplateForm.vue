@@ -7,6 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    index as templatesIndex,
+    store as templatesStore,
+    update as templatesUpdate,
+} from '@/routes/admin/restaurant/templates';
 
 type OptionRow = {
     id: number | null;
@@ -29,8 +34,6 @@ const props = defineProps<{
 }>();
 
 const isEdit = computed(() => props.template !== null);
-const base = computed(() => `/${props.restaurant.subdomain}`);
-
 const initialGroups: GroupRow[] = (props.template?.groups ?? []).map((g) => ({
     id: g.id,
     name: g.name,
@@ -107,12 +110,20 @@ const moveOption = (gIndex: number, oIndex: number, dir: -1 | 1): void => {
 const submit = (): void => {
     if (isEdit.value && props.template) {
         form._method = 'put';
-        form.post(`${base.value}/menu/templates/${props.template.id}`, {
-            preserveScroll: true,
-        });
+        form.post(
+            templatesUpdate.url({
+                restaurant: props.restaurant.subdomain,
+                template: props.template.id,
+            }),
+            {
+                preserveScroll: true,
+            },
+        );
     } else {
         form._method = 'post';
-        form.post(`${base.value}/menu/templates`, { preserveScroll: true });
+        form.post(templatesStore.url(props.restaurant.subdomain), {
+            preserveScroll: true,
+        });
     }
 };
 
@@ -373,7 +384,9 @@ const errorAt = (key: string): string | undefined => {
 
         <div class="flex items-center justify-end gap-2">
             <Button as-child variant="outline">
-                <Link :href="`${base}/menu/templates`">Cancel</Link>
+                <Link :href="templatesIndex.url(restaurant.subdomain)"
+                    >Cancel</Link
+                >
             </Button>
             <Button type="submit" :disabled="form.processing">{{
                 isEdit ? 'Save changes' : 'Create template'

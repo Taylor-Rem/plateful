@@ -19,8 +19,6 @@ class StripeConnectController extends Controller
      */
     public function start(Restaurant $restaurant): Response
     {
-        $this->authorize('manageStripe', $restaurant);
-
         if (! $restaurant->hasStripeAccount()) {
             $this->connect->createExpressAccount($restaurant);
         }
@@ -34,8 +32,6 @@ class StripeConnectController extends Controller
      */
     public function return(Restaurant $restaurant): RedirectResponse
     {
-        $this->authorize('manageStripe', $restaurant);
-
         if ($restaurant->hasStripeAccount()) {
             $account = $this->connect->retrieveAccount($restaurant->stripe_account_id);
             $this->connect->syncAccountStatus($restaurant, $account);
@@ -54,8 +50,6 @@ class StripeConnectController extends Controller
      */
     public function refresh(Restaurant $restaurant): Response
     {
-        $this->authorize('manageStripe', $restaurant);
-
         if (! $restaurant->hasStripeAccount()) {
             $this->connect->createExpressAccount($restaurant);
         }
@@ -68,8 +62,6 @@ class StripeConnectController extends Controller
      */
     public function dashboard(Restaurant $restaurant): Response
     {
-        $this->authorize('manageStripe', $restaurant);
-
         if (! $restaurant->hasStripeAccount()) {
             return back()->with('error', 'Connect Stripe before opening the dashboard.');
         }
@@ -81,8 +73,8 @@ class StripeConnectController extends Controller
     {
         return $this->connect->createAccountLink(
             $restaurant,
-            route('admin.restaurant.onboarding.stripe.return', ['restaurant' => $restaurant->subdomain]),
-            route('admin.restaurant.onboarding.stripe.refresh', ['restaurant' => $restaurant->subdomain]),
+            route('admin.restaurant.stripe.return', ['restaurant' => $restaurant->subdomain]),
+            route('admin.restaurant.stripe.refresh', ['restaurant' => $restaurant->subdomain]),
         );
     }
 }

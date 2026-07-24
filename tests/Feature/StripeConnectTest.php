@@ -120,7 +120,7 @@ it('creates a connected account and sends the owner to the onboarding link', fun
     // answers with a 409 + X-Inertia-Location so the client does a full visit.
     $this->actingAs($owner)
         ->withHeaders(['X-Inertia' => 'true'])
-        ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/connect")
+        ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/stripe/connect")
         ->assertStatus(409)
         ->assertHeader('X-Inertia-Location', 'https://connect.stripe.test/setup');
 
@@ -137,7 +137,7 @@ it('does not recreate the account when one already exists', function () {
 
     $this->actingAs($owner)
         ->withHeaders(['X-Inertia' => 'true'])
-        ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/connect")
+        ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/stripe/connect")
         ->assertStatus(409)
         ->assertHeader('X-Inertia-Location', 'https://connect.stripe.test/again');
 });
@@ -153,7 +153,7 @@ it('hands back a fresh onboarding link on refresh', function () {
     // refresh is reached via Stripe's full-page redirect (not an Inertia XHR),
     // so Inertia::location answers with a plain 302 to the fresh link.
     $this->actingAs($owner)
-        ->get(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/refresh")
+        ->get(STRIPE_ADMIN."/{$restaurant->subdomain}/stripe/refresh")
         ->assertRedirect('https://connect.stripe.test/refresh');
 });
 
@@ -163,7 +163,7 @@ it('blocks staff from starting Stripe onboarding', function () {
     $restaurant->members()->attach($staff->id, ['role' => RestaurantRole::Staff->value]);
 
     $this->actingAs($staff)
-        ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/connect")
+        ->post(STRIPE_ADMIN."/{$restaurant->subdomain}/stripe/connect")
         ->assertForbidden();
 });
 
@@ -185,7 +185,7 @@ it('syncs status from Stripe on return and lands back on onboarding', function (
         ]));
 
     $this->actingAs($owner)
-        ->get(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/return")
+        ->get(STRIPE_ADMIN."/{$restaurant->subdomain}/stripe/return")
         ->assertRedirect(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding");
 
     expect($restaurant->fresh()->isStripeReady())->toBeTrue();
@@ -201,7 +201,7 @@ it('redirects to the Express dashboard when an account exists', function () {
     $mock->shouldReceive('createDashboardLink')->once()->andReturn('https://dashboard.stripe.test/login');
 
     $this->actingAs($owner)
-        ->get(STRIPE_ADMIN."/{$restaurant->subdomain}/onboarding/stripe/dashboard")
+        ->get(STRIPE_ADMIN."/{$restaurant->subdomain}/stripe/dashboard")
         ->assertRedirect('https://dashboard.stripe.test/login');
 });
 

@@ -13,6 +13,12 @@ import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { dashboard } from '@/routes/admin/restaurant';
+import {
+    customDomain as onboardingCustomDomain,
+    preview as onboardingPreview,
+} from '@/routes/admin/restaurant/onboarding';
+import { show as posShow } from '@/routes/admin/restaurant/pos';
 import StepBasics from './Onboarding/StepBasics.vue';
 import StepHours from './Onboarding/StepHours.vue';
 import StepMenu from './Onboarding/StepMenu.vue';
@@ -122,7 +128,7 @@ const domainForm = useForm<{ pending_custom_domain: string }>({
     pending_custom_domain: props.onboarding.pendingCustomDomain ?? '',
 });
 function submitDomain() {
-    domainForm.post(`/${props.restaurant.subdomain}/onboarding/custom-domain`, {
+    domainForm.post(onboardingCustomDomain.url(props.restaurant.subdomain), {
         preserveScroll: true,
         onSuccess: () => {
             showDomain.value = false;
@@ -169,7 +175,7 @@ const copyUrl = async (): Promise<void> => {
                 <div class="flex items-center gap-4">
                     <a
                         v-if="!restaurant.isLive"
-                        :href="`/${restaurant.subdomain}/onboarding/preview`"
+                        :href="onboardingPreview.url(restaurant.subdomain)"
                         target="_blank"
                         class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
                         data-test="preview-site-link"
@@ -296,7 +302,7 @@ const copyUrl = async (): Promise<void> => {
                             </a>
                         </Button>
                         <Button variant="outline" as-child>
-                            <Link :href="`/${restaurant.subdomain}/dashboard`">
+                            <Link :href="dashboard.url(restaurant.subdomain)">
                                 Go to dashboard
                             </Link>
                         </Button>
@@ -520,7 +526,7 @@ const copyUrl = async (): Promise<void> => {
                             Push online orders straight into your Square or
                             Clover register.
                             <a
-                                :href="`/${restaurant.subdomain}/settings/pos`"
+                                :href="posShow.url(restaurant.subdomain)"
                                 class="font-medium text-primary underline hover:opacity-80"
                                 >Connect your POS</a
                             >.

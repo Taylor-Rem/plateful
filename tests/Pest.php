@@ -27,4 +27,4 @@ pest()->extend(TestCase::class)
         Http::preventStrayRequests();
     })
     ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature', 'Browser');

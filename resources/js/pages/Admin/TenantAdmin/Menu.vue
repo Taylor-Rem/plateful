@@ -9,6 +9,8 @@ import {
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
+import EmptyState from '@/components/admin/EmptyState.vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +22,14 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
+import {
+    destroy as categoriesDestroy,
+    reorder as categoriesReorder,
+    store as categoriesStore,
+    update as categoriesUpdate,
+} from '@/routes/admin/restaurant/categories';
+import { index as templatesIndex } from '@/routes/admin/restaurant/templates';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -28,8 +37,6 @@ const props = defineProps<{
 }>();
 
 const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
-
-const base = computed(() => `/${props.restaurant.subdomain}`);
 
 const storefrontUrl = computed(() => {
     // Storefront lives on the tenant host. Subdomain-first; the link works for
@@ -50,7 +57,7 @@ const refreshLocal = (): void => {
 const onCategoryDragEnd = (): void => {
     const ids = localCategories.value.map((c) => c.id);
     router.post(
-        `${base.value}/menu/categories/reorder`,
+        categoriesReorder.url(props.restaurant.subdomain),
         { ids },
         { preserveScroll: true, preserveState: true, onSuccess: refreshLocal },
     );
@@ -83,7 +90,10 @@ const openEditCategory = (category: App.Data.MenuCategoryData): void => {
 const submitCategory = (): void => {
     if (editingCategory.value) {
         categoryForm.put(
-            `${base.value}/menu/categories/${editingCategory.value.id}`,
+            categoriesUpdate.url({
+                restaurant: props.restaurant.subdomain,
+                category: editingCategory.value.id,
+            }),
             {
                 preserveScroll: true,
                 onSuccess: () => {
@@ -93,7 +103,7 @@ const submitCategory = (): void => {
             },
         );
     } else {
-        categoryForm.post(`${base.value}/menu/categories`, {
+        categoryForm.post(categoriesStore.url(props.restaurant.subdomain), {
             preserveScroll: true,
             onSuccess: () => {
                 showCategoryModal.value = false;
@@ -113,20 +123,27 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
         return;
     }
 
-    router.delete(`${base.value}/menu/categories/${category.id}`, {
-        preserveScroll: true,
-        onSuccess: refreshLocal,
-    });
+    router.delete(
+        categoriesDestroy.url({
+            restaurant: props.restaurant.subdomain,
+            category: category.id,
+        }),
+        {
+            preserveScroll: true,
+            onSuccess: refreshLocal,
+        },
+    );
 };
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
-        <Head :title="`${restaurant.name} Menu`" />
+    <div>
+        <Head title="Menu" />
 
-        <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-semibold text-foreground">Menu</h2>
-            <div v-if="isAdmin" class="flex items-center gap-2">
+        <PageHeader title="Menu">
+            <template v-if="isAdmin" #actions>
                 <Button as-child variant="default">
                     <a
                         :href="storefrontUrl"
@@ -141,10 +158,12 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
                     <Plus class="size-4" /> Add category
                 </Button>
                 <Button as-child variant="outline">
-                    <Link :href="`${base}/menu/templates`">Templates</Link>
+                    <Link :href="templatesIndex.url(restaurant.subdomain)"
+                        >Templates</Link
+                    >
                 </Button>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <p class="mt-2 text-sm text-muted-foreground">
             Menu item editing now lives on your storefront, so you can see
@@ -152,24 +171,22 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
             managed here.
         </p>
 
-        <div
+        <EmptyState
             v-if="localCategories.length === 0"
-            class="mt-12 rounded-lg border border-dashed border-border bg-card p-10 text-center"
+            class="mt-12"
+            title="No categories yet"
+            :description="
+                isAdmin
+                    ? 'Create your first category to start building the menu.'
+                    : 'No menu items have been added yet.'
+            "
         >
-            <h3 class="text-base font-medium text-foreground">
-                No categories yet
-            </h3>
-            <p class="mt-1 text-sm text-muted-foreground">
-                {{
-                    isAdmin
-                        ? 'Create your first category to start building the menu.'
-                        : 'No menu items have been added yet.'
-                }}
-            </p>
-            <Button v-if="isAdmin" class="mt-4" @click="openCreateCategory">
-                <Plus class="size-4" /> Add category
-            </Button>
-        </div>
+            <template v-if="isAdmin" #actions>
+                <Button @click="openCreateCategory">
+                    <Plus class="size-4" /> Add category
+                </Button>
+            </template>
+        </EmptyState>
 
         <VueDraggable
             v-else
@@ -327,5 +344,5 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
                 </form>
             </DialogContent>
         </Dialog>
-    </TenantAdminLayout>
+    </div>
 </template>

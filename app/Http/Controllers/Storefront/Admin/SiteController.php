@@ -20,7 +20,7 @@ class SiteController extends Controller
         RestaurantImageService $images,
     ): RedirectResponse {
         $restaurant = $tenant->get();
-        $this->authorize('updateSite', $restaurant);
+        $this->authorize('manage', $restaurant);
 
         $validated = $request->validated();
 
@@ -52,7 +52,7 @@ class SiteController extends Controller
         RestaurantImageService $images,
     ): RedirectResponse {
         $restaurant = $tenant->get();
-        $this->authorize('updateSite', $restaurant);
+        $this->authorize('manage', $restaurant);
 
         $validated = $request->validated();
 
@@ -81,7 +81,7 @@ class SiteController extends Controller
         CurrentTenant $tenant,
     ): RedirectResponse {
         $restaurant = $tenant->get();
-        $this->authorize('updateSite', $restaurant);
+        $this->authorize('manage', $restaurant);
 
         $raw = $request->validated()['social_links'] ?? [];
 

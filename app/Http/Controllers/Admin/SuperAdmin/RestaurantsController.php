@@ -10,15 +10,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SuperAdmin\StoreRestaurantRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantFeeRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantRolesRequest;
-use App\Mail\AdminInvitationMail;
 use App\Models\AdminInvitation;
 use App\Models\PlatformRoleHolder;
 use App\Models\Restaurant;
 use App\Models\User;
+use App\Services\AdminInvitationService;
 use App\Services\RevenueSplitResolver;
 use App\Support\SalesTaxRates;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -36,8 +35,23 @@ class RestaurantsController extends Controller
             ])
             ->all();
 
+        // Soft-deleted restaurants drop off the main list but surface in their own
+        // section so a super admin can restore or permanently delete them.
+        $deletedRestaurants = Restaurant::onlyTrashed()
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn (Restaurant $r) => [
+                'id' => $r->id,
+                'name' => $r->name,
+                'subdomain' => $r->subdomain,
+                'deletedAt' => $r->deleted_at?->toIso8601String(),
+                'ordersCount' => (int) $r->orders()->count(),
+            ])
+            ->all();
+
         return Inertia::render('Admin/SuperAdmin/Restaurants/Index', [
             'restaurants' => $restaurants,
+            'deletedRestaurants' => $deletedRestaurants,
         ]);
     }
 
@@ -50,7 +64,7 @@ class RestaurantsController extends Controller
         ]);
     }
 
-    public function store(StoreRestaurantRequest $request): RedirectResponse
+    public function store(StoreRestaurantRequest $request, AdminInvitationService $invitations): RedirectResponse
     {
         $validated = $request->validated();
 
@@ -80,16 +94,13 @@ class RestaurantsController extends Controller
         ]);
 
         if (! empty($validated['owner_email'])) {
-            $invitation = AdminInvitation::create([
-                'email' => $validated['owner_email'],
-                'restaurant_id' => $restaurant->id,
-                'as_super_admin' => false,
-                'token' => AdminInvitation::generateToken(),
-                'invited_by_user_id' => $request->user()->id,
-                'expires_at' => now()->addDays(7),
-            ]);
-
-            Mail::to($invitation->email)->queue(new AdminInvitationMail($invitation));
+            $invitations->send(
+                email: $validated['owner_email'],
+                restaurant: $restaurant,
+                role: null,
+                asSuperAdmin: false,
+                invitedBy: $request->user(),
+            );
         }
 
         return redirect()
@@ -201,23 +212,5 @@ class RestaurantsController extends Controller
         return redirect()
             ->route('admin.super.restaurants.show', $restaurant)
             ->with('success', "Updated {$restaurant->name}'s fee rate to {$restaurant->application_fee_percent}%.");
-    }
-
-    public function deactivate(Restaurant $restaurant): RedirectResponse
-    {
-        $restaurant->update(['is_active' => false]);
-
-        return redirect()
-            ->route('admin.super.restaurants.show', $restaurant)
-            ->with('success', "{$restaurant->name} has been deactivated.");
-    }
-
-    public function activate(Restaurant $restaurant): RedirectResponse
-    {
-        $restaurant->update(['is_active' => true]);
-
-        return redirect()
-            ->route('admin.super.restaurants.show', $restaurant)
-            ->with('success', "{$restaurant->name} has been reactivated.");
     }
 }

@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import {
+    index as restaurantsIndex,
+    store as restaurantsStore,
+} from '@/routes/admin/super/restaurants';
 
 const props = defineProps<{
     timezones: string[];
@@ -60,33 +65,17 @@ const subdomainPreview = computed(() => {
 });
 
 function submit() {
-    form.post('/super/restaurants');
+    form.post(restaurantsStore.url());
 }
+
+defineOptions({ layout: SuperAdminLayout });
 </script>
 
 <template>
-    <div class="min-h-screen bg-background text-foreground">
+    <div>
         <Head title="Create restaurant" />
-        <header class="border-b border-border bg-card">
-            <div
-                class="mx-auto flex max-w-3xl items-center justify-between px-6 py-4"
-            >
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/super/restaurants"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        ←
-                    </Link>
-                    <h1 class="text-lg font-semibold text-foreground">
-                        Create restaurant
-                    </h1>
-                </div>
-                <AppearanceTabs />
-            </div>
-        </header>
-
-        <main class="mx-auto max-w-3xl px-6 py-8">
+        <div class="mx-auto max-w-3xl space-y-6">
+            <PageHeader title="Create restaurant" />
             <form @submit.prevent="submit" class="space-y-8">
                 <section class="rounded-lg border border-border bg-card p-6">
                     <h2 class="text-base font-semibold text-foreground">
@@ -316,7 +305,7 @@ function submit() {
                 </section>
 
                 <div class="flex items-center justify-end gap-3">
-                    <Link href="/super/restaurants">
+                    <Link :href="restaurantsIndex.url()">
                         <Button type="button" variant="outline">Cancel</Button>
                     </Link>
                     <Button type="submit" :disabled="form.processing">
@@ -326,6 +315,6 @@ function submit() {
                     </Button>
                 </div>
             </form>
-        </main>
+        </div>
     </div>
 </template>

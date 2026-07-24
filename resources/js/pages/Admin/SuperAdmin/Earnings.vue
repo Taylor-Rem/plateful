@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
+import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
+import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import { index as earningsIndex } from '@/routes/admin/super/earnings';
+import { update as platformRolesUpdate } from '@/routes/admin/super/platformRoles';
 
 type Person = { id: number; name: string } | null;
 type Earner = {
@@ -47,37 +50,21 @@ const platformForm = useForm({
 });
 
 function savePlatformRoles() {
-    platformForm.put('/super/platform-roles', { preserveScroll: true });
+    platformForm.put(platformRolesUpdate.url(), { preserveScroll: true });
 }
+
+defineOptions({ layout: SuperAdminLayout });
 </script>
 
 <template>
-    <div class="min-h-screen bg-background text-foreground">
+    <div>
         <Head title="Earnings" />
-        <header class="border-b border-border bg-card">
-            <div
-                class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4"
-            >
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/super/restaurants"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        ←
-                    </Link>
-                    <h1 class="text-lg font-semibold text-foreground">
-                        Earnings
-                    </h1>
-                </div>
-                <AppearanceTabs />
-            </div>
-        </header>
-
-        <main class="mx-auto max-w-4xl space-y-6 px-6 py-8">
+        <div class="space-y-6">
+            <PageHeader title="Earnings" />
             <!-- Month navigation -->
             <div class="flex items-center justify-between">
                 <Link
-                    :href="`/super/earnings?month=${prevMonth}`"
+                    :href="earningsIndex.url({ query: { month: prevMonth } })"
                     class="text-sm text-primary hover:underline"
                 >
                     ← {{ prevMonth }}
@@ -86,7 +73,7 @@ function savePlatformRoles() {
                     {{ monthLabel }}
                 </h2>
                 <Link
-                    :href="`/super/earnings?month=${nextMonth}`"
+                    :href="earningsIndex.url({ query: { month: nextMonth } })"
                     class="text-sm text-primary hover:underline"
                 >
                     {{ nextMonth }} →
@@ -282,6 +269,6 @@ function savePlatformRoles() {
                     </div>
                 </form>
             </section>
-        </main>
+        </div>
     </div>
 </template>

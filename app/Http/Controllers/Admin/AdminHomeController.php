@@ -20,7 +20,6 @@ class AdminHomeController extends Controller
         if ($user->isSuperAdmin()) {
             return Inertia::render('Admin/Home', [
                 'restaurants' => $accessible->map(fn ($r) => RestaurantData::fromModel($r))->all(),
-                'isSuperAdmin' => true,
             ]);
         }
 
@@ -46,7 +45,6 @@ class AdminHomeController extends Controller
 
         return Inertia::render('Admin/Home', [
             'restaurants' => $accessible->map(fn ($r) => RestaurantData::fromModel($r))->all(),
-            'isSuperAdmin' => false,
         ]);
     }
 }

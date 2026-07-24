@@ -38,6 +38,10 @@ jobs:
       - name: Install Node Dependencies
         run: npm i
 
+      # The tests/Browser suite (Pest v4 + Playwright) drives real Chromium.
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 

@@ -36,8 +36,6 @@ class SquareConnectController extends Controller
      */
     public function connect(Request $request, Restaurant $restaurant): Response
     {
-        $this->authorize('managePos', $restaurant);
-
         $state = Str::random(40);
 
         $request->session()->put(self::SESSION_KEY, [
@@ -65,7 +63,7 @@ class SquareConnectController extends Controller
                 ->with('error', 'That Square connection link expired or was invalid. Please try again.');
         }
 
-        $this->authorize('managePos', $restaurant);
+        $this->authorize('manage', $restaurant);
 
         $settings = fn (): RedirectResponse => redirect()->route('admin.restaurant.pos.show', [
             'restaurant' => $restaurant->subdomain,
@@ -113,8 +111,6 @@ class SquareConnectController extends Controller
      */
     public function disconnect(Restaurant $restaurant): RedirectResponse
     {
-        $this->authorize('managePos', $restaurant);
-
         $integration = PosIntegration::withoutTenantScope()
             ->where('restaurant_id', $restaurant->id)
             ->where('provider', PosProviderName::Square->value)

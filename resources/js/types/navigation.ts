@@ -11,4 +11,11 @@ export type NavItem = {
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon;
     isActive?: boolean;
+    /** Render an amber attention dot after the label (e.g. unfinished setup). */
+    attention?: boolean;
+};
+
+export type NavGroup = {
+    label?: string;
+    items: NavItem[];
 };

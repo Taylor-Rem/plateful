@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import PageHeader from '@/components/admin/PageHeader.vue';
+import StatCard from '@/components/admin/StatCard.vue';
+import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
 import { formatCents } from '@/lib/orderStatus';
-import TenantAdminLayout from '@/pages/Admin/TenantAdminLayout.vue';
+import { index as payoutsIndex } from '@/routes/admin/restaurant/payouts';
 
 type Payout = {
     id: string;
@@ -37,43 +40,38 @@ function formatDate(iso: string | null): string {
 const lastPayoutId = props.payouts.length
     ? props.payouts[props.payouts.length - 1].id
     : null;
+
+defineOptions({ layout: TenantAdminLayout });
 </script>
 
 <template>
-    <TenantAdminLayout :restaurant="restaurant">
-        <Head :title="`Payouts — ${restaurant.name}`" />
+    <div>
+        <Head title="Payouts" />
 
-        <main class="mx-auto max-w-5xl space-y-6 px-6 py-8">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-xl font-semibold">Payouts</h1>
-                    <p class="mt-1 text-sm text-muted-foreground">
-                        Money Stripe has sent to your bank, and the Plateful
-                        fees you've paid this year.
-                    </p>
-                </div>
-                <a
-                    v-if="stripeConnected"
-                    :href="dashboardPath"
-                    class="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
-                >
-                    Update bank info
-                </a>
-            </div>
+        <div class="space-y-6">
+            <PageHeader
+                title="Payouts"
+                description="Money Stripe has sent to your bank, and the Plateful fees you've paid this year."
+            >
+                <template #actions>
+                    <a
+                        v-if="stripeConnected"
+                        :href="dashboardPath"
+                        class="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
+                    >
+                        Update bank info
+                    </a>
+                </template>
+            </PageHeader>
 
-            <section class="rounded-lg border border-border bg-card p-6">
-                <p
-                    class="text-xs tracking-wide text-muted-foreground uppercase"
-                >
-                    Plateful fees paid in {{ currentYear }}
-                </p>
-                <p class="mt-1 text-2xl font-semibold" data-test="ytd-fees">
-                    {{ formatCents(ytdFeesCents) }}
-                </p>
-                <p class="mt-1 text-xs text-muted-foreground">
-                    4% per order on the food subtotal. That's it.
-                </p>
-            </section>
+            <StatCard
+                :label="`Plateful fees paid in ${currentYear}`"
+                hint="4% per order on the food subtotal. That's it."
+            >
+                <span data-test="ytd-fees">{{
+                    formatCents(ytdFeesCents)
+                }}</span>
+            </StatCard>
 
             <section
                 v-if="!stripeConnected"
@@ -138,13 +136,19 @@ const lastPayoutId = props.payouts.length
                     class="border-t border-border px-6 py-3 text-center"
                 >
                     <Link
-                        :href="`/${restaurant.subdomain}/payouts?starting_after=${lastPayoutId}`"
+                        :href="
+                            payoutsIndex.url(restaurant.subdomain, {
+                                query: {
+                                    starting_after: lastPayoutId ?? undefined,
+                                },
+                            })
+                        "
                         class="text-sm font-medium text-primary hover:opacity-80"
                     >
                         Load older payouts
                     </Link>
                 </footer>
             </section>
-        </main>
-    </TenantAdminLayout>
+        </div>
+    </div>
 </template>

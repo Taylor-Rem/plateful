@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { Button } from '@/components/ui/button';
+import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import { dashboard } from '@/routes/admin/restaurant';
+import { edit as settingsEdit } from '@/routes/admin/restaurant/settings';
+import { index as adminsIndex } from '@/routes/admin/super/admins';
+import {
+    activate as restaurantsActivate,
+    deactivate as restaurantsDeactivate,
+    destroy as restaurantsDestroy,
+    updateFee as restaurantsUpdateFee,
+    updateRoles as restaurantsUpdateRoles,
+} from '@/routes/admin/super/restaurants';
 
 type Person = { id: number; name: string } | null;
 
@@ -33,7 +43,7 @@ const feeForm = useForm({
 });
 
 function saveFee() {
-    feeForm.put(`/super/restaurants/${props.restaurant.subdomain}/fee`, {
+    feeForm.put(restaurantsUpdateFee.url(props.restaurant.subdomain), {
         preserveScroll: true,
     });
 }
@@ -49,7 +59,7 @@ function saveRoles() {
             recruiter_id: data.recruiter_id || null,
             overseer_id: data.overseer_id || null,
         }))
-        .put(`/super/restaurants/${props.restaurant.subdomain}/roles`, {
+        .put(restaurantsUpdateRoles.url(props.restaurant.subdomain), {
             preserveScroll: true,
         });
 }
@@ -69,7 +79,7 @@ function formatDate(iso: string | null | undefined): string {
 function deactivate() {
     processing.value = true;
     router.post(
-        `/super/restaurants/${props.restaurant.subdomain}/deactivate`,
+        restaurantsDeactivate.url(props.restaurant.subdomain),
         {},
         {
             preserveScroll: true,
@@ -84,7 +94,7 @@ function deactivate() {
 function activate() {
     processing.value = true;
     router.post(
-        `/super/restaurants/${props.restaurant.subdomain}/activate`,
+        restaurantsActivate.url(props.restaurant.subdomain),
         {},
         {
             preserveScroll: true,
@@ -94,51 +104,43 @@ function activate() {
         },
     );
 }
+
+const confirmingDelete = ref(false);
+
+function softDelete() {
+    processing.value = true;
+    router.delete(restaurantsDestroy.url(props.restaurant.subdomain), {
+        onFinish: () => {
+            processing.value = false;
+            confirmingDelete.value = false;
+        },
+    });
+}
+
+defineOptions({ layout: SuperAdminLayout });
 </script>
 
 <template>
-    <div class="min-h-screen bg-background text-foreground">
+    <div>
         <Head :title="restaurant.name" />
-        <header class="border-b border-border bg-card">
-            <div
-                class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4"
-            >
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/super/restaurants"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        ←
-                    </Link>
-                    <h1 class="text-lg font-semibold text-foreground">
-                        {{ restaurant.name }}
-                    </h1>
-                    <span
-                        v-if="restaurant.isActive"
-                        class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800"
-                    >
-                        Active
-                    </span>
-                    <span
-                        v-else
-                        class="inline-flex items-center rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700"
-                    >
-                        Deactivated
-                    </span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <Link
-                        href="/super/earnings"
-                        class="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Earnings
-                    </Link>
-                    <AppearanceTabs />
-                </div>
+        <div class="space-y-6">
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-2xl font-semibold text-foreground">
+                    {{ restaurant.name }}
+                </h1>
+                <span
+                    v-if="restaurant.isActive"
+                    class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800"
+                >
+                    Active
+                </span>
+                <span
+                    v-else
+                    class="inline-flex items-center rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700"
+                >
+                    Deactivated
+                </span>
             </div>
-        </header>
-
-        <main class="mx-auto max-w-4xl space-y-6 px-6 py-8">
             <section class="rounded-lg border border-border bg-card p-6">
                 <h2 class="text-base font-semibold text-foreground">
                     Quick info
@@ -166,13 +168,13 @@ function activate() {
 
                 <div class="mt-5 flex flex-wrap gap-3">
                     <a
-                        :href="`/${restaurant.subdomain}/settings`"
+                        :href="settingsEdit.url(restaurant.subdomain)"
                         class="text-sm text-primary hover:underline"
                     >
                         Manage settings &amp; branding →
                     </a>
                     <a
-                        :href="`/${restaurant.subdomain}/dashboard`"
+                        :href="dashboard.url(restaurant.subdomain)"
                         class="text-sm text-primary hover:underline"
                     >
                         Open admin dashboard →
@@ -356,7 +358,7 @@ function activate() {
                         Admins
                     </h2>
                     <Link
-                        href="/super/admins"
+                        :href="adminsIndex.url()"
                         class="text-sm text-primary hover:underline"
                     >
                         Invite admin →
@@ -462,7 +464,41 @@ function activate() {
                         }}
                     </Button>
                 </div>
+
+                <div class="mt-6 space-y-3 border-t border-border pt-6 text-sm">
+                    <p class="font-medium text-foreground">Delete restaurant</p>
+                    <p class="text-muted-foreground">
+                        Removes {{ restaurant.name }} from the roster and takes
+                        its storefront offline. Nothing is erased — you can
+                        restore it, or permanently delete it, from the deleted
+                        list on the Restaurants page.
+                    </p>
+                    <div v-if="!confirmingDelete">
+                        <Button
+                            variant="destructive"
+                            @click="confirmingDelete = true"
+                        >
+                            Delete restaurant
+                        </Button>
+                    </div>
+                    <div v-else class="flex items-center gap-3">
+                        <Button
+                            variant="destructive"
+                            :disabled="processing"
+                            @click="softDelete"
+                        >
+                            {{ processing ? 'Deleting…' : 'Yes, delete' }}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            :disabled="processing"
+                            @click="confirmingDelete = false"
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                </div>
             </section>
-        </main>
+        </div>
     </div>
 </template>
