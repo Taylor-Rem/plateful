@@ -13,7 +13,7 @@ const emit = defineEmits<{ advance: [] }>();
 
 const stripeForm = useForm({});
 const connectStripe = (): void => {
-    stripeForm.post(`/${props.restaurant.subdomain}/onboarding/stripe/connect`);
+    stripeForm.post(`/${props.restaurant.subdomain}/stripe/connect`);
 };
 </script>
 
@@ -34,7 +34,7 @@ const connectStripe = (): void => {
             </div>
             <div class="flex items-center justify-between">
                 <a
-                    :href="`/${restaurant.subdomain}/onboarding/stripe/dashboard`"
+                    :href="`/${restaurant.subdomain}/stripe/dashboard`"
                     class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
                 >
                     Manage on Stripe

@@ -58,7 +58,7 @@ it('accepts menu photos, stores them as webp, and queues extraction', function (
     [$owner, $restaurant] = menuImportOwnerAndRestaurant();
 
     $this->actingAs($owner)
-        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/onboarding/menu-import", [
+        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import", [
             'files' => [
                 UploadedFile::fake()->image('menu-page-1.jpg', 1200, 1600),
                 UploadedFile::fake()->image('menu-page-2.png', 1200, 1600),
@@ -84,7 +84,7 @@ it('rejects an import when the menu already has items', function () {
         ->items()->create(['restaurant_id' => $restaurant->id, 'name' => 'Plain', 'slug' => 'plain', 'price_cents' => 1000, 'is_available' => true, 'position' => 0]);
 
     $this->actingAs($owner)
-        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/onboarding/menu-import", [
+        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import", [
             'files' => [UploadedFile::fake()->image('menu.jpg')],
         ])
         ->assertSessionHasErrors('files');
@@ -99,7 +99,7 @@ it('rejects a new import while one is in flight', function () {
     MenuImport::factory()->processing()->create(['restaurant_id' => $restaurant->id]);
 
     $this->actingAs($owner)
-        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/onboarding/menu-import", [
+        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import", [
             'files' => [UploadedFile::fake()->image('menu.jpg')],
         ])
         ->assertSessionHasErrors('files');
@@ -112,7 +112,7 @@ it('replaces a previous failed import when retrying', function () {
     $failed = MenuImport::factory()->failed()->create(['restaurant_id' => $restaurant->id]);
 
     $this->actingAs($owner)
-        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/onboarding/menu-import", [
+        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import", [
             'files' => [UploadedFile::fake()->image('menu.jpg')],
         ])
         ->assertSessionHasNoErrors();
@@ -127,7 +127,7 @@ it('blocks staff from starting an import', function () {
     $restaurant->members()->attach($staff->id, ['role' => RestaurantRole::Staff->value]);
 
     $this->actingAs($staff)
-        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/onboarding/menu-import", [
+        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import", [
             'files' => [UploadedFile::fake()->image('menu.jpg')],
         ])
         ->assertForbidden();

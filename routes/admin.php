@@ -33,7 +33,11 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
         Route::get('/pos/clover/callback', [TenantAdmin\CloverConnectController::class, 'callback'])
             ->name('admin.pos.clover.callback');
 
-        Route::prefix('{restaurant}')->middleware('admin.restaurant')->name('admin.restaurant.')->group(function () {
+        // The :subdomain field keeps Wayfinder's generated helpers (and
+        // route() model interpolation) building subdomain URLs; runtime
+        // resolution already goes through the explicit Route::bind in
+        // AppServiceProvider either way.
+        Route::prefix('{restaurant:subdomain}')->middleware('admin.restaurant')->name('admin.restaurant.')->group(function () {
             // Routes available to any restaurant member (admin OR staff)
             Route::get('/dashboard', TenantAdmin\DashboardController::class)->name('dashboard');
             Route::get('/menu', [TenantAdmin\MenuController::class, 'index'])->name('menu.index');
@@ -53,18 +57,22 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::put('/onboarding/basics', [TenantAdmin\OnboardingController::class, 'updateBasics'])->name('onboarding.basics');
                 Route::put('/onboarding/refund-policy', [TenantAdmin\OnboardingController::class, 'updateRefundPolicy'])->name('onboarding.refundPolicy');
                 Route::post('/onboarding/menu-preset', [TenantAdmin\OnboardingController::class, 'applyMenuPreset'])->name('onboarding.menuPreset');
-                Route::post('/onboarding/menu-import', [TenantAdmin\MenuImportController::class, 'store'])->name('menuImport.store');
-                Route::get('/menu-import/{menuImport}/review', [TenantAdmin\MenuImportController::class, 'review'])->name('menuImport.review');
-                Route::post('/menu-import/{menuImport}/confirm', [TenantAdmin\MenuImportController::class, 'confirm'])->name('menuImport.confirm');
-                Route::post('/menu-import/{menuImport}/discard', [TenantAdmin\MenuImportController::class, 'discard'])->name('menuImport.discard');
                 Route::get('/onboarding/preview', [TenantAdmin\OnboardingController::class, 'preview'])->name('onboarding.preview');
                 Route::post('/onboarding/custom-domain', [TenantAdmin\OnboardingController::class, 'requestCustomDomain'])->name('onboarding.customDomain');
                 Route::post('/onboarding/go-live', [TenantAdmin\OnboardingController::class, 'goLive'])->name('onboarding.goLive');
 
-                Route::post('/onboarding/stripe/connect', [TenantAdmin\StripeConnectController::class, 'start'])->name('onboarding.stripe.connect');
-                Route::get('/onboarding/stripe/return', [TenantAdmin\StripeConnectController::class, 'return'])->name('onboarding.stripe.return');
-                Route::get('/onboarding/stripe/refresh', [TenantAdmin\StripeConnectController::class, 'refresh'])->name('onboarding.stripe.refresh');
-                Route::get('/onboarding/stripe/dashboard', [TenantAdmin\StripeConnectController::class, 'dashboard'])->name('onboarding.stripe.dashboard');
+                Route::post('/menu-import', [TenantAdmin\MenuImportController::class, 'store'])->name('menuImport.store');
+                Route::get('/menu-import/{menuImport}/review', [TenantAdmin\MenuImportController::class, 'review'])->name('menuImport.review');
+                Route::post('/menu-import/{menuImport}/confirm', [TenantAdmin\MenuImportController::class, 'confirm'])->name('menuImport.confirm');
+                Route::post('/menu-import/{menuImport}/discard', [TenantAdmin\MenuImportController::class, 'discard'])->name('menuImport.discard');
+
+                // Stripe Connect account management. Started during onboarding
+                // but used for the life of the account (Express dashboard link,
+                // re-onboarding refresh), so it lives outside /onboarding.
+                Route::post('/stripe/connect', [TenantAdmin\StripeConnectController::class, 'start'])->name('stripe.connect');
+                Route::get('/stripe/return', [TenantAdmin\StripeConnectController::class, 'return'])->name('stripe.return');
+                Route::get('/stripe/refresh', [TenantAdmin\StripeConnectController::class, 'refresh'])->name('stripe.refresh');
+                Route::get('/stripe/dashboard', [TenantAdmin\StripeConnectController::class, 'dashboard'])->name('stripe.dashboard');
 
                 Route::get('/payouts', [TenantAdmin\PayoutsController::class, 'index'])->name('payouts.index');
 

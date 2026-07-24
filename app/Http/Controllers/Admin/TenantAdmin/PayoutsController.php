@@ -58,7 +58,7 @@ class PayoutsController extends Controller
             'ytdFeesCents' => $this->ytdPlatefulFeesCents($restaurant),
             'currentYear' => (int) CarbonImmutable::now()->year,
             'stripeConnected' => $restaurant->isStripeReady(),
-            'dashboardPath' => "/{$restaurant->subdomain}/onboarding/stripe/dashboard",
+            'dashboardPath' => "/{$restaurant->subdomain}/stripe/dashboard",
         ]);
     }
 

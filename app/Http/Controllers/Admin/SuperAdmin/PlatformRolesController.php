@@ -24,7 +24,7 @@ class PlatformRolesController extends Controller
         PlatformRoleHolder::assign(RevenueRole::Operator, User::findOrFail($validated['operator_id']));
 
         return redirect()
-            ->route('admin.super.earnings')
+            ->route('admin.super.earnings.index')
             ->with('success', 'Platform roles updated.');
     }
 }

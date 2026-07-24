@@ -81,8 +81,8 @@ class StripeConnectController extends Controller
     {
         return $this->connect->createAccountLink(
             $restaurant,
-            route('admin.restaurant.onboarding.stripe.return', ['restaurant' => $restaurant->subdomain]),
-            route('admin.restaurant.onboarding.stripe.refresh', ['restaurant' => $restaurant->subdomain]),
+            route('admin.restaurant.stripe.return', ['restaurant' => $restaurant->subdomain]),
+            route('admin.restaurant.stripe.refresh', ['restaurant' => $restaurant->subdomain]),
         );
     }
 }

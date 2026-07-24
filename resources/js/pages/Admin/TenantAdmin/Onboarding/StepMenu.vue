@@ -56,7 +56,7 @@ const removeFile = (index: number): void => {
 };
 
 const startImport = (): void => {
-    uploadForm.post(`/${props.restaurant.subdomain}/onboarding/menu-import`, {
+    uploadForm.post(`/${props.restaurant.subdomain}/menu-import`, {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => uploadForm.reset(),
