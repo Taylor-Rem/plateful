@@ -8,6 +8,7 @@ use App\Data\RestaurantData;
 use App\Enums\RevenueRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SuperAdmin\StoreRestaurantRequest;
+use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantDomainRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantFeeRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantRolesRequest;
 use App\Models\AdminInvitation;
@@ -130,6 +131,7 @@ class RestaurantsController extends Controller
             'pendingInvitations' => $pendingInvitations,
             'revenueRoles' => $this->revenueRolesFor($restaurant),
             'assignableUsers' => $this->assignableUsers($restaurant),
+            'primaryDomain' => config('platform.primary_domain'),
         ]);
     }
 
@@ -194,6 +196,26 @@ class RestaurantsController extends Controller
         return redirect()
             ->route('admin.super.restaurants.show', $restaurant)
             ->with('success', 'Revenue roles updated.');
+    }
+
+    /**
+     * Rename a restaurant and change the domain it answers on: its platform
+     * subdomain and/or an optional bring-your-own custom domain. Both are unique
+     * tenant keys, so a change instantly moves where the storefront resolves —
+     * any previously shared links to the old host stop working.
+     */
+    public function updateDomain(UpdateRestaurantDomainRequest $request, Restaurant $restaurant): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $restaurant->name = $validated['name'];
+        $restaurant->subdomain = $validated['subdomain'];
+        $restaurant->custom_domain = $validated['custom_domain'] ?? null;
+        $restaurant->save();
+
+        return redirect()
+            ->route('admin.super.restaurants.show', $restaurant)
+            ->with('success', "Updated {$restaurant->name}'s domain.");
     }
 
     /**

@@ -10,6 +10,7 @@ import {
     activate as restaurantsActivate,
     deactivate as restaurantsDeactivate,
     destroy as restaurantsDestroy,
+    updateDomain as restaurantsUpdateDomain,
     updateFee as restaurantsUpdateFee,
     updateRoles as restaurantsUpdateRoles,
 } from '@/routes/admin/super/restaurants';
@@ -33,10 +34,28 @@ const props = defineProps<{
         };
     };
     assignableUsers: { id: number; name: string; email: string }[];
+    primaryDomain: string;
 }>();
 
 const confirming = ref(false);
 const processing = ref(false);
+
+const domainForm = useForm({
+    name: props.restaurant.name,
+    subdomain: props.restaurant.subdomain,
+    custom_domain: props.restaurant.customDomain ?? '',
+});
+
+function saveDomain() {
+    domainForm
+        .transform((data) => ({
+            ...data,
+            custom_domain: data.custom_domain.trim() || null,
+        }))
+        .put(restaurantsUpdateDomain.url(props.restaurant.subdomain), {
+            preserveScroll: true,
+        });
+}
 
 const feeForm = useForm({
     application_fee_percent: props.restaurant.applicationFeePercent,
@@ -180,6 +199,117 @@ defineOptions({ layout: SuperAdminLayout });
                         Open admin dashboard →
                     </a>
                 </div>
+            </section>
+
+            <section class="rounded-lg border border-border bg-card p-6">
+                <h2 class="text-base font-semibold text-foreground">
+                    Name &amp; domain
+                </h2>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    Change the restaurant's display name and the address its
+                    storefront answers on. Changing the subdomain or custom
+                    domain moves the storefront immediately — any links, QR
+                    codes, or bookmarks pointing at the old address will stop
+                    working.
+                </p>
+                <form
+                    class="mt-4 grid max-w-xl gap-4"
+                    @submit.prevent="saveDomain"
+                >
+                    <div>
+                        <label
+                            for="restaurant_name"
+                            class="block text-xs font-medium text-muted-foreground"
+                        >
+                            Name
+                        </label>
+                        <input
+                            id="restaurant_name"
+                            v-model="domainForm.name"
+                            type="text"
+                            class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        />
+                        <p
+                            v-if="domainForm.errors.name"
+                            class="mt-1 text-sm text-destructive"
+                        >
+                            {{ domainForm.errors.name }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label
+                            for="restaurant_subdomain"
+                            class="block text-xs font-medium text-muted-foreground"
+                        >
+                            Subdomain
+                        </label>
+                        <div class="mt-1 flex items-center gap-2">
+                            <input
+                                id="restaurant_subdomain"
+                                v-model="domainForm.subdomain"
+                                type="text"
+                                autocomplete="off"
+                                class="w-48 rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground"
+                            />
+                            <span class="font-mono text-sm text-muted-foreground"
+                                >.{{ primaryDomain }}</span
+                            >
+                        </div>
+                        <p
+                            v-if="domainForm.errors.subdomain"
+                            class="mt-1 text-sm text-destructive"
+                        >
+                            {{ domainForm.errors.subdomain }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label
+                            for="restaurant_custom_domain"
+                            class="block text-xs font-medium text-muted-foreground"
+                        >
+                            Custom domain
+                            <span class="text-muted-foreground/70"
+                                >(optional)</span
+                            >
+                        </label>
+                        <input
+                            id="restaurant_custom_domain"
+                            v-model="domainForm.custom_domain"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="e.g. pizzajoint.com"
+                            class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground"
+                        />
+                        <p class="mt-1 text-xs text-muted-foreground">
+                            When set, the storefront also answers on this domain.
+                            DNS still has to point here — this only records it.
+                        </p>
+                        <p
+                            v-if="domainForm.errors.custom_domain"
+                            class="mt-1 text-sm text-destructive"
+                        >
+                            {{ domainForm.errors.custom_domain }}
+                        </p>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <Button type="submit" :disabled="domainForm.processing">
+                            {{
+                                domainForm.processing
+                                    ? 'Saving…'
+                                    : 'Save name & domain'
+                            }}
+                        </Button>
+                        <p
+                            v-if="domainForm.recentlySuccessful"
+                            class="text-sm text-green-600"
+                        >
+                            Saved.
+                        </p>
+                    </div>
+                </form>
             </section>
 
             <section class="rounded-lg border border-border bg-card p-6">
