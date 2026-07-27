@@ -112,7 +112,7 @@ class AdminsController extends Controller
                 return back()->with('error', "You can't remove your own super-admin access.");
             }
 
-            if ($this->isLastSuperAdmin($user)) {
+            if ($user->isLastSuperAdmin()) {
                 return back()->with('error', "You can't remove the last super admin.");
             }
         }
@@ -136,7 +136,7 @@ class AdminsController extends Controller
             return back()->with('error', "You can't remove your own admin access.");
         }
 
-        if ($this->isLastSuperAdmin($user)) {
+        if ($user->isLastSuperAdmin()) {
             return back()->with('error', "You can't remove the last super admin.");
         }
 
@@ -146,15 +146,5 @@ class AdminsController extends Controller
         $user->restaurants()->detach();
 
         return back()->with('success', "{$name} is no longer an admin.");
-    }
-
-    /**
-     * True when this user is a super admin and the only one left, so removing
-     * their standing would lock everyone out of the platform console.
-     */
-    private function isLastSuperAdmin(User $user): bool
-    {
-        return $user->is_super_admin
-            && User::where('is_super_admin', true)->count() <= 1;
     }
 }

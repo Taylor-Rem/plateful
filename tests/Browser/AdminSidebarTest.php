@@ -63,5 +63,34 @@ test('the super admin pages render without javascript errors', function () {
         ->assertNoJavaScriptErrors()
         ->assertSee('Restaurants')
         ->assertSee('Earnings')
-        ->assertSee('Admins');
+        ->assertSee('Admins')
+        ->assertSee('Users');
+});
+
+test('the users roster renders for super admins', function () {
+    $superAdmin = User::factory()->superAdmin()->create(['name' => 'Sam Super']);
+    $restaurant = sidebarBrowserRestaurant();
+
+    $customer = User::factory()->create(['name' => 'Cal Customer']);
+    $customer->customerRestaurants()->attach($restaurant);
+
+    $this->actingAs($superAdmin);
+
+    visit('/super/users')
+        ->assertNoJavaScriptErrors()
+        ->assertSee('Sam Super')
+        ->assertSee('Cal Customer')
+        ->assertSee('Customer');
+});
+
+test('the user detail page renders for super admins', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $target = User::factory()->create(['name' => 'Ozzy Orphan']);
+
+    $this->actingAs($superAdmin);
+
+    visit("/super/users/{$target->id}")
+        ->assertNoJavaScriptErrors()
+        ->assertSee('Ozzy Orphan')
+        ->assertSee('Footprint');
 });

@@ -1,9 +1,8 @@
 # User Management — Implementation Plan
 
-**Status: 📝 PLANNED** · Phase 1 (user soft-deletes) shipped 2026-07-27. This
-doc covers Phase 2: a super-admin **Users** console for viewing and managing
-every account (admins, customers, and orphans), built on the Phase 1 foundation.
-Scope to be locked with Taylor before a build session starts.
+**Status: ✅ SHIPPED 2026-07-27** · Phase 1 (user soft-deletes) and Phase 2 (the
+super-admin **Users** console) are both live. The plan below is kept as the
+design record; §9 lists what actually shipped and where it deviates.
 
 ---
 
@@ -241,3 +240,47 @@ New `tests/Feature/Admin/SuperAdmin/UsersManagementTest.php`:
 
 Each step is independently shippable with its own commit and green tests, per the
 admin-overhaul working style.
+
+---
+
+## 9. What shipped (2026-07-27)
+
+Decisions locked before the build: soft delete is the default and force delete is
+a separate order-history-guarded escalation; deleting the sole admin of a live
+restaurant is **allowed** with a warning in the confirm dialog; the impact view is
+a **page** (parity with `restaurants.show`); force delete uses a plain confirm
+dialog, no type-to-confirm.
+
+**Files**
+
+- [`app/Models/User.php`](../app/Models/User.php) — `orders()`, `loyaltyPoints()`,
+  `feeDistributions()` (all three drop the tenant scope on purpose: they answer a
+  platform-level question), and `isLastSuperAdmin()` extracted off
+  `AdminsController` so both controllers share one implementation.
+- [`app/Http/Controllers/Admin/SuperAdmin/UsersController.php`](../app/Http/Controllers/Admin/SuperAdmin/UsersController.php)
+  — `index`, `show`, `destroy`, `restore`, `forceDelete`.
+- [`routes/super-admin.php`](../routes/super-admin.php) — the five `users.*` routes.
+- `resources/js/pages/Admin/SuperAdmin/Users/{Index,Show}.vue` + `types.ts`;
+  **Users** added to the super-admin sidebar Platform group.
+- [`tests/Feature/Admin/SuperAdmin/UsersManagementTest.php`](../tests/Feature/Admin/SuperAdmin/UsersManagementTest.php)
+  (23 tests) plus additions to `SuperAdminAccessTest` and `tests/Browser/AdminSidebarTest.php`.
+
+**Deviations from the plan above**
+
+1. **`show` takes a raw `{id}`, not the `{user}` binding.** A deleted account has
+   to have a page to restore from, and the default binding excludes trashed rows.
+   Only `destroy` uses the model binding (the row is live at that point).
+2. **The filter tabs are exclusive, not overlapping.** `all`/`admins`/`customers`
+   list live accounts only; `deleted` lists trashed ones. This mirrors the
+   restaurants page (roster + deleted section) and keeps each tab unambiguous;
+   nothing is hidden because every tab carries a count. Orphans are reachable
+   because there is no `whereHas` filter on `all` — the point of §6.1.
+3. **Force delete is also refused when the account has fee distributions.** Those
+   are earnings attribution records; losing them is the same class of harm as
+   losing order history.
+4. **The last-super-admin delete guard is unreachable over HTTP** — the actor must
+   be a live super admin, so any target other than themselves means at least two
+   exist, and the self-delete guard catches that case first. The guard is kept as
+   a backstop and is tested at the model level instead.
+5. **Search uses `lower(col) like ?`, not `ILIKE`**, so the same query runs on
+   Postgres (dev/prod) and SQLite (tests).

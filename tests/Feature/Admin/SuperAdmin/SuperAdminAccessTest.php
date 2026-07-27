@@ -20,6 +20,7 @@ test('authenticated non-admin users get 403 on super routes', function (string $
     'restaurants' => ['/super/restaurants'],
     'earnings' => ['/super/earnings'],
     'admins' => ['/super/admins'],
+    'users' => ['/super/users'],
 ]);
 
 test('super admins pass through to super routes', function () {
