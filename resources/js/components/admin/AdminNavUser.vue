@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { ChevronsUpDown, LogOut } from 'lucide-vue-next';
+import { ChevronsUpDown, LogOut, ShieldCheck } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/sidebar';
 import UserInfo from '@/components/UserInfo.vue';
 import { logout } from '@/routes';
+import { edit as securityEdit } from '@/routes/admin/security';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -66,6 +67,16 @@ const handleLogout = () => {
                         <AppearanceTabs />
                     </div>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem :as-child="true">
+                        <Link
+                            class="block w-full cursor-pointer"
+                            :href="securityEdit()"
+                            data-test="security-link"
+                        >
+                            <ShieldCheck class="mr-2 h-4 w-4" />
+                            Security
+                        </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem :as-child="true">
                         <Link
                             class="block w-full cursor-pointer"

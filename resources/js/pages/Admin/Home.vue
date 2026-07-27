@@ -3,6 +3,7 @@ import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import { dashboard } from '@/routes/admin/restaurant';
+import { edit as securityEdit } from '@/routes/admin/security';
 import { index as superRestaurantsIndex } from '@/routes/admin/super/restaurants';
 
 defineProps<{
@@ -26,6 +27,12 @@ const isSuperAdmin = computed(() => Boolean(page.props.auth.isSuperAdmin));
                 </h1>
                 <div class="flex items-center gap-4">
                     <AppearanceTabs />
+                    <Link
+                        :href="securityEdit()"
+                        class="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                        Security
+                    </Link>
                     <Link
                         :href="'/logout'"
                         method="post"

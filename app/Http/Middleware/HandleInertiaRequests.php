@@ -44,6 +44,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 'isSuperAdmin' => (bool) $request->user()?->isSuperAdmin(),
+                'twoFactorEnabled' => (bool) $request->user()?->hasEnabledTwoFactorAuthentication(),
                 'canEditMenu' => fn () => $this->resolveCanManageTenant($request),
                 'canEditSite' => fn () => $this->resolveCanManageTenant($request),
             ],

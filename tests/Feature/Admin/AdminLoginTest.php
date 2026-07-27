@@ -18,8 +18,26 @@ function loginRestaurant(string $subdomain = 'logintest'): Restaurant
     ]);
 }
 
-test('super admin can log in on admin host', function () {
+test('super admin login on admin host is sent to the two-factor challenge', function () {
+    // The superAdmin factory state enrolls 2FA (it is required for platform
+    // admins), so a correct password lands on the challenge, not a session.
     $superAdmin = User::factory()->superAdmin()->create();
+
+    $response = $this->post(ADMIN_BASE.'/login', [
+        'email' => $superAdmin->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+    $response->assertRedirect(route('two-factor.login'));
+});
+
+test('super admin without two-factor can log in but must enroll', function () {
+    $superAdmin = User::factory()->superAdmin()->create([
+        'two_factor_secret' => null,
+        'two_factor_recovery_codes' => null,
+        'two_factor_confirmed_at' => null,
+    ]);
 
     $response = $this->post(ADMIN_BASE.'/login', [
         'email' => $superAdmin->email,
@@ -28,6 +46,9 @@ test('super admin can log in on admin host', function () {
 
     $this->assertAuthenticatedAs($superAdmin);
     $response->assertRedirect('/');
+
+    $this->get(ADMIN_BASE.'/')
+        ->assertRedirect(route('admin.security.edit'));
 });
 
 test('restaurant admin (pivot member) can log in on a tenant host', function () {

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
  */
 Route::domain('admin.'.config('platform.primary_domain'))
     ->prefix('super')
-    ->middleware(['admin', 'super'])
+    ->middleware(['admin', 'super', 'two-factor.required'])
     ->name('admin.super.')
     ->group(function () {
         Route::get('/restaurants', [SuperAdmin\RestaurantsController::class, 'index'])->name('restaurants.index');
