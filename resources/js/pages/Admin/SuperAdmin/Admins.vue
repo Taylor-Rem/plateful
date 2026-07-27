@@ -88,7 +88,9 @@ function saveEdit(): void {
 
 function toggleSuperAdmin(admin: AdminRow): void {
     const makeSuper = !admin.isSuperAdmin;
-    const verb = makeSuper ? 'Grant super-admin access to' : 'Remove super-admin access from';
+    const verb = makeSuper
+        ? 'Grant super-admin access to'
+        : 'Remove super-admin access from';
 
     if (!confirm(`${verb} ${admin.name}?`)) {
         return;
@@ -246,7 +248,10 @@ defineOptions({ layout: SuperAdminLayout });
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" :disabled="editForm.processing">
+                            <Button
+                                type="submit"
+                                :disabled="editForm.processing"
+                            >
                                 {{ editForm.processing ? 'Saving…' : 'Save' }}
                             </Button>
                         </DialogFooter>
