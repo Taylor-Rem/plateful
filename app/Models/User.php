@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RestaurantRole;
+use App\Tenancy\TenantScope;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -19,7 +21,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
      * @return array<string, string>
@@ -65,11 +67,46 @@ class User extends Authenticatable
         return $this->hasMany(Address::class);
     }
 
+    /**
+     * Every order this user has placed, across every restaurant. These three
+     * account-footprint relations drop the tenant scope on purpose: they answer
+     * a platform-level question ("what does this account own?"), so they must
+     * not silently narrow to whichever tenant happens to be bound.
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class)->withoutGlobalScope(TenantScope::class);
+    }
+
+    public function loyaltyPoints(): HasMany
+    {
+        return $this->hasMany(LoyaltyPoints::class)->withoutGlobalScope(TenantScope::class);
+    }
+
+    /**
+     * Earned slices of retained platform fees attributed to this user.
+     */
+    public function feeDistributions(): HasMany
+    {
+        return $this->hasMany(FeeDistribution::class)->withoutGlobalScope(TenantScope::class);
+    }
+
     public function isSuperAdmin(): bool
     {
         // Cast defensively: a freshly created model that never selected the
         // column (e.g. mid-registration) has null here, not the DB default.
         return (bool) $this->is_super_admin;
+    }
+
+    /**
+     * True when this user is a super admin and the only live one left, so
+     * removing their standing — or their account — would lock everyone out of
+     * the platform console. Trashed rows don't count: they can't sign in.
+     */
+    public function isLastSuperAdmin(): bool
+    {
+        return $this->isSuperAdmin()
+            && static::query()->where('is_super_admin', true)->count() <= 1;
     }
 
     /**

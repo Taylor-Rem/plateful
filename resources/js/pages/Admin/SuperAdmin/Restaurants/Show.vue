@@ -252,7 +252,8 @@ defineOptions({ layout: SuperAdminLayout });
                                 autocomplete="off"
                                 class="w-48 rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground"
                             />
-                            <span class="font-mono text-sm text-muted-foreground"
+                            <span
+                                class="font-mono text-sm text-muted-foreground"
                                 >.{{ primaryDomain }}</span
                             >
                         </div>
@@ -283,8 +284,9 @@ defineOptions({ layout: SuperAdminLayout });
                             class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground"
                         />
                         <p class="mt-1 text-xs text-muted-foreground">
-                            When set, the storefront also answers on this domain.
-                            DNS still has to point here — this only records it.
+                            When set, the storefront also answers on this
+                            domain. DNS still has to point here — this only
+                            records it.
                         </p>
                         <p
                             v-if="domainForm.errors.custom_domain"

@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { ChartNoAxesColumn, Home, ShieldCheck, Store } from 'lucide-vue-next';
+import {
+    ChartNoAxesColumn,
+    Home,
+    ShieldCheck,
+    Store,
+    Users,
+} from 'lucide-vue-next';
 import AdminNavGroups from '@/components/admin/AdminNavGroups.vue';
 import AdminNavUser from '@/components/admin/AdminNavUser.vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -16,6 +22,7 @@ import {
 import { index as adminsIndex } from '@/routes/admin/super/admins';
 import { index as earningsIndex } from '@/routes/admin/super/earnings';
 import { index as restaurantsIndex } from '@/routes/admin/super/restaurants';
+import { index as usersIndex } from '@/routes/admin/super/users';
 import type { NavGroup } from '@/types';
 
 const groups: NavGroup[] = [
@@ -29,6 +36,7 @@ const groups: NavGroup[] = [
                 icon: ChartNoAxesColumn,
             },
             { title: 'Admins', href: adminsIndex(), icon: ShieldCheck },
+            { title: 'Users', href: usersIndex(), icon: Users },
         ],
     },
 ];

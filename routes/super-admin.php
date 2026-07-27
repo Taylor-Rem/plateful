@@ -34,6 +34,16 @@ Route::domain('admin.'.config('platform.primary_domain'))
         Route::get('/earnings', [SuperAdmin\EarningsController::class, 'index'])->name('earnings.index');
         Route::put('/platform-roles', [SuperAdmin\PlatformRolesController::class, 'update'])->name('platformRoles.update');
 
+        // The full account roster. Soft delete uses the {user} binding (the row
+        // is still live at that point); show, restore, and permanent delete take
+        // a raw {id} because the binding's SoftDeletes scope excludes trashed
+        // rows and those three must reach a deleted account.
+        Route::get('/users', [SuperAdmin\UsersController::class, 'index'])->name('users.index');
+        Route::get('/users/{id}', [SuperAdmin\UsersController::class, 'show'])->name('users.show');
+        Route::delete('/users/{user}', [SuperAdmin\UsersController::class, 'destroy'])->name('users.destroy');
+        Route::post('/users/{id}/restore', [SuperAdmin\UsersController::class, 'restore'])->name('users.restore');
+        Route::delete('/users/{id}/force', [SuperAdmin\UsersController::class, 'forceDelete'])->name('users.forceDelete');
+
         Route::get('/admins', [SuperAdmin\AdminsController::class, 'index'])->name('admins.index');
         Route::post('/admins/invitations', [SuperAdmin\InvitationController::class, 'store'])->name('admins.invitations.store');
         Route::delete('/admins/invitations/{invitation}', [SuperAdmin\InvitationController::class, 'destroy'])->name('admins.invitations.destroy');

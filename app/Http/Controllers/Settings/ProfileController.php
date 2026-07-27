@@ -52,7 +52,10 @@ class ProfileController extends Controller
 
         Auth::logout();
 
-        $user->delete();
+        // Self-service deletion is a genuine "delete my account": remove the
+        // record and its PII outright rather than soft-deleting it. Recoverable
+        // soft-deletes are reserved for admin-initiated removal.
+        $user->forceDelete();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
