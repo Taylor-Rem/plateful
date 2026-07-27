@@ -28,7 +28,7 @@ class UpdateAdminRequest extends FormRequest
                 'string',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->ignore($userId),
+                Rule::unique('users', 'email')->whereNull('deleted_at')->ignore($userId),
             ],
         ];
     }

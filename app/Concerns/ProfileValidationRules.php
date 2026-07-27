@@ -50,8 +50,10 @@ trait ProfileValidationRules
 
     private function buildEmailUniqueRule(?int $userId): Unique
     {
-        // Emails are globally unique on the users table — one Plateful account per email.
-        $rule = Rule::unique(User::class, 'email');
+        // Emails are globally unique among live accounts — one Plateful account
+        // per email. Soft-deleted users are ignored so a freed address can be
+        // reused, mirroring the partial unique index on users.email.
+        $rule = Rule::unique(User::class, 'email')->whereNull('deleted_at');
 
         return $userId === null ? $rule : $rule->ignore($userId);
     }

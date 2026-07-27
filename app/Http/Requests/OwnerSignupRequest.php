@@ -34,7 +34,7 @@ class OwnerSignupRequest extends FormRequest
                 'string',
                 'email',
                 'max:255',
-                Rule::unique(User::class, 'email'),
+                Rule::unique(User::class, 'email')->whereNull('deleted_at'),
             ],
             'password' => ['required', 'string', Password::default()],
 
