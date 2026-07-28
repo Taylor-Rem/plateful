@@ -21,6 +21,7 @@ class CartController extends Controller
             $menuItem,
             $request->quantity(),
             $request->optionIds(),
+            $request->notes(),
         );
 
         return back(303)->with('success', 'Added to cart.');

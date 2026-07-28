@@ -256,6 +256,12 @@ const advanceLabel = (next: string): string => {
                                 >
                                     {{ item.modifierSummary }}
                                 </span>
+                                <span
+                                    v-if="item.notes"
+                                    class="block text-xs font-medium text-amber-700 dark:text-amber-400"
+                                >
+                                    “{{ item.notes }}”
+                                </span>
                             </li>
                         </ul>
 

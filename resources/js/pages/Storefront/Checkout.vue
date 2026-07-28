@@ -824,6 +824,12 @@ const submit = (): void => {
                                 >
                                     {{ item.selectionSummary }}
                                 </p>
+                                <p
+                                    v-if="item.notes"
+                                    class="line-clamp-1 text-xs text-muted-foreground italic"
+                                >
+                                    “{{ item.notes }}”
+                                </p>
                             </div>
                             <span class="tabular-nums">{{
                                 formatPrice(item.lineTotalCents)

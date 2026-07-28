@@ -62,6 +62,8 @@ const onDeleteRequested = (item: App.Data.MenuItemData): void => {
     deleteDialogOpen.value = true;
 };
 
+// Every item opens the configurator — even without options it's where the
+// customer confirms quantity and special instructions before the cart.
 const onItemClick = (item: App.Data.MenuItemData): void => {
     if (editMode.value) {
         openEdit(item);
@@ -69,35 +71,26 @@ const onItemClick = (item: App.Data.MenuItemData): void => {
         return;
     }
 
-    if (item.template) {
-        activeItem.value = item;
-        configuratorOpen.value = true;
-
-        return;
-    }
-
-    router.post(
-        `/cart/items/${item.id}`,
-        { quantity: 1, option_ids: [] },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            onSuccess: () => toast.success(`Added ${item.name} to cart`),
-            onError: () => toast.error('Could not add to cart.'),
-        },
-    );
+    activeItem.value = item;
+    configuratorOpen.value = true;
 };
 
 const onAddToCart = (payload: {
     itemId: number;
     selections: Array<{ groupId: number; optionIds: number[] }>;
     unitPriceCents: number;
+    quantity: number;
+    notes: string;
 }): void => {
     const name = activeItem.value?.name ?? 'Item';
     const optionIds = payload.selections.flatMap((s) => s.optionIds);
     router.post(
         `/cart/items/${payload.itemId}`,
-        { quantity: 1, option_ids: optionIds },
+        {
+            quantity: payload.quantity,
+            option_ids: optionIds,
+            notes: payload.notes || null,
+        },
         {
             preserveScroll: true,
             preserveState: true,

@@ -114,6 +114,7 @@ class MenuImportController extends Controller
             'menuImport' => [
                 'id' => $menuImport->id,
                 'categories' => $menuImport->result['categories'] ?? [],
+                'optionSets' => $menuImport->result['option_sets'] ?? [],
                 'warnings' => $menuImport->result['warnings'] ?? [],
                 'itemCount' => $menuImport->itemCount(),
                 'fileUrls' => array_map(
@@ -148,13 +149,21 @@ class MenuImportController extends Controller
             ]);
         }
 
-        $created = $menuBuilder->buildFromImport($restaurant, $request->validated()['categories']);
+        $validated = $request->validated();
+        $optionSets = $validated['option_sets'] ?? [];
+
+        $created = $menuBuilder->buildFromImport($restaurant, $validated['categories'], $optionSets);
 
         $menuImport->update(['status' => MenuImportStatus::Completed]);
 
+        $summary = "Menu imported — {$created} items";
+        if (($sets = count($optionSets)) > 0) {
+            $summary .= ' and '.$sets.' option '.($sets === 1 ? 'template' : 'templates');
+        }
+
         return redirect()
             ->route('admin.restaurant.onboarding.show', ['restaurant' => $restaurant->subdomain])
-            ->with('success', "Menu imported — {$created} items are ready. You can fine-tune them in the menu builder anytime.");
+            ->with('success', "{$summary} are ready. You can fine-tune them in the menu builder anytime.");
     }
 
     /**

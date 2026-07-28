@@ -2,6 +2,7 @@
 
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\OrderItem;
 use App\Services\CartManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -192,6 +193,95 @@ test('clearing cart removes all items', function () {
         ->delete("http://{$r->subdomain}.plateful.test/cart");
 
     expect(CartItem::count())->toBe(0);
+});
+
+test('special instructions are stored on the cart line and shared with the drawer', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $resp = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['simple']->id}", [
+        'option_ids' => [],
+        'notes' => '  No ice please  ',
+    ]);
+    $resp->assertRedirect();
+
+    $line = CartItem::sole();
+    expect($line->notes)->toBe('No ice please');
+
+    $cookie = cartCookieFrom($resp);
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->get("http://{$r->subdomain}.plateful.test/")
+        ->assertInertia(fn ($page) => $page->where('cart.items.0.notes', 'No ice please'));
+});
+
+test('same item with same notes merges, different notes gets its own line', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['simple']->id}", [
+        'option_ids' => [],
+        'notes' => 'No ice',
+    ]);
+    $cookie = cartCookieFrom($first);
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['simple']->id}", [
+            'option_ids' => [],
+            'notes' => 'No ice',
+        ]);
+
+    expect(CartItem::count())->toBe(1)
+        ->and(CartItem::sole()->quantity)->toBe(2);
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['simple']->id}", [
+            'option_ids' => [],
+            'notes' => 'Extra ice',
+        ]);
+
+    expect(CartItem::count())->toBe(2);
+});
+
+test('a notes-less add still merges with an existing notes-less line', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['simple']->id}", [
+        'option_ids' => [],
+    ]);
+    $cookie = cartCookieFrom($first);
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['simple']->id}", [
+            'option_ids' => [],
+            'notes' => '',
+        ]);
+
+    expect(CartItem::count())->toBe(1)
+        ->and(CartItem::sole()->quantity)->toBe(2);
+});
+
+test('cart line notes are copied onto the order item at checkout', function () {
+    Mail::fake();
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $resp = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['simple']->id}", [
+        'option_ids' => [],
+        'notes' => 'Sauce on the side',
+    ]);
+    $cookie = cartCookieFrom($resp);
+
+    fakeCheckoutSession();
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'pickup',
+        ]);
+    payLatestCheckout();
+
+    expect(OrderItem::sole()->notes)->toBe('Sauce on the side');
 });
 
 test('server computes price ignoring tampered client price field', function () {

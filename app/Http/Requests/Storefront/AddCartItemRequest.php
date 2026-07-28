@@ -20,7 +20,15 @@ class AddCartItemRequest extends FormRequest
             'quantity' => ['nullable', 'integer', 'min:1', 'max:50'],
             'option_ids' => ['nullable', 'array'],
             'option_ids.*' => ['integer'],
+            'notes' => ['nullable', 'string', 'max:300'],
         ];
+    }
+
+    public function notes(): ?string
+    {
+        $notes = trim((string) $this->input('notes', ''));
+
+        return $notes === '' ? null : $notes;
     }
 
     public function quantity(): int

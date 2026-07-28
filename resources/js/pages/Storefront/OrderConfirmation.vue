@@ -143,6 +143,12 @@ const addr = computed(() => props.order.deliveryAddress);
                             >
                                 {{ item.modifierSummary }}
                             </p>
+                            <p
+                                v-if="item.notes"
+                                class="text-xs text-muted-foreground italic"
+                            >
+                                “{{ item.notes }}”
+                            </p>
                         </div>
                         <span class="text-sm tabular-nums">{{
                             formatPrice(item.subtotalCents)

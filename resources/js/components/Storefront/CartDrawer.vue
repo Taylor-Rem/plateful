@@ -119,6 +119,12 @@ const clearCart = (): void => {
                                     >
                                         {{ item.selectionSummary }}
                                     </p>
+                                    <p
+                                        v-if="item.notes"
+                                        class="mt-0.5 line-clamp-2 text-xs text-muted-foreground italic"
+                                    >
+                                        “{{ item.notes }}”
+                                    </p>
                                     <span
                                         v-if="!item.isAvailable"
                                         class="mt-1 inline-block rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-destructive uppercase"

@@ -215,6 +215,12 @@ defineOptions({ layout: TenantAdminLayout });
                                         {{ g.selectionNames.join(', ') }}
                                     </div>
                                 </div>
+                                <div
+                                    v-if="line.notes"
+                                    class="mt-0.5 text-xs text-muted-foreground italic"
+                                >
+                                    “{{ line.notes }}”
+                                </div>
                             </div>
                             <div class="text-foreground tabular-nums">
                                 {{ formatCents(line.subtotalCents) }}

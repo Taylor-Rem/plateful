@@ -22,11 +22,15 @@ const emit = defineEmits<{
             itemId: number;
             selections: Array<{ groupId: number; optionIds: number[] }>;
             unitPriceCents: number;
+            quantity: number;
+            notes: string;
         },
     ): void;
 }>();
 
 const selectedIds = ref<number[]>([...props.item.defaultSelectionIds]);
+const quantity = ref(1);
+const notes = ref('');
 
 // Reset when item changes or modal opens.
 watch(
@@ -34,6 +38,8 @@ watch(
     ([, isOpen]) => {
         if (isOpen) {
             selectedIds.value = [...props.item.defaultSelectionIds];
+            quantity.value = 1;
+            notes.value = '';
         }
     },
 );
@@ -175,14 +181,26 @@ const formatDelta = (cents: number): string => {
     return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 };
 
+const totalPriceCents = computed<number>(
+    () => unitPriceCents.value * quantity.value,
+);
+
+const decrementQuantity = (): void => {
+    quantity.value = Math.max(1, quantity.value - 1);
+};
+
+const incrementQuantity = (): void => {
+    quantity.value = Math.min(50, quantity.value + 1);
+};
+
 const close = (): void => emit('update:open', false);
 
 const onSubmit = (): void => {
-    if (!template.value || !allSatisfied.value) {
+    if (!allSatisfied.value) {
         return;
     }
 
-    const selections = template.value.groups.map((g) => ({
+    const selections = (template.value?.groups ?? []).map((g) => ({
         groupId: g.id,
         optionIds: selectedIds.value.filter((id) =>
             g.options.some((o) => o.id === id),
@@ -192,6 +210,8 @@ const onSubmit = (): void => {
         itemId: props.item.id,
         selections,
         unitPriceCents: unitPriceCents.value,
+        quantity: quantity.value,
+        notes: notes.value.trim(),
     });
     close();
 };
@@ -331,18 +351,67 @@ const onSubmit = (): void => {
                 </div>
             </div>
 
+            <div>
+                <label
+                    for="configurator-notes"
+                    class="text-sm font-semibold text-foreground"
+                >
+                    Special instructions
+                    <span class="font-normal text-muted-foreground"
+                        >(optional)</span
+                    >
+                </label>
+                <textarea
+                    id="configurator-notes"
+                    v-model="notes"
+                    rows="2"
+                    maxlength="300"
+                    placeholder="e.g. no onions, sauce on the side"
+                    class="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+            </div>
+
             <DialogFooter
                 class="flex items-center justify-between gap-2 sm:justify-between"
             >
-                <div class="text-left">
-                    <div class="text-lg font-semibold text-foreground">
-                        {{ formatPrice(unitPriceCents) }}
-                    </div>
+                <div class="flex items-center gap-3">
                     <div
-                        v-if="priceDiff !== 0"
-                        class="text-xs text-muted-foreground"
+                        class="flex items-center rounded-md border border-border"
                     >
-                        {{ formatDelta(priceDiff) }} vs base
+                        <button
+                            type="button"
+                            class="px-2.5 py-1 text-foreground disabled:opacity-40"
+                            :disabled="quantity <= 1"
+                            aria-label="Decrease quantity"
+                            @click="decrementQuantity"
+                        >
+                            −
+                        </button>
+                        <span
+                            class="min-w-8 text-center text-sm font-medium text-foreground tabular-nums"
+                        >
+                            {{ quantity }}
+                        </span>
+                        <button
+                            type="button"
+                            class="px-2.5 py-1 text-foreground disabled:opacity-40"
+                            :disabled="quantity >= 50"
+                            aria-label="Increase quantity"
+                            @click="incrementQuantity"
+                        >
+                            +
+                        </button>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-lg font-semibold text-foreground">
+                            {{ formatPrice(totalPriceCents) }}
+                        </div>
+                        <div
+                            v-if="priceDiff !== 0"
+                            class="text-xs text-muted-foreground"
+                        >
+                            {{ formatDelta(priceDiff) }} vs base
+                        </div>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">

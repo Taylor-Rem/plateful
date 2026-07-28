@@ -82,6 +82,7 @@ class OrderPlacement
                 'unit_price_cents' => (int) $line->unit_price_cents,
                 'quantity' => (int) $line->quantity,
                 'modifiers' => $line->modifiers,
+                'notes' => $line->notes,
                 'subtotal_cents' => $lineSubtotal,
             ];
         }
@@ -371,6 +372,7 @@ class OrderPlacement
                     'unit_price_cents' => (int) $line['unit_price_cents'],
                     'quantity' => (int) $line['quantity'],
                     'modifiers' => $line['modifiers'],
+                    'notes' => $line['notes'] ?? null,
                     'subtotal_cents' => (int) $line['subtotal_cents'],
                 ]);
             }
