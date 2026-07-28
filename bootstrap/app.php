@@ -5,6 +5,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequireAdmin;
 use App\Http\Middleware\RequireRestaurantAdmin;
 use App\Http\Middleware\RequireSuperAdmin;
+use App\Http\Middleware\RequireTwoFactorEnrollment;
 use App\Http\Middleware\ResolveAdminRestaurant;
 use App\Http\Middleware\ResolveTenant;
 use Illuminate\Foundation\Application;
@@ -47,6 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'super' => RequireSuperAdmin::class,
             'admin.restaurant' => ResolveAdminRestaurant::class,
             'admin.restaurant.admin' => RequireRestaurantAdmin::class,
+            'two-factor.required' => RequireTwoFactorEnrollment::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

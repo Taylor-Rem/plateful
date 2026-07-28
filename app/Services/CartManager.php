@@ -107,7 +107,7 @@ class CartManager
     /**
      * @param  array<int, int>  $optionIds
      */
-    public function addItem(MenuItem $item, int $quantity, array $optionIds): CartItem
+    public function addItem(MenuItem $item, int $quantity, array $optionIds, ?string $notes = null): CartItem
     {
         if ($quantity < 1) {
             $quantity = 1;
@@ -172,10 +172,10 @@ class CartManager
         }
 
         $unitPriceCents = $item->priceForSelectionsCents($optionIds);
-        $signature = $this->signatureFor($item->id, $optionIds);
+        $signature = $this->signatureFor($item->id, $optionIds, $notes);
         $modifiers = $this->buildModifiersSnapshot($template, $optionIds);
 
-        return DB::transaction(function () use ($item, $quantity, $unitPriceCents, $signature, $modifiers) {
+        return DB::transaction(function () use ($item, $quantity, $unitPriceCents, $signature, $modifiers, $notes) {
             $cart = $this->currentOrCreate();
 
             $existing = CartItem::query()
@@ -198,6 +198,7 @@ class CartManager
             $line->unit_price_cents = $unitPriceCents;
             $line->modifiers = $modifiers;
             $line->selection_signature = $signature;
+            $line->notes = $notes;
             $line->save();
 
             return $line;
@@ -271,9 +272,13 @@ class CartManager
     }
 
     /**
+     * Lines only merge when the whole configuration matches, notes included —
+     * two "no onions" adds stack, but never onto a plain line. Notes-less
+     * signatures keep the historical shape so existing cart lines still match.
+     *
      * @param  array<int, int>  $optionIds
      */
-    public function signatureFor(int $menuItemId, array $optionIds): string
+    public function signatureFor(int $menuItemId, array $optionIds, ?string $notes = null): string
     {
         $sorted = collect($optionIds)
             ->map(fn ($v) => (int) $v)
@@ -282,7 +287,12 @@ class CartManager
             ->values()
             ->all();
 
-        return hash('sha256', $menuItemId.':'.implode(',', $sorted));
+        $base = $menuItemId.':'.implode(',', $sorted);
+        if ($notes !== null && $notes !== '') {
+            $base .= ':'.$notes;
+        }
+
+        return hash('sha256', $base);
     }
 
     /**

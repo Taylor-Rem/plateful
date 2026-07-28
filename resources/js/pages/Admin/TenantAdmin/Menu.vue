@@ -10,6 +10,7 @@ import {
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import EmptyState from '@/components/admin/EmptyState.vue';
+import MenuImportCard from '@/components/admin/MenuImportCard.vue';
 import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,13 @@ import { index as templatesIndex } from '@/routes/admin/restaurant/templates';
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     categories: App.Data.MenuCategoryData[];
+    menuImport: {
+        id: number;
+        status: 'queued' | 'processing' | 'needs_review' | 'failed';
+        error: string | null;
+        itemCount: number;
+    } | null;
+    menuImportLimits: { maxFiles: number; maxFileKb: number };
 }>();
 
 const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
@@ -170,6 +178,15 @@ defineOptions({ layout: TenantAdminLayout });
             changes the way customers do. Categories and templates are still
             managed here.
         </p>
+
+        <MenuImportCard
+            v-if="isAdmin"
+            class="mt-4"
+            :restaurant="restaurant"
+            :menu-import="menuImport"
+            :menu-import-limits="menuImportLimits"
+            :has-existing-menu="localCategories.some((c) => c.items.length > 0)"
+        />
 
         <EmptyState
             v-if="localCategories.length === 0"

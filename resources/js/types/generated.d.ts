@@ -45,6 +45,7 @@ selectionGroups: {
 groupName: string,
 selectionNames: string[],
 }[],
+notes: string | null,
 isAvailable: boolean,
 };
 export type DashboardStatsData = {
@@ -144,6 +145,7 @@ modifierGroups: {
 groupName: string,
 selectionNames: string[],
 }[],
+notes: string | null,
 };
 export type OrderSummaryData = {
 id: number,

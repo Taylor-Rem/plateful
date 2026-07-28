@@ -39,13 +39,17 @@ class MenuBuilder
     /**
      * Create the menu from an owner-confirmed AI import draft. Slugs are
      * uniquified because extracted menus (unlike curated presets) can repeat
-     * names across categories. Returns the number of items created.
+     * names across categories. Option sets become reusable item templates;
+     * items reference them by name. Returns the number of items created.
      *
-     * @param  array<int, array{name: string, items: array<int, array{name: string, description?: ?string, price_cents: int}>}>  $categories
+     * @param  array<int, array{name: string, items: array<int, array{name: string, description?: ?string, price_cents: int, option_set?: ?string}>}>  $categories
+     * @param  array<int, array{name: string, groups: array<int, array{name: string, min_selections: int, max_selections: ?int, options: array<int, array{name: string, price_delta_cents: int, is_default: bool}>}>}>  $optionSets
      */
-    public function buildFromImport(Restaurant $restaurant, array $categories): int
+    public function buildFromImport(Restaurant $restaurant, array $categories, array $optionSets = []): int
     {
-        return $this->withTenant($restaurant, function () use ($restaurant, $categories): int {
+        return $this->withTenant($restaurant, function () use ($restaurant, $categories, $optionSets): int {
+            $templates = $this->createImportedTemplates($restaurant, $optionSets);
+
             $usedCategorySlugs = [];
             $usedItemSlugs = [];
             $created = 0;
@@ -60,10 +64,12 @@ class MenuBuilder
                 ]);
 
                 foreach ($category['items'] as $itemPos => $item) {
-                    MenuItem::create([
+                    $template = $templates[$item['option_set'] ?? ''] ?? null;
+
+                    $menuItem = MenuItem::create([
                         'restaurant_id' => $restaurant->id,
                         'menu_category_id' => $menuCategory->id,
-                        'item_template_id' => null,
+                        'item_template_id' => $template['id'] ?? null,
                         'name' => $item['name'],
                         'slug' => $this->uniqueSlug($item['name'], $usedItemSlugs),
                         'description' => $item['description'] ?? null,
@@ -72,12 +78,72 @@ class MenuBuilder
                         'is_featured' => false,
                         'position' => $itemPos,
                     ]);
+
+                    if ($template !== null && $template['default_option_ids'] !== []) {
+                        $menuItem->defaultSelections()->sync($template['default_option_ids']);
+                    }
+
                     $created++;
                 }
             }
 
             return $created;
         });
+    }
+
+    /**
+     * Create an item template per imported option set and return them keyed
+     * by set name, each with the option ids items should inherit as defaults.
+     *
+     * @param  array<int, array{name: string, groups: array<int, array{name: string, min_selections: int, max_selections: ?int, options: array<int, array{name: string, price_delta_cents: int, is_default: bool}>}>}>  $optionSets
+     * @return array<string, array{id: int, default_option_ids: array<int, int>}>
+     */
+    private function createImportedTemplates(Restaurant $restaurant, array $optionSets): array
+    {
+        $templates = [];
+
+        foreach ($optionSets as $setPos => $set) {
+            $template = ItemTemplate::create([
+                'restaurant_id' => $restaurant->id,
+                'name' => $set['name'],
+                'description' => null,
+                'is_active' => true,
+                'position' => $setPos,
+            ]);
+
+            $defaultOptionIds = [];
+
+            foreach ($set['groups'] as $groupPos => $group) {
+                $templateGroup = ItemTemplateGroup::create([
+                    'item_template_id' => $template->id,
+                    'name' => $group['name'],
+                    'min_selections' => $group['min_selections'],
+                    'max_selections' => $group['max_selections'],
+                    'position' => $groupPos,
+                ]);
+
+                foreach ($group['options'] as $optionPos => $option) {
+                    $templateOption = ItemTemplateOption::create([
+                        'item_template_group_id' => $templateGroup->id,
+                        'name' => $option['name'],
+                        'price_delta_cents' => $option['price_delta_cents'],
+                        'is_available' => true,
+                        'position' => $optionPos,
+                    ]);
+
+                    if ($option['is_default']) {
+                        $defaultOptionIds[] = $templateOption->id;
+                    }
+                }
+            }
+
+            $templates[$set['name']] = [
+                'id' => $template->id,
+                'default_option_ids' => $defaultOptionIds,
+            ];
+        }
+
+        return $templates;
     }
 
     /**

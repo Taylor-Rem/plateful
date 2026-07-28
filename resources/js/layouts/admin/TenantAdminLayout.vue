@@ -2,6 +2,7 @@
 import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import TenantAdminSidebar from '@/components/admin/TenantAdminSidebar.vue';
+import TwoFactorNudgeBanner from '@/components/admin/TwoFactorNudgeBanner.vue';
 import {
     SidebarInset,
     SidebarProvider,
@@ -43,6 +44,7 @@ const restaurant = computed(() => page.props.restaurant);
                     administrator to reactivate.
                 </div>
             </div>
+            <TwoFactorNudgeBanner />
             <main class="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
                 <slot />
             </main>

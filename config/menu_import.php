@@ -26,5 +26,8 @@ return [
     'max_categories' => 40,
     'max_items' => 400,
     'max_price_cents' => 100000, // $1,000 per item — above this it's a misread.
+    'max_option_sets' => 20,
+    'max_groups_per_set' => 6,
+    'max_options_per_group' => 20,
 
 ];

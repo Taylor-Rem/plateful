@@ -14,6 +14,7 @@ use App\Services\RestaurantImageService;
 use App\Support\Menus\MenuBuilder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -34,12 +35,6 @@ class MenuImportController extends Controller
             'files' => ['required', 'array', 'min:1', 'max:'.config('menu_import.max_files')],
             'files.*' => ['required', 'file', PhotoConversionService::acceptedPhotoMimes().',pdf', 'max:'.config('menu_import.max_file_kb')],
         ]);
-
-        if ($restaurant->menuItems()->exists()) {
-            throw ValidationException::withMessages([
-                'files' => 'Your menu already has items — edit it in the menu builder instead.',
-            ]);
-        }
 
         if ($restaurant->menuImports()->whereIn('status', [
             MenuImportStatus::Queued,
@@ -104,16 +99,21 @@ class MenuImportController extends Controller
         $this->ensureBelongs($restaurant, $menuImport);
 
         if ($menuImport->status !== MenuImportStatus::NeedsReview) {
-            return redirect()->route('admin.restaurant.onboarding.show', ['restaurant' => $restaurant->subdomain]);
+            return redirect()->to($this->doneUrl($restaurant));
         }
 
         $disk = Storage::disk(RestaurantImageService::disk());
 
         return Inertia::render('Admin/TenantAdmin/MenuImportReview', [
             'restaurant' => RestaurantData::fromModel($restaurant),
+            'backUrl' => $this->doneUrl($restaurant),
+            // Confirming replaces any existing menu — the review screen warns
+            // with the current size so the owner knows what they're trading.
+            'existingItemCount' => $restaurant->menuItems()->count(),
             'menuImport' => [
                 'id' => $menuImport->id,
                 'categories' => $menuImport->result['categories'] ?? [],
+                'optionSets' => $menuImport->result['option_sets'] ?? [],
                 'warnings' => $menuImport->result['warnings'] ?? [],
                 'itemCount' => $menuImport->itemCount(),
                 'fileUrls' => array_map(
@@ -129,6 +129,10 @@ class MenuImportController extends Controller
 
     /**
      * Import the owner-confirmed (possibly edited) draft into the real menu.
+     * Any existing menu is replaced in the same transaction: categories
+     * cascade to items and cart lines, order history keeps its snapshots
+     * (order_items null their menu_item_id), and item templates are kept so
+     * hand-built ones survive a re-import.
      */
     public function confirm(
         MenuImportConfirmRequest $request,
@@ -142,19 +146,27 @@ class MenuImportController extends Controller
             return back()->with('error', 'This import is no longer awaiting review.');
         }
 
-        if ($restaurant->menuItems()->exists()) {
-            throw ValidationException::withMessages([
-                'categories' => 'Your menu already has items — edit it in the menu builder instead.',
-            ]);
-        }
+        $validated = $request->validated();
+        $optionSets = $validated['option_sets'] ?? [];
 
-        $created = $menuBuilder->buildFromImport($restaurant, $request->validated()['categories']);
+        $replaced = false;
+        $created = DB::transaction(function () use ($restaurant, $validated, $optionSets, $menuBuilder, &$replaced): int {
+            $replaced = $restaurant->menuCategories()->exists();
+            $restaurant->menuCategories()->delete();
+
+            return $menuBuilder->buildFromImport($restaurant, $validated['categories'], $optionSets);
+        });
 
         $menuImport->update(['status' => MenuImportStatus::Completed]);
 
+        $summary = ($replaced ? 'Menu replaced — ' : 'Menu imported — ')."{$created} items";
+        if (($sets = count($optionSets)) > 0) {
+            $summary .= ' and '.$sets.' option '.($sets === 1 ? 'template' : 'templates');
+        }
+
         return redirect()
-            ->route('admin.restaurant.onboarding.show', ['restaurant' => $restaurant->subdomain])
-            ->with('success', "Menu imported — {$created} items are ready. You can fine-tune them in the menu builder anytime.");
+            ->to($this->doneUrl($restaurant))
+            ->with('success', "{$summary} are ready. You can fine-tune them in the menu builder anytime.");
     }
 
     /**
@@ -171,8 +183,21 @@ class MenuImportController extends Controller
         $this->deleteImport($menuImport);
 
         return redirect()
-            ->route('admin.restaurant.onboarding.show', ['restaurant' => $restaurant->subdomain])
+            ->to($this->doneUrl($restaurant))
             ->with('success', 'Import discarded.');
+    }
+
+    /**
+     * Where import flows land: the onboarding wizard while the restaurant is
+     * still setting up, the menu page once it has finished onboarding.
+     */
+    private function doneUrl(Restaurant $restaurant): string
+    {
+        $routeName = $restaurant->onboarding_completed_at !== null
+            ? 'admin.restaurant.menu.index'
+            : 'admin.restaurant.onboarding.show';
+
+        return route($routeName, ['restaurant' => $restaurant->subdomain]);
     }
 
     private function ensureBelongs(Restaurant $restaurant, MenuImport $menuImport): void

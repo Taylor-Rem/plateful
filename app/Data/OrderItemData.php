@@ -18,6 +18,7 @@ class OrderItemData extends Data
         public string $modifierSummary,
         /** @var array<int, array{groupName: string, selectionNames: array<int, string>}> */
         public array $modifierGroups,
+        public ?string $notes,
     ) {}
 
     public static function fromModel(OrderItem $item): self
@@ -55,6 +56,7 @@ class OrderItemData extends Data
             subtotalCents: (int) $item->subtotal_cents,
             modifierSummary: implode(' · ', $summaryParts),
             modifierGroups: $groups,
+            notes: $item->notes,
         );
     }
 }

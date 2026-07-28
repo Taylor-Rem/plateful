@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminHomeController;
 use App\Http\Controllers\Admin\AdminInvitationController;
 use App\Http\Controllers\Admin\AdminLoginHandoffController;
+use App\Http\Controllers\Admin\AdminSecurityController;
 use App\Http\Controllers\Admin\TenantAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -23,7 +24,18 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
         Route::post('/invitations/{token}', [AdminInvitationController::class, 'accept'])->name('admin.invitations.accept');
     });
 
+    // Account security stays outside the two-factor.required group below —
+    // it is where an un-enrolled super admin is redirected to enroll, so
+    // guarding it would loop. Registered before the {restaurant} wildcard
+    // prefix so /security is never captured as a subdomain.
     Route::middleware('admin')->group(function () {
+        Route::get('/security', [AdminSecurityController::class, 'edit'])->name('admin.security.edit');
+        Route::put('/security/password', [AdminSecurityController::class, 'updatePassword'])
+            ->middleware('throttle:6,1')
+            ->name('admin.security.password.update');
+    });
+
+    Route::middleware(['admin', 'two-factor.required'])->group(function () {
         Route::get('/', AdminHomeController::class)->name('admin.home');
 
         // Square posts back to a single registered redirect URI (not scoped to

@@ -21,6 +21,7 @@ class CartItemData extends Data
         public string $selectionSummary,
         /** @var array<int, array{groupName: string, selectionNames: array<int, string>}> */
         public array $selectionGroups,
+        public ?string $notes,
         public bool $isAvailable,
     ) {}
 
@@ -85,6 +86,7 @@ class CartItemData extends Data
             lineTotalCents: (int) $item->unit_price_cents * (int) $item->quantity,
             selectionSummary: implode(' · ', $summaryParts),
             selectionGroups: $groups,
+            notes: $item->notes,
             isAvailable: $isAvailable,
         );
     }

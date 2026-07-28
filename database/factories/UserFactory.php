@@ -71,9 +71,14 @@ class UserFactory extends Factory
         ]);
     }
 
+    /**
+     * Super admins are required to have two-factor authentication enrolled
+     * (see RequireTwoFactorEnrollment), so this state includes it. Build an
+     * un-enrolled super admin by overriding the two_factor_* attributes.
+     */
     public function superAdmin(): static
     {
-        return $this->state(fn () => [
+        return $this->withTwoFactor()->state(fn () => [
             'is_super_admin' => true,
         ]);
     }
