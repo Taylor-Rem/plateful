@@ -3,8 +3,12 @@
 use App\Enums\MenuImportStatus;
 use App\Enums\RestaurantRole;
 use App\Jobs\ExtractMenuJob;
+use App\Models\Cart;
+use App\Models\CartItem;
 use App\Models\ItemTemplate;
 use App\Models\MenuImport;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Restaurant;
 use App\Models\User;
 use App\Services\MenuExtractionService;
@@ -93,7 +97,7 @@ it('accepts menu photos, stores them as webp, and queues extraction', function (
     Queue::assertPushed(ExtractMenuJob::class);
 });
 
-it('rejects an import when the menu already has items', function () {
+it('queues an import even when the menu already has items (re-import)', function () {
     Queue::fake();
     Storage::fake(RestaurantImageService::disk());
     [$owner, $restaurant] = menuImportOwnerAndRestaurant();
@@ -104,9 +108,10 @@ it('rejects an import when the menu already has items', function () {
         ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import", [
             'files' => [UploadedFile::fake()->image('menu.jpg')],
         ])
-        ->assertSessionHasErrors('files');
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
 
-    Queue::assertNothingPushed();
+    Queue::assertPushed(ExtractMenuJob::class);
 });
 
 it('rejects a new import while one is in flight', function () {
@@ -331,6 +336,81 @@ it('imports option sets as item templates with defaults synced onto items', func
     expect($latte->item_template_id)->toBe($template->id)
         ->and($latte->defaultSelections()->pluck('item_template_options.id')->all())->toBe([$wholeMilk->id])
         ->and($biscotti->item_template_id)->toBeNull();
+});
+
+it('replaces the existing menu on confirm, keeping order history and templates', function () {
+    [$owner, $restaurant] = menuImportOwnerAndRestaurant();
+    $import = MenuImport::factory()->needsReview()->create(['restaurant_id' => $restaurant->id]);
+
+    $category = $restaurant->menuCategories()->create(['name' => 'Old', 'slug' => 'old', 'position' => 0, 'is_active' => true]);
+    $oldItem = $category->items()->create(['restaurant_id' => $restaurant->id, 'name' => 'Old Burger', 'slug' => 'old-burger', 'price_cents' => 1000, 'is_available' => true, 'position' => 0]);
+    $handBuiltTemplate = ItemTemplate::create(['restaurant_id' => $restaurant->id, 'name' => 'Hand-built', 'is_active' => true, 'position' => 0]);
+
+    $cart = Cart::create(['restaurant_id' => $restaurant->id, 'token' => 'tok', 'expires_at' => now()->addDay()]);
+    $cart->items()->create(['menu_item_id' => $oldItem->id, 'quantity' => 1, 'unit_price_cents' => 1000, 'selection_signature' => 'sig']);
+
+    $order = Order::factory()->create(['restaurant_id' => $restaurant->id]);
+    $orderItem = OrderItem::create([
+        'order_id' => $order->id, 'menu_item_id' => $oldItem->id, 'name' => 'Old Burger',
+        'unit_price_cents' => 1000, 'quantity' => 1, 'modifiers' => null, 'subtotal_cents' => 1000,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import/{$import->id}/confirm", [
+            'categories' => [
+                ['name' => 'New', 'items' => [['name' => 'New Burger', 'description' => null, 'price_cents' => 1200, 'option_set' => null]]],
+            ],
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($restaurant->menuItems()->pluck('name')->all())->toBe(['New Burger'])
+        ->and($restaurant->menuCategories()->pluck('name')->all())->toBe(['New'])
+        ->and(CartItem::count())->toBe(0)
+        ->and($orderItem->fresh()->menu_item_id)->toBeNull()
+        ->and($orderItem->fresh()->name)->toBe('Old Burger')
+        ->and(ItemTemplate::withoutTenantScope()->whereKey($handBuiltTemplate->id)->exists())->toBeTrue();
+});
+
+it('redirects import flows to the menu page once onboarding is complete', function () {
+    [$owner, $restaurant] = menuImportOwnerAndRestaurant();
+    $restaurant->update(['onboarding_completed_at' => now()]);
+    $import = MenuImport::factory()->needsReview()->create(['restaurant_id' => $restaurant->id]);
+
+    $this->actingAs($owner)
+        ->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import/{$import->id}/confirm", [
+            'categories' => [
+                ['name' => 'New', 'items' => [['name' => 'Thing', 'description' => null, 'price_cents' => 500, 'option_set' => null]]],
+            ],
+        ])
+        ->assertRedirect(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu");
+});
+
+it('exposes replace context and back url on the review page', function () {
+    [$owner, $restaurant] = menuImportOwnerAndRestaurant();
+    $restaurant->update(['onboarding_completed_at' => now()]);
+    $import = MenuImport::factory()->needsReview()->create(['restaurant_id' => $restaurant->id]);
+    $restaurant->menuCategories()->create(['name' => 'Old', 'slug' => 'old', 'position' => 0, 'is_active' => true])
+        ->items()->create(['restaurant_id' => $restaurant->id, 'name' => 'Plain', 'slug' => 'plain', 'price_cents' => 1000, 'is_available' => true, 'position' => 0]);
+
+    $this->actingAs($owner)
+        ->get(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import/{$import->id}/review")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('existingItemCount', 1)
+            ->where('backUrl', MI_ADMIN_HOST."/{$restaurant->subdomain}/menu"));
+});
+
+it('exposes the active import on the menu page for polling', function () {
+    [$owner, $restaurant] = menuImportOwnerAndRestaurant();
+    MenuImport::factory()->processing()->create(['restaurant_id' => $restaurant->id]);
+
+    $this->actingAs($owner)
+        ->get(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Admin/TenantAdmin/Menu')
+            ->where('menuImport.status', 'processing')
+            ->has('menuImportLimits.maxFiles'));
 });
 
 it('refuses to confirm an item referencing an unknown option set', function () {

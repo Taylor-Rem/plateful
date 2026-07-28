@@ -8,7 +8,6 @@ import {
     confirm as menuImportConfirm,
     discard as menuImportDiscard,
 } from '@/routes/admin/restaurant/menuImport';
-import { show as onboardingShow } from '@/routes/admin/restaurant/onboarding';
 
 type DraftItem = {
     name: string;
@@ -57,6 +56,8 @@ type ImportOptionSet = {
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
+    backUrl: string;
+    existingItemCount: number;
     menuImport: {
         id: number;
         categories: Array<{
@@ -325,6 +326,14 @@ const errorMessages = computed(() =>
     Array.from(new Set(Object.values(confirmForm.errors))),
 );
 
+const confirmLabel = computed(() => {
+    const noun = itemCount.value === 1 ? 'item' : 'items';
+
+    return props.existingItemCount > 0
+        ? `Replace menu with ${itemCount.value} ${noun}`
+        : `Import ${itemCount.value} ${noun}`;
+});
+
 const discard = (): void => {
     if (
         !window.confirm(
@@ -355,9 +364,9 @@ const discard = (): void => {
             >
                 <div class="flex items-center gap-3">
                     <a
-                        :href="onboardingShow.url(restaurant.subdomain)"
+                        :href="backUrl"
                         class="text-muted-foreground hover:text-foreground"
-                        aria-label="Back to setup"
+                        aria-label="Back"
                     >
                         <ArrowLeft class="size-5" />
                     </a>
@@ -387,14 +396,28 @@ const discard = (): void => {
                         data-test="confirm-import-button"
                         @click="submit"
                     >
-                        Import {{ itemCount }}
-                        {{ itemCount === 1 ? 'item' : 'items' }}
+                        {{ confirmLabel }}
                     </Button>
                 </div>
             </div>
         </header>
 
         <main class="mx-auto max-w-4xl space-y-6 px-6 py-8">
+            <div
+                v-if="existingItemCount > 0"
+                class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                data-test="replace-menu-banner"
+            >
+                <strong class="font-semibold">
+                    Confirming will replace your current menu ({{
+                        existingItemCount
+                    }}
+                    {{ existingItemCount === 1 ? 'item' : 'items' }}).
+                </strong>
+                Past orders keep their history, but items customers still have
+                in open carts will be removed from those carts.
+            </div>
+
             <div
                 v-if="missingPrices > 0"
                 class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
@@ -710,11 +733,7 @@ const discard = (): void => {
                     "
                     @click="submit"
                 >
-                    {{
-                        confirmForm.processing
-                            ? 'Importing…'
-                            : `Import ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`
-                    }}
+                    {{ confirmForm.processing ? 'Importing…' : confirmLabel }}
                 </Button>
             </div>
         </main>

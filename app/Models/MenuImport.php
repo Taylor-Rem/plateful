@@ -44,4 +44,26 @@ class MenuImport extends Model
         return collect($this->result['categories'] ?? [])
             ->sum(fn (array $category): int => count($category['items'] ?? []));
     }
+
+    /**
+     * The restaurant's active (not yet completed) import as UI state, or null.
+     * Polled by both the onboarding wizard and the menu page.
+     *
+     * @return array{id: int, status: string, error: ?string, itemCount: int}|null
+     */
+    public static function activeStateFor(Restaurant $restaurant): ?array
+    {
+        $import = $restaurant->menuImports()->latest('id')->first();
+
+        if (! $import || $import->status === MenuImportStatus::Completed) {
+            return null;
+        }
+
+        return [
+            'id' => $import->id,
+            'status' => $import->status->value,
+            'error' => $import->error,
+            'itemCount' => $import->itemCount(),
+        ];
+    }
 }
