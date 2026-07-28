@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Enums\MailSender;
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,6 +20,7 @@ class OrderNotificationToRestaurant extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: MailSender::Orders->address(),
             subject: "New order #{$this->order->number}",
         );
     }
