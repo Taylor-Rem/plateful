@@ -115,4 +115,22 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Purpose-Specific "From" Addresses
+    |--------------------------------------------------------------------------
+    |
+    | Mailables pick their sender by purpose via the MailSender enum. The
+    | global "from" above stays the service alias so framework-generated
+    | mail (password reset, email verification) sends from it too. Each
+    | alias falls back to the global address when its env var is unset.
+    |
+    */
+
+    'senders' => [
+        'orders' => env('MAIL_FROM_ORDERS_ADDRESS', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+        'service' => env('MAIL_FROM_SERVICE_ADDRESS', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+        'support' => env('MAIL_FROM_SUPPORT_ADDRESS', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+    ],
+
 ];

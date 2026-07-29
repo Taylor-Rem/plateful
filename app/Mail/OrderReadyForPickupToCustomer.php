@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Enums\MailSender;
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,6 +22,7 @@ class OrderReadyForPickupToCustomer extends Mailable implements ShouldQueue
         $restaurantName = $this->order->restaurant?->name ?? 'Plateful';
 
         return new Envelope(
+            from: MailSender::Orders->address(),
             subject: "Your order is ready - {$restaurantName}",
         );
     }

@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Enums\MailSender;
 use App\Models\AdminInvitation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,6 +20,7 @@ class AdminInvitationMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: MailSender::Service->address(),
             subject: 'You have been invited to Plateful',
         );
     }
