@@ -6,7 +6,6 @@ use App\Data\OrderData;
 use App\Data\RestaurantData;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Support\BrandColors;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -50,10 +49,6 @@ class OrdersController extends Controller
         return Inertia::render('Storefront/OrderConfirmation', [
             'restaurant' => RestaurantData::fromModel($restaurant),
             'order' => OrderData::fromModel($order),
-            'brand' => BrandColors::paletteFor(
-                $restaurant->primary_color,
-                $restaurant->secondary_color,
-            ),
             'fromAccount' => true,
         ]);
     }

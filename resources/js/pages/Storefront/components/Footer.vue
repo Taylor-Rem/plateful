@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import {
     Clock,
     Facebook,
@@ -12,6 +13,7 @@ import {
     Youtube,
 } from 'lucide-vue-next';
 import { computed } from 'vue';
+import SectionLink from '@/pages/Storefront/components/SectionLink.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -47,12 +49,6 @@ const addressLine = computed(() => {
         .join(', ');
 });
 
-const telHref = computed(() => {
-    const raw = props.restaurant.phone?.replace(/[^0-9+]/g, '') ?? '';
-
-    return raw ? `tel:${raw}` : null;
-});
-
 const year = new Date().getFullYear();
 </script>
 
@@ -74,11 +70,18 @@ const year = new Date().getFullYear();
                         />
                         <span>{{ addressLine }}</span>
                     </p>
-                    <p v-if="telHref" class="flex items-center gap-2">
+                    <p
+                        v-if="restaurant.phoneHref"
+                        class="flex items-center gap-2"
+                    >
                         <Phone class="size-4 shrink-0 text-foreground/60" />
-                        <a :href="telHref" class="hover:underline">{{
-                            restaurant.phone
-                        }}</a>
+                        <a
+                            :href="restaurant.phoneHref"
+                            class="hover:underline"
+                            >{{
+                                restaurant.phoneDisplay ?? restaurant.phone
+                            }}</a
+                        >
                     </p>
                     <p
                         v-if="restaurant.openStatusLabel"
@@ -97,13 +100,23 @@ const year = new Date().getFullYear();
                     Explore
                 </h3>
                 <ul class="mt-3 space-y-2 text-sm">
-                    <li><a href="#menu" class="hover:underline">Menu</a></li>
-                    <li><a href="#about" class="hover:underline">About</a></li>
                     <li>
-                        <a href="#gallery" class="hover:underline">Photos</a>
+                        <Link href="/menu" class="hover:underline">Menu</Link>
+                    </li>
+                    <li v-if="restaurant.hasAboutSection">
+                        <SectionLink hash="about" class="hover:underline">
+                            About
+                        </SectionLink>
+                    </li>
+                    <li v-if="restaurant.hasGalleryPhotos">
+                        <SectionLink hash="gallery" class="hover:underline">
+                            Photos
+                        </SectionLink>
                     </li>
                     <li>
-                        <a href="#location" class="hover:underline">Visit us</a>
+                        <SectionLink hash="location" class="hover:underline">
+                            Visit us
+                        </SectionLink>
                     </li>
                 </ul>
             </div>

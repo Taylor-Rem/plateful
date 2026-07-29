@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Pencil, X } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 const props = defineProps<{
     photos: App.Data.RestaurantPhotoData[];
@@ -14,6 +14,8 @@ const emit = defineEmits<{
 const hasAny = computed(() => props.photos.length > 0);
 
 const lightboxIndex = ref<number | null>(null);
+const closeButton = ref<HTMLButtonElement | null>(null);
+let previouslyFocused: HTMLElement | null = null;
 
 const openLightbox = (idx: number): void => {
     if (props.editMode) {
@@ -22,12 +24,39 @@ const openLightbox = (idx: number): void => {
         return;
     }
 
+    previouslyFocused =
+        document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
     lightboxIndex.value = idx;
 };
 
 const closeLightbox = (): void => {
     lightboxIndex.value = null;
 };
+
+const onLightboxKeydown = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') {
+        closeLightbox();
+    }
+};
+
+// The lightbox div isn't focusable, so Escape is handled at the window level
+// while it's open; focus moves to the close button and is restored on close.
+watch(lightboxIndex, (open) => {
+    if (open !== null) {
+        window.addEventListener('keydown', onLightboxKeydown);
+        void nextTick(() => closeButton.value?.focus());
+    } else {
+        window.removeEventListener('keydown', onLightboxKeydown);
+        previouslyFocused?.focus();
+        previouslyFocused = null;
+    }
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', onLightboxKeydown);
+});
 
 const lightboxPhoto = computed(() =>
     lightboxIndex.value === null
@@ -45,7 +74,7 @@ const lightboxPhoto = computed(() =>
         <div class="mb-6 flex items-center justify-between gap-3">
             <h2
                 class="inline-block border-b-2 pb-1 text-2xl font-semibold text-foreground"
-                :style="{ borderColor: 'var(--brand-primary)' }"
+                :style="{ borderColor: 'var(--brand-secondary)' }"
             >
                 Photos
             </h2>
@@ -100,9 +129,9 @@ const lightboxPhoto = computed(() =>
             role="dialog"
             aria-modal="true"
             @click.self="closeLightbox"
-            @keydown.esc="closeLightbox"
         >
             <button
+                ref="closeButton"
                 type="button"
                 class="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
                 aria-label="Close"

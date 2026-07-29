@@ -42,10 +42,15 @@ const mapsDirectionsHref = computed(() => {
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress.value)}`;
 });
 
-const telHref = computed(() => {
-    const raw = props.restaurant.phone?.replace(/[^0-9+]/g, '') ?? '';
+const cityStateZip = computed(() => {
+    const r = props.restaurant;
+    const cityState = [r.city, r.state]
+        .filter((p): p is string => Boolean(p && p.trim()))
+        .join(', ');
 
-    return raw ? `tel:${raw}` : null;
+    return [cityState, r.postalCode]
+        .filter((p): p is string => Boolean(p && p.trim()))
+        .join(' ');
 });
 
 const formatTime = (hhmm: string): string => {
@@ -74,7 +79,7 @@ const hasAnyHours = computed(() =>
         <div class="mx-auto max-w-5xl scroll-mt-16 px-6 py-12">
             <h2
                 class="mb-6 inline-block border-b-2 pb-1 text-2xl font-semibold text-foreground"
-                :style="{ borderColor: 'var(--brand-primary)' }"
+                :style="{ borderColor: 'var(--brand-secondary)' }"
             >
                 Visit us
             </h2>
@@ -93,13 +98,7 @@ const hasAnyHours = computed(() =>
                                 >
                             </p>
                             <p class="text-sm text-foreground/70">
-                                {{ restaurant.city
-                                }}<span v-if="restaurant.state"
-                                    >, {{ restaurant.state }}</span
-                                >
-                                <span v-if="restaurant.postalCode">{{
-                                    restaurant.postalCode
-                                }}</span>
+                                {{ cityStateZip }}
                             </p>
                             <a
                                 v-if="mapsDirectionsHref"
@@ -114,15 +113,18 @@ const hasAnyHours = computed(() =>
                         </div>
                     </div>
 
-                    <div v-if="telHref" class="flex items-start gap-3">
+                    <div
+                        v-if="restaurant.phoneHref"
+                        class="flex items-start gap-3"
+                    >
                         <Phone
                             class="mt-0.5 size-5 shrink-0 text-foreground/70"
                         />
                         <a
-                            :href="telHref"
+                            :href="restaurant.phoneHref"
                             class="font-medium text-foreground hover:underline"
                         >
-                            {{ restaurant.phone }}
+                            {{ restaurant.phoneDisplay ?? restaurant.phone }}
                         </a>
                     </div>
 

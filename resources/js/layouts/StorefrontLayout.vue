@@ -6,6 +6,7 @@ import CartDrawer from '@/components/Storefront/CartDrawer.vue';
 import { Toaster } from '@/components/ui/sonner';
 import AdminBar from '@/pages/Storefront/components/AdminBar.vue';
 import Footer from '@/pages/Storefront/components/Footer.vue';
+import SectionLink from '@/pages/Storefront/components/SectionLink.vue';
 import SocialLinksEditDrawer from '@/pages/Storefront/components/SocialLinksEditDrawer.vue';
 
 type StorefrontPageProps = {
@@ -60,24 +61,41 @@ const cartDrawerOpen = ref(false);
 const socialDrawerOpen = ref(false);
 const mobileNavOpen = ref(false);
 
-const navLinks = [
-    { label: 'Home', href: '/', kind: 'link' as const },
-    { label: 'Menu', href: '/menu', kind: 'link' as const },
-    {
-        label: 'About',
-        href: '/#about',
-        kind: 'anchor' as const,
-        matchPath: '/',
-    },
-    {
+type NavLink =
+    | { label: string; href: string; kind: 'link' }
+    | { label: string; href: string; kind: 'anchor'; hash: string };
+
+const navLinks = computed<NavLink[]>(() => {
+    const links: NavLink[] = [
+        { label: 'Home', href: '/', kind: 'link' },
+        { label: 'Menu', href: '/menu', kind: 'link' },
+    ];
+
+    // The #about target only exists when the home page renders the section
+    // (always rendered for admins in edit mode, with an empty-state prompt).
+    if (
+        restaurant.value?.hasAboutSection ||
+        (canEditSite.value && editMode.value)
+    ) {
+        links.push({
+            label: 'About',
+            href: '/#about',
+            kind: 'anchor',
+            hash: 'about',
+        });
+    }
+
+    links.push({
         label: 'Visit',
         href: '/#location',
-        kind: 'anchor' as const,
-        matchPath: '/',
-    },
-];
+        kind: 'anchor',
+        hash: 'location',
+    });
 
-const isActive = (link: (typeof navLinks)[number]): boolean => {
+    return links;
+});
+
+const isActive = (link: NavLink): boolean => {
     if (link.kind === 'link') {
         return isOnPath(link.href);
     }
@@ -153,13 +171,13 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
                                 aria-hidden="true"
                             />
                         </Link>
-                        <a
+                        <SectionLink
                             v-else
-                            :href="link.href"
+                            :hash="link.hash"
                             class="rounded-md px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
                         >
                             {{ link.label }}
-                        </a>
+                        </SectionLink>
                     </template>
                 </div>
 
@@ -225,14 +243,14 @@ const isActive = (link: (typeof navLinks)[number]): boolean => {
                         >
                             {{ link.label }}
                         </Link>
-                        <a
+                        <SectionLink
                             v-else
-                            :href="link.href"
+                            :hash="link.hash"
                             class="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
                             @click="mobileNavOpen = false"
                         >
                             {{ link.label }}
-                        </a>
+                        </SectionLink>
                     </template>
                     <Link
                         v-if="!isAuthenticated"

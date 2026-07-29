@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Head, usePage } from '@inertiajs/vue3';
-import { Clock } from 'lucide-vue-next';
 import { computed, inject, ref } from 'vue';
 import type { Ref } from 'vue';
 import AboutEditDrawer from '@/pages/Storefront/components/AboutEditDrawer.vue';
 import AboutSection from '@/pages/Storefront/components/AboutSection.vue';
+import ClosedBanner from '@/pages/Storefront/components/ClosedBanner.vue';
 import FeaturedItemsSection from '@/pages/Storefront/components/FeaturedItemsSection.vue';
 import GalleryManagerDrawer from '@/pages/Storefront/components/GalleryManagerDrawer.vue';
 import GallerySection from '@/pages/Storefront/components/GallerySection.vue';
@@ -13,18 +13,10 @@ import HeroSection from '@/pages/Storefront/components/HeroSection.vue';
 import LocationSection from '@/pages/Storefront/components/LocationSection.vue';
 import QuickInfoBand from '@/pages/Storefront/components/QuickInfoBand.vue';
 
-type BrandPalette = {
-    primary: string;
-    primaryForeground: string;
-    secondary: string;
-    secondaryForeground: string;
-};
-
 defineProps<{
     restaurant: App.Data.RestaurantData;
     photos: App.Data.RestaurantPhotoData[];
     featuredItems: App.Data.MenuItemData[];
-    brand: BrandPalette;
 }>();
 
 const page = usePage<{ auth?: { canEditSite?: boolean } }>();
@@ -42,22 +34,7 @@ const galleryDrawerOpen = ref(false);
     <div>
         <Head :title="restaurant.name" />
 
-        <div
-            v-if="restaurant.isOpen === false"
-            class="border-b border-amber-300 bg-amber-100 text-amber-900"
-        >
-            <div
-                class="mx-auto flex max-w-5xl items-center gap-2 px-6 py-3 text-sm"
-            >
-                <Clock class="size-4 shrink-0" />
-                <span>
-                    <strong class="font-semibold"
-                        >We're currently closed.</strong
-                    >
-                    {{ restaurant.nextOpenLabel }}
-                </span>
-            </div>
-        </div>
+        <ClosedBanner :restaurant="restaurant" />
 
         <HeroSection
             :restaurant="restaurant"

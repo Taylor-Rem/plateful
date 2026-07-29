@@ -5,7 +5,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="{{ $brandPalette['primary'] ?? '#069494' }}">
+        <meta name="theme-color" content="{{ $brandPalette['primary'] ?? '#057575' }}">
 
         @isset($tenantSeo)
             @if ($tenantSeo['description'])

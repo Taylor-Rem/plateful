@@ -31,7 +31,7 @@ const form = useForm({
     country: 'US',
     timezone: 'America/New_York',
     primary_color: '#b91c1c',
-    secondary_color: '#ffffff',
+    secondary_color: '#b91c1c',
     description: '',
     // Blank, not '0' — the server fills in a location estimate when this is
     // empty, and a hardcoded '0' would suppress that on every create.

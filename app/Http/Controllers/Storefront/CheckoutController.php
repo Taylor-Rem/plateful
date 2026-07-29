@@ -16,7 +16,6 @@ use App\Models\Restaurant;
 use App\Services\CartManager;
 use App\Services\OrderPlacement;
 use App\Services\Stripe\StripeConnectService;
-use App\Support\BrandColors;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Cookie\CookieJar;
 use Illuminate\Http\RedirectResponse;
@@ -54,10 +53,6 @@ class CheckoutController extends Controller
             'cart' => CartData::fromModel($cart),
             'savedAddresses' => $savedAddresses,
             'tipPresets' => [0, 15, 18, 20],
-            'brand' => BrandColors::paletteFor(
-                $restaurant->primary_color,
-                $restaurant->secondary_color,
-            ),
         ]);
     }
 

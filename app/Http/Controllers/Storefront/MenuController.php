@@ -8,7 +8,6 @@ use App\Data\RestaurantData;
 use App\Http\Controllers\Controller;
 use App\Models\ItemTemplate;
 use App\Models\Restaurant;
-use App\Support\BrandColors;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -45,10 +44,6 @@ class MenuController extends Controller
         return Inertia::render('Storefront/Menu', [
             'restaurant' => RestaurantData::fromModel($restaurant),
             'categories' => $categories,
-            'brand' => BrandColors::paletteFor(
-                $restaurant->primary_color,
-                $restaurant->secondary_color,
-            ),
             // Admin-only payload powering the inline edit UI. Withheld from
             // customers — they never see categories/templates props.
             'editor' => $canEditMenu

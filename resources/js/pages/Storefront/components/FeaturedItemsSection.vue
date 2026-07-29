@@ -15,7 +15,7 @@ const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
             <div class="mb-6 flex items-end justify-between gap-4">
                 <h2
                     class="inline-block border-b-2 pb-1 text-2xl font-semibold text-foreground"
-                    :style="{ borderColor: 'var(--brand-primary)' }"
+                    :style="{ borderColor: 'var(--brand-secondary)' }"
                 >
                     Customer favorites
                 </h2>

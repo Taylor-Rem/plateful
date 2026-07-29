@@ -1,19 +1,13 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { Clock, Pencil, Plus } from 'lucide-vue-next';
+import { Pencil, Plus } from 'lucide-vue-next';
 import { computed, inject, ref } from 'vue';
 import type { Ref } from 'vue';
 import { toast } from 'vue-sonner';
+import ClosedBanner from '@/pages/Storefront/components/ClosedBanner.vue';
 import ItemConfiguratorModal from '@/pages/Storefront/components/ItemConfiguratorModal.vue';
 import MenuItemDeleteDialog from '@/pages/Storefront/components/MenuItemDeleteDialog.vue';
 import MenuItemEditDrawer from '@/pages/Storefront/components/MenuItemEditDrawer.vue';
-
-type BrandPalette = {
-    primary: string;
-    primaryForeground: string;
-    secondary: string;
-    secondaryForeground: string;
-};
 
 type EditorPayload = {
     categories: Array<{ id: number; name: string }>;
@@ -23,7 +17,6 @@ type EditorPayload = {
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     categories: App.Data.MenuCategoryData[];
-    brand: BrandPalette;
     editor: EditorPayload | null;
 }>();
 
@@ -105,22 +98,7 @@ const onAddToCart = (payload: {
     <div>
         <Head :title="`Menu — ${restaurant.name}`" />
 
-        <div
-            v-if="restaurant.isOpen === false"
-            class="border-b border-amber-300 bg-amber-100 text-amber-900"
-        >
-            <div
-                class="mx-auto flex max-w-5xl items-center gap-2 px-6 py-3 text-sm"
-            >
-                <Clock class="size-4 shrink-0" />
-                <span>
-                    <strong class="font-semibold"
-                        >We're currently closed.</strong
-                    >
-                    {{ restaurant.nextOpenLabel }}
-                </span>
-            </div>
-        </div>
+        <ClosedBanner :restaurant="restaurant" />
 
         <header class="border-b border-border bg-card">
             <div class="mx-auto max-w-5xl px-6 py-8">
@@ -152,7 +130,7 @@ const onAddToCart = (payload: {
             >
                 <h2
                     class="mb-4 inline-block border-b-2 pb-1 text-2xl font-semibold text-foreground"
-                    :style="{ borderColor: 'var(--brand-primary)' }"
+                    :style="{ borderColor: 'var(--brand-secondary)' }"
                 >
                     {{ category.name }}
                 </h2>

@@ -35,6 +35,10 @@ class RestaurantData extends Data
         public ?string $secondaryColor,
         public ?string $email,
         public ?string $phone,
+        /** Human-readable phone, e.g. "(435) 901-7141". */
+        public ?string $phoneDisplay,
+        /** tel: URI for the phone number. */
+        public ?string $phoneHref,
         public ?string $street,
         public ?string $street2,
         public ?string $city,
@@ -60,6 +64,10 @@ class RestaurantData extends Data
         /** @var array<string, string> */
         public array $socialLinks,
         public array $hoursByDay,
+        /** Whether the home page renders an #about section for visitors. */
+        public bool $hasAboutSection,
+        /** Whether the home page renders a #gallery section for visitors. */
+        public bool $hasGalleryPhotos,
         public ?string $createdAt,
         public string $publicUrl,
     ) {}
@@ -106,6 +114,8 @@ class RestaurantData extends Data
             secondaryColor: $restaurant->secondary_color,
             email: $restaurant->email,
             phone: $restaurant->phone,
+            phoneDisplay: self::formatPhone($restaurant->phone),
+            phoneHref: self::phoneHref($restaurant->phone),
             street: $restaurant->street,
             street2: $restaurant->street2,
             city: $restaurant->city,
@@ -127,8 +137,69 @@ class RestaurantData extends Data
             openStatusLabel: $restaurant->formatOpenStatus(),
             socialLinks: $restaurant->socialUrls(),
             hoursByDay: $hoursByDay,
+            hasAboutSection: trim((string) $restaurant->about_body) !== '' || $restaurant->aboutImageUrl() !== null,
+            hasGalleryPhotos: $restaurant->relationLoaded('photos')
+                ? $restaurant->getRelation('photos')->isNotEmpty()
+                : $restaurant->photos()->exists(),
             createdAt: $restaurant->created_at?->toIso8601String(),
             publicUrl: $restaurant->publicUrl(Request::getScheme() ?: 'https'),
         );
+    }
+
+    /**
+     * Format a stored phone number for display. US 10-digit numbers (with or
+     * without a leading 1) become "(435) 901-7141"; anything else is returned
+     * as stored.
+     */
+    public static function formatPhone(?string $phone): ?string
+    {
+        if ($phone === null || trim($phone) === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D/', '', $phone) ?? '';
+
+        if (strlen($digits) === 11 && str_starts_with($digits, '1')) {
+            $digits = substr($digits, 1);
+        }
+
+        if (strlen($digits) !== 10) {
+            return $phone;
+        }
+
+        return sprintf('(%s) %s-%s', substr($digits, 0, 3), substr($digits, 3, 3), substr($digits, 6));
+    }
+
+    /**
+     * Build a tel: URI for a stored phone number, preserving an existing
+     * international prefix and assuming +1 for bare US 10-digit numbers.
+     */
+    public static function phoneHref(?string $phone): ?string
+    {
+        if ($phone === null || trim($phone) === '') {
+            return null;
+        }
+
+        if (str_starts_with(trim($phone), '+')) {
+            $digits = preg_replace('/\D/', '', $phone) ?? '';
+
+            return $digits === '' ? null : 'tel:+'.$digits;
+        }
+
+        $digits = preg_replace('/\D/', '', $phone) ?? '';
+
+        if ($digits === '') {
+            return null;
+        }
+
+        if (strlen($digits) === 10) {
+            return 'tel:+1'.$digits;
+        }
+
+        if (strlen($digits) === 11 && str_starts_with($digits, '1')) {
+            return 'tel:+'.$digits;
+        }
+
+        return 'tel:'.$digits;
     }
 }
