@@ -43,6 +43,18 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!-- Fake DoorDash platform credentials. DoorDashJwtService::mint() throws
+             notConfigured when any of these is empty, so the storefront quote tests
+             died in CI (where `cp .env.example .env` supplies none) while passing
+             locally off the developer .env's real sandbox creds. The signing secret
+             is base64url-decoded before signing, so it must be valid base64url —
+             this one decodes to "test-signing-secret". There is no DoorDash
+             live-sandbox suite (Uber/Square/Clover key off separate *_SANDBOX_*
+             vars), so no test wants the real values. -->
+        <env name="DOORDASH_DEVELOPER_ID" value="test-developer-id" force="true"/>
+        <env name="DOORDASH_KEY_ID" value="test-key-id" force="true"/>
+        <env name="DOORDASH_SIGNING_SECRET" value="dGVzdC1zaWduaW5nLXNlY3JldA" force="true"/>
+        <env name="DOORDASH_WEBHOOK_SECRET" value="test-webhook-secret" force="true"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

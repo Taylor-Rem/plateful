@@ -16,8 +16,8 @@ Since 07-15 the platform work also landed: the 10-session admin overhaul (2026-0
 soft-deletes + super-admin Users console, TOTP 2FA (required for supers), and menu-import option
 sets + re-import. Full suite green locally at **1019 tests** (2026-07-31). The remaining work is
 mostly *launch*, not build: §0 is still open, Stripe is still in test mode, and DoorDash prod
-access (§3 Session 0/6) is unfiled. **CI on `dev` is red** — see the §8 item (2026-07-31); it's
-env/lint drift, not failing product code.
+access (§3 Session 0/6) is unfiled. **CI on `dev` is fixed** (2026-07-31, see the §8 item) — it was
+env/lint drift, never failing product code.
 
 ---
 
@@ -450,15 +450,23 @@ _Low-effort correctness & cleanup items found while auditing the roadmap against
 - [x] **CI matrix trimmed to PHP 8.4** (2026-07-15) — 8.5 was a flake source, not coverage;
       production runs 8.4. Re-add when an upgrade is planned. Pest in CI now runs with
       `memory_limit=512M`.
-- [ ] **CI on `dev` is red (diagnosed 2026-07-31) — two causes, both env/lint drift, product code
-      is green (1019 pass locally).** (a) `tests.yml` does `cp .env.example .env`, and
-      `.env.example` both sets `MEDIA_DISK=public` (breaks 3 ProductionConfigurationTest media-disk
-      datasets — the test's `$_ENV` unset can't defeat a genuinely loaded value in CI) and has **no
-      `DOORDASH_*` entries at all** (breaks DoorDashDeliveryMoneyTest's gross-up quote — without
-      creds DoorDash isn't centrally billed). Fix: add `DOORDASH_*` placeholder entries to
-      `.env.example` and drop/comment `MEDIA_DISK` there (or make the test's env override use
-      `Env::getRepository()`), keeping the file honest as launch documentation. (b) `lint.yml`
-      fails on **22 ESLint `import/order` errors** — all auto-fixable with `npx eslint . --fix`.
+- [x] **CI on `dev` was red since 2026-07-15 — fixed 2026-07-31.** Three environment/lint drifts,
+      no product-code defect (1019 pass locally throughout). (a) `tests.yml` does
+      `cp .env.example .env`, and `.env.example` had **no `DOORDASH_*` entries**, so
+      `DoorDashJwtService::mint()` threw notConfigured and killed DoorDashDeliveryMoneyTest's
+      gross-up quote. Fixed by pinning fake DoorDash creds in `phpunit.xml` (so the suite never
+      depends on `.env`) plus a documented `DOORDASH_*` block in `.env.example`. (b) The same
+      `.env.example` set `MEDIA_DISK=public`, breaking 3 ProductionConfigurationTest media-disk
+      datasets. The helper's `$_ENV`/`$_SERVER` unset couldn't defeat it because Laravel's env
+      repository also stacks a **PutenvAdapter** — a .env-loaded value survives in `putenv`. Fixed
+      by clearing all three in the helper (`writeEnvVar()`) and commenting `MEDIA_DISK` out of
+      `.env.example`, which also stops a copied template from parking Cloud media on the wrong disk.
+      (c) `lint.yml`'s 22 ESLint `import/order` errors were **not reproducible locally** and
+      `--fix` was a no-op: the Wayfinder output (`@/actions`, `@/routes`, `@/wayfinder`) is
+      gitignored and emitted by the Vite build, so on a fresh CI checkout those specifiers don't
+      resolve and `import/order` sorts them into a different group. Fixed with
+      `'import/internal-regex': '^@/'` in `eslint.config.js`, which classifies them by pattern
+      instead of by resolution — identical results with or without the generated files.
 - [ ] **Tip *amount* routing is untested.** `TipRecipientResolutionTest` +
       `OrderPlacementTipRecipientTest` prove which recipient is *resolved*, but nothing asserts the
       tip dollars actually flow/attribute to that recipient (staff vs. courier) — a routing

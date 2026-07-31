@@ -27,6 +27,28 @@ it('resolves the Resend mail driver from config', function () {
 });
 
 /**
+ * Set (or, for null, clear) an environment variable everywhere `env()` reads.
+ *
+ * Laravel's env repository stacks a PutenvAdapter on top of $_ENV/$_SERVER, so a
+ * variable loaded from a .env file lives in all three. Touching only the two
+ * superglobals leaves the putenv copy behind and the "unset" case silently keeps
+ * resolving to the loaded value — which is why these datasets passed locally (no
+ * MEDIA_DISK in the developer .env) but failed in CI (`cp .env.example .env`).
+ */
+function writeEnvVar(string $key, ?string $value): void
+{
+    if ($value === null) {
+        unset($_ENV[$key], $_SERVER[$key]);
+        putenv($key);
+
+        return;
+    }
+
+    $_ENV[$key] = $_SERVER[$key] = $value;
+    putenv("{$key}={$value}");
+}
+
+/**
  * Re-evaluate config/media.php against a given environment.
  *
  * @return string the disk restaurant media would resolve to
@@ -39,22 +61,14 @@ function resolveMediaDisk(?string $mediaDisk, ?string $filesystemDisk): string
     ];
 
     foreach (['MEDIA_DISK' => $mediaDisk, 'FILESYSTEM_DISK' => $filesystemDisk] as $key => $value) {
-        if ($value === null) {
-            unset($_ENV[$key], $_SERVER[$key]);
-        } else {
-            $_ENV[$key] = $_SERVER[$key] = $value;
-        }
+        writeEnvVar($key, $value);
     }
 
     try {
         return (require base_path('config/media.php'))['disk'];
     } finally {
         foreach ($restore as $key => $value) {
-            if ($value === null) {
-                unset($_ENV[$key], $_SERVER[$key]);
-            } else {
-                $_ENV[$key] = $_SERVER[$key] = $value;
-            }
+            writeEnvVar($key, $value);
         }
     }
 }
