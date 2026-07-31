@@ -10,9 +10,14 @@ via flat-fee APIs. Target = independent restaurants dependent on DoorDash/Uber.
 The build splits into two independent jobs: **get the order to the kitchen** (POS injection or
 cloud printer) and **deliver it** (DoorDash Drive / Uber Direct). Sequenced below by dependency.
 
-**Position (2026-07-15):** both jobs now have a shipped path — Square + Clover injection, and Uber
-Direct delivery end-to-end. The remaining work is mostly *launch*, not build: §0 is still open and
-Stripe is still in test mode.
+**Position (2026-07-31):** both jobs have a shipped path — Square + Clover injection, and delivery
+via **DoorDash Drive (launch provider, Sessions 1–5 all done incl. refunds; Uber Direct dormant)**.
+Since 07-15 the platform work also landed: the 10-session admin overhaul (2026-07-24), user
+soft-deletes + super-admin Users console, TOTP 2FA (required for supers), and menu-import option
+sets + re-import. Full suite green locally at **1019 tests** (2026-07-31). The remaining work is
+mostly *launch*, not build: §0 is still open, Stripe is still in test mode, and DoorDash prod
+access (§3 Session 0/6) is unfiled. **CI on `dev` is red** — see the §8 item (2026-07-31); it's
+env/lint drift, not failing product code.
 
 ---
 
@@ -238,8 +243,8 @@ actually exists. `DeliveryFeeStrategy` is wired and `DeliveryDispatcher::quote()
 
 **DoorDash Drive is now the launch delivery provider** (Uber kept dormant). As of 2026-07-17,
 Sessions 1, 4a, 4b, 2, 3 of the DoorDash plan are DONE (adapter, full money model, one-click
-provisioning, webhooks) — full suite 848 green, JWT+quote and the §1 money model both verified live
-against the sandbox. Remaining: Session 5 (refunds), Session 0/6 (prod access + go-live).
+provisioning, webhooks) — JWT+quote and the §1 money model both verified live against the sandbox.
+Session 5 (refunds) shipped 2026-07-17 (see below). Remaining: Session 0/6 (prod access + go-live).
 
 **Full plans:**
 - **[docs/doordash-drive-implementation-plan.md](docs/doordash-drive-implementation-plan.md)** — the
@@ -361,10 +366,13 @@ retained fee, an **attribution ledger** (`fee_distributions`) + a monthly earnin
 `/super/earnings`. It records who earned what; it does not move money. These are the deferred
 pieces._
 
-- [ ] **Refund handling** — the earnings report currently excludes only *fully*-refunded orders
-      (`refunded_at` set). Add **partial-refund proration** so a partially-refunded order's
-      attributed fee shrinks proportionally (or clawback the ledger rows on refund). Ties into the
-      partial-refund UX question in "Open Stripe questions" below.
+- [ ] **Refund handling — partially closed by DoorDash Session 5 (re-scoped 2026-07-31).** The
+      clawback now exists at the money-line level: `OrderTransition::applyRefund()` zeroes
+      `platform_commission_cents`/`delivery_margin_cents` and `RevenueSplitResolver::reverse()`
+      deletes the matching `fee_distributions` rows, so a food-line refund already removes its
+      attribution. Still open: **item-level partial refunds don't exist** (RefundCalculator only
+      refunds whole food and/or delivery lines), so fractional proration has no path yet. Ties into
+      the partial-refund UX question in "Open Stripe questions" below.
 - [ ] **Direct deposits** — actually paying overseers/recruiters is out-of-band manual today
       (read the monthly report, send a transfer). Decide the payout mechanism (manual bank
       transfer vs. automated Stripe transfers to each payee's own connected account) and, if
@@ -378,8 +386,10 @@ _Low-effort correctness & cleanup items found while auditing the roadmap against
 - [x] **Tighten fee validation range.** Done 2026-07-15: capped at 15%
       (`UpdateRestaurantFeeRequest::MAX_PERCENT`, now in `app/Http/Requests/Admin/SuperAdmin/`),
       with boundary tests in RestaurantFeeTest and a matching `max` on the fee input.
-- [ ] **`refunded_cents` is written but never read.** `OrderTransition` sets it to the full
-      `total_cents` on a refunded cancel (`OrderTransition::refundOnCancel()`) and no code consults it. It's the
+- [ ] **`refunded_cents` — now written cumulatively, still unread by earnings (re-scoped
+      2026-07-31).** Session 5's refund engine writes it cumulatively on every partial refund
+      (`OrderTransition::applyRefund()`, OrderTransition.php:157), so "never read" no longer holds
+      as stated — but the earnings report still doesn't consult it. It remains the
       natural hook for the §7 partial-refund proration — wire it there, or drop the column if
       partials stay out of scope. (Since §8, an order cancelled while only *authorized* is voided
       instead and correctly leaves this at 0 — nothing was charged, so nothing was refunded.)
@@ -440,13 +450,26 @@ _Low-effort correctness & cleanup items found while auditing the roadmap against
 - [x] **CI matrix trimmed to PHP 8.4** (2026-07-15) — 8.5 was a flake source, not coverage;
       production runs 8.4. Re-add when an upgrade is planned. Pest in CI now runs with
       `memory_limit=512M`.
+- [ ] **CI on `dev` is red (diagnosed 2026-07-31) — two causes, both env/lint drift, product code
+      is green (1019 pass locally).** (a) `tests.yml` does `cp .env.example .env`, and
+      `.env.example` both sets `MEDIA_DISK=public` (breaks 3 ProductionConfigurationTest media-disk
+      datasets — the test's `$_ENV` unset can't defeat a genuinely loaded value in CI) and has **no
+      `DOORDASH_*` entries at all** (breaks DoorDashDeliveryMoneyTest's gross-up quote — without
+      creds DoorDash isn't centrally billed). Fix: add `DOORDASH_*` placeholder entries to
+      `.env.example` and drop/comment `MEDIA_DISK` there (or make the test's env override use
+      `Env::getRepository()`), keeping the file honest as launch documentation. (b) `lint.yml`
+      fails on **22 ESLint `import/order` errors** — all auto-fixable with `npx eslint . --fix`.
 - [ ] **Tip *amount* routing is untested.** `TipRecipientResolutionTest` +
       `OrderPlacementTipRecipientTest` prove which recipient is *resolved*, but nothing asserts the
       tip dollars actually flow/attribute to that recipient (staff vs. courier) — a routing
       regression on a money path would pass CI.
-- [ ] **POS token expiry mid-push is untested.** OAuth-service refresh is covered
-      (CloverOAuthServiceTest etc.), but no test proves an expired/401 token *during*
-      `PushOrderToPos` triggers refresh-and-retry rather than a spurious permanent failure.
+- [ ] **POS token expiry mid-push — partially covered (re-scoped 2026-07-31).** A 401 mid-push IS
+      now tested through the real pipeline for both adapters (SquarePushOrderTest:129-144,
+      CloverPushOrderTest:121-131), and proactive refresh-then-push with token persistence too.
+      What remains: `PushOrderToPos` deliberately does NOT refresh-and-retry on a mid-push 401 — it
+      flips the integration to token-expired and `fail()`s permanently (PushOrderToPos.php:70-79),
+      and PushOrderToPosJobTest has no token-expired case. Decide whether fail-fast-reconnect is
+      the intended behavior (then test it at the job level) or add refresh-and-retry.
 
 ## 9. Menu availability & order pausing (surfaced 2026-07-14 while scoping §3 delivery)
 _Availability itself is built and enforced: `menu_items.is_available` + `item_template_options.is_available`,
@@ -468,7 +491,7 @@ pickup experience._
       slammed at lunch has to edit their hours to stop taking orders. Add a manual
       `orders_paused_until` / `is_accepting_orders` guard checked in `OrderPlacement::prepare()`
       alongside `isOpenAt()`.
-- [ ] **`isOpenAt()` returns `true` when a restaurant has no hours rows** (Restaurant.php:404) —
+- [ ] **`isOpenAt()` returns `true` when a restaurant has no hours rows** (Restaurant.php:419) —
       deliberate "always open" back-compat, but it means deleting your hours silently accepts orders
       24/7. Now that hours gate delivery dispatch, decide: keep the back-compat or fail closed.
 - [ ] **`CartManager::addItem` never checks `is_available`** (CartManager.php:110) — an unavailable

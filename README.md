@@ -7,7 +7,9 @@ operations (menu, orders, kitchen, payouts, integrations) from an admin console.
 **Pricing model:** 4% flat per order — 4% of the post-redemption food subtotal, i.e. what
 the customer actually pays for food. Tax, tip, and the delivery fee are excluded, always.
 Charged via a Stripe Connect application fee on top of the restaurant's own Stripe
-processing. No subscriptions, no tiers. The restaurant is the merchant of record.
+processing. No subscriptions, no tiers — but the commission is **capped at $249 per
+restaurant per calendar month** (`config/platform.php`, per-restaurant override), and super
+admins can override the 4% rate per restaurant. The restaurant is the merchant of record.
 (Loyalty redemption isn't built yet, so today the post-redemption subtotal is simply the
 food subtotal.)
 
@@ -24,8 +26,9 @@ food subtotal.)
 | Auth | Fortify + Socialite | Email/password + Google OAuth; TOTP two-factor (required for super admins) |
 | Revenue split | `app/Services/RevenueSplitResolver.php` | Founder/operator/recruiter attribution ledger + monthly earnings |
 
-Deeper design docs live in `docs/` (POS strategy, DoorDash Drive plan, admin overhaul,
-user management). Deployment to Laravel Cloud is covered in `DEPLOY.md`.
+Deeper design docs live in `docs/` (POS strategy, DoorDash Drive plan, the dormant Uber
+Direct plan, admin overhaul, user management). Deployment to Laravel Cloud is covered in
+`DEPLOY.md`.
 
 ## Stack
 
