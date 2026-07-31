@@ -4,9 +4,14 @@ namespace App\Support;
 
 class BrandColors
 {
-    public const FALLBACK_PRIMARY = '#171717';
+    /** Platform teal (matches --primary in app.css) so unthemed storefronts look like Plateful. */
+    public const FALLBACK_PRIMARY = '#057575';
 
-    public const FALLBACK_SECONDARY = '#171717';
+    /**
+     * Secondary colors paler than this relative luminance can't work as an
+     * accent on the storefront's white surfaces, so they fall back to primary.
+     */
+    public const ACCENT_LUMINANCE_CEILING = 0.85;
 
     public const LIGHT_TEXT = '#ffffff';
 
@@ -34,8 +39,22 @@ class BrandColors
      */
     public static function readableTextColor(string $hex): string
     {
-        if (preg_match('/^#([0-9a-fA-F]{6})$/', $hex, $m) !== 1) {
+        $luminance = self::relativeLuminance($hex);
+
+        if ($luminance === null) {
             return self::LIGHT_TEXT;
+        }
+
+        return $luminance > 0.5 ? self::DARK_TEXT : self::LIGHT_TEXT;
+    }
+
+    /**
+     * WCAG relative luminance for a #rrggbb color, or null when unparseable.
+     */
+    public static function relativeLuminance(string $hex): ?float
+    {
+        if (preg_match('/^#([0-9a-fA-F]{6})$/', $hex, $m) !== 1) {
+            return null;
         }
 
         $r = hexdec(substr($m[1], 0, 2)) / 255;
@@ -48,9 +67,7 @@ class BrandColors
                 : (($c + 0.055) / 1.055) ** 2.4;
         };
 
-        $luminance = 0.2126 * $channel($r) + 0.7152 * $channel($g) + 0.0722 * $channel($b);
-
-        return $luminance > 0.5 ? self::DARK_TEXT : self::LIGHT_TEXT;
+        return 0.2126 * $channel($r) + 0.7152 * $channel($g) + 0.0722 * $channel($b);
     }
 
     /**
@@ -61,7 +78,13 @@ class BrandColors
     public static function paletteFor(?string $primary, ?string $secondary): array
     {
         $p = self::normalize($primary, self::FALLBACK_PRIMARY);
-        $s = self::normalize($secondary, self::FALLBACK_SECONDARY);
+        $s = self::normalize($secondary, $p);
+
+        // Near-white secondaries are treated as unset: they'd be invisible as
+        // accents, and legacy rows saved the color input's untouched #ffffff.
+        if ((self::relativeLuminance($s) ?? 0.0) > self::ACCENT_LUMINANCE_CEILING) {
+            $s = $p;
+        }
 
         return [
             'primary' => $p,

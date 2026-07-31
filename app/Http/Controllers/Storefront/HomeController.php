@@ -7,7 +7,6 @@ use App\Data\RestaurantData;
 use App\Data\RestaurantPhotoData;
 use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
-use App\Support\BrandColors;
 use App\Tenancy\CurrentTenant;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,10 +38,6 @@ class HomeController extends Controller
             'restaurant' => RestaurantData::fromModel($restaurant),
             'photos' => $photos,
             'featuredItems' => $featuredItems,
-            'brand' => BrandColors::paletteFor(
-                $restaurant->primary_color,
-                $restaurant->secondary_color,
-            ),
         ]);
     }
 }

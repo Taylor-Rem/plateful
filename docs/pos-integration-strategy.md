@@ -2,12 +2,17 @@
 
 _Status: revised draft · Last updated: 2026-07-09_
 
-> **Build-state note (2026-07-15):** this is the *strategy* document; its "code reality" remarks
+> **Build-state note (2026-07-31):** this is the *strategy* document; its "code reality" remarks
 > and phased roadmap (§7–§9) are frozen at 2026-07-09 and have been overtaken by the build. Since
 > then: the per-tenant encrypted credential store (`pos_integrations`), the **Square and Clover
-> adapters** (OAuth connect + order push), and **Uber Direct delivery end-to-end** (per-restaurant
-> credentials, quote-before-payment, webhooks, auth/capture) have all shipped. For current build
-> state always read [todo.md](../todo.md); the strategy and pricing reasoning here still stand.
+> adapters** (OAuth connect + order push), **Uber Direct delivery end-to-end** (per-restaurant
+> credentials, quote-before-payment, webhooks, auth/capture), and — as of 2026-07-17 —
+> **DoorDash Drive as the launch delivery provider** (umbrella/central-billing model, full money
+> model incl. the $249/mo commission cap, provisioning, webhooks, refunds; the Uber adapter is kept
+> dormant; see [doordash-drive-implementation-plan.md](doordash-drive-implementation-plan.md)) have
+> all shipped. The "first sellable milestone" (§9) — Square injection + pickup, then delivery — is
+> **built**; what remains is launch prep (todo.md §0) plus DoorDash production access. For current
+> build state always read [todo.md](../todo.md); the strategy and pricing reasoning here still stand.
 
 This document started as a POS-integration brief centered on winning Toast restaurants by
 undercutting their fees. Working through the actual economics moved the strategy somewhere
@@ -81,10 +86,11 @@ Facts that shape this plan:
   (**4% flat of food subtotal** — see §6). Restaurant pays Stripe's
   processing; Plateful takes the application fee on top.
 
-> **Code reality — two patterns already exist that we build on.** The `DeliveryDispatcher`
-> pluggable-adapter subsystem (§7) is the template for both delivery and POS injection, and its
-> provider enum already lists `DoorDash` and `Uber` (unimplemented). There is **no per-tenant
-> encrypted credential store** yet — that's net-new work (§7c).
+> **Code reality (2026-07-09; since superseded — both gaps are now shipped).** The
+> `DeliveryDispatcher` pluggable-adapter subsystem (§7) is the template for both delivery and POS
+> injection, and its provider enum already lists `DoorDash` and `Uber` ~~(unimplemented)~~ (both
+> implemented as of 2026-07-17). ~~There is **no per-tenant encrypted credential store** yet~~
+> (`pos_integrations` + `delivery_integrations` shipped — §7c).
 
 ---
 
@@ -298,16 +304,15 @@ Two different DoorDash products — don't confuse them:
 This is exactly how ChowNow/Owner.com offer "~$7.98 delivery." Drive/Direct are far more
 accessible to a solo dev than Toast's gated program (direct API signup).
 
-> **Code reality — this maps onto an abstraction that already exists.** The `DeliveryDispatcher`
-> (`app/Services/Delivery/DeliveryDispatcher.php`), its `DeliveryProvider` contract
-> (`app/Contracts/DeliveryProvider.php`), and the `DoorDash`/`Uber` entries already in
-> `DeliveryProviderName` are the extension points. `DoorDashDriveProvider` and
-> `UberDirectProvider` are the adapters that fill them. Only `SelfDeliveryProvider` is
-> implemented today, so these are first real fills — budget for webhook/sandbox unknowns.
+> **Code reality (2026-07-09; since superseded — both adapters are shipped).** The
+> `DeliveryDispatcher` (`app/Services/Delivery/DeliveryDispatcher.php`), its `DeliveryProvider`
+> contract (`app/Contracts/DeliveryProvider.php`), and the `DoorDash`/`Uber` entries in
+> `DeliveryProviderName` are the extension points. `DoorDashProvider` (launch provider) and
+> `UberDirectProvider` (dormant) now fill them alongside `SelfDeliveryProvider`.
 
-### 7c. Per-tenant encrypted credential store (net-new — build first)
+### 7c. Per-tenant encrypted credential store (~~net-new — build first~~ shipped as `pos_integrations` + `delivery_integrations`)
 
-No per-tenant OAuth/API-key vault exists today. Establish one before any adapter:
+~~No per-tenant OAuth/API-key vault exists today.~~ Establish one before any adapter:
 - A `pos_integrations` table (tenant-scoped via `BelongsToTenant`) with `provider`,
   `external_merchant_id`/`location_id`, `access_token`, `refresh_token`, `token_expires_at`,
   `status`, `scopes`.

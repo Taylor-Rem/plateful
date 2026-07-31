@@ -20,8 +20,11 @@ const form = useForm({
     name: props.restaurant.name,
     description: props.restaurant.description ?? '',
     phone: props.restaurant.phone ?? '',
-    primary_color: props.restaurant.primaryColor ?? '#111827',
-    secondary_color: props.restaurant.secondaryColor ?? '#ffffff',
+    primary_color: props.restaurant.primaryColor ?? '#057575',
+    secondary_color:
+        props.restaurant.secondaryColor ??
+        props.restaurant.primaryColor ??
+        '#057575',
     logo: null as File | null,
     street: props.restaurant.street ?? '',
     city: props.restaurant.city ?? '',

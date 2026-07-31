@@ -17,8 +17,11 @@ const form = useForm({
     _method: 'put' as const,
     name: props.restaurant.name,
     description: props.restaurant.description ?? '',
-    primary_color: props.restaurant.primaryColor ?? '#111827',
-    secondary_color: props.restaurant.secondaryColor ?? '#ffffff',
+    primary_color: props.restaurant.primaryColor ?? '#057575',
+    secondary_color:
+        props.restaurant.secondaryColor ??
+        props.restaurant.primaryColor ??
+        '#057575',
     email: props.restaurant.email ?? '',
     phone: props.restaurant.phone ?? '',
     street: props.restaurant.street ?? '',

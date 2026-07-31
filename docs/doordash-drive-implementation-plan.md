@@ -2,7 +2,7 @@
 
 **Status:** in progress · **Decision locked 2026-07-18** · Supersedes the Uber-first launch plan.
 
-### Progress (updated 2026-07-17)
+### Progress (updated 2026-07-31)
 
 | Session | What | State |
 |---|---|---|
@@ -15,8 +15,9 @@
 | **5** | Refunds & cancellation policy | ✅ **Done** — recoverable-refund money model, two independent food-refund toggles (pickup/delivery), Settings UI + dedicated onboarding step; full suite green (867). One go-live item: confirm DoorDash's live cancel-fee response field |
 | **6** | Production go-live | ⬜ Not started |
 
-Full suite green at 848 tests. Remaining before real money: Session 5, Session 0/6 (prod access +
-Stripe live + a running queue worker). The money model (4a+4b) — the final money gate — is complete.
+Full suite green at 1019 tests (2026-07-31). All code sessions (1–5) are done. Remaining before
+real money: Session 0/6 only (prod access + Stripe live + a running queue worker). The money model
+(4a+4b) — the final money gate — is complete.
 
 DoorDash Drive is Plateful's **launch delivery provider**. The complete Uber Direct adapter stays
 in the tree **dormant** (behind the `DeliveryProvider` contract; `DeliveryFallbackAction` already
@@ -123,14 +124,16 @@ If the revenue split reads the gross, it would split DoorDash's money among foun
 
 ---
 
-## 2. Data-model changes (summary) — ✅ all shipped except `refunds_enabled`
+## 2. Data-model changes (summary) — ✅ all shipped
 
 - ✅ **`delivery_integrations`** (nullable, **not** encrypted — ids, not secrets):
   `external_business_id`, `external_store_id`. DoorDash rows store these; `client_id`/`client_secret`/
   `customer_id`/`access_token` stay null for DoorDash. Landed in **Session 1** (the adapter reads
   `external_store_id`), not Session 2 as originally sequenced. (Platform JWT creds live in `.env`.)
 - **`restaurants`**: ✅ `commission_monthly_cap_cents` (nullable int; default from config on create,
-  grandfathered) added in 4a. ⬜ `refunds_enabled` (bool, default OFF) — Session 5.
+  grandfathered) added in 4a. ✅ Session 5 shipped the refund flag as **two** columns —
+  `pickup_refunds_enabled` + `delivery_refunds_enabled` (both default OFF), plus
+  `refund_policy_reviewed_at` — not the single `refunds_enabled` originally planned.
 - ✅ **`orders`** (4a): added `platform_commission_cents`, `delivery_margin_cents`, `courier_fee_cents`
   (with a backfill of `platform_commission_cents` from `application_fee_cents`). **Decided:** kept
   `application_fee_cents` as the Stripe gross (its existing meaning) rather than adding
@@ -436,7 +439,10 @@ customer/restaurant/Plateful/DoorDash splits are correct to the cent.
 **Goal:** refunds mirror DoorDash (timing) + the restaurant's food-refund choice; Plateful never
 eats a refund; the 4% reverses proportionally.
 
-**Build:**
+**Build** _(historical design — the shipped shape differs: two toggles
+(`pickup_refunds_enabled`/`delivery_refunds_enabled`) instead of one flag, and
+`StripeConnectService::refundOrderPartial` instead of `refundOrder`; see the "Shipped" blockquote
+above for what actually landed)_:
 - `restaurants.refunds_enabled` flag, **default OFF** for new restaurants (Open Decision 4) — but
   **surface the choice in the onboarding setup flow** (add a small step/toggle to the wizard in
   `OnboardingController::steps()` `OnboardingController.php:215-258`, not just buried in settings) so
@@ -466,8 +472,9 @@ never out of pocket.
 - Restrict/secure the production keys; confirm the webhook secret is set in the DoorDash portal.
 - Regression pass: Uber adapter still present and dormant (a test asserting it's registered but not
   in the default chain).
-- Update `todo.md` and the project memory; retire the Uber-first framing in
-  `docs/uber-direct-implementation-plan.md` (add a pointer to this doc).
+- Update `todo.md` and the project memory. ~~Retire the Uber-first framing in
+  `docs/uber-direct-implementation-plan.md` (add a pointer to this doc)~~ — done; that doc's
+  superseded banner already points here.
 
 ---
 

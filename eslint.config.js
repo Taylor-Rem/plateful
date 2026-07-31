@@ -36,6 +36,12 @@ export default defineConfigWithVueTs(
                 },
                 node: true,
             },
+            // Classify `@/...` as internal by pattern, not by resolution. The
+            // Wayfinder output (`@/actions`, `@/routes`, `@/wayfinder`) is
+            // gitignored, so it exists locally but not on a fresh CI checkout —
+            // without this, import/order groups those specifiers differently in
+            // the two environments and CI fails on imports that are clean locally.
+            'import/internal-regex': '^@/',
         },
         rules: {
             'vue/multi-word-component-names': 'off',
@@ -79,6 +85,7 @@ export default defineConfigWithVueTs(
         ignores: [
             'vendor',
             'node_modules',
+            '.claude/**',
             'public',
             'bootstrap/ssr',
             'tailwind.config.js',

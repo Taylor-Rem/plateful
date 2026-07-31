@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import { Clock, ImagePlus, MapPin, Pencil } from 'lucide-vue-next';
 import { computed } from 'vue';
 
@@ -17,6 +18,8 @@ const ctaLabel = computed(
     () => props.restaurant.heroCtaLabel?.trim() || 'Order online',
 );
 const ctaHref = computed(() => props.restaurant.heroCtaUrl?.trim() || '/menu');
+// Internal CTAs get an SPA visit; external ones stay a plain anchor.
+const ctaIsInternal = computed(() => ctaHref.value.startsWith('/'));
 
 const addressLine = computed(() => {
     const r = props.restaurant;
@@ -143,14 +146,15 @@ const ctaStyle = computed(() =>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
-                <a
+                <component
+                    :is="ctaIsInternal ? Link : 'a'"
                     :href="ctaHref"
                     class="inline-flex items-center justify-center rounded-md px-5 py-3 text-base font-semibold shadow-sm transition hover:brightness-110 focus:ring-2 focus:ring-offset-2 focus:outline-none"
                     :style="ctaStyle"
                     @click.stop
                 >
                     {{ ctaLabel }}
-                </a>
+                </component>
                 <button
                     v-if="editMode && !hasImage"
                     type="button"

@@ -92,6 +92,27 @@ test('brand color fallback is used when the restaurant has no primary color', fu
     expect($response->getContent())->toContain('--brand-primary: '.BrandColors::FALLBACK_PRIMARY);
 });
 
+test('secondary accent falls back to primary when unset or near-white', function () {
+    expect(BrandColors::paletteFor('#b91c1c', null)['secondary'])->toBe('#b91c1c');
+
+    // Legacy rows saved the color input's untouched #ffffff default; a
+    // near-white accent would be invisible on the storefront's white surfaces.
+    expect(BrandColors::paletteFor('#b91c1c', '#ffffff')['secondary'])->toBe('#b91c1c');
+});
+
+test('a usable secondary color is preserved as the accent', function () {
+    expect(BrandColors::paletteFor('#b91c1c', '#0052d6')['secondary'])->toBe('#0052d6');
+});
+
+test('storefront HTML renders the primary as brand secondary for legacy white secondaries', function () {
+    themingTenant('#b91c1c', '#ffffff');
+
+    $response = $this->get('http://marcos.plateful.test/');
+
+    $response->assertOk();
+    expect($response->getContent())->toContain('--brand-secondary: #b91c1c');
+});
+
 test('readable text color is white for dark backgrounds and dark for pale ones', function () {
     expect(BrandColors::readableTextColor('#171717'))->toBe('#ffffff');
     expect(BrandColors::readableTextColor('#ffeb3b'))->toBe('#0a0a0a');

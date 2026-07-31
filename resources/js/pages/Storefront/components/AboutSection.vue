@@ -43,7 +43,7 @@ const paragraphs = computed(() =>
 
         <h2
             class="mb-6 inline-block border-b-2 pb-1 text-2xl font-semibold text-foreground"
-            :style="{ borderColor: 'var(--brand-primary)' }"
+            :style="{ borderColor: 'var(--brand-secondary)' }"
         >
             About
         </h2>

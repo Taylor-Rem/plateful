@@ -14,12 +14,6 @@ const addressLine = computed(() => {
         .join(', ');
 });
 
-const telHref = computed(() => {
-    const raw = props.restaurant.phone?.replace(/[^0-9+]/g, '') ?? '';
-
-    return raw ? `tel:${raw}` : null;
-});
-
 const statusLabel = computed(
     () =>
         props.restaurant.openStatusLabel ??
@@ -67,7 +61,7 @@ const statusLabel = computed(
                 </div>
             </div>
 
-            <div v-if="telHref" class="flex items-start gap-2.5">
+            <div v-if="restaurant.phoneHref" class="flex items-start gap-2.5">
                 <Phone class="mt-0.5 size-4 shrink-0 text-foreground/60" />
                 <div>
                     <p
@@ -76,9 +70,9 @@ const statusLabel = computed(
                         Call
                     </p>
                     <a
-                        :href="telHref"
+                        :href="restaurant.phoneHref ?? undefined"
                         class="text-foreground hover:underline"
-                        >{{ restaurant.phone }}</a
+                        >{{ restaurant.phoneDisplay ?? restaurant.phone }}</a
                     >
                 </div>
             </div>

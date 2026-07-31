@@ -5,19 +5,11 @@ import deliveryQuote from '@/actions/App/Http/Controllers/Storefront/DeliveryQuo
 import AddressAutocomplete from '@/pages/Storefront/components/AddressAutocomplete.vue';
 import type { AddressSnapshot } from '@/pages/Storefront/components/AddressAutocomplete.vue';
 
-type BrandPalette = {
-    primary: string;
-    primaryForeground: string;
-    secondary: string;
-    secondaryForeground: string;
-};
-
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     cart: App.Data.CartData;
     savedAddresses: App.Data.AddressData[];
     tipPresets: number[];
-    brand: BrandPalette;
 }>();
 
 const page = usePage<{

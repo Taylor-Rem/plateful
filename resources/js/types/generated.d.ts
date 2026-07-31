@@ -184,6 +184,8 @@ primaryColor: string | null,
 secondaryColor: string | null,
 email: string | null,
 phone: string | null,
+phoneDisplay: string | null,
+phoneHref: string | null,
 street: string | null,
 street2: string | null,
 city: string | null,
@@ -209,6 +211,8 @@ opensAt: string,
 closesAt: string,
 position: number,
 }[][],
+hasAboutSection: boolean,
+hasGalleryPhotos: boolean,
 createdAt: string | null,
 publicUrl: string,
 };
@@ -241,6 +245,7 @@ export type DeliveryIntegrationStatus = 'connected' | 'disconnected' | 'error';
 export type DeliveryMode = 'self' | 'third_party';
 export type DeliveryProviderName = 'self' | 'doordash' | 'uber';
 export type DeliveryStatus = 'pending' | 'driver_assigned' | 'picked_up' | 'delivered' | 'cancelled' | 'failed';
+export type MailSender = 'orders' | 'service' | 'support';
 export type MenuImportStatus = 'queued' | 'processing' | 'needs_review' | 'completed' | 'failed';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type OrderType = 'delivery' | 'pickup';

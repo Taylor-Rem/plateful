@@ -3,17 +3,9 @@ import { Head, Link } from '@inertiajs/vue3';
 import { CheckCircle2 } from 'lucide-vue-next';
 import { computed } from 'vue';
 
-type BrandPalette = {
-    primary: string;
-    primaryForeground: string;
-    secondary: string;
-    secondaryForeground: string;
-};
-
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     order: App.Data.OrderData;
-    brand: BrandPalette;
 }>();
 
 const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
