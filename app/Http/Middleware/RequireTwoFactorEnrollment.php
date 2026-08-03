@@ -18,6 +18,13 @@ class RequireTwoFactorEnrollment
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Local development skips the two-factor challenge at login (see
+        // FortifyServiceProvider::configureLocalAuthenticationPipeline), so
+        // forcing enrollment here would demand a code nothing ever asks for.
+        if (app()->environment('local')) {
+            return $next($request);
+        }
+
         $user = $request->user();
 
         if ($user !== null
