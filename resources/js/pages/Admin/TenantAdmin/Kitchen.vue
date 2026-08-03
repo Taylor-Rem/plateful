@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { Volume2, VolumeX } from 'lucide-vue-next';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { dashboard } from '@/routes/admin/restaurant';
 import { transition as ordersTransition } from '@/routes/admin/restaurant/orders';
 
@@ -10,11 +11,80 @@ const props = defineProps<{
 }>();
 
 const POLL_MS = 5000;
+const SOUND_PREF_KEY = 'plateful-kitchen-sound';
 
 const now = ref(Date.now());
 let nowTimer: ReturnType<typeof setInterval> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 const advancing = ref<Set<number>>(new Set());
+
+// ——— New-order alerting ————————————————————————————————————————————————
+// Orders on screen when the page loaded are not "new"; anything that appears
+// in a later poll is, and gets a chime plus a flashing card.
+const seenIds = new Set(props.orders.map((o) => o.id));
+const arrivals = ref<Set<number>>(new Set());
+const soundEnabled = ref(localStorage.getItem(SOUND_PREF_KEY) !== 'off');
+
+let audioCtx: AudioContext | null = null;
+
+// Browsers refuse audio until the user has touched the page, so the context
+// is created/resumed on any tap — including the sound toggle itself.
+const ensureAudio = (): void => {
+    audioCtx ??= new AudioContext();
+
+    if (audioCtx.state === 'suspended') {
+        void audioCtx.resume();
+    }
+};
+
+const toggleSound = (): void => {
+    soundEnabled.value = !soundEnabled.value;
+    localStorage.setItem(SOUND_PREF_KEY, soundEnabled.value ? 'on' : 'off');
+
+    if (soundEnabled.value) {
+        chime();
+    }
+};
+
+/** Two rising sine tones — no audio asset to load or cache. */
+const chime = (): void => {
+    if (!soundEnabled.value || !audioCtx || audioCtx.state !== 'running') {
+        return;
+    }
+
+    const t0 = audioCtx.currentTime;
+    [880, 1318.5].forEach((frequency, i) => {
+        const osc = audioCtx!.createOscillator();
+        const gain = audioCtx!.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = frequency;
+        const start = t0 + i * 0.18;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.4, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+        osc.connect(gain).connect(audioCtx!.destination);
+        osc.start(start);
+        osc.stop(start + 0.18);
+    });
+};
+
+watch(
+    () => props.orders,
+    (orders) => {
+        const fresh = orders.filter((o) => !seenIds.has(o.id));
+        orders.forEach((o) => seenIds.add(o.id));
+
+        if (fresh.length === 0) {
+            return;
+        }
+
+        chime();
+        fresh.forEach((o) => arrivals.value.add(o.id));
+        setTimeout(() => {
+            fresh.forEach((o) => arrivals.value.delete(o.id));
+        }, 12000);
+    },
+);
 
 onMounted(() => {
     nowTimer = setInterval(() => {
@@ -23,6 +93,7 @@ onMounted(() => {
     pollTimer = setInterval(() => {
         router.reload({ only: ['orders'] });
     }, POLL_MS);
+    window.addEventListener('pointerdown', ensureAudio, { passive: true });
 });
 
 onBeforeUnmount(() => {
@@ -33,12 +104,22 @@ onBeforeUnmount(() => {
     if (pollTimer) {
         clearInterval(pollTimer);
     }
+
+    window.removeEventListener('pointerdown', ensureAudio);
 });
 
 const columns = computed(() => [
     {
-        key: 'confirmed',
+        key: 'pending',
         label: 'New',
+        next: 'confirmed',
+        tone: 'border-rose-500/40 bg-rose-50 dark:bg-rose-950/40',
+        chip: 'bg-rose-500 text-white',
+        orders: props.orders.filter((o) => o.status === 'pending'),
+    },
+    {
+        key: 'confirmed',
+        label: 'Accepted',
         next: 'preparing',
         tone: 'border-sky-500/40 bg-sky-50 dark:bg-sky-950/40',
         chip: 'bg-sky-500 text-white',
@@ -149,6 +230,10 @@ const orderTypeLabel = (type: string): string => {
 };
 
 const advanceLabel = (next: string): string => {
+    if (next === 'confirmed') {
+        return 'Accept order';
+    }
+
     if (next === 'preparing') {
         return 'Start preparing';
     }
@@ -186,11 +271,25 @@ const advanceLabel = (next: string): string => {
                     class="flex items-center gap-3 text-xs text-muted-foreground"
                 >
                     <span>Auto-refreshing every {{ POLL_MS / 1000 }}s</span>
+                    <button
+                        type="button"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 font-medium text-foreground transition hover:bg-muted"
+                        :title="
+                            soundEnabled
+                                ? 'New-order chime is on'
+                                : 'New-order chime is off'
+                        "
+                        @click="toggleSound"
+                    >
+                        <Volume2 v-if="soundEnabled" class="h-4 w-4" />
+                        <VolumeX v-else class="h-4 w-4" />
+                        {{ soundEnabled ? 'Sound on' : 'Sound off' }}
+                    </button>
                 </div>
             </div>
         </header>
 
-        <main class="grid grid-cols-1 gap-4 p-4 md:grid-cols-3">
+        <main class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-4">
             <section
                 v-for="col in columns"
                 :key="col.key"
@@ -219,6 +318,11 @@ const advanceLabel = (next: string): string => {
                         v-for="order in col.orders"
                         :key="order.id"
                         class="rounded-lg border border-border bg-card p-4 shadow-sm"
+                        :class="
+                            arrivals.has(order.id)
+                                ? 'animate-pulse ring-2 ring-rose-500'
+                                : ''
+                        "
                     >
                         <header class="flex items-start justify-between gap-2">
                             <div>

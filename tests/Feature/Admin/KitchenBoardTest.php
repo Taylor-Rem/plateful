@@ -31,10 +31,12 @@ test('kitchen board renders for restaurant member', function () {
         ->assertInertia(fn ($p) => $p->component('Admin/TenantAdmin/Kitchen'));
 });
 
-test('kitchen board only includes confirmed, preparing, and ready orders', function () {
+test('kitchen board includes every active status and hides finished orders', function () {
     $r = kitchenRestaurant();
     $staff = kitchenStaff($r);
 
+    // Pending is on the board: an order only exists once it is paid, so a
+    // tablet-only restaurant must be able to see and accept it right here.
     makeOrder($r, ['status' => OrderStatus::Pending]);
     makeOrder($r, ['status' => OrderStatus::Confirmed]);
     makeOrder($r, ['status' => OrderStatus::Preparing]);
@@ -47,13 +49,27 @@ test('kitchen board only includes confirmed, preparing, and ready orders', funct
         ->assertOk()
         ->assertInertia(function ($page) {
             $orders = $page->toArray()['props']['orders'];
-            expect($orders)->toHaveCount(3);
+            expect($orders)->toHaveCount(4);
             $statuses = array_map(fn ($o) => $o['status'], $orders);
             sort($statuses);
-            expect($statuses)->toBe(['confirmed', 'preparing', 'ready']);
+            expect($statuses)->toBe(['confirmed', 'pending', 'preparing', 'ready']);
 
             return $page;
         });
+});
+
+test('staff can accept a pending order via the existing endpoint', function () {
+    $r = kitchenRestaurant();
+    $staff = kitchenStaff($r);
+    $order = makeOrder($r, ['status' => OrderStatus::Pending]);
+
+    $this->actingAs($staff)
+        ->post(KITCHEN_ADMIN_BASE."/{$r->subdomain}/orders/{$order->number}/transitions", [
+            'to_status' => 'confirmed',
+        ])
+        ->assertRedirect();
+
+    expect($order->fresh()->status)->toBe(OrderStatus::Confirmed);
 });
 
 test('staff can advance an order from confirmed to preparing via the existing endpoint', function () {

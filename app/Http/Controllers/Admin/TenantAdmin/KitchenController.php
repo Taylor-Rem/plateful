@@ -14,9 +14,13 @@ use Inertia\Response;
 class KitchenController extends Controller
 {
     /**
-     * Statuses surfaced on the kitchen board, in display order.
+     * Statuses surfaced on the kitchen board, in display order. Pending is on
+     * the board because an order only exists once it is PAID — hiding it here
+     * meant a tablet-only restaurant never saw a new order without leaving the
+     * kitchen to accept it from the back-office Orders table.
      */
     private const BOARD_STATUSES = [
+        OrderStatus::Pending,
         OrderStatus::Confirmed,
         OrderStatus::Preparing,
         OrderStatus::Ready,
