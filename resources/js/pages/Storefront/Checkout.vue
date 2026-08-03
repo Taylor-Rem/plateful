@@ -89,6 +89,7 @@ const restaurantClosedError = computed(
 const INLINE_ERROR_KEYS = new Set([
     'customer_name',
     'customer_email',
+    'customer_phone',
     'type',
     'delivery_address.street',
     'restaurant_closed',
@@ -167,8 +168,13 @@ const onAddressCleared = (): void => {
     clearQuote();
 };
 
-// useHttp carries the payload; the getter keeps it in step with the form.
+// A data callback given to useHttp only seeds the form at creation; the
+// transform() below is what Inertia evaluates at submit time, so it is what
+// keeps the payload in step with the form.
 const quoteHttp = useHttp(() => ({
+    address: { ...form.delivery_address },
+}));
+quoteHttp.transform(() => ({
     address: { ...form.delivery_address },
 }));
 
@@ -482,14 +488,36 @@ const submit = (): void => {
                             <label
                                 class="mb-1 block text-sm font-medium"
                                 for="customer_phone"
-                                >Phone (optional)</label
+                                >{{
+                                    form.type === 'delivery'
+                                        ? 'Phone'
+                                        : 'Phone (optional)'
+                                }}</label
                             >
                             <input
                                 id="customer_phone"
                                 v-model="form.customer_phone"
                                 type="tel"
                                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                :class="
+                                    form.errors.customer_phone
+                                        ? 'border-destructive'
+                                        : ''
+                                "
                             />
+                            <p
+                                v-if="form.type === 'delivery'"
+                                class="mt-1 text-xs text-muted-foreground"
+                            >
+                                The delivery courier may call or text you at
+                                this number.
+                            </p>
+                            <p
+                                v-if="form.errors.customer_phone"
+                                class="mt-1 text-xs text-destructive"
+                            >
+                                {{ form.errors.customer_phone }}
+                            </p>
                         </div>
                     </div>
                 </section>

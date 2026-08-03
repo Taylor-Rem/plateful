@@ -15,14 +15,34 @@ via **DoorDash Drive (launch provider, Sessions 1–5 all done incl. refunds; Ub
 Since 07-15 the platform work also landed: the 10-session admin overhaul (2026-07-24), user
 soft-deletes + super-admin Users console, TOTP 2FA (required for supers), and menu-import option
 sets + re-import. Full suite green locally at **1019 tests** (2026-07-31). The remaining work is
-mostly *launch*, not build: §0 is still open, Stripe is still in test mode, and DoorDash prod
-access (§3 Session 0/6) is unfiled. **CI on `dev` is fixed** (2026-07-31, see the §8 item) — it was
-env/lint drift, never failing product code.
+mostly *launch*, not build. **§0 update 2026-07-31:** the Claude + Google Maps keys and Resend mail
+are all confirmed live in Cloud; what's left there is Stripe live mode, the POS production env vars,
+Sentry, S3, credential rotation, and the final `cloud-check.php` pass. Stripe is still in test mode
+and **DoorDash prod access (§3 Session 0/6) is still unfiled — that is now the critical path, ahead
+of the bank account.** Only Stripe genuinely waits on the EIN/bank; Square production and the
+DoorDash request do not (see the gating note at the top of §0). **CI on `dev` is fixed**
+(2026-07-31, see the §8 item) — it was env/lint drift, never failing product code.
 
 ---
 
 ## 0. Launch blockers — clear before selling to anyone
 _These gate real revenue and are independent of everything below. Do first._
+
+**What the business bank account actually gates (checked 2026-07-31 against each vendor's own docs
+— the EIN is in flight, faxed 07-30, expect it ~08-05):**
+- **Stripe live mode — GENUINELY GATED.** Platform activation + payout of application fees needs the
+  EIN and a business bank account. Nothing to do here but wait.
+- **Square production — NOT GATED. Do it today.** For an OAuth app the *sellers* are the activated
+  Square accounts, not us. Square Developer confirmed the whole production step is: move the OAuth
+  code to prod, set the production redirect URI, swap in the production app ID + secret. No Square
+  seller activation, no bank account, no approval queue on our side.
+- **Clover production — gated by the EIN, NOT the bank account.** Production developer-account
+  approval wants identity verification (name, DOB, home address, ID, OFAC) plus, for a corporate
+  developer, **Business EIN/Tax ID + company legal name**. Separately the *app* needs approval before
+  it can OAuth to any real merchant: payment-flow videos, EULA, privacy policy, ToS, support
+  email/phone/website, icon, screenshots, two-plus stated benefits. Both approvals must land before
+  launch. **The submission packet can be assembled now** — only the EIN field is waiting.
+- **DoorDash Drive — NOT gated by the bank account, and the biggest schedule risk we have.** See §3.
 
 - [ ] **Credential rotation (audit 2026-07-16).** A repo/machine-wide scan found **no secret in git
       history and none in any tracked file** — `.env` has never been committed. But secret values
@@ -51,11 +71,12 @@ _These gate real revenue and are independent of everything below. Do first._
       real registers never see an order (the same silent-fallback class as the `MEDIA_DISK` item
       below). Also set the production `SQUARE_*`/`CLOVER_*` app creds + redirect URIs.
       `cloud-check.php` now checks all of these (added 2026-07-15). DEPLOY.md Step 5 documents them.
-- [ ] **Onboarding/delivery keys in Cloud**: `CLAUDE_API_KEY` (AI menu import dies silently
-      without it — kills the "free setup" pitch) and `GOOGLE_MAPS_API_KEY` (address capture +
-      delivery quotes). Both now checked by `cloud-check.php`.
-- [ ] **Resend transactional email**: sending subdomain (`send.plateful.fyi`) + SPF/DKIM,
-      set `MAIL_*` / `RESEND_API_KEY` in Cloud, confirm a live password-reset delivers.
+- [x] **Onboarding/delivery keys in Cloud — DONE (confirmed by Taylor 2026-07-31).**
+      `CLAUDE_API_KEY` and `GOOGLE_MAPS_API_KEY` are both present in Laravel Cloud. Both are checked
+      by `cloud-check.php`. (Key restriction is still open — see §3's "restrict the Google Maps key
+      to Places API (New) + the production server IP".)
+- [x] **Resend transactional email — DONE (confirmed by Taylor 2026-07-31).** Configured and
+      sending.
 - [ ] **Sentry error monitoring**: set `SENTRY_LARAVEL_DSN` in Cloud. `cloud-check.php` already
       checks for it; confirm errors report before launch.
 - [ ] **S3 restaurant-asset storage**: set `FILESYSTEM_DISK=s3` and leave `MEDIA_DISK` unset, + AWS
@@ -307,9 +328,27 @@ Session 5 (refunds) shipped 2026-07-17 (see below). Remaining: Session 0/6 (prod
       defaults to courier-fee-retained when silent). **Reader-side follow-ups NOT done** (tracked
       elsewhere): earnings partial-refund proration (§7), `charge.refunded` webhook (§11), a
       `refunded_cents` consumer (§8) — Session 5 shipped the refund engine, not these downstream hooks.
-- [ ] **Session 0 / 6** — file the DoorDash production-access request (gated: certification + a live
-      Zoom demo, no timeline — start early), then go-live (swap to prod creds, confirm the webhook
-      secret + signature scheme in the DoorDash portal, keep the Uber adapter dormant).
+- [ ] **Session 0 / 6 — FILE THIS NOW. Highest-risk unstarted item in the whole plan.**
+      Checked against DoorDash's own docs 2026-07-31: **"Production access to the Drive API is
+      currently restricted, and we cannot provide a timeline for certification following
+      development,"** and DoorDash explicitly advises pausing development if you have not already
+      submitted a production-access request. We are on the wrong side of that sentence — the adapter
+      is built (Sessions 1–5 done) and **no request has been filed.** Every day unfiled is a day of
+      queue we don't get back, and it is **not** blocked by the EIN or the bank account.
+      The process: (1) submit the production-access request in the Developer Portal — confirms
+      business details and establishes a payment method for deliveries (we are centrally billed, so
+      DoorDash bills Plateful, not the restaurant); (2) they email to schedule a **30–60 min Zoom
+      demo**; (3) demo an end-to-end test delivery — they review API logs, the customer-facing UI,
+      compliance handling, and our go-to-market story; (4) on approval, mint production credentials.
+      Then go-live: swap to prod creds, confirm the webhook secret + signature scheme in the
+      DoorDash portal, keep the Uber adapter dormant.
+      **Prep before the demo:** the restricted-items safeguard is an integration requirement
+      (tobacco/cannabis/weapons/explosives; alcohol needs licensing + a signed alcohol addendum) —
+      confirm we block or are out of scope for these before they ask on the call.
+      **Contingency if approval stalls or is refused:** delivery is not all-or-nothing — pickup and
+      self-delivery ship without any courier network, and the Uber Direct adapter is complete and
+      dormant (§3, needs a production Uber account that can mint `eats.deliveries`). Decide the
+      fallback *before* the first restaurant is sold on delivery.
 
 **Before this can take real money** (full list in the plan)
 - [ ] **A queue worker must be running.** Delivery dispatch and the auth/capture deadline are queued

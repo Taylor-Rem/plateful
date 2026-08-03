@@ -49,7 +49,9 @@ class CheckoutRequest extends FormRequest
         return [
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_email' => ['required', 'email', 'max:255'],
-            'customer_phone' => ['nullable', 'string', 'max:32'],
+            // Couriers require a dropoff phone (DoorDash rejects the delivery
+            // outright without one), so delivery orders must collect it.
+            'customer_phone' => ['required_if:type,delivery', 'nullable', 'string', 'max:32'],
             'type' => ['required', Rule::in(['delivery', 'pickup'])],
             'delivery_address' => ['required_if:type,delivery', 'array'],
             'delivery_address.street' => ['required_if:type,delivery', 'nullable', 'string', 'max:255'],
@@ -73,6 +75,16 @@ class CheckoutRequest extends FormRequest
             'tip_custom_cents' => ['nullable', 'integer', 'min:0', 'max:50000'],
             'tip_cents' => ['nullable', 'integer', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'customer_phone.required_if' => 'A phone number is required for delivery so the courier can reach you.',
         ];
     }
 }

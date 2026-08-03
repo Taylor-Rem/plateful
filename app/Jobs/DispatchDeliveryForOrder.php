@@ -7,6 +7,7 @@ use App\Exceptions\DeliveryProviderException;
 use App\Models\Order;
 use App\Models\OrderEvent;
 use App\Services\Delivery\DeliveryDispatcher;
+use App\Services\Delivery\RestrictedItemsGuard;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -60,6 +61,19 @@ class DispatchDeliveryForOrder implements ShouldQueue
 
         if ($result->success) {
             OrderEvent::note($order, "Delivery dispatched via {$result->provider->value}");
+
+            return;
+        }
+
+        // Restricted items are a policy block, not a transient failure —
+        // retrying will not un-restrict them. Park it on the timeline so the
+        // owner sees exactly which item tripped the guard.
+        if (str_starts_with((string) $result->failureReason, RestrictedItemsGuard::FAILURE_PREFIX)) {
+            OrderEvent::note($order, "Delivery not dispatched: {$result->failureReason}. Restricted items cannot be sent with a delivery courier.");
+            Log::warning('Delivery dispatch blocked by restricted-items guard', [
+                'order_id' => $order->id,
+                'reason' => $result->failureReason,
+            ]);
 
             return;
         }

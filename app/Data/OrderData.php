@@ -20,6 +20,8 @@ class OrderData extends Data
         public ?string $customerPhone,
         /** @var array<string, mixed>|null */
         public ?array $deliveryAddress,
+        /** The courier assignment once a delivery has been dispatched. */
+        public ?DeliveryAssignmentData $delivery,
         public int $subtotalCents,
         public int $taxCents,
         public int $tipCents,
@@ -36,7 +38,7 @@ class OrderData extends Data
 
     public static function fromModel(Order $order): self
     {
-        $order->loadMissing('items');
+        $order->loadMissing(['items', 'deliveryAssignment']);
 
         return new self(
             id: $order->id,
@@ -47,6 +49,9 @@ class OrderData extends Data
             customerEmail: (string) $order->customer_email,
             customerPhone: $order->customer_phone,
             deliveryAddress: $order->delivery_address,
+            delivery: $order->deliveryAssignment !== null
+                ? DeliveryAssignmentData::fromModel($order->deliveryAssignment)
+                : null,
             subtotalCents: (int) $order->subtotal_cents,
             taxCents: (int) $order->tax_cents,
             tipCents: (int) $order->tip_cents,

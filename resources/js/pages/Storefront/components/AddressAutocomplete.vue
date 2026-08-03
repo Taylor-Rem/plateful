@@ -43,19 +43,40 @@ const loading = ref(false);
 const resolving = ref(false);
 const error = ref<string | null>(null);
 
+// crypto.randomUUID only exists in secure contexts (https / localhost); on a
+// plain-http dev host it is undefined and would throw during component setup,
+// which unmounts the whole delivery address section. Google only needs the
+// token to be unique per session, not a spec UUID.
+const newSessionToken = (): string =>
+    typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
+              b.toString(16).padStart(2, '0'),
+          ).join('');
+
 // One token per address the customer is picking. Google bills every keystroke
 // plus the details lookup as a SINGLE session when they share a token — and
 // bills them all separately when they don't. Rotated once a choice resolves,
 // because that ends the session.
-const sessionToken = ref<string>(crypto.randomUUID());
+const sessionToken = ref<string>(newSessionToken());
 
-// useHttp carries the payload itself; the getters keep it in step with the refs.
+// A data callback given to useHttp is evaluated ONCE, at creation — it seeds
+// the form and never runs again. transform() is what Inertia applies at submit
+// time, so it is the only place the live ref values can be read from.
 const suggestHttp = useHttp(() => ({
+    input: query.value,
+    session_token: sessionToken.value,
+}));
+suggestHttp.transform(() => ({
     input: query.value,
     session_token: sessionToken.value,
 }));
 
 const resolveHttp = useHttp(() => ({
+    place_id: pendingPlaceId.value,
+    session_token: sessionToken.value,
+}));
+resolveHttp.transform(() => ({
     place_id: pendingPlaceId.value,
     session_token: sessionToken.value,
 }));
@@ -70,7 +91,18 @@ const clearSuggestions = (): void => {
     open.value = false;
 };
 
+// choose() rewrites the query with the picked description. The watcher cannot
+// tell that apart from typing, and Vue runs it after choose() has already
+// finished — so choose() raises this flag and the watcher consumes it.
+let querySetByChoose = false;
+
 watch(query, (value) => {
+    if (querySetByChoose) {
+        querySetByChoose = false;
+
+        return;
+    }
+
     clearTimeout(debounce);
     error.value = null;
 
@@ -115,13 +147,15 @@ const search = async (): Promise<void> => {
 };
 
 const choose = async (suggestion: Suggestion): Promise<void> => {
+    querySetByChoose = true;
     query.value = suggestion.description;
     pendingPlaceId.value = suggestion.placeId;
     clearSuggestions();
     resolving.value = true;
     error.value = null;
 
-    // Stop the watcher's debounced search from firing for the text we just set.
+    // A search still pending from the typing that preceded the pick must not
+    // fire (or land) and reopen the list over the resolved address.
     clearTimeout(debounce);
     latestQueryId++;
 
@@ -138,7 +172,7 @@ const choose = async (suggestion: Suggestion): Promise<void> => {
     } finally {
         resolving.value = false;
         // The session ended with that lookup; the next address starts a new one.
-        sessionToken.value = crypto.randomUUID();
+        sessionToken.value = newSessionToken();
     }
 };
 

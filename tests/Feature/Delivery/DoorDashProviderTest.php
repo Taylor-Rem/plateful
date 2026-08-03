@@ -143,6 +143,46 @@ it('sends the store identity and a bearer token, never coordinates', function ()
     });
 });
 
+it('sends pickup_time, items and order_value on the quote', function () {
+    $this->travelTo('2026-07-17T18:00:00Z');
+    Http::fake(['openapi.doordash.com/*' => Http::response(doordashQuoteBody())]);
+
+    $r = doordashRestaurant();
+    $r->forceFill(['prep_time_minutes' => 20])->save();
+
+    $request = new DeliveryQuoteRequest(
+        restaurant: $r->fresh(),
+        dropoffAddress: doordashQuoteRequestFor($r)->dropoffAddress,
+        subtotalCents: 1400,
+        tipCents: 200,
+        customerName: 'Reese Ippient',
+        customerPhone: '5555555555',
+        items: [
+            ['name' => 'Margherita Pizza', 'quantity' => 2, 'external_id' => '42'],
+            ['name' => 'Garlic Knots', 'quantity' => 1, 'external_id' => null],
+        ],
+    );
+
+    app(DoorDashProvider::class)->quote($request);
+
+    Http::assertSent(function (Request $req): bool {
+        $body = $req->data();
+
+        // Pickup is when the food is READY, not now — DoorDash otherwise
+        // defaults to ASAP and the Dasher beats the kitchen.
+        expect($body['pickup_time'])->toBe('2026-07-17T18:20:00Z');
+
+        // The parcel's contents and value, for coverage/liability.
+        expect($body['order_value'])->toBe(1400);
+        expect($body['items'])->toBe([
+            ['name' => 'Margherita Pizza', 'quantity' => 2, 'external_id' => '42'],
+            ['name' => 'Garlic Knots', 'quantity' => 1],
+        ]);
+
+        return true;
+    });
+});
+
 it('accepts the quote to create a delivery and records both fees', function () {
     Http::fake(['openapi.doordash.com/*' => Http::response(doordashDeliveryBody())]);
 
@@ -160,6 +200,10 @@ it('accepts the quote to create a delivery and records both fees', function () {
 
     expect($assignment->external_id)->toBe('pf-quote-1');
     expect($assignment->status)->toBe(DeliveryStatus::Pending);
+    expect($assignment->provider_status)->toBe('created');
+    // The id DoorDash support keys on — must survive into the row, not just
+    // the fixture.
+    expect($assignment->support_reference)->toBe('DD-123');
     expect($assignment->tracking_url)->toBe('https://doordash.com/tracking/abc');
     expect($assignment->quote_fee_cents)->toBe(750);
     // DoorDash's fee excludes the tip, so it needs no stripping to stay
@@ -270,6 +314,8 @@ it('records Dasher details once DoorDash assigns one', function () {
 
     expect($fresh->driver_name)->toBe('Alex');
     expect($fresh->driver_phone)->toBe('+15550001111');
+    expect($fresh->provider_status)->toBe('enroute_to_pickup');
+    expect($fresh->support_reference)->toBe('DD-123');
 });
 
 it('cancels a delivery via PUT and marks the assignment cancelled', function () {

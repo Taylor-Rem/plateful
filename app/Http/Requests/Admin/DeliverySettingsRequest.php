@@ -32,6 +32,7 @@ class DeliverySettingsRequest extends FormRequest
             'prep_time_minutes' => ['required', 'integer', 'between:0,180'],
             'self_delivery_tip_recipient' => ['required', Rule::enum(SelfDeliveryTipRecipient::class)],
             'delivery_fallback_action' => ['required', Rule::enum(DeliveryFallbackAction::class)],
+            'restricted_items_attested' => ['nullable', 'boolean'],
         ];
     }
 
@@ -54,6 +55,20 @@ class DeliverySettingsRequest extends FormRequest
                     $validator->errors()->add(
                         'delivery_mode',
                         'Choose who delivers: your own drivers, or a courier network.',
+                    );
+                }
+
+                // Delivery is food-only. The courier networks require a
+                // safeguard against restricted items, and the contractual half
+                // of that is this attestation — delivery cannot be switched on
+                // without it (a prior attestation on the restaurant stands).
+                $restaurant = $this->route('restaurant');
+                $alreadyAttested = $restaurant?->restricted_items_attested_at !== null;
+
+                if (! $alreadyAttested && ! $this->boolean('restricted_items_attested')) {
+                    $validator->errors()->add(
+                        'restricted_items_attested',
+                        'Confirm that this restaurant will not sell restricted items through Plateful delivery.',
                     );
                 }
             },

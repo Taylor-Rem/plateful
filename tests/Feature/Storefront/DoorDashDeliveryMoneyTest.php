@@ -87,6 +87,7 @@ function ddCheckoutBody(string $token, array $overrides = []): array
     return array_merge([
         'customer_name' => 'Bob',
         'customer_email' => 'bob@example.test',
+        'customer_phone' => '+15555550100',
         'type' => 'delivery',
         'delivery_address' => quoteAddress(),
         'delivery_quote_token' => $token,

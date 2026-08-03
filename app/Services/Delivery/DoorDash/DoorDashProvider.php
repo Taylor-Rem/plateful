@@ -72,11 +72,8 @@ class DoorDashProvider implements DeliveryProvider
             ->authed()
             ->post($this->client->drivePath('/quotes'), $this->quotePayload(
                 $externalDeliveryId,
-                $request->restaurant,
+                $request,
                 $integration,
-                (array) $request->dropoffAddress,
-                $request->customerName,
-                $request->customerPhone,
             ));
 
         if ($response->failed()) {
@@ -140,7 +137,11 @@ class DoorDashProvider implements DeliveryProvider
             'order_id' => $order->id,
             'provider' => $this->name(),
             'external_id' => $externalId,
+            // The id DoorDash's support desk keys on — what a restaurant reads
+            // out when calling about a delivery gone wrong.
+            'support_reference' => $this->stringOrNull($response->json('support_reference')),
             'status' => DoorDashStatusMap::toDeliveryStatus($this->stringOrNull($response->json('delivery_status'))),
+            'provider_status' => $this->stringOrNull($response->json('delivery_status')),
             'quote_fee_cents' => $quote->feeCents,
             // DoorDash's fee excludes the tip, so it is already apples-to-apples
             // with quote_fee_cents — no tip stripping the way Uber needs.
@@ -166,6 +167,8 @@ class DoorDashProvider implements DeliveryProvider
 
         $assignment->forceFill([
             'status' => DoorDashStatusMap::toDeliveryStatus($this->stringOrNull($response->json('delivery_status'))),
+            'provider_status' => $this->stringOrNull($response->json('delivery_status')) ?? $assignment->provider_status,
+            'support_reference' => $this->stringOrNull($response->json('support_reference')) ?? $assignment->support_reference,
             'actual_fee_cents' => $this->intOrNull($response->json('fee')) ?? $assignment->actual_fee_cents,
             'tracking_url' => $this->stringOrNull($response->json('tracking_url')) ?? $assignment->tracking_url,
             'pickup_eta_at' => $this->timeOrNull($response->json('pickup_time_estimated')) ?? $assignment->pickup_eta_at,
@@ -256,18 +259,21 @@ class DoorDashProvider implements DeliveryProvider
      * address components so DoorDash can geocode without a round-trip to the
      * stored store record.
      *
-     * @param  array<string, mixed>  $dropoffAddress
+     * `pickup_time` tells DoorDash when the food will actually be ready —
+     * without it they default to ASAP and a Dasher idles in the dining room
+     * while the kitchen cooks. `items` and `order_value` describe the parcel
+     * (DoorDash uses `order_value` for coverage and liability).
+     *
      * @return array<string, mixed>
      */
     private function quotePayload(
         string $externalDeliveryId,
-        Restaurant $restaurant,
+        DeliveryQuoteRequest $request,
         DeliveryIntegration $integration,
-        array $dropoffAddress,
-        ?string $customerName,
-        ?string $customerPhone,
     ): array {
-        [$givenName, $familyName] = $this->splitName($customerName);
+        $restaurant = $request->restaurant;
+        $dropoffAddress = $request->dropoffAddress;
+        [$givenName, $familyName] = $this->splitName($request->customerName);
 
         return array_filter([
             'external_delivery_id' => $externalDeliveryId,
@@ -276,12 +282,47 @@ class DoorDashProvider implements DeliveryProvider
             'pickup_address' => DoorDashAddress::fromRestaurant($restaurant),
             'pickup_business_name' => $restaurant->name,
             'pickup_phone_number' => $this->normalizePhone((string) $restaurant->phone),
+            'pickup_time' => $this->pickupTime($restaurant),
             'dropoff_address' => DoorDashAddress::fromSnapshot($dropoffAddress),
             'dropoff_contact_given_name' => $givenName,
             'dropoff_contact_family_name' => $familyName,
-            'dropoff_phone_number' => $this->normalizePhone((string) $customerPhone),
+            // DoorDash rejects the delivery outright without a dropoff phone.
+            // Checkout requires one for delivery orders; the restaurant's own
+            // number backstops legacy orders placed before that rule existed.
+            'dropoff_phone_number' => $this->normalizePhone((string) $request->customerPhone)
+                ?? $this->normalizePhone((string) $restaurant->phone),
             'dropoff_instructions' => $this->stringOrNull($dropoffAddress['instructions'] ?? null),
+            'items' => $this->itemsPayload($request->items),
+            'order_value' => $request->subtotalCents > 0 ? $request->subtotalCents : null,
         ], static fn ($value): bool => $value !== null && $value !== '');
+    }
+
+    /**
+     * When the food will be ready for handoff: now plus the kitchen's prep
+     * time, UTC ISO-8601 as DoorDash requires.
+     */
+    private function pickupTime(Restaurant $restaurant): string
+    {
+        return CarbonImmutable::now('UTC')
+            ->addMinutes(max(0, (int) $restaurant->prep_time_minutes))
+            ->toIso8601ZuluString();
+    }
+
+    /**
+     * @param  array<int, array{name: string, quantity: int, external_id: string|null}>  $items
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function itemsPayload(array $items): ?array
+    {
+        if ($items === []) {
+            return null;
+        }
+
+        return array_map(static fn (array $item): array => array_filter([
+            'name' => $item['name'],
+            'quantity' => $item['quantity'],
+            'external_id' => $item['external_id'] ?? null,
+        ], static fn ($value): bool => $value !== null), $items);
     }
 
     /**
@@ -315,6 +356,8 @@ class DoorDashProvider implements DeliveryProvider
      */
     private function quoteRequestFromOrder(Order $order): DeliveryQuoteRequest
     {
+        $order->loadMissing('items');
+
         return new DeliveryQuoteRequest(
             restaurant: $order->restaurant,
             dropoffAddress: (array) ($order->delivery_address ?? []),
@@ -323,6 +366,7 @@ class DoorDashProvider implements DeliveryProvider
             customerName: $order->customer_name,
             customerPhone: $order->customer_phone,
             order: $order,
+            items: DeliveryQuoteRequest::itemsFromOrder($order),
         );
     }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowLeft, Bike, ShoppingBag } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { Head, Link, router, usePoll } from '@inertiajs/vue3';
+import { ArrowLeft, Bike, ExternalLink, ShoppingBag } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -34,6 +34,46 @@ const props = defineProps<{
 const allowed = computed<OrderStatusValue[]>(() =>
     nextActions(props.order.status),
 );
+
+const delivery = computed(() => props.order.delivery);
+
+const PROVIDER_LABELS: Record<string, string> = {
+    doordash: 'DoorDash',
+    uber: 'Uber Direct',
+    self: 'Self delivery',
+};
+
+const formatEta = (iso: string | null): string | null => {
+    if (!iso) {
+        return null;
+    }
+
+    return new Date(iso).toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+};
+
+// Keep the delivery panel live while a courier is (or may soon be) in
+// flight; stop once the delivery reaches a terminal state.
+const deliveryInFlight = computed(
+    () =>
+        props.order.type === 'delivery' &&
+        !['cancelled', 'completed'].includes(props.order.status) &&
+        (delivery.value?.isActive ?? true),
+);
+
+const { stop: stopPolling } = usePoll(
+    15000,
+    { only: ['order', 'events'] },
+    { autoStart: deliveryInFlight.value },
+);
+
+watch(deliveryInFlight, (active) => {
+    if (!active) {
+        stopPolling();
+    }
+});
 const cancelOpen = ref(false);
 const cancelReason = ref('');
 const submitting = ref(false);
@@ -316,6 +356,110 @@ defineOptions({ layout: TenantAdminLayout });
                     <p v-else class="mt-4 text-xs text-muted-foreground">
                         This order is in a final state. No further transitions
                         are available.
+                    </p>
+                </section>
+
+                <section
+                    v-if="order.type === 'delivery'"
+                    class="rounded-lg border border-border bg-card p-5"
+                >
+                    <h3
+                        class="flex items-center gap-2 text-sm font-medium tracking-wide text-muted-foreground uppercase"
+                    >
+                        <Bike class="size-4" />
+                        Delivery
+                    </h3>
+
+                    <template v-if="delivery">
+                        <div class="mt-3">
+                            <span
+                                class="inline-flex rounded-full bg-muted px-3 py-1 text-sm font-medium text-foreground"
+                            >
+                                {{ delivery.statusLabel }}
+                            </span>
+                        </div>
+
+                        <dl class="mt-4 space-y-3 text-sm">
+                            <div>
+                                <dt class="text-xs text-muted-foreground">
+                                    Provider
+                                </dt>
+                                <dd class="text-foreground">
+                                    {{
+                                        PROVIDER_LABELS[delivery.provider] ??
+                                        delivery.provider
+                                    }}
+                                </dd>
+                            </div>
+                            <div v-if="delivery.supportReference">
+                                <dt class="text-xs text-muted-foreground">
+                                    Support reference
+                                </dt>
+                                <dd
+                                    class="font-mono font-semibold text-foreground"
+                                >
+                                    {{ delivery.supportReference }}
+                                </dd>
+                            </div>
+                            <div v-if="delivery.externalId">
+                                <dt class="text-xs text-muted-foreground">
+                                    Delivery ID
+                                </dt>
+                                <dd
+                                    class="font-mono text-xs break-all text-foreground"
+                                >
+                                    {{ delivery.externalId }}
+                                </dd>
+                            </div>
+                            <div v-if="delivery.driverName">
+                                <dt class="text-xs text-muted-foreground">
+                                    Courier
+                                </dt>
+                                <dd class="text-foreground">
+                                    {{ delivery.driverName
+                                    }}<template v-if="delivery.driverPhone">
+                                        ·
+                                        <a
+                                            :href="`tel:${delivery.driverPhone}`"
+                                            class="underline underline-offset-2"
+                                            >{{ delivery.driverPhone }}</a
+                                        ></template
+                                    >
+                                </dd>
+                            </div>
+                            <div v-if="formatEta(delivery.pickupEtaAt)">
+                                <dt class="text-xs text-muted-foreground">
+                                    Pickup ETA
+                                </dt>
+                                <dd class="text-foreground">
+                                    {{ formatEta(delivery.pickupEtaAt) }}
+                                </dd>
+                            </div>
+                            <div v-if="formatEta(delivery.dropoffEtaAt)">
+                                <dt class="text-xs text-muted-foreground">
+                                    Dropoff ETA
+                                </dt>
+                                <dd class="text-foreground">
+                                    {{ formatEta(delivery.dropoffEtaAt) }}
+                                </dd>
+                            </div>
+                        </dl>
+
+                        <a
+                            v-if="delivery.trackingUrl"
+                            :href="delivery.trackingUrl"
+                            target="_blank"
+                            rel="noopener"
+                            class="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline underline-offset-2"
+                        >
+                            Live tracking
+                            <ExternalLink class="size-3.5" />
+                        </a>
+                    </template>
+                    <p v-else class="mt-3 text-sm text-muted-foreground">
+                        No courier assigned yet. Dispatch happens automatically
+                        once the order is paid; check the timeline for dispatch
+                        attempts.
                     </p>
                 </section>
 

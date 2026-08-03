@@ -52,6 +52,7 @@ class DeliveryIntegrationsController extends Controller
                 'prepTimeMinutes' => (int) $restaurant->prep_time_minutes,
                 'selfDeliveryTipRecipient' => ($restaurant->self_delivery_tip_recipient ?? SelfDeliveryTipRecipient::Driver)->value,
                 'deliveryFallbackAction' => ($restaurant->delivery_fallback_action ?? DeliveryFallbackAction::TryNextProvider)->value,
+                'restrictedItemsAttestedAt' => $restaurant->restricted_items_attested_at?->toIso8601String(),
                 'saveUrl' => route('admin.restaurant.delivery.settings.update', ['restaurant' => $restaurant->subdomain]),
             ],
             'options' => [
@@ -117,6 +118,11 @@ class DeliveryIntegrationsController extends Controller
             'prep_time_minutes' => (int) $validated['prep_time_minutes'],
             'self_delivery_tip_recipient' => $validated['self_delivery_tip_recipient'],
             'delivery_fallback_action' => $validated['delivery_fallback_action'],
+            // First acceptance stamps the attestation; it is never un-stamped
+            // by a later save (the record of who agreed must survive edits).
+            ...$request->boolean('restricted_items_attested') && $restaurant->restricted_items_attested_at === null
+                ? ['restricted_items_attested_at' => now()]
+                : [],
         ])->save();
 
         return back()->with('success', 'Delivery settings saved.');

@@ -33,6 +33,7 @@ function settingsBody(array $overrides = []): array
         'prep_time_minutes' => 12,
         'self_delivery_tip_recipient' => SelfDeliveryTipRecipient::Driver->value,
         'delivery_fallback_action' => 'try_next_provider',
+        'restricted_items_attested' => true,
     ], $overrides);
 }
 
@@ -67,6 +68,41 @@ test('delivery can be switched off without choosing a mode', function () {
         ->assertSessionHasNoErrors();
 
     expect($this->restaurant->fresh()->delivery_enabled)->toBeFalse();
+});
+
+test('turning delivery on requires the restricted-items attestation', function () {
+    $this->actingAs($this->owner)
+        ->put(settingsUrl(), settingsBody(['restricted_items_attested' => false]))
+        ->assertSessionHasErrors('restricted_items_attested');
+
+    expect($this->restaurant->fresh()->delivery_enabled)->toBeFalsy();
+});
+
+test('accepting the attestation stamps it once, permanently', function () {
+    $this->actingAs($this->owner)
+        ->put(settingsUrl(), settingsBody())
+        ->assertSessionHasNoErrors();
+
+    $attestedAt = $this->restaurant->fresh()->restricted_items_attested_at;
+    expect($attestedAt)->not->toBeNull();
+
+    // A later save without the checkbox neither re-asks nor un-stamps.
+    $this->travel(1)->day();
+    $this->actingAs($this->owner)
+        ->put(settingsUrl(), settingsBody(['restricted_items_attested' => false]))
+        ->assertSessionHasNoErrors();
+
+    expect($this->restaurant->fresh()->restricted_items_attested_at->equalTo($attestedAt))->toBeTrue();
+});
+
+test('switching delivery off never demands the attestation', function () {
+    $this->actingAs($this->owner)
+        ->put(settingsUrl(), settingsBody([
+            'delivery_enabled' => false,
+            'delivery_mode' => null,
+            'restricted_items_attested' => false,
+        ]))
+        ->assertSessionHasNoErrors();
 });
 
 test('the dropped split strategy is rejected', function () {

@@ -18,7 +18,29 @@ class DeliveryDispatcher
     /**
      * @param  array<string, DeliveryProvider>  $providers  keyed by DeliveryProviderName value
      */
-    public function __construct(protected array $providers) {}
+    public function __construct(
+        protected array $providers,
+        protected RestrictedItemsGuard $restrictedItems = new RestrictedItemsGuard,
+    ) {}
+
+    /**
+     * Restricted items (alcohol, tobacco, cannabis, weapons, explosives) may
+     * not travel on a courier network. Self-delivery is the restaurant's own
+     * drivers under its own licences, so only third-party chains are screened.
+     *
+     * @param  iterable<int, string>  $itemNames
+     * @return array<int, array{item: string, term: string}>
+     */
+    public function restrictedItemsViolations(Restaurant $restaurant, iterable $itemNames): array
+    {
+        $chain = $this->providerChainFor($restaurant);
+
+        if ($chain === [] || $chain === [DeliveryProviderName::Self]) {
+            return [];
+        }
+
+        return $this->restrictedItems->violations($itemNames);
+    }
 
     /**
      * Resolve the ordered list of provider names to try for this restaurant.
@@ -127,6 +149,16 @@ class DeliveryDispatcher
             return DeliveryDispatchResult::failed($attempted, 'delivery_not_configured');
         }
 
+        $order->loadMissing('items');
+        $violations = $this->restrictedItemsViolations($restaurant, $order->items->pluck('name'));
+
+        if ($violations !== []) {
+            return DeliveryDispatchResult::failed(
+                $attempted,
+                $this->restrictedItems->failureReason($violations),
+            );
+        }
+
         $fallbackAction = $restaurant->delivery_fallback_action ?? DeliveryFallbackAction::TryNextProvider;
 
         $lastError = null;
@@ -202,6 +234,8 @@ class DeliveryDispatcher
 
     protected function quoteRequestFromOrder(Order $order): DeliveryQuoteRequest
     {
+        $order->loadMissing('items');
+
         return new DeliveryQuoteRequest(
             restaurant: $order->restaurant,
             dropoffAddress: (array) ($order->delivery_address ?? []),
@@ -210,6 +244,7 @@ class DeliveryDispatcher
             customerName: $order->customer_name,
             customerPhone: $order->customer_phone,
             order: $order,
+            items: DeliveryQuoteRequest::itemsFromOrder($order),
         );
     }
 }

@@ -72,6 +72,7 @@ function authCheckoutBody(string $type = 'delivery'): array
 
     if ($type === 'delivery') {
         $quote = makeDeliveryQuote(test()->restaurant, quoteAddress(), 799);
+        $body['customer_phone'] = '+15555550100';
         $body['delivery_address'] = quoteAddress();
         $body['delivery_quote_token'] = $quote->token;
     }
@@ -134,6 +135,7 @@ it('takes the money outright on self-delivery', function () {
         ->post(authHost().'/orders', [
             'customer_name' => 'Bob',
             'customer_email' => 'bob@example.test',
+            'customer_phone' => '+15555550100',
             'type' => 'delivery',
             'delivery_address' => quoteAddress(),
             'tip_preset' => '0',

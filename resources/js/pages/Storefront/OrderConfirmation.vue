@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
-import { CheckCircle2 } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { Head, Link, usePoll } from '@inertiajs/vue3';
+import { Bike, CheckCircle2, ExternalLink, Phone } from 'lucide-vue-next';
+import { computed, watch } from 'vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
@@ -12,6 +12,40 @@ const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 const isDelivery = computed(() => props.order.type === 'delivery');
 const addr = computed(() => props.order.deliveryAddress);
+const delivery = computed(() => props.order.delivery);
+
+const formatEta = (iso: string | null): string | null => {
+    if (!iso) {
+        return null;
+    }
+
+    return new Date(iso).toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+};
+
+// A delivery order keeps refreshing until the courier lifecycle reaches a
+// terminal state — before dispatch (`delivery` still null) it polls so the
+// tracking card appears without a manual reload.
+const deliveryInFlight = computed(
+    () =>
+        isDelivery.value &&
+        props.order.status !== 'cancelled' &&
+        (delivery.value?.isActive ?? true),
+);
+
+const { stop } = usePoll(
+    15000,
+    { only: ['order'] },
+    { autoStart: deliveryInFlight.value },
+);
+
+watch(deliveryInFlight, (active) => {
+    if (!active) {
+        stop();
+    }
+});
 </script>
 
 <template>
@@ -62,6 +96,72 @@ const addr = computed(() => props.order.deliveryAddress);
                     >
                 </div>
             </div>
+
+            <section
+                v-if="isDelivery && order.status !== 'cancelled'"
+                class="mt-6 rounded-md border border-border bg-background p-5"
+            >
+                <h2
+                    class="flex items-center gap-2 text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+                >
+                    <Bike class="size-4" />
+                    Delivery status
+                </h2>
+
+                <template v-if="delivery">
+                    <p class="mt-2 text-lg font-semibold">
+                        {{ delivery.statusLabel }}
+                    </p>
+                    <p
+                        v-if="formatEta(delivery.dropoffEtaAt)"
+                        class="mt-1 text-sm text-muted-foreground"
+                    >
+                        Estimated dropoff
+                        {{ formatEta(delivery.dropoffEtaAt) }}
+                    </p>
+                    <p
+                        v-if="delivery.driverName"
+                        class="mt-1 text-sm text-muted-foreground"
+                    >
+                        Your courier is {{ delivery.driverName }}.
+                    </p>
+
+                    <a
+                        v-if="delivery.trackingUrl"
+                        :href="delivery.trackingUrl"
+                        target="_blank"
+                        rel="noopener"
+                        class="mt-4 inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium"
+                        :style="{
+                            backgroundColor: 'var(--brand-primary)',
+                            color: 'var(--brand-primary-foreground)',
+                        }"
+                    >
+                        Track your delivery
+                        <ExternalLink class="size-3.5" />
+                    </a>
+                </template>
+                <p v-else class="mt-2 text-sm text-muted-foreground">
+                    We're lining up your courier. This page will update as soon
+                    as your delivery is on its way.
+                </p>
+
+                <p
+                    v-if="restaurant.phoneDisplay"
+                    class="mt-4 flex items-center gap-2 border-t border-border pt-3 text-sm text-muted-foreground"
+                >
+                    <Phone class="size-3.5" />
+                    <span>
+                        Questions about your order? Call
+                        {{ restaurant.name }} at
+                        <a
+                            :href="restaurant.phoneHref ?? undefined"
+                            class="font-medium underline underline-offset-2"
+                            >{{ restaurant.phoneDisplay }}</a
+                        >.
+                    </span>
+                </p>
+            </section>
 
             <section class="mt-6">
                 <h2

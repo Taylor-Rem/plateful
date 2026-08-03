@@ -8,6 +8,7 @@ use App\Enums\DeliveryStatus;
 use App\Enums\OrderType;
 use App\Models\DeliveryAssignment;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Restaurant;
 use App\Services\Delivery\DeliveryCancellation;
 use App\Services\Delivery\DeliveryDispatcher;
@@ -206,6 +207,62 @@ it('stops at first failure when fallback action is not try_next_provider', funct
 
     expect($result->success)->toBeFalse()
         ->and($result->attemptedProviders)->toBe(['doordash']);
+});
+
+it('blocks dispatch when a courier delivery contains restricted items', function () {
+    $r = adminOrderRestaurant('restrictco');
+    $r->update([
+        'delivery_enabled' => true,
+        'delivery_mode' => DeliveryMode::ThirdParty,
+        'delivery_provider_priority' => ['uber'],
+    ]);
+    $order = makeDeliveryOrder($r);
+    OrderItem::create([
+        'order_id' => $order->id,
+        'name' => 'Bud Light Beer',
+        'unit_price_cents' => 600,
+        'quantity' => 1,
+        'subtotal_cents' => 600,
+        'modifiers' => null,
+    ]);
+
+    $dispatcher = new DeliveryDispatcher([
+        DeliveryProviderName::Uber->value => fakeProvider(DeliveryProviderName::Uber),
+    ]);
+
+    $result = $dispatcher->dispatch($order);
+
+    expect($result->success)->toBeFalse();
+    expect($result->failureReason)->toStartWith('restricted_items');
+    expect($result->failureReason)->toContain('Bud Light Beer');
+    expect($order->fresh()->delivery_assignment_id)->toBeNull();
+});
+
+it('lets self-delivery carry items the courier guard would block', function () {
+    // The restaurant's own drivers under its own licences are not DoorDash's
+    // problem; the guard only screens third-party chains.
+    $r = adminOrderRestaurant('selfbeer');
+    $r->update([
+        'delivery_enabled' => true,
+        'delivery_mode' => DeliveryMode::SelfDelivery,
+    ]);
+    $order = makeDeliveryOrder($r);
+    OrderItem::create([
+        'order_id' => $order->id,
+        'name' => 'Bud Light Beer',
+        'unit_price_cents' => 600,
+        'quantity' => 1,
+        'subtotal_cents' => 600,
+        'modifiers' => null,
+    ]);
+
+    $dispatcher = new DeliveryDispatcher([
+        DeliveryProviderName::Self->value => fakeProvider(DeliveryProviderName::Self),
+    ]);
+
+    $result = $dispatcher->dispatch($order);
+
+    expect($result->success)->toBeTrue();
 });
 
 it('returns failure when delivery is not configured', function () {
