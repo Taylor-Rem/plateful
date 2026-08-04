@@ -99,12 +99,14 @@ const ctaStyle = computed(() =>
             <p
                 v-if="restaurant.heroTagline"
                 class="max-w-2xl text-lg opacity-95 sm:text-xl"
+                :class="hasImage ? 'text-shadow-md' : ''"
             >
                 {{ restaurant.heroTagline }}
             </p>
             <p
                 v-else-if="restaurant.description"
                 class="max-w-2xl text-lg opacity-90"
+                :class="hasImage ? 'text-shadow-md' : ''"
             >
                 {{ restaurant.description }}
             </p>

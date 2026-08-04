@@ -2,6 +2,7 @@
 
 use App\Models\Restaurant;
 use App\Models\User;
+use App\Services\PhotoConversionService;
 use App\Services\RestaurantImageService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -104,6 +105,30 @@ test('admin can upload hero image and all webp variants are written', function (
     foreach (app(RestaurantImageService::class)->variantPaths($fresh->hero_image_path) as $variant) {
         expect($disk->exists($variant))->toBeTrue();
     }
+});
+
+test('an avif upload is accepted and converted to webp', function () {
+    if (! PhotoConversionService::supportsAvif()) {
+        $this->markTestSkipped('This environment cannot decode AVIF.');
+    }
+
+    $imagick = new Imagick;
+    $imagick->newImage(400, 240, 'tomato');
+    $imagick->setImageFormat('avif');
+    $path = tempnam(sys_get_temp_dir(), 'avif-');
+    $imagick->writeImage('avif:'.$path);
+
+    $r = heroRestaurant();
+    $admin = heroAdmin($r);
+
+    $this->actingAs($admin)
+        ->post(heroUrl($r), [
+            'image' => new UploadedFile($path, 'hero.avif', 'image/avif', null, true),
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect($r->fresh()->hero_image_path)->toEndWith('.webp');
 });
 
 test('replacing the hero image deletes prior variants', function () {

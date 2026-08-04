@@ -40,6 +40,20 @@ class PhotoConversionService
     }
 
     /**
+     * Can this environment decode AVIF uploads? Mirrors the driver choice in
+     * the constructor: Imagick needs the codec compiled in; GD only exposes
+     * imagecreatefromavif() when built against libavif.
+     */
+    public static function supportsAvif(): bool
+    {
+        if (extension_loaded('imagick')) {
+            return Imagick::queryFormats('AVIF') !== [];
+        }
+
+        return function_exists('imagecreatefromavif');
+    }
+
+    /**
      * The `mimes:` validation rule for photo uploads, sized to what this
      * environment can actually decode. Use instead of the `image` rule —
      * that rule rejects HEIC outright.
@@ -50,6 +64,10 @@ class PhotoConversionService
 
         if (self::supportsHeic()) {
             $mimes .= ',heic,heif';
+        }
+
+        if (self::supportsAvif()) {
+            $mimes .= ',avif';
         }
 
         return 'mimes:'.$mimes;
