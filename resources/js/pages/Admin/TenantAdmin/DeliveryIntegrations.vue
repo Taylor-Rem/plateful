@@ -596,17 +596,33 @@ defineOptions({ layout: TenantAdminLayout });
                         >
                         <p class="mb-2 text-sm text-muted-foreground">
                             Without this, deliveries still dispatch — you just
-                            won't get live courier updates. In your Uber
-                            dashboard go to Developer → Webhooks → Create
-                            Webhook, select
-                            <span class="font-medium">delivery status</span> and
-                            <span class="font-medium">courier update</span>, and
-                            use this URL:
+                            won't get live courier updates.
                         </p>
-                        <code
-                            class="mb-2 block overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs"
-                            >{{ webhookUrl }}</code
+                        <ol
+                            class="mb-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground"
                         >
+                            <li>
+                                In your Uber dashboard go to Developer →
+                                Webhooks → Create Webhook.
+                            </li>
+                            <li>
+                                Select the
+                                <span class="font-medium">delivery status</span>
+                                and
+                                <span class="font-medium">courier update</span>
+                                events, and use this URL:
+                                <code
+                                    class="mt-1 block overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs"
+                                    >{{ webhookUrl }}</code
+                                >
+                            </li>
+                            <li>
+                                Once the webhook is created, Uber shows a
+                                <span class="font-medium">signing key</span> for
+                                it — copy that key and paste it below. It's how
+                                we verify the updates really come from Uber.
+                            </li>
+                        </ol>
                         <input
                             id="webhook_signing_key"
                             v-model="form.webhook_signing_key"
@@ -616,7 +632,7 @@ defineOptions({ layout: TenantAdminLayout });
                             :placeholder="
                                 card.hasWebhookKey
                                     ? 'Saved — leave blank to keep it'
-                                    : ''
+                                    : 'Paste the signing key from Uber'
                             "
                             class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
                         />
