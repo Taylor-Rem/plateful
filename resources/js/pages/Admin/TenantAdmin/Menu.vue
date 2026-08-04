@@ -221,7 +221,7 @@ defineOptions({ layout: TenantAdminLayout });
                 <header
                     class="flex items-center justify-between border-b border-border px-4 py-3"
                 >
-                    <div class="flex items-center gap-2">
+                    <div class="flex min-w-0 items-center gap-2">
                         <button
                             v-if="isAdmin"
                             class="category-handle cursor-grab text-muted-foreground hover:text-foreground"
@@ -230,7 +230,9 @@ defineOptions({ layout: TenantAdminLayout });
                         >
                             <GripVertical class="size-4" />
                         </button>
-                        <h3 class="text-lg font-medium text-foreground">
+                        <h3
+                            class="truncate text-lg font-medium text-foreground"
+                        >
                             {{ category.name }}
                         </h3>
                         <span class="text-xs text-muted-foreground"

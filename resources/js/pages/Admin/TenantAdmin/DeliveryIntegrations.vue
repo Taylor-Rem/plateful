@@ -375,7 +375,7 @@ defineOptions({ layout: TenantAdminLayout });
                 class="rounded-lg border border-border bg-card p-4"
                 :data-test="`delivery-provider-${card.provider}`"
             >
-                <div class="flex items-start justify-between">
+                <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="flex items-start gap-3">
                         <span
                             class="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground"
@@ -402,7 +402,7 @@ defineOptions({ layout: TenantAdminLayout });
                                     card.customerId &&
                                     card.status === 'connected'
                                 "
-                                class="mt-1 font-mono text-xs text-muted-foreground"
+                                class="mt-1 font-mono text-xs break-all text-muted-foreground"
                             >
                                 Customer ID {{ card.customerId }}
                             </p>
@@ -410,7 +410,7 @@ defineOptions({ layout: TenantAdminLayout });
                                 v-if="
                                     card.storeId && card.status === 'connected'
                                 "
-                                class="mt-1 font-mono text-xs text-muted-foreground"
+                                class="mt-1 font-mono text-xs break-all text-muted-foreground"
                             >
                                 Store ID {{ card.storeId }}
                             </p>

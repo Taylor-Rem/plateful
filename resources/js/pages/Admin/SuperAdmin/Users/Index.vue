@@ -208,7 +208,7 @@ defineOptions({ layout: SuperAdminLayout });
 
             <div
                 v-else
-                class="overflow-hidden rounded-lg border border-border bg-card"
+                class="overflow-x-auto rounded-lg border border-border bg-card"
             >
                 <table class="w-full text-sm">
                     <thead

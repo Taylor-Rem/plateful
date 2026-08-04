@@ -360,7 +360,7 @@ const discard = (): void => {
             class="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur"
         >
             <div
-                class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4"
+                class="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6"
             >
                 <div class="flex items-center gap-3">
                     <a
@@ -372,7 +372,9 @@ const discard = (): void => {
                     </a>
                     <div>
                         <h1 class="text-lg font-semibold">Review your menu</h1>
-                        <p class="text-xs text-muted-foreground">
+                        <p
+                            class="hidden text-xs text-muted-foreground sm:block"
+                        >
                             Check names and prices, fix anything we misread,
                             then import.
                         </p>
@@ -402,7 +404,7 @@ const discard = (): void => {
             </div>
         </header>
 
-        <main class="mx-auto max-w-4xl space-y-6 px-6 py-8">
+        <main class="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6">
             <div
                 v-if="existingItemCount > 0"
                 class="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
@@ -523,13 +525,15 @@ const discard = (): void => {
                             class="p-4"
                         >
                             <div
-                                class="flex items-center justify-between gap-3"
+                                class="flex flex-wrap items-center justify-between gap-3"
                             >
-                                <div class="flex items-baseline gap-2 text-sm">
+                                <div
+                                    class="flex min-w-0 flex-1 flex-wrap items-baseline gap-2 text-sm"
+                                >
                                     <Input
                                         v-model="group.name"
                                         type="text"
-                                        class="max-w-48 text-sm font-medium"
+                                        class="w-full text-sm font-medium sm:max-w-48"
                                         placeholder="Group name"
                                     />
                                     <span

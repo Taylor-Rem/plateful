@@ -47,7 +47,9 @@ const goLiveError = computed(
             <p class="text-xs tracking-wide text-muted-foreground uppercase">
                 Your storefront
             </p>
-            <p class="mt-1 flex items-center gap-2 font-mono">
+            <p
+                class="mt-1 flex flex-wrap items-center gap-2 font-mono break-all"
+            >
                 {{ restaurant.subdomain }}.{{ primaryDomain }}
                 <a
                     :href="onboardingPreview.url(restaurant.subdomain)"

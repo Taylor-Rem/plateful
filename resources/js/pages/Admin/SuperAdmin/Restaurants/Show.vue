@@ -244,13 +244,13 @@ defineOptions({ layout: SuperAdminLayout });
                         >
                             Subdomain
                         </label>
-                        <div class="mt-1 flex items-center gap-2">
+                        <div class="mt-1 flex flex-wrap items-center gap-2">
                             <input
                                 id="restaurant_subdomain"
                                 v-model="domainForm.subdomain"
                                 type="text"
                                 autocomplete="off"
-                                class="w-48 rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground"
+                                class="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground sm:w-48"
                             />
                             <span
                                 class="font-mono text-sm text-muted-foreground"

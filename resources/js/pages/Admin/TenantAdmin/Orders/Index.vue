@@ -187,7 +187,63 @@ defineOptions({ layout: TenantAdminLayout });
         <div
             class="mt-6 overflow-hidden rounded-lg border border-border bg-card"
         >
-            <table class="w-full text-sm">
+            <div class="divide-y divide-border sm:hidden">
+                <p
+                    v-if="orders.length === 0"
+                    class="px-4 py-12 text-center text-sm text-muted-foreground"
+                >
+                    No orders match your filters yet. Orders will appear here as
+                    customers place them.
+                </p>
+                <button
+                    v-for="order in orders"
+                    :key="order.id"
+                    type="button"
+                    class="flex w-full flex-col gap-1.5 px-4 py-3 text-left transition hover:bg-muted/30"
+                    @click="
+                        router.visit(
+                            ordersShow.url({
+                                restaurant: restaurant.subdomain,
+                                order: order.number,
+                            }),
+                        )
+                    "
+                >
+                    <span class="flex items-center justify-between gap-2">
+                        <span class="font-mono text-xs text-foreground">{{
+                            order.number
+                        }}</span>
+                        <span
+                            class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize"
+                            :class="statusBadgeClasses(order.status)"
+                        >
+                            {{ order.status }}
+                        </span>
+                        <span
+                            class="ml-auto text-sm text-foreground tabular-nums"
+                        >
+                            {{ formatCents(order.totalCents) }}
+                        </span>
+                    </span>
+                    <span
+                        class="flex items-center justify-between gap-2 text-xs text-muted-foreground"
+                    >
+                        <span class="truncate">{{ order.customerName }}</span>
+                        <span>{{ formatRelativeTime(order.placedAt) }}</span>
+                    </span>
+                    <span
+                        class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                    >
+                        <ShoppingBag
+                            v-if="order.type === 'pickup'"
+                            class="size-3.5"
+                        />
+                        <Bike v-else class="size-3.5" />
+                        {{ order.type === 'pickup' ? 'Pickup' : 'Delivery' }}
+                    </span>
+                </button>
+            </div>
+            <table class="hidden w-full text-sm sm:table">
                 <thead
                     class="bg-muted/40 text-left text-xs text-muted-foreground uppercase"
                 >
@@ -268,7 +324,7 @@ defineOptions({ layout: TenantAdminLayout });
 
         <div
             v-if="pagination.lastPage > 1"
-            class="mt-4 flex items-center justify-between text-sm text-muted-foreground"
+            class="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"
         >
             <span
                 >Showing {{ pagination.from ?? 0 }}–{{ pagination.to ?? 0 }} of

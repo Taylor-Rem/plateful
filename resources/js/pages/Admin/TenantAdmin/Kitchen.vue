@@ -255,7 +255,9 @@ const advanceLabel = (next: string): string => {
         <Head :title="`${restaurant.name} Kitchen`" />
 
         <header class="border-b border-border bg-card">
-            <div class="flex items-center justify-between px-6 py-3">
+            <div
+                class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6"
+            >
                 <div class="flex items-center gap-3">
                     <Link
                         :href="dashboard.url(restaurant.subdomain)"
@@ -270,7 +272,9 @@ const advanceLabel = (next: string): string => {
                 <div
                     class="flex items-center gap-3 text-xs text-muted-foreground"
                 >
-                    <span>Auto-refreshing every {{ POLL_MS / 1000 }}s</span>
+                    <span class="hidden sm:inline"
+                        >Auto-refreshing every {{ POLL_MS / 1000 }}s</span
+                    >
                     <button
                         type="button"
                         class="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 font-medium text-foreground transition hover:bg-muted"

@@ -130,9 +130,46 @@ defineOptions({ layout: SuperAdminLayout });
                 description="Create your first one to get started."
             />
 
-            <table
+            <ul
                 v-else
-                class="w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-card"
+                class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card sm:hidden"
+            >
+                <li v-for="r in restaurants" :key="r.id">
+                    <Link
+                        :href="restaurantsShow.url(r.subdomain)"
+                        class="flex flex-col gap-1 px-4 py-3 transition hover:bg-muted/30"
+                    >
+                        <span class="flex items-center justify-between gap-2">
+                            <span
+                                class="truncate text-sm font-medium text-foreground"
+                            >
+                                {{ r.name }}
+                            </span>
+                            <span
+                                v-if="r.isActive"
+                                class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800"
+                            >
+                                Active
+                            </span>
+                            <span
+                                v-else
+                                class="inline-flex items-center rounded-full bg-neutral-200 px-2 py-0.5 text-xs font-medium text-neutral-700"
+                            >
+                                Deactivated
+                            </span>
+                        </span>
+                        <span class="text-xs text-muted-foreground">
+                            {{ r.subdomain }} · {{ r.adminsCount }}
+                            {{ r.adminsCount === 1 ? 'admin' : 'admins' }} ·
+                            created {{ formatDate(r.createdAt) }}
+                        </span>
+                    </Link>
+                </li>
+            </ul>
+
+            <table
+                v-if="restaurants.length > 0"
+                class="hidden w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-card sm:table"
             >
                 <thead
                     class="bg-muted/40 text-left text-xs tracking-wide text-muted-foreground uppercase"
@@ -204,8 +241,51 @@ defineOptions({ layout: SuperAdminLayout });
                     offline. Restore one to bring it back, or permanently delete
                     it (only allowed when it has no order history).
                 </p>
+                <ul
+                    class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card sm:hidden"
+                >
+                    <li
+                        v-for="r in deletedRestaurants"
+                        :key="r.id"
+                        class="flex flex-col gap-2 px-4 py-3"
+                    >
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-sm font-medium text-foreground">
+                                {{ r.name }}
+                            </span>
+                            <span class="text-xs text-muted-foreground">
+                                {{ r.subdomain }} · {{ r.ordersCount }}
+                                {{ r.ordersCount === 1 ? 'order' : 'orders' }} ·
+                                deleted {{ formatDate(r.deletedAt) }}
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                :disabled="processing"
+                                @click="restore(r.subdomain)"
+                            >
+                                Restore
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                :disabled="processing || r.ordersCount > 0"
+                                :title="
+                                    r.ordersCount > 0
+                                        ? 'Has order history — permanent delete is disabled'
+                                        : undefined
+                                "
+                                @click="openHardDelete(r)"
+                            >
+                                Delete permanently
+                            </Button>
+                        </div>
+                    </li>
+                </ul>
                 <table
-                    class="w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-card"
+                    class="hidden w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-card sm:table"
                 >
                     <thead
                         class="bg-muted/40 text-left text-xs tracking-wide text-muted-foreground uppercase"
