@@ -83,6 +83,14 @@ const form = useForm({
 
 const disconnectForm = useForm({});
 
+// Saved secrets are never echoed back, so an edit starts with blank
+// credential fields; the customer id is public on the card and safe to
+// prefill.
+const openEdit = (card: DeliveryProviderCard): void => {
+    form.customer_id = card.customerId ?? '';
+    showForm.value = true;
+};
+
 // One-click providers (DoorDash) have no credential form — the button posts
 // straight to saveUrl and Plateful provisions the Business/Store behind it.
 const enableForm = useForm({});
@@ -440,16 +448,29 @@ defineOptions({ layout: TenantAdminLayout });
                         </div>
                     </div>
 
-                    <Button
+                    <div
                         v-if="card.status === 'connected'"
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        :disabled="disconnectForm.processing"
-                        @click="disconnect(card)"
+                        class="flex flex-wrap items-center gap-2"
                     >
-                        Disconnect
-                    </Button>
+                        <Button
+                            v-if="!card.oneClick && !showForm"
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            @click="openEdit(card)"
+                        >
+                            Edit credentials
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            :disabled="disconnectForm.processing"
+                            @click="disconnect(card)"
+                        >
+                            Disconnect
+                        </Button>
+                    </div>
                     <Button
                         v-else-if="card.available && card.oneClick"
                         type="button"
@@ -491,6 +512,11 @@ defineOptions({ layout: TenantAdminLayout });
                         >
                         under Management → Developer. We check them with Uber
                         before saving.
+                        <span v-if="card.status === 'connected'">
+                            For security your saved Client ID and Secret aren't
+                            shown here — paste them again (or paste new ones) to
+                            update the connection. No need to disconnect first.
+                        </span>
                     </p>
 
                     <div>
@@ -611,7 +637,9 @@ defineOptions({ layout: TenantAdminLayout });
                             {{
                                 form.processing
                                     ? 'Checking with Uber…'
-                                    : 'Save and connect'
+                                    : card.status === 'connected'
+                                      ? 'Save changes'
+                                      : 'Save and connect'
                             }}
                         </Button>
                         <Button

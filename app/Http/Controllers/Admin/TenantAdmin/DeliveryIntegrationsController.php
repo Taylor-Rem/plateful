@@ -159,6 +159,11 @@ class DeliveryIntegrationsController extends Controller
             return back()->withErrors(['client_id' => $e->getMessage()]);
         }
 
+        $wasConnected = $restaurant->deliveryIntegrations()
+            ->where('provider', DeliveryProviderName::Uber)
+            ->where('status', DeliveryIntegrationStatus::Connected)
+            ->exists();
+
         DeliveryIntegration::updateOrCreate(
             [
                 'restaurant_id' => $restaurant->id,
@@ -184,7 +189,10 @@ class DeliveryIntegrationsController extends Controller
             ],
         );
 
-        return back()->with('success', 'Uber Direct connected.');
+        return back()->with(
+            'success',
+            $wasConnected ? 'Uber Direct updated.' : 'Uber Direct connected.',
+        );
     }
 
     /**

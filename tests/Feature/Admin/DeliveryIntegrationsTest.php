@@ -132,11 +132,11 @@ test('re-pasting credentials updates the existing integration rather than duplic
     $this->actingAs($u)->post(
         "http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber",
         uberCredentials(),
-    );
+    )->assertSessionHas('success', 'Uber Direct connected.');
     $this->actingAs($u)->post(
         "http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber",
         uberCredentials(['customer_id' => 'cust_second']),
-    );
+    )->assertSessionHas('success', 'Uber Direct updated.');
 
     // The unique (restaurant_id, provider) index would throw rather than
     // duplicate — this proves we take the update path, not that path.
