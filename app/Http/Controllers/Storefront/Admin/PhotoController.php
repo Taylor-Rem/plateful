@@ -22,24 +22,31 @@ class PhotoController extends Controller
         $restaurant = $tenant->get();
         $this->authorize('manage', $restaurant);
 
-        $validated = $request->validated();
+        $files = $request->file('images');
 
         $position = (int) (RestaurantPhoto::query()
             ->where('restaurant_id', $restaurant->id)
             ->max('position') ?? -1) + 1;
 
-        DB::transaction(function () use ($restaurant, $validated, $request, $images, $position): void {
-            $photo = RestaurantPhoto::create([
-                'restaurant_id' => $restaurant->id,
-                'caption' => $validated['caption'] ?? null,
-                'position' => $position,
-            ]);
+        DB::transaction(function () use ($restaurant, $files, $images, $position): void {
+            foreach ($files as $file) {
+                $photo = RestaurantPhoto::create([
+                    'restaurant_id' => $restaurant->id,
+                    'caption' => null,
+                    'position' => $position++,
+                ]);
 
-            $photo->image_path = $images->storeGalleryPhoto($photo, $request->file('image'));
-            $photo->save();
+                $photo->image_path = $images->storeGalleryPhoto($photo, $file);
+                $photo->save();
+            }
         });
 
-        return back()->with('success', 'Photo added.');
+        $count = count($files);
+
+        return back()->with(
+            'success',
+            $count === 1 ? 'Photo added.' : "{$count} photos added.",
+        );
     }
 
     public function update(

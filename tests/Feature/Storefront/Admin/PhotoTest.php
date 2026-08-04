@@ -40,7 +40,7 @@ function photoUrl(Restaurant $r, string $path = ''): string
 test('guest cannot upload photo', function () {
     $r = photoRestaurant();
 
-    $this->post(photoUrl($r), ['image' => UploadedFile::fake()->image('p.jpg', 800, 600)])
+    $this->post(photoUrl($r), ['images' => [UploadedFile::fake()->image('p.jpg', 800, 600)]])
         ->assertRedirect();
 
     expect(RestaurantPhoto::withoutTenantScope()->count())->toBe(0);
@@ -51,34 +51,56 @@ test('staff cannot upload photo', function () {
     $staff = photoAdmin($r, 'staff');
 
     $this->actingAs($staff)
-        ->post(photoUrl($r), ['image' => UploadedFile::fake()->image('p.jpg', 800, 600)])
+        ->post(photoUrl($r), ['images' => [UploadedFile::fake()->image('p.jpg', 800, 600)]])
         ->assertForbidden();
 
     expect(RestaurantPhoto::withoutTenantScope()->count())->toBe(0);
 });
 
-test('admin can upload a photo with caption and variants are written', function () {
+test('admin can upload several photos at once and variants are written', function () {
     $r = photoRestaurant();
     $admin = photoAdmin($r);
 
     $this->actingAs($admin)
         ->post(photoUrl($r), [
-            'image' => UploadedFile::fake()->image('p.jpg', 800, 600),
-            'caption' => 'Wood-fired oven',
+            'images' => [
+                UploadedFile::fake()->image('first.jpg', 800, 600),
+                UploadedFile::fake()->image('second.jpg', 800, 600),
+                UploadedFile::fake()->image('third.jpg', 800, 600),
+            ],
         ])
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHas('success', '3 photos added.');
 
-    $photo = RestaurantPhoto::withoutTenantScope()->first();
-    expect($photo)->not->toBeNull()
-        ->and($photo->caption)->toBe('Wood-fired oven')
-        ->and($photo->position)->toBe(0)
-        ->and($photo->image_path)->toStartWith("restaurants/{$r->id}/gallery/{$photo->id}/")
-        ->and($photo->image_path)->toEndWith('.webp');
+    $photos = RestaurantPhoto::withoutTenantScope()->orderBy('position')->get();
+    expect($photos)->toHaveCount(3)
+        ->and($photos->pluck('position')->all())->toBe([0, 1, 2]);
 
     $disk = Storage::disk(RestaurantImageService::disk());
-    foreach (app(RestaurantImageService::class)->variantPaths($photo->image_path) as $variant) {
-        expect($disk->exists($variant))->toBeTrue();
+    foreach ($photos as $photo) {
+        expect($photo->image_path)->toStartWith("restaurants/{$r->id}/gallery/{$photo->id}/")
+            ->and($photo->image_path)->toEndWith('.webp');
+
+        foreach (app(RestaurantImageService::class)->variantPaths($photo->image_path) as $variant) {
+            expect($disk->exists($variant))->toBeTrue();
+        }
     }
+});
+
+test('a batch larger than the limit is rejected', function () {
+    $r = photoRestaurant();
+    $admin = photoAdmin($r);
+
+    $images = [];
+    for ($i = 0; $i < 13; $i++) {
+        $images[] = UploadedFile::fake()->image("p{$i}.jpg", 200, 200);
+    }
+
+    $this->actingAs($admin)
+        ->post(photoUrl($r), ['images' => $images])
+        ->assertSessionHasErrors('images');
+
+    expect(RestaurantPhoto::withoutTenantScope()->count())->toBe(0);
 });
 
 test('position auto-increments for additional photos', function () {
@@ -87,7 +109,7 @@ test('position auto-increments for additional photos', function () {
 
     for ($i = 0; $i < 3; $i++) {
         $this->actingAs($admin)
-            ->post(photoUrl($r), ['image' => UploadedFile::fake()->image("p{$i}.jpg", 600, 400)])
+            ->post(photoUrl($r), ['images' => [UploadedFile::fake()->image("p{$i}.jpg", 600, 400)]])
             ->assertRedirect();
     }
 
@@ -105,7 +127,7 @@ test('admin can update a photo caption', function () {
     $admin = photoAdmin($r);
 
     $this->actingAs($admin)
-        ->post(photoUrl($r), ['image' => UploadedFile::fake()->image('p.jpg', 600, 400)])
+        ->post(photoUrl($r), ['images' => [UploadedFile::fake()->image('p.jpg', 600, 400)]])
         ->assertRedirect();
 
     $photo = RestaurantPhoto::withoutTenantScope()->first();
@@ -124,7 +146,7 @@ test('admin can reorder photos', function () {
     $ids = [];
     for ($i = 0; $i < 3; $i++) {
         $this->actingAs($admin)
-            ->post(photoUrl($r), ['image' => UploadedFile::fake()->image("p{$i}.jpg", 400, 400)]);
+            ->post(photoUrl($r), ['images' => [UploadedFile::fake()->image("p{$i}.jpg", 400, 400)]]);
         $ids[] = RestaurantPhoto::withoutTenantScope()->orderByDesc('id')->first()->id;
     }
 
@@ -148,7 +170,7 @@ test('admin can delete a photo and variants are removed', function () {
     $admin = photoAdmin($r);
 
     $this->actingAs($admin)
-        ->post(photoUrl($r), ['image' => UploadedFile::fake()->image('p.jpg', 600, 400)])
+        ->post(photoUrl($r), ['images' => [UploadedFile::fake()->image('p.jpg', 600, 400)]])
         ->assertRedirect();
 
     $photo = RestaurantPhoto::withoutTenantScope()->first();
@@ -192,10 +214,13 @@ test('caption length is capped', function () {
     $admin = photoAdmin($r);
 
     $this->actingAs($admin)
-        ->post(photoUrl($r), [
-            'image' => UploadedFile::fake()->image('p.jpg', 400, 400),
-            'caption' => str_repeat('x', 141),
-        ])
+        ->post(photoUrl($r), ['images' => [UploadedFile::fake()->image('p.jpg', 400, 400)]])
+        ->assertRedirect();
+
+    $photo = RestaurantPhoto::withoutTenantScope()->first();
+
+    $this->actingAs($admin)
+        ->patch(photoUrl($r, "/{$photo->id}"), ['caption' => str_repeat('x', 141)])
         ->assertSessionHasErrors('caption');
 });
 
@@ -204,10 +229,13 @@ test('storefront home includes photos prop', function () {
     $admin = photoAdmin($r);
 
     $this->actingAs($admin)
-        ->post(photoUrl($r), [
-            'image' => UploadedFile::fake()->image('p.jpg', 400, 400),
-            'caption' => 'Hello',
-        ])
+        ->post(photoUrl($r), ['images' => [UploadedFile::fake()->image('p.jpg', 400, 400)]])
+        ->assertRedirect();
+
+    $photo = RestaurantPhoto::withoutTenantScope()->first();
+
+    $this->actingAs($admin)
+        ->patch(photoUrl($r, "/{$photo->id}"), ['caption' => 'Hello'])
         ->assertRedirect();
 
     $this->get("http://{$r->subdomain}.plateful.test/")
