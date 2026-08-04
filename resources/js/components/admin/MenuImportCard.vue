@@ -212,7 +212,7 @@ const discardImport = (): void => {
                     ref="fileInput"
                     type="file"
                     multiple
-                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
+                    accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,application/pdf"
                     class="hidden"
                     data-test="menu-import-file-input"
                     @change="onFilesPicked"
