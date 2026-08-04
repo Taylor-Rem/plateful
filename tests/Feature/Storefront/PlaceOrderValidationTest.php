@@ -76,6 +76,40 @@ test('invalid email fails validation', function () {
     expect($resp->json('errors'))->toHaveKey('customer_email');
 });
 
+test('delivery without a phone number fails validation', function () {
+    // DoorDash rejects any delivery without a dropoff phone (sandbox-verified
+    // HTTP 400), so the phone must be collected before payment, not discovered
+    // missing at dispatch.
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    $cookie = addPepperoniLine($this, $f);
+
+    $resp = $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'delivery',
+        ], ['Accept' => 'application/json']);
+
+    $resp->assertStatus(422);
+    expect($resp->json('errors'))->toHaveKey('customer_phone');
+});
+
+test('pickup without a phone number stays valid', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    $cookie = addPepperoniLine($this, $f);
+
+    $resp = $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("http://{$r->subdomain}.plateful.test/orders", [
+            'customer_name' => 'A',
+            'customer_email' => 'a@a.test',
+            'type' => 'pickup',
+        ], ['Accept' => 'application/json']);
+
+    expect($resp->json('errors') ?? [])->not->toHaveKey('customer_phone');
+});
+
 test('delivery without address fails validation', function () {
     $f = cartFixture();
     $r = $f['restaurant'];
@@ -103,6 +137,7 @@ test('delivery order is rejected when the restaurant has delivery disabled', fun
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
             'customer_email' => 'a@a.test',
+            'customer_phone' => '+15555550100',
             'type' => 'delivery',
             'delivery_address' => [
                 'street' => '123 Main',
@@ -136,6 +171,7 @@ test('delivery order is accepted when the restaurant has delivery enabled', func
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
             'customer_email' => 'a@a.test',
+            'customer_phone' => '+15555550100',
             'type' => 'delivery',
             'delivery_address' => [
                 'street' => '123 Main',

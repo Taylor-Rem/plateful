@@ -188,6 +188,7 @@ it('excludes the delivery fee from the application fee', function () {
         ->post("http://{$r->subdomain}.plateful.test/orders", [
             'customer_name' => 'A',
             'customer_email' => 'a@a.test',
+            'customer_phone' => '+15555550100',
             'type' => 'delivery',
             'delivery_address' => [
                 'street' => '123 Main',

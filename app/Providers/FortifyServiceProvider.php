@@ -14,6 +14,10 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
+use Laravel\Fortify\Actions\AttemptToAuthenticate;
+use Laravel\Fortify\Actions\CanonicalizeUsername;
+use Laravel\Fortify\Actions\EnsureLoginIsNotThrottled;
+use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
@@ -37,8 +41,33 @@ class FortifyServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureActions();
+        $this->configureLocalAuthenticationPipeline();
         $this->configureViews();
         $this->configureRateLimiting();
+    }
+
+    /**
+     * Local development logs in with the password alone. The two-factor
+     * challenge is dev friction, not dev security — and the shared dev DB can
+     * hold secrets enrolled under another environment's APP_KEY, which explode
+     * with a MAC error at the challenge. The feature itself stays registered
+     * everywhere so its routes, pages, and Wayfinder types exist; only the
+     * challenge step of the login pipeline is dropped, and only locally.
+     * RequireTwoFactorEnrollment holds the enforcement side to the same line.
+     */
+    private function configureLocalAuthenticationPipeline(): void
+    {
+        if (! $this->app->environment('local')) {
+            return;
+        }
+
+        // Fortify's default pipeline minus RedirectsIfTwoFactorAuthenticatable.
+        Fortify::authenticateThrough(fn () => array_filter([
+            config('fortify.limiters.login') ? null : EnsureLoginIsNotThrottled::class,
+            config('fortify.lowercase_usernames') ? CanonicalizeUsername::class : null,
+            AttemptToAuthenticate::class,
+            PrepareAuthenticatedSession::class,
+        ]));
     }
 
     private function adminHost(): string

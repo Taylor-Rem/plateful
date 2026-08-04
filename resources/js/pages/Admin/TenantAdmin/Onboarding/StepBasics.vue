@@ -170,7 +170,7 @@ const submit = (): void => {
                 <Input id="basics-street" v-model="form.street" type="text" />
                 <InputError :message="form.errors.street" />
             </div>
-            <div class="grid grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div class="col-span-2 grid gap-2">
                     <Label for="basics-city">City</Label>
                     <Input id="basics-city" v-model="form.city" type="text" />

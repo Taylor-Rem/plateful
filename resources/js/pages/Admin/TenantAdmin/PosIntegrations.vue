@@ -71,7 +71,7 @@ defineOptions({ layout: TenantAdminLayout });
                 <div
                     v-for="card in providers"
                     :key="card.provider"
-                    class="flex items-start justify-between rounded-lg border border-border bg-card p-4"
+                    class="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-border bg-card p-4"
                     :data-test="`pos-provider-${card.provider}`"
                 >
                     <div class="flex items-start gap-3">

@@ -9,6 +9,7 @@ use App\Jobs\DispatchDeliveryForOrder;
 use App\Models\DeliveryAssignment;
 use App\Models\Order;
 use App\Models\OrderEvent;
+use App\Models\OrderItem;
 use App\Models\Restaurant;
 use App\Services\Delivery\DeliveryDispatcher;
 use App\Services\Delivery\SelfDeliveryProvider;
@@ -80,6 +81,36 @@ it('records why it did not dispatch when delivery is not configured', function (
     $events = OrderEvent::query()->where('order_id', $order->id)->get();
     expect($events)->toHaveCount(1);
     expect($events->first()->note)->toContain('no delivery provider is configured');
+});
+
+it('parks a restricted-items block on the timeline without retrying', function () {
+    $r = adminOrderRestaurant('djbeer');
+    $r->update([
+        'delivery_enabled' => true,
+        'delivery_mode' => DeliveryMode::ThirdParty,
+        'delivery_provider_priority' => ['uber'],
+    ]);
+    $order = deliveryJobOrder($r);
+    OrderItem::create([
+        'order_id' => $order->id,
+        'name' => 'Bud Light Beer',
+        'unit_price_cents' => 600,
+        'quantity' => 1,
+        'subtotal_cents' => 600,
+        'modifiers' => null,
+    ]);
+
+    $dispatcher = app(DeliveryDispatcher::class);
+
+    // Must NOT throw: a policy block is permanent, and a retry loop would
+    // burn three attempts on an order that can never dispatch.
+    (new DispatchDeliveryForOrder($order->id))->handle($dispatcher);
+
+    expect($order->fresh()->delivery_assignment_id)->toBeNull();
+
+    $event = OrderEvent::query()->where('order_id', $order->id)->latest('id')->first();
+    expect($event->note)->toContain('restricted_items')
+        ->and($event->note)->toContain('Bud Light Beer');
 });
 
 it('is a no-op when the order already has an assignment', function () {

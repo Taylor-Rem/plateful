@@ -31,6 +31,7 @@ type DeliverySettings = {
     prepTimeMinutes: number;
     selfDeliveryTipRecipient: string;
     deliveryFallbackAction: string;
+    restrictedItemsAttestedAt: string | null;
     saveUrl: string;
 };
 
@@ -55,7 +56,11 @@ const settingsForm = useForm({
     prep_time_minutes: props.settings.prepTimeMinutes,
     self_delivery_tip_recipient: props.settings.selfDeliveryTipRecipient,
     delivery_fallback_action: props.settings.deliveryFallbackAction,
+    restricted_items_attested:
+        props.settings.restrictedItemsAttestedAt !== null,
 });
+
+const alreadyAttested = props.settings.restrictedItemsAttestedAt !== null;
 
 const isSelfDelivery = computed(() => settingsForm.delivery_mode === 'self');
 
@@ -296,6 +301,58 @@ defineOptions({ layout: TenantAdminLayout });
                                 </option>
                             </select>
                         </div>
+
+                        <div
+                            class="rounded-md border border-border bg-muted/40 p-4"
+                        >
+                            <h3 class="text-sm font-medium">
+                                Restricted items policy
+                            </h3>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                Plateful delivery is food-only. Alcohol,
+                                tobacco, cannabis, weapons, and explosives may
+                                not be sold through Plateful delivery — courier
+                                networks require this, and orders containing
+                                restricted items are automatically blocked from
+                                dispatch.
+                            </p>
+                            <label class="mt-3 flex items-start gap-2 text-sm">
+                                <input
+                                    v-model="
+                                        settingsForm.restricted_items_attested
+                                    "
+                                    type="checkbox"
+                                    class="mt-0.5 rounded"
+                                    :disabled="alreadyAttested"
+                                />
+                                <span>
+                                    I confirm this restaurant will not sell
+                                    restricted items through Plateful delivery.
+                                    <span
+                                        v-if="alreadyAttested"
+                                        class="text-muted-foreground"
+                                        >(accepted
+                                        {{
+                                            new Date(
+                                                settings.restrictedItemsAttestedAt!,
+                                            ).toLocaleDateString()
+                                        }})</span
+                                    >
+                                </span>
+                            </label>
+                            <p
+                                v-if="
+                                    settingsForm.errors
+                                        .restricted_items_attested
+                                "
+                                class="mt-1 text-xs text-destructive"
+                            >
+                                {{
+                                    settingsForm.errors
+                                        .restricted_items_attested
+                                }}
+                            </p>
+                        </div>
                     </template>
 
                     <Button
@@ -318,7 +375,7 @@ defineOptions({ layout: TenantAdminLayout });
                 class="rounded-lg border border-border bg-card p-4"
                 :data-test="`delivery-provider-${card.provider}`"
             >
-                <div class="flex items-start justify-between">
+                <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="flex items-start gap-3">
                         <span
                             class="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground"
@@ -345,7 +402,7 @@ defineOptions({ layout: TenantAdminLayout });
                                     card.customerId &&
                                     card.status === 'connected'
                                 "
-                                class="mt-1 font-mono text-xs text-muted-foreground"
+                                class="mt-1 font-mono text-xs break-all text-muted-foreground"
                             >
                                 Customer ID {{ card.customerId }}
                             </p>
@@ -353,7 +410,7 @@ defineOptions({ layout: TenantAdminLayout });
                                 v-if="
                                     card.storeId && card.status === 'connected'
                                 "
-                                class="mt-1 font-mono text-xs text-muted-foreground"
+                                class="mt-1 font-mono text-xs break-all text-muted-foreground"
                             >
                                 Store ID {{ card.storeId }}
                             </p>

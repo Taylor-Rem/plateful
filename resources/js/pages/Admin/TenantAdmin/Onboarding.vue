@@ -163,7 +163,7 @@ const copyUrl = async (): Promise<void> => {
 
         <header class="border-b border-border bg-card">
             <div
-                class="mx-auto flex max-w-3xl items-center justify-between px-6 py-4"
+                class="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-6"
             >
                 <h1 class="text-lg font-semibold">
                     {{
@@ -196,7 +196,7 @@ const copyUrl = async (): Promise<void> => {
             </div>
         </header>
 
-        <main class="mx-auto max-w-3xl space-y-8 px-6 py-8">
+        <main class="mx-auto max-w-3xl space-y-8 px-4 py-8 sm:px-6">
             <!-- What the amber dot in the nav is for. Live doesn't mean done. -->
             <section
                 v-if="restaurant.isLive && outstandingSteps.length"

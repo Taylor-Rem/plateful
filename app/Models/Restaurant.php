@@ -122,6 +122,7 @@ class Restaurant extends Model
             'prep_time_minutes' => 'integer',
             'self_delivery_tip_recipient' => SelfDeliveryTipRecipient::class,
             'delivery_fallback_action' => DeliveryFallbackAction::class,
+            'restricted_items_attested_at' => 'datetime',
             'auto_cancel_refund_mode' => AutoCancelRefundMode::class,
             'social_links' => 'array',
         ];

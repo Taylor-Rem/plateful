@@ -55,6 +55,23 @@ class DeliveryQuoteController extends Controller
 
         $address = $this->normalizeAddress($validated['address']);
         $cart = $carts->current();
+        $cart?->loadMissing('items.menuItem');
+
+        // The restricted-items screen runs BEFORE any money moves: a cart that
+        // cannot legally ride a courier network never gets offered delivery,
+        // rather than being paid for and then stranded at dispatch.
+        $violations = $cart === null ? [] : $dispatcher->restrictedItemsViolations(
+            $restaurant,
+            $cart->items->map(fn ($line): string => (string) ($line->menuItem?->name ?? ''))->all(),
+        );
+
+        if ($violations !== []) {
+            $names = implode(', ', array_column($violations, 'item'));
+
+            return response()->json([
+                'message' => "Some items in your order can't be sent with a delivery courier ({$names}). You can still choose pickup.",
+            ], 422);
+        }
 
         try {
             $quote = $dispatcher->quote(new DeliveryQuoteRequest(
@@ -64,6 +81,14 @@ class DeliveryQuoteController extends Controller
                 tipCents: 0,
                 customerName: $request->user()?->name,
                 customerPhone: null,
+                items: $cart?->items
+                    ->map(fn ($line): array => [
+                        'name' => (string) ($line->menuItem?->name ?? 'Item'),
+                        'quantity' => (int) $line->quantity,
+                        'external_id' => (string) $line->menu_item_id,
+                    ])
+                    ->values()
+                    ->all() ?? [],
             ));
         } catch (Throwable $e) {
             // Every failure reads the same to the customer on purpose: out of

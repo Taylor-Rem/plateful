@@ -1,5 +1,9 @@
 <?php
 
+use App\Enums\DeliveryProviderName;
+use App\Enums\DeliveryStatus;
+use App\Enums\OrderType;
+use App\Models\DeliveryAssignment;
 use App\Models\OrderEvent;
 use App\Models\User;
 
@@ -20,6 +24,51 @@ test('admin can view an order they have access to', function () {
         ->assertInertia(fn ($p) => $p
             ->component('Admin/TenantAdmin/Orders/Show')
             ->where('order.number', $order->number));
+});
+
+test('order detail exposes the delivery assignment for the merchant panel', function () {
+    $r = adminOrderRestaurant();
+    $u = adminForRestaurant($r);
+    $order = makeOrder($r, ['type' => OrderType::Delivery]);
+
+    $assignment = DeliveryAssignment::create([
+        'order_id' => $order->id,
+        'provider' => DeliveryProviderName::DoorDash,
+        'external_id' => 'pf-abc-123',
+        'support_reference' => 'DD-555',
+        'status' => DeliveryStatus::PickedUp,
+        'provider_status' => 'enroute_to_dropoff',
+        'tracking_url' => 'https://doordash.com/tracking/xyz',
+        'driver_name' => 'Dana',
+        'driver_phone' => '+15551230000',
+        'dropoff_eta_at' => now()->addMinutes(20),
+    ]);
+    $order->forceFill(['delivery_assignment_id' => $assignment->id])->save();
+
+    $this->actingAs($u)
+        ->get("http://admin.plateful.test/{$r->subdomain}/orders/{$order->number}")
+        ->assertInertia(fn ($p) => $p
+            ->where('order.delivery.provider', 'doordash')
+            ->where('order.delivery.status', 'picked_up')
+            ->where('order.delivery.providerStatus', 'enroute_to_dropoff')
+            // The raw provider word wins for display — `picked_up` reads
+            // stale while the Dasher is already enroute.
+            ->where('order.delivery.statusLabel', 'Enroute to dropoff')
+            ->where('order.delivery.supportReference', 'DD-555')
+            ->where('order.delivery.externalId', 'pf-abc-123')
+            ->where('order.delivery.trackingUrl', 'https://doordash.com/tracking/xyz')
+            ->where('order.delivery.driverName', 'Dana')
+            ->where('order.delivery.isActive', true));
+});
+
+test('order detail carries a null delivery before dispatch', function () {
+    $r = adminOrderRestaurant();
+    $u = adminForRestaurant($r);
+    $order = makeOrder($r, ['type' => OrderType::Delivery]);
+
+    $this->actingAs($u)
+        ->get("http://admin.plateful.test/{$r->subdomain}/orders/{$order->number}")
+        ->assertInertia(fn ($p) => $p->where('order.delivery', null));
 });
 
 test('order detail includes events ordered newest first', function () {

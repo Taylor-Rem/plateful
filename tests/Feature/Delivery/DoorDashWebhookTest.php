@@ -87,11 +87,20 @@ it('applies a correctly signed delivery status event', function () {
 
     $fresh = $assignment->fresh();
     expect($fresh->status)->toBe(DeliveryStatus::DriverAssigned);
+    expect($fresh->provider_status)->toBe('confirmed');
     expect($fresh->driver_name)->toBe('Dana');
     expect($fresh->driver_phone)->toBe('+15551230000');
     expect($fresh->tracking_url)->toBe('https://doordash.com/track/abc');
     // DoorDash's fee excludes the tip, so it is stored as-is.
     expect($fresh->actual_fee_cents)->toBe(900);
+});
+
+it('captures the support reference when an event carries one', function () {
+    $assignment = seedDoorDashWebhookFixture();
+
+    postDoorDashWebhook(doordashWebhookPayload(['support_reference' => 'DD-987']))->assertOk();
+
+    expect($assignment->fresh()->support_reference)->toBe('DD-987');
 });
 
 it('accepts a hex-encoded signature too', function () {

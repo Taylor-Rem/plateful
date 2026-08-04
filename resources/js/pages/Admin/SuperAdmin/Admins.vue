@@ -131,84 +131,90 @@ defineOptions({ layout: SuperAdminLayout });
         <Head title="Admins" />
         <div class="space-y-8">
             <PageHeader title="Admins" />
-            <table
-                class="w-full divide-y divide-border overflow-hidden rounded-lg border border-border bg-card"
+            <div
+                class="overflow-x-auto rounded-lg border border-border bg-card"
             >
-                <thead
-                    class="bg-muted/40 text-left text-xs tracking-wide text-muted-foreground uppercase"
-                >
-                    <tr>
-                        <th class="px-4 py-3">Name</th>
-                        <th class="px-4 py-3">Email</th>
-                        <th class="px-4 py-3">Role</th>
-                        <th class="px-4 py-3">Restaurants</th>
-                        <th class="px-4 py-3"></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-border text-sm">
-                    <tr v-for="admin in admins" :key="admin.id">
-                        <td class="px-4 py-3 font-medium text-foreground">
-                            {{ admin.name }}
-                            <span
-                                v-if="admin.id === currentUserId"
-                                class="ml-1 text-xs text-muted-foreground"
-                                >(you)</span
-                            >
-                        </td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            {{ admin.email }}
-                        </td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            <span
-                                v-if="admin.isSuperAdmin"
-                                class="font-semibold text-primary"
-                                >Super admin</span
-                            >
-                            <span v-else>Admin</span>
-                        </td>
-                        <td class="px-4 py-3 text-muted-foreground">
-                            <span v-if="admin.isSuperAdmin">All</span>
-                            <span v-else-if="admin.restaurants.length === 0"
-                                >None</span
-                            >
-                            <span v-else>{{
-                                admin.restaurants.map((r) => r.name).join(', ')
-                            }}</span>
-                        </td>
-                        <td class="px-4 py-3">
-                            <div class="flex items-center justify-end gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    @click="openEdit(admin)"
+                <table class="w-full divide-y divide-border">
+                    <thead
+                        class="bg-muted/40 text-left text-xs tracking-wide text-muted-foreground uppercase"
+                    >
+                        <tr>
+                            <th class="px-4 py-3">Name</th>
+                            <th class="px-4 py-3">Email</th>
+                            <th class="px-4 py-3">Role</th>
+                            <th class="px-4 py-3">Restaurants</th>
+                            <th class="px-4 py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border text-sm">
+                        <tr v-for="admin in admins" :key="admin.id">
+                            <td class="px-4 py-3 font-medium text-foreground">
+                                {{ admin.name }}
+                                <span
+                                    v-if="admin.id === currentUserId"
+                                    class="ml-1 text-xs text-muted-foreground"
+                                    >(you)</span
                                 >
-                                    Edit
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    :disabled="admin.id === currentUserId"
-                                    @click="toggleSuperAdmin(admin)"
+                            </td>
+                            <td class="px-4 py-3 text-muted-foreground">
+                                {{ admin.email }}
+                            </td>
+                            <td class="px-4 py-3 text-muted-foreground">
+                                <span
+                                    v-if="admin.isSuperAdmin"
+                                    class="font-semibold text-primary"
+                                    >Super admin</span
                                 >
-                                    {{
-                                        admin.isSuperAdmin
-                                            ? 'Revoke super'
-                                            : 'Make super'
-                                    }}
-                                </Button>
-                                <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    :disabled="admin.id === currentUserId"
-                                    @click="removeAdmin(admin)"
+                                <span v-else>Admin</span>
+                            </td>
+                            <td class="px-4 py-3 text-muted-foreground">
+                                <span v-if="admin.isSuperAdmin">All</span>
+                                <span v-else-if="admin.restaurants.length === 0"
+                                    >None</span
                                 >
-                                    Remove
-                                </Button>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                                <span v-else>{{
+                                    admin.restaurants
+                                        .map((r) => r.name)
+                                        .join(', ')
+                                }}</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div
+                                    class="flex items-center justify-end gap-2"
+                                >
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        @click="openEdit(admin)"
+                                    >
+                                        Edit
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        :disabled="admin.id === currentUserId"
+                                        @click="toggleSuperAdmin(admin)"
+                                    >
+                                        {{
+                                            admin.isSuperAdmin
+                                                ? 'Revoke super'
+                                                : 'Make super'
+                                        }}
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        :disabled="admin.id === currentUserId"
+                                        @click="removeAdmin(admin)"
+                                    >
+                                        Remove
+                                    </Button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
             <Dialog
                 :open="editing !== null"

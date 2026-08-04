@@ -165,7 +165,7 @@ defineOptions({ layout: TenantAdminLayout });
                     <li
                         v-for="member in members"
                         :key="member.id"
-                        class="flex items-center justify-between gap-4 py-3"
+                        class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
                     >
                         <div>
                             <div class="font-medium text-foreground">
@@ -222,7 +222,7 @@ defineOptions({ layout: TenantAdminLayout });
                     <li
                         v-for="inv in pendingInvitations"
                         :key="inv.id"
-                        class="flex items-center justify-between gap-4 py-3"
+                        class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
                     >
                         <div>
                             <div class="font-medium text-foreground">

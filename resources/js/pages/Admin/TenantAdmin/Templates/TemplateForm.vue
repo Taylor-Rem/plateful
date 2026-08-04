@@ -167,7 +167,7 @@ const errorAt = (key: string): string | undefined => {
         </section>
 
         <section class="rounded-lg border border-border bg-card p-5">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h3 class="text-base font-medium text-foreground">
                         Groups

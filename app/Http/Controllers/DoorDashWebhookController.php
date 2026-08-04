@@ -89,6 +89,8 @@ class DoorDashWebhookController extends Controller
 
         $assignment->forceFill(array_filter([
             'status' => $status,
+            'provider_status' => $this->stringOrNull($payload['delivery_status'] ?? null) ?? $assignment->provider_status,
+            'support_reference' => $this->stringOrNull($payload['support_reference'] ?? null) ?? $assignment->support_reference,
             'last_event_at' => $eventAt ?? now(),
             'tracking_url' => $this->stringOrNull($payload['tracking_url'] ?? null) ?? $assignment->tracking_url,
             // DoorDash's fee excludes the tip, so it needs no correction to stay

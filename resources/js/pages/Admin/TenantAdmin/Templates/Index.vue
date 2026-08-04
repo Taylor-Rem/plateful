@@ -93,7 +93,7 @@ defineOptions({ layout: TenantAdminLayout });
 
         <div
             v-else
-            class="mt-6 overflow-hidden rounded-lg border border-border bg-card"
+            class="mt-6 overflow-x-auto rounded-lg border border-border bg-card"
         >
             <table class="w-full text-sm">
                 <thead

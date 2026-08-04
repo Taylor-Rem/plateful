@@ -109,6 +109,23 @@ it('quotes delivery for an address before any payment', function () {
     expect(DeliveryQuote::withoutTenantScope()->count())->toBe(1);
 });
 
+it('refuses to quote delivery for a cart containing restricted items', function () {
+    fakeUberQuote();
+    $this->fixture['item']->update(['name' => 'Bud Light Beer']);
+
+    // ->post rather than ->postJson: JSON test requests send cookies
+    // unencrypted, so EncryptCookies would drop the cart cookie.
+    $response = $this->withCookie(CartManager::COOKIE_NAME, quoteCartCookie())
+        ->post(quoteHost().'/checkout/delivery-quote', quotePayload(), ['Accept' => 'application/json']);
+
+    $response->assertStatus(422);
+    expect($response->json('message'))->toContain('Bud Light Beer');
+    expect($response->json('message'))->toContain('pickup');
+    // The screen runs before the provider is ever asked, so no money-adjacent
+    // quote is recorded for an undeliverable cart.
+    expect(DeliveryQuote::withoutTenantScope()->count())->toBe(0);
+});
+
 it('adds kitchen prep time to the ETA the customer is shown', function () {
     fakeUberQuote();
 
@@ -251,6 +268,7 @@ function checkoutBody(?string $token, array $addressOverrides = []): array
     return [
         'customer_name' => 'Bob',
         'customer_email' => 'bob@example.test',
+        'customer_phone' => '+15555550100',
         'type' => 'delivery',
         'delivery_address' => array_merge([
             'street' => '285 Fulton St',

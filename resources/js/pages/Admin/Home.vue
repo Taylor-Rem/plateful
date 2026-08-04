@@ -20,7 +20,7 @@ const isSuperAdmin = computed(() => Boolean(page.props.auth.isSuperAdmin));
 
         <header class="border-b border-border bg-card">
             <div
-                class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4"
+                class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-6"
             >
                 <h1 class="text-lg font-semibold text-foreground">
                     Plateful Admin

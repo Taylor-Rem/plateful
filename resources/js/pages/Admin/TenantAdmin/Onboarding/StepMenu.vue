@@ -162,7 +162,7 @@ const applyPreset = (preset: string): void => {
                 </div>
             </div>
 
-            <div class="flex items-center justify-between">
+            <div class="flex flex-wrap items-center justify-between gap-3">
                 <a
                     :href="menuIndex.url(restaurant.subdomain)"
                     class="inline-flex items-center gap-1 text-sm font-medium text-primary hover:opacity-80"
@@ -213,7 +213,7 @@ const applyPreset = (preset: string): void => {
                     </p>
                 </div>
             </div>
-            <div class="flex items-center justify-between">
+            <div class="flex flex-wrap items-center justify-between gap-3">
                 <button
                     type="button"
                     class="text-sm text-muted-foreground underline hover:text-foreground"

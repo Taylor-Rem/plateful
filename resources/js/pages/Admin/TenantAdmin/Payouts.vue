@@ -100,7 +100,32 @@ defineOptions({ layout: TenantAdminLayout });
                     first one.
                 </div>
 
-                <table v-else class="w-full text-sm">
+                <ul v-else class="divide-y divide-border sm:hidden">
+                    <li
+                        v-for="payout in payouts"
+                        :key="payout.id"
+                        class="flex flex-col gap-1 px-6 py-3"
+                    >
+                        <span class="flex items-center justify-between gap-2">
+                            <span class="text-sm font-medium">{{
+                                formatCents(payout.amountCents)
+                            }}</span>
+                            <span
+                                class="text-xs text-muted-foreground capitalize"
+                            >
+                                {{ payout.status }}
+                            </span>
+                        </span>
+                        <span class="text-xs text-muted-foreground">
+                            Expected {{ formatDate(payout.arrivalDate) }}
+                        </span>
+                    </li>
+                </ul>
+
+                <table
+                    v-if="payouts.length > 0"
+                    class="hidden w-full text-sm sm:table"
+                >
                     <thead
                         class="text-left text-xs tracking-wide text-muted-foreground uppercase"
                     >

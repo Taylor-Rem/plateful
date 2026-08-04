@@ -82,6 +82,7 @@ it('queues delivery dispatch for delivery orders', function () {
 
     startCheckout($f, [
         'type' => 'delivery',
+        'customer_phone' => '+15555550100',
         'delivery_address' => [
             'street' => '123 Main',
             'city' => 'NYC',
