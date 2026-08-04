@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { Pencil, Plus } from 'lucide-vue-next';
-import { computed, inject, ref } from 'vue';
+import { ArrowDown, ArrowUp, Pencil, Plus } from 'lucide-vue-next';
+import { computed, inject, ref, watch } from 'vue';
 import type { Ref } from 'vue';
 import { toast } from 'vue-sonner';
+import CategoryEditDialog from '@/pages/Storefront/components/CategoryEditDialog.vue';
 import ClosedBanner from '@/pages/Storefront/components/ClosedBanner.vue';
 import ItemConfiguratorModal from '@/pages/Storefront/components/ItemConfiguratorModal.vue';
 import MenuItemDeleteDialog from '@/pages/Storefront/components/MenuItemDeleteDialog.vue';
@@ -53,6 +54,81 @@ const onDeleteRequested = (item: App.Data.MenuItemData): void => {
     drawerOpen.value = false;
     deleteTarget.value = item;
     deleteDialogOpen.value = true;
+};
+
+// ----- Category management (edit mode) -----
+const categoryDialogOpen = ref(false);
+const editingCategory = ref<App.Data.MenuCategoryData | null>(null);
+
+const openCreateCategory = (): void => {
+    editingCategory.value = null;
+    categoryDialogOpen.value = true;
+};
+
+const openEditCategory = (category: App.Data.MenuCategoryData): void => {
+    editingCategory.value = category;
+    categoryDialogOpen.value = true;
+};
+
+const onCategoryDeleteRequested = (
+    category: App.Data.MenuCategoryData,
+): void => {
+    if (!window.confirm(`Delete the "${category.name}" category?`)) {
+        return;
+    }
+
+    router.delete(`/admin/menu/categories/${category.id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            categoryDialogOpen.value = false;
+            toast.success('Category deleted.');
+        },
+    });
+};
+
+// Local order so the arrows respond instantly; the server confirms behind it.
+const localCategoryOrder = ref<number[]>([]);
+
+watch(
+    () => props.categories,
+    (list) => {
+        localCategoryOrder.value = list.map((c) => c.id);
+    },
+    { immediate: true, deep: true },
+);
+
+const orderedCategories = computed(() => {
+    const byId = new Map(props.categories.map((c) => [c.id, c]));
+
+    return localCategoryOrder.value
+        .map((id) => byId.get(id))
+        .filter((c): c is App.Data.MenuCategoryData => Boolean(c));
+});
+
+const moveCategory = (idx: number, delta: number): void => {
+    const target = idx + delta;
+
+    if (target < 0 || target >= localCategoryOrder.value.length) {
+        return;
+    }
+
+    const copy = [...localCategoryOrder.value];
+    const [moved] = copy.splice(idx, 1);
+    copy.splice(target, 0, moved);
+    localCategoryOrder.value = copy;
+
+    router.post(
+        '/admin/menu/categories/reorder',
+        { ids: copy },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => {
+                localCategoryOrder.value = props.categories.map((c) => c.id);
+                toast.error('Could not reorder.');
+            },
+        },
+    );
 };
 
 // Every item opens the configurator — even without options it's where the
@@ -124,16 +200,54 @@ const onAddToCart = (payload: {
                 No menu items yet.
             </p>
             <section
-                v-for="category in categories"
+                v-for="(category, categoryIdx) in orderedCategories"
                 :key="category.id"
                 class="mb-10"
             >
-                <h2
-                    class="mb-4 inline-block border-b-2 pb-1 text-2xl font-semibold text-foreground"
-                    :style="{ borderColor: 'var(--brand-secondary)' }"
+                <div class="mb-4 flex items-center gap-2">
+                    <h2
+                        class="inline-block border-b-2 pb-1 text-2xl font-semibold text-foreground"
+                        :style="{ borderColor: 'var(--brand-secondary)' }"
+                    >
+                        {{ category.name }}
+                    </h2>
+                    <template v-if="editMode">
+                        <button
+                            type="button"
+                            class="rounded-full bg-card/90 p-1.5 text-muted-foreground shadow-sm transition hover:text-foreground"
+                            aria-label="Edit category"
+                            @click="openEditCategory(category)"
+                        >
+                            <Pencil class="size-4" />
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-full bg-card/90 p-1.5 text-muted-foreground shadow-sm transition hover:text-foreground disabled:opacity-30"
+                            :disabled="categoryIdx === 0"
+                            aria-label="Move category up"
+                            @click="moveCategory(categoryIdx, -1)"
+                        >
+                            <ArrowUp class="size-4" />
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-full bg-card/90 p-1.5 text-muted-foreground shadow-sm transition hover:text-foreground disabled:opacity-30"
+                            :disabled="
+                                categoryIdx === orderedCategories.length - 1
+                            "
+                            aria-label="Move category down"
+                            @click="moveCategory(categoryIdx, 1)"
+                        >
+                            <ArrowDown class="size-4" />
+                        </button>
+                    </template>
+                </div>
+                <p
+                    v-if="category.description"
+                    class="-mt-3 mb-4 max-w-2xl text-sm text-muted-foreground"
                 >
-                    {{ category.name }}
-                </h2>
+                    {{ category.description }}
+                </p>
                 <ul class="grid gap-4 md:grid-cols-2">
                     <li
                         v-for="item in category.items"
@@ -208,6 +322,15 @@ const onAddToCart = (payload: {
                     </li>
                 </ul>
             </section>
+
+            <button
+                v-if="editMode"
+                type="button"
+                class="flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 px-4 py-6 text-sm text-muted-foreground transition hover:border-primary hover:text-foreground"
+                @click="openCreateCategory"
+            >
+                <Plus class="mr-1 size-4" /> Add category
+            </button>
         </main>
 
         <ItemConfiguratorModal
@@ -228,6 +351,11 @@ const onAddToCart = (payload: {
             <MenuItemDeleteDialog
                 v-model:open="deleteDialogOpen"
                 :item="deleteTarget"
+            />
+            <CategoryEditDialog
+                v-model:open="categoryDialogOpen"
+                :category="editingCategory"
+                @delete-requested="onCategoryDeleteRequested"
             />
         </template>
     </div>

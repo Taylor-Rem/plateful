@@ -11,6 +11,7 @@ use App\Http\Controllers\Storefront\Account\PasswordController as AccountPasswor
 use App\Http\Controllers\Storefront\Account\ProfileController as AccountProfileController;
 use App\Http\Controllers\Storefront\AccountController;
 use App\Http\Controllers\Storefront\AddressLookupController;
+use App\Http\Controllers\Storefront\Admin\MenuCategoryController as AdminMenuCategoryController;
 use App\Http\Controllers\Storefront\Admin\MenuItemController as AdminMenuItemController;
 use App\Http\Controllers\Storefront\Admin\PhotoController as AdminPhotoController;
 use App\Http\Controllers\Storefront\Admin\SiteController as AdminSiteController;
@@ -84,6 +85,11 @@ Route::middleware('tenant')->group(function () {
         Route::post('items', [AdminMenuItemController::class, 'store'])->name('items.store');
         Route::put('items/{menuItem}', [AdminMenuItemController::class, 'update'])->name('items.update');
         Route::delete('items/{menuItem}', [AdminMenuItemController::class, 'destroy'])->name('items.destroy');
+
+        Route::post('categories', [AdminMenuCategoryController::class, 'store'])->name('categories.store');
+        Route::post('categories/reorder', [AdminMenuCategoryController::class, 'reorder'])->name('categories.reorder');
+        Route::put('categories/{category}', [AdminMenuCategoryController::class, 'update'])->name('categories.update');
+        Route::delete('categories/{category}', [AdminMenuCategoryController::class, 'destroy'])->name('categories.destroy');
     });
 
     Route::middleware('auth')->prefix('admin/site')->name('storefront.admin.site.')->group(function () {

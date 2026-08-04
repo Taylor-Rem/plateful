@@ -174,9 +174,9 @@ defineOptions({ layout: TenantAdminLayout });
         </PageHeader>
 
         <p class="mt-2 text-sm text-muted-foreground">
-            Menu item editing now lives on your storefront, so you can see
-            changes the way customers do. Categories and templates are still
-            managed here.
+            Menu item and category editing now live on your storefront, so you
+            can see changes the way customers do. Both can still be managed here
+            too; templates live only here.
         </p>
 
         <MenuImportCard
