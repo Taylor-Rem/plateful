@@ -12,14 +12,16 @@ class PhotoStoreRequest extends FormRequest
         return true;
     }
 
+    public const MAX_BATCH = 12;
+
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'image' => ['required', 'file', PhotoConversionService::acceptedPhotoMimes(), 'max:8192'],
-            'caption' => ['nullable', 'string', 'max:140'],
+            'images' => ['required', 'array', 'min:1', 'max:'.self::MAX_BATCH],
+            'images.*' => ['file', PhotoConversionService::acceptedPhotoMimes(), 'max:8192'],
         ];
     }
 }

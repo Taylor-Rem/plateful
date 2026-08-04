@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router, useForm } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, Trash2, Upload } from 'lucide-vue-next';
+import { ArrowDown, ArrowUp, Trash2, Upload, X } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import InputError from '@/components/InputError.vue';
@@ -27,33 +27,46 @@ const emit = defineEmits<{
 const close = (): void => emit('update:open', false);
 
 // ----- Upload -----
+const MAX_BATCH = 12;
+
 const uploadForm = useForm({
-    image: null as File | null,
-    caption: '' as string,
+    images: [] as File[],
 });
 
-const newImagePreview = ref<string | null>(null);
+const previews = ref<{ file: File; url: string }[]>([]);
 
-const onImageChange = (event: Event): void => {
+const onFilesPicked = (event: Event): void => {
     const target = event.target as HTMLInputElement;
-    const file = target.files?.[0] ?? null;
-    uploadForm.image = file;
+    const picked = Array.from(target.files ?? []);
 
-    if (newImagePreview.value) {
-        URL.revokeObjectURL(newImagePreview.value);
+    for (const file of picked) {
+        if (uploadForm.images.length >= MAX_BATCH) {
+            break;
+        }
+
+        uploadForm.images = [...uploadForm.images, file];
+        previews.value.push({ file, url: URL.createObjectURL(file) });
     }
 
-    newImagePreview.value = file ? URL.createObjectURL(file) : null;
+    // Allow re-picking the same file after a remove.
+    target.value = '';
+};
+
+const removePicked = (index: number): void => {
+    URL.revokeObjectURL(previews.value[index].url);
+    previews.value.splice(index, 1);
+    uploadForm.images = uploadForm.images.filter((_, i) => i !== index);
 };
 
 const clearUploadState = (): void => {
     uploadForm.reset();
     uploadForm.clearErrors();
 
-    if (newImagePreview.value) {
-        URL.revokeObjectURL(newImagePreview.value);
-        newImagePreview.value = null;
+    for (const preview of previews.value) {
+        URL.revokeObjectURL(preview.url);
     }
+
+    previews.value = [];
 };
 
 watch(
@@ -65,8 +78,21 @@ watch(
     },
 );
 
-const uploadPhoto = (): void => {
-    if (!uploadForm.image) {
+// Per-file failures come back keyed `images.N`, which the form's error type
+// doesn't know about.
+const uploadError = computed(() => {
+    const errors = uploadForm.errors as Record<string, string>;
+
+    return (
+        errors.images ??
+        Object.entries(errors).find(([key]) => key.startsWith('images.'))?.[1]
+    );
+});
+
+const uploadPhotos = (): void => {
+    const count = uploadForm.images.length;
+
+    if (count === 0) {
         return;
     }
 
@@ -75,7 +101,9 @@ const uploadPhoto = (): void => {
         preserveScroll: true,
         onSuccess: () => {
             clearUploadState();
-            toast.success('Photo added.');
+            toast.success(
+                count === 1 ? 'Photo added.' : `${count} photos added.`,
+            );
         },
     });
 };
@@ -182,50 +210,62 @@ const destroy = (photo: App.Data.RestaurantPhotoData): void => {
                 <!-- Upload -->
                 <form
                     class="space-y-3 rounded-md border border-border bg-card p-3"
-                    @submit.prevent="uploadPhoto"
+                    @submit.prevent="uploadPhotos"
                 >
-                    <Label class="text-sm font-medium">Add a photo</Label>
-                    <div class="flex items-start gap-3">
+                    <Label class="text-sm font-medium">Add photos</Label>
+                    <input
+                        type="file"
+                        multiple
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+                        @change="onFilesPicked"
+                    />
+                    <p class="text-xs text-muted-foreground">
+                        Select up to {{ MAX_BATCH }} photos at a time. You can
+                        add captions below once they're uploaded.
+                    </p>
+                    <div
+                        v-if="previews.length > 0"
+                        class="flex flex-wrap gap-2"
+                    >
                         <div
-                            class="flex size-24 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30"
+                            v-for="(preview, idx) in previews"
+                            :key="preview.url"
+                            class="relative"
                         >
                             <img
-                                v-if="newImagePreview"
-                                :src="newImagePreview"
-                                class="size-full object-cover"
+                                :src="preview.url"
+                                class="size-20 rounded-md border border-border object-cover"
                                 alt=""
                             />
-                            <span
-                                v-else
-                                class="px-2 text-center text-xs text-muted-foreground"
-                                >Pick an image</span
+                            <button
+                                type="button"
+                                class="absolute -top-1.5 -right-1.5 rounded-full bg-foreground/80 p-0.5 text-background hover:bg-foreground"
+                                aria-label="Remove photo from selection"
+                                @click="removePicked(idx)"
                             >
-                        </div>
-                        <div class="flex-1 space-y-2">
-                            <input
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp,image/avif"
-                                class="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
-                                @change="onImageChange"
-                            />
-                            <Input
-                                v-model="uploadForm.caption"
-                                maxlength="140"
-                                placeholder="Caption (optional)"
-                            />
-                            <InputError :message="uploadForm.errors.image" />
-                            <InputError :message="uploadForm.errors.caption" />
+                                <X class="size-3" />
+                            </button>
                         </div>
                     </div>
+                    <InputError :message="uploadError" />
                     <div class="flex justify-end">
                         <Button
                             type="submit"
                             size="sm"
                             :disabled="
-                                !uploadForm.image || uploadForm.processing
+                                uploadForm.images.length === 0 ||
+                                uploadForm.processing
                             "
                         >
-                            <Upload class="mr-1 size-4" /> Add photo
+                            <Upload class="mr-1 size-4" />
+                            {{
+                                uploadForm.processing
+                                    ? 'Uploading…'
+                                    : uploadForm.images.length > 1
+                                      ? `Add ${uploadForm.images.length} photos`
+                                      : 'Add photo'
+                            }}
                         </Button>
                     </div>
                 </form>
