@@ -123,13 +123,15 @@ test('prep time is bounded, but zero is allowed', function () {
         ->assertSessionHasErrors('prep_time_minutes');
 });
 
-test('the settings page exposes current values and the webhook url', function () {
+test('the settings page exposes current values', function () {
     $this->restaurant->update([
         'delivery_enabled' => true,
         'delivery_mode' => DeliveryMode::SelfDelivery,
         'prep_time_minutes' => 25,
     ]);
 
+    // No webhookUrl prop: both couriers are platform-provisioned, so the
+    // webhook is configured once on Plateful's accounts, not per restaurant.
     $this->actingAs($this->owner)
         ->get(settingsUrl())
         ->assertOk()
@@ -137,7 +139,7 @@ test('the settings page exposes current values and the webhook url', function ()
             ->where('settings.deliveryEnabled', true)
             ->where('settings.deliveryMode', 'self')
             ->where('settings.prepTimeMinutes', 25)
-            ->where('webhookUrl', 'http://admin.plateful.test/webhooks/uber')
+            ->missing('webhookUrl')
             ->has('options.modes', 2)
             // Split is gone: two strategies, two products.
             ->has('options.feeStrategies', 2));

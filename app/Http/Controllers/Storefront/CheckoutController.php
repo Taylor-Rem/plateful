@@ -88,7 +88,7 @@ class CheckoutController extends Controller
         ]);
 
         // Hold rather than charge when fulfilment depends on a courier nobody
-        // has found yet. Uber only searches once the delivery is CREATED, which
+        // has found yet. Courier networks only search once the delivery is CREATED, which
         // is after payment — so this is the only mechanism that can keep the
         // promise that nobody pays for a delivery that didn't happen.
         $manualCapture = OrderType::from($snapshot['type']) === OrderType::Delivery

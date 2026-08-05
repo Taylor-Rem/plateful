@@ -2,27 +2,34 @@
 
 namespace App\Services\Delivery\UberDirect;
 
-use App\Enums\DeliveryIntegrationStatus;
 use App\Enums\DeliveryProviderName;
 use App\Exceptions\DeliveryProviderException;
-use App\Models\DeliveryIntegration;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Mints and stores Uber Direct access tokens via the `client_credentials`
- * grant. Simpler than the Square/Clover OAuth services — machine-to-machine,
- * no redirect, no callback route, no refresh-token rotation.
+ * Mints platform-level Uber Direct access tokens via the `client_credentials`
+ * grant. Umbrella model: ONE credential set (config `services.uber_direct`)
+ * authenticates every restaurant's deliveries, so there is exactly one live
+ * token per scope for the whole platform.
  *
- * Tokens are stored on the integration rather than a cache because they live 30
- * days and Uber rate-limits the grant to 100 requests per hour: re-minting per
- * request would break the integration under any real load, so caching is a
- * correctness requirement here, not an optimization.
+ * Tokens are cached because they live 30 days and Uber rate-limits the grant
+ * to 100 requests per hour: re-minting per request would break every
+ * integration under any real load, so caching is a correctness requirement
+ * here, not an optimization.
+ *
+ * IMPORTANT: a token only authorizes the sub-organizations that existed when
+ * it was minted (verified against the live sandbox — a pre-provisioning token
+ * gets 403 for a newly created org). UberDirectProvisioningService calls
+ * `forget()` after creating an org so the next delivery call re-mints.
  */
 class UberDirectTokenService
 {
     public const TOKEN_URL = 'https://auth.uber.com/oauth/v2/token';
 
-    public const SCOPE = 'eats.deliveries';
+    public const SCOPE_DELIVERIES = 'eats.deliveries';
+
+    public const SCOPE_ORGANIZATIONS = 'direct.organizations';
 
     /**
      * Uber's documented token lifetime (30 days), used only if a response
@@ -38,80 +45,68 @@ class UberDirectTokenService
     private const REFRESH_WINDOW_HOURS = 24;
 
     /**
-     * A usable access token for this restaurant's Uber account, minting one if
-     * the stored token is missing or near expiry.
+     * A usable platform access token for the given scope, minting one if the
+     * cached token is missing or near expiry.
      */
-    public function freshAccessToken(DeliveryIntegration $integration): string
+    public function freshAccessToken(string $scope = self::SCOPE_DELIVERIES): string
     {
-        if (! $integration->hasCredentials()) {
-            throw DeliveryProviderException::notConfigured(DeliveryProviderName::Uber->value);
+        $cached = Cache::get($this->cacheKey($scope));
+
+        if (is_string($cached) && $cached !== '') {
+            return $cached;
         }
 
-        $expiresAt = $integration->token_expires_at;
+        $token = $this->requestToken($scope);
 
-        if ($integration->access_token !== null
-            && $expiresAt !== null
-            && $expiresAt->isAfter(now()->addHours(self::REFRESH_WINDOW_HOURS))) {
-            return (string) $integration->access_token;
+        // The cache entry dies REFRESH_WINDOW_HOURS before the token does, so a
+        // cache hit is always a token with comfortable life left.
+        $cacheUntil = $token->expiresAt->subHours(self::REFRESH_WINDOW_HOURS);
+        if ($cacheUntil->isFuture()) {
+            Cache::put($this->cacheKey($scope), $token->accessToken, $cacheUntil);
         }
-
-        return $this->mint($integration);
-    }
-
-    /**
-     * Run the grant and persist the result onto the integration, flipping it to
-     * `error` (with the reason) if Uber rejects the credentials.
-     */
-    public function mint(DeliveryIntegration $integration): string
-    {
-        try {
-            $token = $this->requestToken(
-                (string) $integration->client_id,
-                (string) $integration->client_secret,
-            );
-        } catch (DeliveryProviderException $e) {
-            // Park the reason where the owner can see it. Clearing the token
-            // means the next attempt re-mints rather than using a stale one.
-            $integration->forceFill([
-                'status' => DeliveryIntegrationStatus::Error,
-                'last_error' => $e->getMessage(),
-                'access_token' => null,
-                'token_expires_at' => null,
-            ])->save();
-
-            throw $e;
-        }
-
-        $integration->forceFill([
-            'access_token' => $token->accessToken,
-            'token_expires_at' => $token->expiresAt,
-            'status' => DeliveryIntegrationStatus::Connected,
-            'last_error' => null,
-        ])->save();
 
         return $token->accessToken;
     }
 
     /**
-     * Exchange raw credentials for a token without touching the database. Lets
-     * the admin credential form prove pasted values actually work before they
-     * are saved.
+     * Drop the cached tokens so the next call re-mints. Required after
+     * provisioning a new sub-organization: existing tokens do not authorize
+     * orgs created after they were minted.
      */
-    public function requestToken(string $clientId, string $clientSecret): UberDirectToken
+    public function forget(): void
     {
+        Cache::forget($this->cacheKey(self::SCOPE_DELIVERIES));
+        Cache::forget($this->cacheKey(self::SCOPE_ORGANIZATIONS));
+    }
+
+    /**
+     * Run the grant against the platform credentials without touching the
+     * cache. Failures surface as DeliveryProviderException with an ops-facing
+     * reason (a platform credential problem is Plateful's to fix, not a
+     * restaurant's).
+     */
+    public function requestToken(string $scope = self::SCOPE_DELIVERIES): UberDirectToken
+    {
+        $clientId = (string) config('services.uber_direct.client_id');
+        $clientSecret = (string) config('services.uber_direct.client_secret');
+
+        if ($clientId === '' || $clientSecret === '') {
+            throw DeliveryProviderException::notConfigured(DeliveryProviderName::Uber->value);
+        }
+
         $response = Http::asForm()
             ->timeout(15)
             ->post(self::TOKEN_URL, [
                 'client_id' => $clientId,
                 'client_secret' => $clientSecret,
                 'grant_type' => 'client_credentials',
-                'scope' => self::SCOPE,
+                'scope' => $scope,
             ]);
 
         if ($response->failed()) {
             throw DeliveryProviderException::authenticationFailed(
                 DeliveryProviderName::Uber->value,
-                $this->describeFailure($response->status(), (array) $response->json()),
+                $this->describeFailure($response->status(), (array) $response->json(), $scope),
             );
         }
 
@@ -127,28 +122,32 @@ class UberDirectTokenService
         return UberDirectToken::fromResponse($payload);
     }
 
+    private function cacheKey(string $scope): string
+    {
+        return 'uber_direct.platform_token.'.$scope;
+    }
+
     /**
-     * Turn Uber's error body into something an owner can act on.
+     * Turn Uber's error body into something actionable in logs/last_error.
      *
      * The mapping below was verified against the live sandbox rather than taken
      * from the docs — Uber distinguishes an unknown client id (401
      * `invalid_client`) from a bad secret (403 `access_denied`), which lets us
-     * name the field that's actually wrong instead of blaming both.
+     * name the credential that's actually wrong instead of blaming both.
      *
      * @param  array<string, mixed>  $body
      */
-    private function describeFailure(int $status, array $body): string
+    private function describeFailure(int $status, array $body, string $scope): string
     {
         $error = is_string($body['error'] ?? null) ? $body['error'] : null;
 
         return match ($error) {
-            'invalid_client' => 'Uber does not recognize this Client ID.',
-            'access_denied' => 'Uber rejected the Client Secret.',
+            'invalid_client' => 'Uber does not recognize the platform Client ID.',
+            'access_denied' => 'Uber rejected the platform Client Secret.',
             // Not a credential problem: the account itself has not been granted
-            // Direct API access, so no credential from it can ever mint a
-            // delivery-scoped token.
-            'invalid_scope' => 'This Uber account is not enabled for the '.self::SCOPE
-                .' scope. Finish account setup at direct.uber.com and accept the API Terms of Use, then try again.',
+            // this scope, so no credential from it can ever mint a token for it.
+            'invalid_scope' => "The platform Uber account is not enabled for the {$scope} scope."
+                .' Finish account setup at direct.uber.com and accept the API Terms of Use, then try again.',
             null => "Uber returned HTTP {$status}.",
             default => "Uber returned HTTP {$status}: {$error}",
         };

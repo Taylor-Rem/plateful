@@ -6,7 +6,6 @@ use App\Enums\DeliveryProviderName;
 use App\Enums\DeliveryStatus;
 use App\Enums\PaymentState;
 use App\Models\DeliveryAssignment;
-use App\Models\DeliveryIntegration;
 use App\Models\OrderEvent;
 use App\Services\Delivery\DeliverySettlement;
 use App\Services\Delivery\UberDirect\UberDirectStatusMap;
@@ -18,17 +17,11 @@ use Illuminate\Support\Facades\Log;
 /**
  * Receives Uber Direct delivery-status webhooks for every tenant on one URL.
  *
- * **The signing key is per-restaurant.** Each restaurant owns its Uber account
- * and creates the webhook inside its own dashboard, so Uber mints a distinct
- * signing key per restaurant — there is no platform-wide secret to check
- * against. That inverts the usual order of operations: we must work out *which*
- * restaurant an unverified payload claims to be for, look up their key, and
- * only then verify.
- *
- * That is safe because the claimed identity selects the key but grants nothing:
- * a forged `customer_id` just means we check the signature against a different
- * restaurant's key, which then fails. The signature remains the only thing that
- * authorizes any write.
+ * Umbrella model: the webhook is configured once on Plateful's root Direct
+ * account and signed with ONE platform-level key
+ * (`services.uber_direct.webhook_secret`), so — like the DoorDash webhook —
+ * the signature is verified before anything else and events resolve straight
+ * to the assignment by `delivery_id`. No per-restaurant key lookup exists.
  */
 class UberDirectWebhookController extends Controller
 {
@@ -43,19 +36,15 @@ class UberDirectWebhookController extends Controller
 
     public function __invoke(Request $request): Response
     {
-        $payload = (array) $request->json()->all();
+        $secret = (string) config('services.uber_direct.webhook_secret');
 
-        $integration = $this->resolveIntegration($payload);
-
-        if ($integration === null || $integration->webhook_signing_key === null) {
-            // Nothing to verify against. 400 rather than 200: this is not an
-            // event we can vouch for, and a retry costs us nothing.
-            return response('Unknown or unconfigured customer.', 400);
-        }
-
-        if (! $this->signatureIsValid($request, (string) $integration->webhook_signing_key)) {
+        // Fail closed: with no secret we can vouch for nothing. 400 rather than
+        // 200 so Uber retries once the secret is configured.
+        if ($secret === '' || ! $this->signatureIsValid($request, $secret)) {
             return response('Invalid signature.', 400);
         }
+
+        $payload = (array) $request->json()->all();
 
         $kind = $this->stringOrNull($payload['kind'] ?? null);
 
@@ -167,32 +156,6 @@ class UberDirectWebhookController extends Controller
     }
 
     /**
-     * Which restaurant's Uber account is this event claiming to come from?
-     * `customer_id` is on every Direct payload and maps straight to the
-     * integration that holds the key we need.
-     *
-     * Strictly `customer_id`, with no fall back to looking the restaurant up
-     * from `delivery_id`: such a fallback would quietly make the claimed
-     * customer irrelevant whenever a delivery id happened to match, so a
-     * payload could name one account and be judged against another's key.
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    private function resolveIntegration(array $payload): ?DeliveryIntegration
-    {
-        $customerId = $this->stringOrNull($payload['customer_id'] ?? null);
-
-        if ($customerId === null) {
-            return null;
-        }
-
-        return DeliveryIntegration::withoutTenantScope()
-            ->where('provider', DeliveryProviderName::Uber->value)
-            ->where('customer_id', $customerId)
-            ->first();
-    }
-
-    /**
      * @param  array<string, mixed>  $payload
      */
     private function resolveAssignment(array $payload): ?DeliveryAssignment
@@ -212,16 +175,24 @@ class UberDirectWebhookController extends Controller
             ->first();
     }
 
-    private function signatureIsValid(Request $request, string $signingKey): bool
+    private function signatureIsValid(Request $request, string $secret): bool
     {
-        $expected = hash_hmac('sha256', $request->getContent(), $signingKey);
+        $raw = hash_hmac('sha256', $request->getContent(), $secret, true);
 
         foreach (self::SIGNATURE_HEADERS as $header) {
             $provided = (string) $request->header($header, '');
 
-            // hash_equals to keep the comparison constant-time.
-            if ($provided !== '' && hash_equals($expected, $provided)) {
-                return true;
+            if ($provided === '') {
+                continue;
+            }
+
+            // Uber documents hex; accept base64 too (as the DoorDash webhook
+            // does) so a dashboard encoding difference can't silently drop
+            // every event. hash_equals keeps each check constant-time.
+            foreach ([bin2hex($raw), base64_encode($raw)] as $expected) {
+                if (hash_equals($expected, $provided)) {
+                    return true;
+                }
             }
         }
 

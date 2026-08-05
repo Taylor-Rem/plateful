@@ -6,6 +6,7 @@ use App\Exceptions\DeliveryProviderException;
 use App\Models\DeliveryIntegration;
 use App\Services\Delivery\DeliveryQuoteRequest;
 use App\Services\Delivery\UberDirect\UberDirectProvider;
+use App\Services\Delivery\UberDirect\UberDirectProvisioningService;
 use App\Services\Delivery\UberDirect\UberDirectTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -20,15 +21,15 @@ beforeEach(fn () => Http::preventStrayRequests(false));
 
 /**
  * Opt-in LIVE integration test — makes real calls to Uber's auth endpoint and
- * is skipped unless sandbox credentials are present:
+ * is skipped unless the platform credentials are present:
  *
- *   UBER_DIRECT_SANDBOX_CLIENT_ID=...
- *   UBER_DIRECT_SANDBOX_CLIENT_SECRET=...
- *   UBER_DIRECT_SANDBOX_CUSTOMER_ID=...
+ *   UBER_DIRECT_CLIENT_ID=...
+ *   UBER_DIRECT_CLIENT_SECRET=...
+ *   UBER_DIRECT_CUSTOMER_ID=...   (the ROOT organization id)
  *
- * Get them from direct.uber.com -> Management -> Developer. A test sandbox is
- * provisioned automatically; these credentials create no real deliveries, and
- * minting a token has no side effect beyond Uber's 100-per-hour grant cap.
+ * Get them from direct.uber.com -> Management -> Developer. Sandbox credentials
+ * create no real deliveries, and minting a token has no side effect beyond
+ * Uber's 100-per-hour grant cap.
  *
  * Run just this file:
  *   php artisan test tests/Feature/Delivery/UberDirectLiveSandboxTest.php
@@ -60,6 +61,12 @@ beforeEach(fn () => Http::preventStrayRequests(false));
  * then it is creating something, so think hard about whether a faked test would
  * do. `UberDirectProviderTest` covers create/cancel against Http::fake for
  * exactly this reason.
+ *
+ * ONE EXCEPTION, ONE STEP FURTHER GATED: the org-provisioning test below
+ * creates a PERMANENT sub-organization (Uber cannot delete orgs via API), so
+ * it additionally requires UBER_DIRECT_ALLOW_ORG_CREATE=1. Run it deliberately
+ * and rarely. The 2026-08-05 probe org is 9dbc3452-fdc4-498f-b261-d76dd576fb37
+ * ("Plateful Sandbox Probe") — reuse it before creating another.
  */
 
 /**
@@ -67,9 +74,9 @@ beforeEach(fn () => Http::preventStrayRequests(false));
  */
 function uberSandboxCredentials(): ?array
 {
-    $clientId = (string) config('services.uber_direct.sandbox_client_id');
-    $clientSecret = (string) config('services.uber_direct.sandbox_client_secret');
-    $customerId = (string) config('services.uber_direct.sandbox_customer_id');
+    $clientId = (string) config('services.uber_direct.client_id');
+    $clientSecret = (string) config('services.uber_direct.client_secret');
+    $customerId = (string) config('services.uber_direct.customer_id');
 
     if ($clientId === '' || $clientSecret === '' || $customerId === '') {
         return null;
@@ -87,12 +94,10 @@ function uberSandboxMissing(): bool
     return uberSandboxCredentials() === null;
 }
 
-const UBER_SKIP_REASON = 'Set UBER_DIRECT_SANDBOX_CLIENT_ID, _CLIENT_SECRET and _CUSTOMER_ID to run the live Uber Direct sandbox test.';
+const UBER_SKIP_REASON = 'Set UBER_DIRECT_CLIENT_ID, _CLIENT_SECRET and _CUSTOMER_ID to run the live Uber Direct sandbox test.';
 
-it('mints a real access token from the Uber sandbox', function () {
-    ['clientId' => $clientId, 'clientSecret' => $clientSecret] = uberSandboxCredentials();
-
-    $token = app(UberDirectTokenService::class)->requestToken($clientId, $clientSecret);
+it('mints a real platform access token from the Uber sandbox', function () {
+    $token = app(UberDirectTokenService::class)->requestToken();
 
     expect($token->accessToken)->toBeString()->not->toBeEmpty();
 
@@ -101,52 +106,47 @@ it('mints a real access token from the Uber sandbox', function () {
     expect($token->expiresAt->isAfter(now()->addDay()))->toBeTrue();
 })->skip(uberSandboxMissing(...), UBER_SKIP_REASON);
 
-it('stores a real token on the integration and reuses it on the next call', function () {
-    ['clientId' => $clientId, 'clientSecret' => $clientSecret, 'customerId' => $customerId] = uberSandboxCredentials();
+it('mints a real organizations-scoped token', function () {
+    // The umbrella model stands on this scope: if the account loses it,
+    // provisioning is dead even though deliveries still work.
+    $token = app(UberDirectTokenService::class)
+        ->requestToken(UberDirectTokenService::SCOPE_ORGANIZATIONS);
 
-    $restaurant = adminOrderRestaurant('uberlive');
+    expect($token->accessToken)->toBeString()->not->toBeEmpty();
+})->skip(uberSandboxMissing(...), UBER_SKIP_REASON);
 
-    $integration = DeliveryIntegration::withoutTenantScope()->create([
-        'restaurant_id' => $restaurant->id,
-        'provider' => DeliveryProviderName::Uber,
-        'client_id' => $clientId,
-        'client_secret' => $clientSecret,
-        'customer_id' => $customerId,
-        'status' => DeliveryIntegrationStatus::Disconnected,
-    ]);
-
+it('caches the platform token across calls', function () {
     $service = app(UberDirectTokenService::class);
-    $first = $service->freshAccessToken($integration);
+    $first = $service->freshAccessToken();
 
     expect($first)->toBeString()->not->toBeEmpty();
-    expect($integration->fresh()->status)->toBe(DeliveryIntegrationStatus::Connected);
 
-    // The second call must be served from storage — proving we don't burn the
+    // The second call must be served from cache — proving we don't burn the
     // 100/hour grant limit on every dispatch.
-    expect($service->freshAccessToken($integration->fresh()))->toBe($first);
+    expect($service->freshAccessToken())->toBe($first);
 })->skip(uberSandboxMissing(...), UBER_SKIP_REASON);
 
 it('reports a rejected secret rather than throwing something opaque', function () {
-    ['clientId' => $clientId] = uberSandboxCredentials();
+    config(['services.uber_direct.client_secret' => 'definitely-not-the-secret']);
 
-    expect(fn () => app(UberDirectTokenService::class)->requestToken($clientId, 'definitely-not-the-secret'))
-        ->toThrow(DeliveryProviderException::class, 'rejected the Client Secret');
+    expect(fn () => app(UberDirectTokenService::class)->requestToken())
+        ->toThrow(DeliveryProviderException::class, 'rejected the platform Client Secret');
 })->skip(uberSandboxMissing(...), UBER_SKIP_REASON);
 
 it('reports an unrecognized client id distinctly from a bad secret', function () {
-    expect(fn () => app(UberDirectTokenService::class)->requestToken('not-a-real-client-id', 'nope'))
-        ->toThrow(DeliveryProviderException::class, 'does not recognize this Client ID');
+    config(['services.uber_direct.client_id' => 'not-a-real-client-id']);
+    config(['services.uber_direct.client_secret' => 'nope']);
+
+    expect(fn () => app(UberDirectTokenService::class)->requestToken())
+        ->toThrow(DeliveryProviderException::class, 'does not recognize the platform Client ID');
 })->skip(uberSandboxMissing(...), UBER_SKIP_REASON);
 
 /**
  * The one that matters: a real, priced, deliverable quote from Uber for a real
- * pair of addresses. This is the gate the plan puts in front of the checkout
- * rework — until it passes, nothing downstream is standing on verified ground.
- *
- * A quote creates nothing and costs nothing.
+ * pair of addresses. A quote creates nothing and costs nothing.
  */
 it('gets a real priced quote from the Uber sandbox', function () {
-    ['clientId' => $clientId, 'clientSecret' => $clientSecret, 'customerId' => $customerId] = uberSandboxCredentials();
+    ['customerId' => $customerId] = uberSandboxCredentials();
 
     $restaurant = adminOrderRestaurant('uberquote');
     $restaurant->forceFill([
@@ -158,11 +158,11 @@ it('gets a real priced quote from the Uber sandbox', function () {
         'delivery_enabled' => true,
     ])->save();
 
+    // The root org quotes exactly like a provisioned sub-org (verified live
+    // 2026-08-05 against the probe sub-org), so this stays side-effect-free.
     DeliveryIntegration::withoutTenantScope()->create([
         'restaurant_id' => $restaurant->id,
         'provider' => DeliveryProviderName::Uber,
-        'client_id' => $clientId,
-        'client_secret' => $clientSecret,
         'customer_id' => $customerId,
         'status' => DeliveryIntegrationStatus::Connected,
     ]);
@@ -192,3 +192,20 @@ it('gets a real priced quote from the Uber sandbox', function () {
     expect($quote->expiresAt->isAfter(now()))->toBeTrue();
     expect($quote->expiresAt->isBefore(now()->addMinutes(30)))->toBeTrue();
 })->skip(uberSandboxMissing(...), UBER_SKIP_REASON);
+
+/**
+ * Creates a PERMANENT sandbox sub-organization — Uber cannot delete orgs via
+ * the API, so this is double-gated behind UBER_DIRECT_ALLOW_ORG_CREATE=1.
+ */
+it('provisions a real sub-organization under the root account', function () {
+    $restaurant = adminOrderRestaurant('uberorg');
+    $restaurant->forceFill(['name' => 'Plateful Sandbox Probe'])->save();
+
+    $integration = app(UberDirectProvisioningService::class)->provisionOrganizationFor($restaurant);
+
+    expect($integration->status)->toBe(DeliveryIntegrationStatus::Connected);
+    expect($integration->customer_id)->toBeString()->not->toBeEmpty();
+})->skip(
+    fn (): bool => uberSandboxMissing() || env('UBER_DIRECT_ALLOW_ORG_CREATE') !== '1',
+    'Set UBER_DIRECT_ALLOW_ORG_CREATE=1 (plus the platform creds) to run the org-creation live test — it creates a PERMANENT sandbox org.',
+);

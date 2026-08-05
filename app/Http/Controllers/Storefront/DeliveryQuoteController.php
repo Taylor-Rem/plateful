@@ -105,10 +105,11 @@ class DeliveryQuoteController extends Controller
 
         $strategy = $restaurant->delivery_fee_strategy ?? DeliveryFeeStrategy::PassThrough;
 
-        // A centrally-billed provider (DoorDash) grosses the courier cost up so
-        // the restaurant bears no Stripe fee on delivery; the strategy does not
-        // apply (third-party is always pass-through-with-markup, plan §4b). A
-        // pass-through provider (Uber) keeps the restaurant's own strategy.
+        // A centrally-billed provider (both courier networks) grosses the
+        // courier cost up so the restaurant bears no Stripe fee on delivery;
+        // the strategy does not apply (third-party is always
+        // pass-through-with-markup, plan §4b). Only self-delivery keeps the
+        // restaurant's own strategy.
         $centrallyBilled = $quote->provider->isCentrallyBilled();
         $customerFeeCents = $centrallyBilled
             ? DeliveryMarkup::customerFeeCents($quote->feeCents, (float) $restaurant->application_fee_percent)
@@ -127,8 +128,9 @@ class DeliveryQuoteController extends Controller
                     ? null
                     : $quote->etaMinutes + (int) $restaurant->prep_time_minutes,
                 // Show a countdown whenever the customer's price can move on a
-                // re-quote: always under central billing, and under pass-through
-                // for a per-restaurant provider. Absorb re-quotes silently.
+                // re-quote: always under central billing, and under a
+                // pass-through strategy on self-delivery. Absorb re-quotes
+                // silently.
                 'expiresAt' => $centrallyBilled || $strategy->quoteIsCustomerVisible()
                     ? $record->expires_at?->toIso8601String()
                     : null,

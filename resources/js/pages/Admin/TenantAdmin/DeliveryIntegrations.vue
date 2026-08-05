@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { Truck } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
@@ -12,10 +12,7 @@ type DeliveryProviderCard = {
     status: string;
     lastError: string | null;
     connectedAt: string | null;
-    customerId: string | null;
     storeId: string | null;
-    hasWebhookKey: boolean;
-    oneClick: boolean;
     available: boolean;
     saveUrl: string | null;
     disconnectUrl: string | null;
@@ -38,7 +35,6 @@ type DeliverySettings = {
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     providers: DeliveryProviderCard[];
-    webhookUrl: string;
     settings: DeliverySettings;
     options: {
         modes: Option[];
@@ -68,31 +64,11 @@ const saveSettings = (): void => {
     settingsForm.put(props.settings.saveUrl, { preserveScroll: true });
 };
 
-const uber = props.providers.find((p) => p.provider === 'uber') ?? null;
-
-// Open the form automatically when there is nothing connected yet, so the
-// first-run path is "paste and go" rather than "find the button".
-const showForm = ref(uber?.status !== 'connected');
-
-const form = useForm({
-    client_id: '',
-    client_secret: '',
-    customer_id: '',
-    webhook_signing_key: '',
-});
-
 const disconnectForm = useForm({});
 
-// Saved secrets are never echoed back, so an edit starts with blank
-// credential fields; the customer id is public on the card and safe to
-// prefill.
-const openEdit = (card: DeliveryProviderCard): void => {
-    form.customer_id = card.customerId ?? '';
-    showForm.value = true;
-};
-
-// One-click providers (DoorDash) have no credential form — the button posts
-// straight to saveUrl and Plateful provisions the Business/Store behind it.
+// Both providers enable in one click with no credential form — the button
+// posts straight to saveUrl and Plateful provisions the restaurant's
+// provider-side identity (DoorDash Business/Store, Uber sub-organization).
 const enableForm = useForm({});
 
 const enable = (card: DeliveryProviderCard): void => {
@@ -101,20 +77,6 @@ const enable = (card: DeliveryProviderCard): void => {
     }
 
     enableForm.post(card.saveUrl, { preserveScroll: true });
-};
-
-const save = (): void => {
-    if (!uber?.saveUrl) {
-        return;
-    }
-
-    form.post(uber.saveUrl, {
-        preserveScroll: true,
-        onSuccess: () => {
-            form.reset();
-            showForm.value = false;
-        },
-    });
 };
 
 const disconnect = (card: DeliveryProviderCard): void => {
@@ -150,7 +112,7 @@ defineOptions({ layout: TenantAdminLayout });
         <div class="mx-auto max-w-3xl space-y-6">
             <PageHeader
                 title="Delivery"
-                description="Connect a courier network so delivery orders are dispatched automatically. DoorDash Drive enables in one click; Uber Direct uses your own account."
+                description="Connect a courier network so delivery orders are dispatched automatically. Both networks enable in one click — no accounts to create or credentials to paste."
             />
 
             <!-- The behaviour flags. Every one of these lived in the schema
@@ -195,36 +157,20 @@ defineOptions({ layout: TenantAdminLayout });
                             </p>
                         </div>
 
-                        <div v-if="!isSelfDelivery">
-                            <label class="mb-1 block text-sm font-medium"
-                                >How is the delivery fee priced?</label
-                            >
-                            <select
-                                v-model="settingsForm.delivery_fee_strategy"
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            >
-                                <option
-                                    v-for="s in options.feeStrategies"
-                                    :key="s.value"
-                                    :value="s.value"
-                                >
-                                    {{ s.label }}
-                                </option>
-                            </select>
-                            <p class="mt-1 text-xs text-muted-foreground">
-                                Passing the real cost through means the customer
-                                pays what the courier charges. Charging a flat
-                                fee means you cover any difference — set it to
-                                $0.00 to offer free delivery.
-                            </p>
-                        </div>
-
-                        <div
-                            v-if="
-                                isSelfDelivery ||
-                                settingsForm.delivery_fee_strategy === 'absorb'
-                            "
+                        <!-- The fee strategy no longer applies to courier
+                             networks: both are centrally billed, so the
+                             customer always pays the (marked-up) courier
+                             quote. Showing the selector would promise pricing
+                             control the restaurant doesn't have. -->
+                        <p
+                            v-if="!isSelfDelivery"
+                            class="text-xs text-muted-foreground"
                         >
+                            Customers pay the courier network's quoted delivery
+                            fee at checkout, priced live for their address.
+                        </p>
+
+                        <div v-if="isSelfDelivery">
                             <label class="mb-1 block text-sm font-medium"
                                 >Your delivery fee ($)</label
                             >
@@ -407,31 +353,11 @@ defineOptions({ layout: TenantAdminLayout });
                             </h3>
                             <p
                                 v-if="
-                                    card.customerId &&
-                                    card.status === 'connected'
-                                "
-                                class="mt-1 font-mono text-xs break-all text-muted-foreground"
-                            >
-                                Customer ID {{ card.customerId }}
-                            </p>
-                            <p
-                                v-if="
                                     card.storeId && card.status === 'connected'
                                 "
                                 class="mt-1 font-mono text-xs break-all text-muted-foreground"
                             >
-                                Store ID {{ card.storeId }}
-                            </p>
-                            <p
-                                v-if="
-                                    !card.oneClick &&
-                                    card.status === 'connected' &&
-                                    !card.hasWebhookKey
-                                "
-                                class="mt-1 text-sm text-amber-700"
-                            >
-                                Deliveries will dispatch, but no live courier
-                                updates — add a webhook signing key below.
+                                Account ID {{ card.storeId }}
                             </p>
                             <p
                                 v-if="card.lastError"
@@ -448,31 +374,18 @@ defineOptions({ layout: TenantAdminLayout });
                         </div>
                     </div>
 
-                    <div
-                        v-if="card.status === 'connected'"
-                        class="flex flex-wrap items-center gap-2"
-                    >
-                        <Button
-                            v-if="!card.oneClick && !showForm"
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            @click="openEdit(card)"
-                        >
-                            Edit credentials
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            :disabled="disconnectForm.processing"
-                            @click="disconnect(card)"
-                        >
-                            Disconnect
-                        </Button>
-                    </div>
                     <Button
-                        v-else-if="card.available && card.oneClick"
+                        v-if="card.status === 'connected'"
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        :disabled="disconnectForm.processing"
+                        @click="disconnect(card)"
+                    >
+                        Disconnect
+                    </Button>
+                    <Button
+                        v-else-if="card.available"
                         type="button"
                         size="sm"
                         :disabled="enableForm.processing"
@@ -484,191 +397,7 @@ defineOptions({ layout: TenantAdminLayout });
                                 : 'Enable delivery'
                         }}
                     </Button>
-                    <Button
-                        v-else-if="card.available && !showForm"
-                        type="button"
-                        size="sm"
-                        @click="showForm = true"
-                    >
-                        Connect
-                    </Button>
                 </div>
-
-                <form
-                    v-if="
-                        card.provider === 'uber' && card.available && showForm
-                    "
-                    class="mt-4 space-y-4 border-t border-border pt-4"
-                    @submit.prevent="save"
-                >
-                    <p class="text-sm text-muted-foreground">
-                        Find these at
-                        <a
-                            href="https://direct.uber.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="underline"
-                            >direct.uber.com</a
-                        >
-                        under Management → Developer. We check them with Uber
-                        before saving.
-                        <span v-if="card.status === 'connected'">
-                            For security your saved Client ID and Secret aren't
-                            shown here — paste them again (or paste new ones) to
-                            update the connection. No need to disconnect first.
-                        </span>
-                    </p>
-
-                    <div>
-                        <label
-                            class="mb-1 block text-sm font-medium"
-                            for="client_id"
-                            >Client ID</label
-                        >
-                        <input
-                            id="client_id"
-                            v-model="form.client_id"
-                            type="text"
-                            autocomplete="off"
-                            spellcheck="false"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
-                        />
-                        <p
-                            v-if="form.errors.client_id"
-                            class="mt-1 text-xs text-destructive"
-                        >
-                            {{ form.errors.client_id }}
-                        </p>
-                    </div>
-
-                    <div>
-                        <label
-                            class="mb-1 block text-sm font-medium"
-                            for="client_secret"
-                            >Client Secret</label
-                        >
-                        <input
-                            id="client_secret"
-                            v-model="form.client_secret"
-                            type="password"
-                            autocomplete="off"
-                            spellcheck="false"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
-                        />
-                        <p
-                            v-if="form.errors.client_secret"
-                            class="mt-1 text-xs text-destructive"
-                        >
-                            {{ form.errors.client_secret }}
-                        </p>
-                    </div>
-
-                    <div>
-                        <label
-                            class="mb-1 block text-sm font-medium"
-                            for="customer_id"
-                            >Customer ID</label
-                        >
-                        <input
-                            id="customer_id"
-                            v-model="form.customer_id"
-                            type="text"
-                            autocomplete="off"
-                            spellcheck="false"
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
-                        />
-                        <p
-                            v-if="form.errors.customer_id"
-                            class="mt-1 text-xs text-destructive"
-                        >
-                            {{ form.errors.customer_id }}
-                        </p>
-                    </div>
-
-                    <div class="border-t border-border pt-4">
-                        <label
-                            class="mb-1 block text-sm font-medium"
-                            for="webhook_signing_key"
-                            >Webhook Signing Key
-                            <span class="font-normal text-muted-foreground"
-                                >— optional</span
-                            ></label
-                        >
-                        <p class="mb-2 text-sm text-muted-foreground">
-                            Without this, deliveries still dispatch — you just
-                            won't get live courier updates.
-                        </p>
-                        <ol
-                            class="mb-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground"
-                        >
-                            <li>
-                                In your Uber dashboard go to Developer →
-                                Webhooks → Create Webhook.
-                            </li>
-                            <li>
-                                Select the
-                                <span class="font-medium">delivery status</span>
-                                and
-                                <span class="font-medium">courier update</span>
-                                events, and use this URL:
-                                <code
-                                    class="mt-1 block overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs"
-                                    >{{ webhookUrl }}</code
-                                >
-                            </li>
-                            <li>
-                                Once the webhook is created, Uber shows a
-                                <span class="font-medium">signing key</span> for
-                                it — copy that key and paste it below. It's how
-                                we verify the updates really come from Uber.
-                            </li>
-                        </ol>
-                        <input
-                            id="webhook_signing_key"
-                            v-model="form.webhook_signing_key"
-                            type="password"
-                            autocomplete="off"
-                            spellcheck="false"
-                            :placeholder="
-                                card.hasWebhookKey
-                                    ? 'Saved — leave blank to keep it'
-                                    : 'Paste the signing key from Uber'
-                            "
-                            class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm"
-                        />
-                        <p
-                            v-if="form.errors.webhook_signing_key"
-                            class="mt-1 text-xs text-destructive"
-                        >
-                            {{ form.errors.webhook_signing_key }}
-                        </p>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <Button
-                            type="submit"
-                            size="sm"
-                            :disabled="form.processing"
-                        >
-                            {{
-                                form.processing
-                                    ? 'Checking with Uber…'
-                                    : card.status === 'connected'
-                                      ? 'Save changes'
-                                      : 'Save and connect'
-                            }}
-                        </Button>
-                        <Button
-                            v-if="card.status === 'connected'"
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            @click="showForm = false"
-                        >
-                            Cancel
-                        </Button>
-                    </div>
-                </form>
             </section>
         </div>
     </div>

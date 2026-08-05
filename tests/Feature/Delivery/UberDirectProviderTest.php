@@ -21,6 +21,22 @@ require_once __DIR__.'/../Admin/AdminOrderTestHelpers.php';
 
 const UBER_CUSTOMER_ID = 'cust_123';
 
+beforeEach(function () {
+    config([
+        'services.uber_direct.client_id' => 'cid_platform',
+        'services.uber_direct.client_secret' => 'csec_platform',
+    ]);
+
+    // Every API call authenticates with the platform token; fake the grant
+    // once so each test only fakes the Direct endpoints it cares about.
+    Http::fake([
+        UberDirectTokenService::TOKEN_URL => Http::response([
+            'access_token' => 'platform_tok',
+            'expires_in' => 2_592_000,
+        ]),
+    ]);
+});
+
 function uberRestaurant(string $sub = 'uberco'): Restaurant
 {
     $r = adminOrderRestaurant($sub);
@@ -32,8 +48,6 @@ function uberRestaurant(string $sub = 'uberco'): Restaurant
     DeliveryIntegration::factory()->create([
         'restaurant_id' => $r->id,
         'customer_id' => UBER_CUSTOMER_ID,
-        'access_token' => 'tok_live',
-        'token_expires_at' => now()->addDays(20),
     ]);
 
     return $r->fresh();
@@ -121,6 +135,10 @@ it('sends addresses as JSON strings and never sends coordinates', function () {
     app(UberDirectProvider::class)->quote(uberQuoteRequestFor($r));
 
     Http::assertSent(function (Request $req): bool {
+        if ($req->url() === UberDirectTokenService::TOKEN_URL) {
+            return false;
+        }
+
         $body = $req->data();
 
         // Uber expects a JSON-encoded *string*, not a nested object.
@@ -139,9 +157,11 @@ it('sends addresses as JSON strings and never sends coordinates', function () {
 });
 
 it('replays the quote address byte-identically on create', function () {
-    Http::fakeSequence()
-        ->push(uberQuoteBody())
-        ->push(uberDeliveryBody());
+    Http::fake([
+        'api.uber.com/*' => Http::sequence()
+            ->push(uberQuoteBody())
+            ->push(uberDeliveryBody()),
+    ]);
 
     $r = uberRestaurant();
     $order = makeOrder($r);
@@ -156,7 +176,9 @@ it('replays the quote address byte-identically on create', function () {
 
     $sent = [];
     Http::assertSent(function (Request $req) use (&$sent): bool {
-        $sent[] = $req->data();
+        if (str_contains($req->url(), 'api.uber.com')) {
+            $sent[] = $req->data();
+        }
 
         return true;
     });
@@ -192,7 +214,8 @@ it('creates a delivery and records both the quoted and actual fee', function () 
     expect($assignment->quote_fee_cents)->toBe(558);
     expect($assignment->actual_fee_cents)->toBe(532);
 
-    Http::assertSent(fn (Request $req): bool => $req['quote_id'] === 'dqt_AI6aDfhsSNqsVNTG03QKxg'
+    Http::assertSent(fn (Request $req): bool => $req->url() !== UberDirectTokenService::TOKEN_URL
+        && $req['quote_id'] === 'dqt_AI6aDfhsSNqsVNTG03QKxg'
         && $req['external_id'] === $order->number
         && $req['dropoff_notes'] === 'Buzz twice');
 });
@@ -217,7 +240,8 @@ it('passes the customer tip through to the courier', function () {
     // third-party delivery the tip is unambiguously theirs. `tip` is the field
     // on DeliveryReq — `tip_by_customer` is update, `courier_tip` is the
     // store-scoped Eats API.
-    Http::assertSent(fn (Request $req): bool => $req['tip'] === 500);
+    Http::assertSent(fn (Request $req): bool => $req->url() !== UberDirectTokenService::TOKEN_URL
+        && $req['tip'] === 500);
 });
 
 it('excludes the tip from actual_fee_cents so fee drift stays measurable', function () {
@@ -281,7 +305,8 @@ it('derives the idempotency key from the order so a retry cannot dispatch two co
     // second courier. The key must be a pure function of the order — a random
     // one would be worthless on the retry. (delivery_assignments.order_id is
     // unique, so our own table is already safe; this protects Uber's side.)
-    Http::assertSent(fn (Request $req): bool => $req['idempotency_key'] === 'pf-delivery-'.$order->id);
+    Http::assertSent(fn (Request $req): bool => $req->url() !== UberDirectTokenService::TOKEN_URL
+        && $req['idempotency_key'] === 'pf-delivery-'.$order->id);
 });
 
 it('sends a manifest describing what the courier carries', function () {
@@ -300,6 +325,10 @@ it('sends a manifest describing what the courier carries', function () {
     app(UberDirectProvider::class)->create($order->load('items'), $quote);
 
     Http::assertSent(function (Request $req) use ($order): bool {
+        if ($req->url() === UberDirectTokenService::TOKEN_URL) {
+            return false;
+        }
+
         expect($req['manifest_items'])->toHaveCount($order->items->count());
         expect($req['manifest_items'][0])->toHaveKeys(['name', 'quantity', 'size']);
         expect($req['manifest_reference'])->toBe($order->number);
@@ -406,23 +435,60 @@ it('refuses to quote for a restaurant with no integration', function () {
     Http::assertNothingSent();
 });
 
-it('mints a token before calling the API when none is stored', function () {
-    Http::fake([
-        UberDirectTokenService::TOKEN_URL => Http::response([
-            'access_token' => 'fresh_tok',
-            'expires_in' => 2_592_000,
-        ]),
-        'api.uber.com/v1/customers/*' => Http::response(uberQuoteBody()),
-    ]);
+it('authenticates every API call with the platform token', function () {
+    Http::fake(['api.uber.com/v1/customers/*' => Http::response(uberQuoteBody())]);
 
-    $r = adminOrderRestaurant('ubermint');
-    DeliveryIntegration::factory()->withoutToken()->create([
-        'restaurant_id' => $r->id,
-        'customer_id' => UBER_CUSTOMER_ID,
-    ]);
+    $r = uberRestaurant('ubermint');
 
-    app(UberDirectProvider::class)->quote(uberQuoteRequestFor($r->fresh()));
+    app(UberDirectProvider::class)->quote(uberQuoteRequestFor($r));
 
     Http::assertSent(fn (Request $req): bool => str_contains($req->url(), 'delivery_quotes')
-        && $req->hasHeader('Authorization', 'Bearer fresh_tok'));
+        && $req->hasHeader('Authorization', 'Bearer platform_tok'));
 });
+
+it('treats a cancellation before any courier existed as fully recoverable', function () {
+    Http::fake(['api.uber.com/*' => Http::response(['id' => 'del_x', 'status' => 'canceled'])]);
+
+    $r = uberRestaurant('ubercanfree');
+    $order = makeOrder($r);
+    $assignment = DeliveryAssignment::create([
+        'order_id' => $order->id,
+        'provider' => DeliveryProviderName::Uber,
+        'external_id' => 'del_x',
+        'status' => DeliveryStatus::Pending,
+        'quote_fee_cents' => 558,
+        'actual_fee_cents' => 532,
+    ]);
+
+    $cancellation = app(UberDirectProvider::class)->cancel($assignment);
+
+    // No courier ever accepted the job, so Uber cannot have charged for it.
+    expect($cancellation->courierFeeRecoverable())->toBeTrue();
+});
+
+it('assumes the courier fee was kept when a courier already existed', function (DeliveryStatus $status) {
+    Http::fake(['api.uber.com/*' => Http::response(['id' => 'del_x', 'status' => 'canceled'])]);
+
+    $r = uberRestaurant('ubercankept');
+    $order = makeOrder($r);
+    $assignment = DeliveryAssignment::create([
+        'order_id' => $order->id,
+        'provider' => DeliveryProviderName::Uber,
+        'external_id' => 'del_x',
+        'status' => $status,
+        'quote_fee_cents' => 558,
+        'actual_fee_cents' => 532,
+    ]);
+
+    $cancellation = app(UberDirectProvider::class)->cancel($assignment);
+
+    // Under central billing Plateful fronted this fee; Uber does not state the
+    // cancellation charge, so once a courier exists the Plateful-safe reading
+    // is that the fee was kept. (DriverAssigned deliberately includes Uber's
+    // `pickup_complete`, so it cannot be trusted as "pre-pickup".)
+    expect($cancellation->courierFeeRecoverable())->toBeFalse();
+    expect($cancellation->courierFeeChargedCents)->toBe(532);
+})->with([
+    'driver assigned' => [DeliveryStatus::DriverAssigned],
+    'picked up' => [DeliveryStatus::PickedUp],
+]);
