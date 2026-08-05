@@ -73,7 +73,13 @@ const openEditCategory = (category: App.Data.MenuCategoryData): void => {
 const onCategoryDeleteRequested = (
     category: App.Data.MenuCategoryData,
 ): void => {
-    if (!window.confirm(`Delete the "${category.name}" category?`)) {
+    const count = category.items.length;
+    const warning =
+        count > 0
+            ? `Delete the "${category.name}" category and the ${count} item${count === 1 ? '' : 's'} in it? This can't be undone.`
+            : `Delete the "${category.name}" category?`;
+
+    if (!window.confirm(warning)) {
         return;
     }
 

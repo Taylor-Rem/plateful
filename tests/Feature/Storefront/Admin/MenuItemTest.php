@@ -127,9 +127,12 @@ test('admin can delete a menu item via storefront and order history is preserved
         'subtotal_cents' => $item->price_cents,
     ]);
 
+    $menuUrl = "http://{$r->subdomain}.plateful.test/menu";
+
     $this->actingAs($admin)
+        ->from($menuUrl)
         ->delete(smiUrl($r, "/items/{$item->id}"))
-        ->assertRedirect();
+        ->assertRedirect($menuUrl);
 
     $oi->refresh();
     expect(MenuItem::withoutTenantScope()->find($item->id))->toBeNull()
