@@ -130,17 +130,19 @@ test('empty category can be deleted', function () {
     expect(MenuCategory::withoutTenantScope()->find($cat->id))->toBeNull();
 });
 
-test('category with items returns 422 and is preserved', function () {
+test('deleting a category also deletes its items', function () {
     $r = menuRestaurant('marcos');
     $admin = attachAdmin($r);
     $cat = makeCategory($r);
-    makeItem($cat);
+    $item = makeItem($cat);
 
     $this->actingAs($admin)
-        ->delete(MENU_ADMIN_BASE."/marcos/menu/categories/{$cat->id}", [], ['Accept' => 'application/json'])
-        ->assertStatus(422);
+        ->delete(MENU_ADMIN_BASE."/marcos/menu/categories/{$cat->id}")
+        ->assertRedirect()
+        ->assertSessionHas('success', 'Category and 1 item deleted.');
 
-    expect(MenuCategory::withoutTenantScope()->find($cat->id))->not->toBeNull();
+    expect(MenuCategory::withoutTenantScope()->find($cat->id))->toBeNull()
+        ->and(MenuItem::withoutTenantScope()->find($item->id))->toBeNull();
 });
 
 test('reorder categories updates positions', function () {

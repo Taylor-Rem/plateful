@@ -74,21 +74,23 @@ return [
     ],
 
     'uber_direct' => [
-        // Uber Direct credentials are PER-RESTAURANT and live encrypted in
-        // `delivery_integrations` — each restaurant holds its own Uber account
-        // and Uber bills them directly, so there is no app-level credential the
-        // way Square and Clover have one.
-        //
-        // These are sandbox credentials for local development and the opt-in
-        // live sandbox test. Production resolves credentials ONLY from the
-        // integration row; nothing here is a fallback.
+        // Uber Direct is an umbrella / central-billing integration: ONE set of
+        // platform credentials (the root Direct account) authenticates every
+        // restaurant's deliveries, exactly like DoorDash below. Restaurants are
+        // provisioned as sub-organizations via Uber's Organizations API and
+        // identified by the org id stored on the integration row — see
+        // UberDirectProvisioningService.
         //
         // Deliberately no `environment` key: unlike Square/Clover, Uber Direct
         // serves test and production from the same host (api.uber.com). Test
         // mode is a property of the credentials, not the URL.
-        'sandbox_client_id' => env('UBER_DIRECT_SANDBOX_CLIENT_ID'),
-        'sandbox_client_secret' => env('UBER_DIRECT_SANDBOX_CLIENT_SECRET'),
-        'sandbox_customer_id' => env('UBER_DIRECT_SANDBOX_CUSTOMER_ID'),
+        'client_id' => env('UBER_DIRECT_CLIENT_ID'),
+        'client_secret' => env('UBER_DIRECT_CLIENT_SECRET'),
+        // The ROOT organization id (shown as "Customer ID" on the developer
+        // dashboard's billing page) — the parent under which restaurant
+        // sub-orgs are created.
+        'customer_id' => env('UBER_DIRECT_CUSTOMER_ID'),
+        'webhook_secret' => env('UBER_DIRECT_WEBHOOK_SECRET'),
     ],
 
     'doordash' => [

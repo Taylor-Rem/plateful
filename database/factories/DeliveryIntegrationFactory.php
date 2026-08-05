@@ -15,7 +15,10 @@ use Illuminate\Support\Str;
 class DeliveryIntegrationFactory extends Factory
 {
     /**
-     * Define the model's default state.
+     * A provisioned Uber Direct integration: platform-authenticated (umbrella
+     * model), so it holds no per-restaurant credentials — only the
+     * sub-organization id Plateful provisioned, stored as `customer_id`, which
+     * is what UberDirectProvider keys on.
      *
      * @return array<string, mixed>
      */
@@ -24,51 +27,24 @@ class DeliveryIntegrationFactory extends Factory
         return [
             'restaurant_id' => Restaurant::factory(),
             'provider' => DeliveryProviderName::Uber,
-            'client_id' => 'cid_'.Str::random(24),
-            'client_secret' => 'csec_'.Str::random(32),
             'customer_id' => fake()->uuid(),
-            'access_token' => 'tok_'.Str::random(32),
-            // Uber Direct access tokens live 30 days.
-            'token_expires_at' => now()->addDays(30),
             'status' => DeliveryIntegrationStatus::Connected,
         ];
     }
 
     /**
-     * A provisioned DoorDash Drive integration: platform-authenticated, so it
-     * holds no per-restaurant credentials — only the Business/Store ids Plateful
-     * minted for it. The `external_store_id` is what DoorDashProvider keys on.
+     * A provisioned DoorDash Drive integration — same umbrella shape, keyed on
+     * the Business/Store ids Plateful minted. `external_store_id` is what
+     * DoorDashProvider keys on.
      */
     public function doordash(): static
     {
         return $this->state(fn (array $attributes): array => [
             'provider' => DeliveryProviderName::DoorDash,
-            'client_id' => null,
-            'client_secret' => null,
             'customer_id' => null,
-            'access_token' => null,
-            'token_expires_at' => null,
             'external_business_id' => 'biz_'.Str::random(12),
             'external_store_id' => 'store_'.Str::random(12),
             'status' => DeliveryIntegrationStatus::Connected,
-        ]);
-    }
-
-    /**
-     * Credentials entered but never exercised — no token minted yet.
-     */
-    public function withoutToken(): static
-    {
-        return $this->state(fn (array $attributes): array => [
-            'access_token' => null,
-            'token_expires_at' => null,
-        ]);
-    }
-
-    public function tokenExpired(): static
-    {
-        return $this->state(fn (array $attributes): array => [
-            'token_expires_at' => now()->subDay(),
         ]);
     }
 
@@ -76,21 +52,14 @@ class DeliveryIntegrationFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'status' => DeliveryIntegrationStatus::Disconnected,
-            'client_id' => null,
-            'client_secret' => null,
-            'customer_id' => null,
-            'access_token' => null,
-            'token_expires_at' => null,
         ]);
     }
 
-    public function errored(string $message = 'Uber rejected these credentials.'): static
+    public function errored(string $message = 'Uber organization provisioning failed.'): static
     {
         return $this->state(fn (array $attributes): array => [
             'status' => DeliveryIntegrationStatus::Error,
             'last_error' => $message,
-            'access_token' => null,
-            'token_expires_at' => null,
         ]);
     }
 }

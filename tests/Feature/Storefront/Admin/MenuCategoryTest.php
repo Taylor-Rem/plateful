@@ -31,7 +31,7 @@ function categoryUrl(Restaurant $r, string $path = ''): string
     return "http://{$r->subdomain}.plateful.test/admin/menu/categories{$path}";
 }
 
-function makeCategory(Restaurant $r, string $name, int $position = 0): MenuCategory
+function categoryMake(Restaurant $r, string $name, int $position = 0): MenuCategory
 {
     return MenuCategory::withoutTenantScope()->create([
         'restaurant_id' => $r->id,
@@ -64,7 +64,7 @@ test('staff cannot create a category', function () {
 test('admin can create a category from the storefront', function () {
     $r = categoryRestaurant();
     $admin = categoryAdmin($r);
-    makeCategory($r, 'Existing', 0);
+    categoryMake($r, 'Existing', 0);
 
     $this->actingAs($admin)
         ->post(categoryUrl($r), [
@@ -87,7 +87,7 @@ test('admin can create a category from the storefront', function () {
 test('admin can rename a category and set its description', function () {
     $r = categoryRestaurant();
     $admin = categoryAdmin($r);
-    $category = makeCategory($r, 'Apps');
+    $category = categoryMake($r, 'Apps');
 
     $this->actingAs($admin)
         ->put(categoryUrl($r, "/{$category->id}"), [
@@ -102,11 +102,11 @@ test('admin can rename a category and set its description', function () {
         ->and($fresh->description)->toBe('To start');
 });
 
-test('deleting a category with items is refused', function () {
+test('deleting a category also deletes its items', function () {
     $r = categoryRestaurant();
     $admin = categoryAdmin($r);
-    $category = makeCategory($r, 'Apps');
-    MenuItem::withoutTenantScope()->create([
+    $category = categoryMake($r, 'Apps');
+    $item = MenuItem::withoutTenantScope()->create([
         'restaurant_id' => $r->id,
         'menu_category_id' => $category->id,
         'name' => 'Wings',
@@ -118,15 +118,18 @@ test('deleting a category with items is refused', function () {
 
     $this->actingAs($admin)
         ->delete(categoryUrl($r, "/{$category->id}"))
-        ->assertSessionHasErrors('category');
+        ->assertRedirect()
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('success', 'Category and 1 item deleted.');
 
-    expect($category->fresh())->not->toBeNull();
+    expect(MenuCategory::withoutTenantScope()->find($category->id))->toBeNull()
+        ->and(MenuItem::withoutTenantScope()->find($item->id))->toBeNull();
 });
 
 test('admin can delete an empty category', function () {
     $r = categoryRestaurant();
     $admin = categoryAdmin($r);
-    $category = makeCategory($r, 'Apps');
+    $category = categoryMake($r, 'Apps');
 
     $this->actingAs($admin)
         ->delete(categoryUrl($r, "/{$category->id}"))
@@ -139,9 +142,9 @@ test('admin can delete an empty category', function () {
 test('admin can reorder categories', function () {
     $r = categoryRestaurant();
     $admin = categoryAdmin($r);
-    $a = makeCategory($r, 'Apps', 0);
-    $b = makeCategory($r, 'Mains', 1);
-    $c = makeCategory($r, 'Desserts', 2);
+    $a = categoryMake($r, 'Apps', 0);
+    $b = categoryMake($r, 'Mains', 1);
+    $c = categoryMake($r, 'Desserts', 2);
 
     $this->actingAs($admin)
         ->post(categoryUrl($r, '/reorder'), ['ids' => [$c->id, $a->id, $b->id]])
@@ -161,7 +164,7 @@ test('cross-tenant category access is blocked', function () {
     $r1 = categoryRestaurant('marcos');
     $r2 = categoryRestaurant('luigis');
     $r1Admin = categoryAdmin($r1);
-    $r2Category = makeCategory($r2, 'Their Apps');
+    $r2Category = categoryMake($r2, 'Their Apps');
 
     $this->actingAs($r1Admin)
         ->put(categoryUrl($r1, "/{$r2Category->id}"), ['name' => 'hacked'])
@@ -174,8 +177,8 @@ test('a reorder cannot include another restaurant\'s categories', function () {
     $r1 = categoryRestaurant('marcos');
     $r2 = categoryRestaurant('luigis');
     $r1Admin = categoryAdmin($r1);
-    $mine = makeCategory($r1, 'Mine');
-    $theirs = makeCategory($r2, 'Theirs', 5);
+    $mine = categoryMake($r1, 'Mine');
+    $theirs = categoryMake($r2, 'Theirs', 5);
 
     $this->actingAs($r1Admin)
         ->post(categoryUrl($r1, '/reorder'), ['ids' => [$theirs->id, $mine->id]])
@@ -187,7 +190,7 @@ test('a reorder cannot include another restaurant\'s categories', function () {
 test('the storefront menu shows empty categories to admins but not customers', function () {
     $r = categoryRestaurant();
     $admin = categoryAdmin($r);
-    makeCategory($r, 'Empty For Now');
+    categoryMake($r, 'Empty For Now');
 
     $this->actingAs($admin)
         ->get("http://{$r->subdomain}.plateful.test/menu")

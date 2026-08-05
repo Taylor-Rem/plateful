@@ -20,6 +20,9 @@ require_once __DIR__.'/../Delivery/DeliveryQuoteTestHelpers.php';
 
 beforeEach(function () {
     config(['platform.primary_domain' => 'plateful.test']);
+    config(['platform.stripe_variable_rate' => 0.029]);
+    config(['services.uber_direct.client_id' => 'cid_platform']);
+    config(['services.uber_direct.client_secret' => 'csec_platform']);
     Mail::fake();
 
     $f = cartFixture();
@@ -37,13 +40,12 @@ beforeEach(function () {
         'tax_rate_percent' => 0,
         'prep_time_minutes' => 10,
         'phone' => '5551234567',
+        'application_fee_percent' => 4,
     ]);
 
     DeliveryIntegration::factory()->create([
         'restaurant_id' => $this->restaurant->id,
         'customer_id' => 'cust_quote',
-        'access_token' => 'tok_live',
-        'token_expires_at' => now()->addDays(20),
     ]);
 });
 
@@ -101,7 +103,9 @@ it('quotes delivery for an address before any payment', function () {
     $response = $this->postJson(quoteHost().'/checkout/delivery-quote', quotePayload());
 
     $response->assertOk();
-    expect($response->json('quote.feeCents'))->toBe(799);
+    // Uber is centrally billed, so the raw 799 courier fee is grossed up:
+    // round(799 × 1.04 / 0.971) = 856.
+    expect($response->json('quote.feeCents'))->toBe(856);
     expect($response->json('quote.token'))->toBeString();
     expect($response->json('quote.expiresAt'))->not->toBeNull();
 
@@ -142,27 +146,31 @@ it('charges the quoted fee, not the restaurant’s advertised one', function () 
     $token = $this->postJson(quoteHost().'/checkout/delivery-quote', quotePayload())->json('quote.token');
     $order = placeQuotedOrder($token);
 
-    // The restaurant's flat 499 is irrelevant under pass-through — the customer
-    // pays what delivery actually costs.
-    expect($order->delivery_fee_cents)->toBe(799);
+    // The restaurant's flat 499 is irrelevant under central billing — the
+    // customer pays the grossed-up courier cost, and the quoted price and the
+    // charged price cannot drift.
+    expect($order->delivery_fee_cents)->toBe(856);
     expect($order->delivery_quote_token)->toBe($token);
 });
 
-it('charges the advertised fee under absorb, and the restaurant eats the delta', function () {
+it('ignores the absorb strategy under central billing', function () {
+    // Central billing bypasses the restaurant's fee strategy entirely — the
+    // delivery line is always the grossed-up courier cost, exactly as it is
+    // for DoorDash, so the restaurant can never quietly eat a courier fee that
+    // Plateful fronted.
     test()->restaurant->update(['delivery_fee_strategy' => DeliveryFeeStrategy::Absorb]);
     fakeUberQuote(920);
 
     $response = $this->postJson(quoteHost().'/checkout/delivery-quote', quotePayload());
 
-    // Advertised 499 against a 920 courier cost: the customer sees 499 and the
-    // restaurant absorbs 421 — chosen, where today it happens by accident.
-    expect($response->json('quote.feeCents'))->toBe(499);
+    // round(920 × 1.04 / 0.971) = 985 — not the advertised 499.
+    expect($response->json('quote.feeCents'))->toBe(985);
 
     $order = placeQuotedOrder($response->json('quote.token'));
-    expect($order->delivery_fee_cents)->toBe(499);
+    expect($order->delivery_fee_cents)->toBe(985);
 
-    // Nothing to count down when the customer's price cannot move.
-    expect($response->json('quote.expiresAt'))->toBeNull();
+    // The customer's price can move on a re-quote, so the countdown shows.
+    expect($response->json('quote.expiresAt'))->not->toBeNull();
 });
 
 it('refuses checkout with no quote at all', function () {
@@ -225,7 +233,7 @@ it('lets an edit to delivery instructions keep the quote', function () {
     // Instructions don't move the courier, so changing them must not re-price.
     $order = placeQuotedOrder($token, ['instructions' => 'Leave at the door']);
 
-    expect($order->delivery_fee_cents)->toBe(799);
+    expect($order->delivery_fee_cents)->toBe(856);
 });
 
 it('does not offer delivery when the provider cannot quote the address', function () {

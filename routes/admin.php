@@ -94,18 +94,16 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::post('/settings/pos/clover/connect', [TenantAdmin\CloverConnectController::class, 'connect'])->name('pos.clover.connect');
                 Route::post('/settings/pos/clover/disconnect', [TenantAdmin\CloverConnectController::class, 'disconnect'])->name('pos.clover.disconnect');
 
-                // Uber Direct uses client_credentials, so there is no authorize
-                // redirect and no callback route — the owner pastes credentials
-                // straight in and we verify them against Uber's token endpoint.
                 Route::get('/settings/delivery', [TenantAdmin\DeliveryIntegrationsController::class, 'show'])->name('delivery.show');
                 Route::put('/settings/delivery', [TenantAdmin\DeliveryIntegrationsController::class, 'updateSettings'])->name('delivery.settings.update');
-                Route::post('/settings/delivery/uber', [TenantAdmin\DeliveryIntegrationsController::class, 'saveUber'])->name('delivery.uber.save');
-                Route::post('/settings/delivery/uber/disconnect', [TenantAdmin\DeliveryIntegrationsController::class, 'disconnectUber'])->name('delivery.uber.disconnect');
 
-                // DoorDash Drive is one-click: no credential form, so the "save"
-                // action provisions the Business/Store behind the scenes. Named
+                // Both couriers are one-click: no credential form, so the "save"
+                // action provisions the provider-side identity behind the scenes
+                // (Uber sub-organization, DoorDash Business/Store). Named
                 // `.save`/`.disconnect` to match the card's saveUrl/disconnectUrl
                 // convention in DeliveryIntegrationsController::show.
+                Route::post('/settings/delivery/uber', [TenantAdmin\DeliveryIntegrationsController::class, 'enableUber'])->name('delivery.uber.save');
+                Route::post('/settings/delivery/uber/disconnect', [TenantAdmin\DeliveryIntegrationsController::class, 'disconnectUber'])->name('delivery.uber.disconnect');
                 Route::post('/settings/delivery/doordash', [TenantAdmin\DeliveryIntegrationsController::class, 'enableDoorDash'])->name('delivery.doordash.save');
                 Route::post('/settings/delivery/doordash/disconnect', [TenantAdmin\DeliveryIntegrationsController::class, 'disconnectDoorDash'])->name('delivery.doordash.disconnect');
 

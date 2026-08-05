@@ -72,7 +72,6 @@ function seedUberWebhookFixture(string $status = 'pending'): DeliveryAssignment
     DeliveryIntegration::factory()->create([
         'restaurant_id' => $restaurant->id,
         'customer_id' => UBER_WEBHOOK_CUSTOMER,
-        'webhook_signing_key' => UBER_WEBHOOK_KEY,
     ]);
 
     $order = makeOrder($restaurant);
@@ -86,7 +85,12 @@ function seedUberWebhookFixture(string $status = 'pending'): DeliveryAssignment
 }
 
 beforeEach(function () {
-    config(['platform.primary_domain' => 'plateful.test']);
+    config([
+        'platform.primary_domain' => 'plateful.test',
+        // Umbrella model: ONE platform-level signing key, configured once on
+        // the root Direct account's webhook, verified before anything else.
+        'services.uber_direct.webhook_secret' => UBER_WEBHOOK_KEY,
+    ]);
 });
 
 it('applies a correctly signed delivery status event', function () {
@@ -143,36 +147,31 @@ it('rejects a payload whose body was tampered with after signing', function () {
     expect($assignment->fresh()->status)->toBe(DeliveryStatus::Pending);
 });
 
-it('verifies against the signing key of the restaurant the event claims', function () {
-    // The signing key is per-restaurant, so a payload naming restaurant A but
-    // signed with restaurant B's key must not be honoured.
-    seedUberWebhookFixture();
+it('accepts a base64-encoded signature too', function () {
+    // Uber documents hex, but a dashboard encoding difference must not
+    // silently drop every event — the DoorDash webhook makes the same bet.
+    $assignment = seedUberWebhookFixture();
 
-    $other = adminOrderRestaurant('hookother');
-    DeliveryIntegration::factory()->create([
-        'restaurant_id' => $other->id,
-        'customer_id' => 'cust_other',
-        'webhook_signing_key' => 'whsec_other_key',
-    ]);
+    $body = json_encode(uberWebhookPayload(), JSON_THROW_ON_ERROR);
+    $signature = base64_encode(hash_hmac('sha256', $body, UBER_WEBHOOK_KEY, true));
 
-    postUberWebhook(uberWebhookPayload(), key: 'whsec_other_key')->assertStatus(400);
+    test()->call('POST', uberWebhookUrl(), [], [], [], [
+        'CONTENT_TYPE' => 'application/json',
+        'HTTP_X_UBER_SIGNATURE' => $signature,
+    ], $body)->assertOk();
+
+    expect($assignment->fresh()->status)->toBe(DeliveryStatus::DriverAssigned);
 });
 
-it('rejects an event for a customer id we do not know', function () {
-    seedUberWebhookFixture();
-
-    postUberWebhook(uberWebhookPayload(['customer_id' => 'cust_nobody']))->assertStatus(400);
-});
-
-it('rejects when the restaurant has no signing key configured', function () {
-    $restaurant = adminOrderRestaurant('hooknokey');
-    DeliveryIntegration::factory()->create([
-        'restaurant_id' => $restaurant->id,
-        'customer_id' => UBER_WEBHOOK_CUSTOMER,
-        'webhook_signing_key' => null,
-    ]);
+it('fails closed when no platform webhook secret is configured', function () {
+    // With no secret we can vouch for nothing; 400 so Uber retries once the
+    // secret is configured.
+    config(['services.uber_direct.webhook_secret' => null]);
+    $assignment = seedUberWebhookFixture();
 
     postUberWebhook(uberWebhookPayload())->assertStatus(400);
+
+    expect($assignment->fresh()->status)->toBe(DeliveryStatus::Pending);
 });
 
 it('drops a retried event older than one already applied', function () {

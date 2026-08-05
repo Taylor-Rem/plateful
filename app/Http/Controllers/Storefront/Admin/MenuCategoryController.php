@@ -11,7 +11,6 @@ use App\Tenancy\CurrentTenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Category management from the storefront's inline edit mode. Mirrors the
@@ -71,15 +70,14 @@ class MenuCategoryController extends Controller
 
         $count = $category->items()->count();
 
-        if ($count > 0) {
-            throw ValidationException::withMessages([
-                'category' => "This category has {$count} items. Move or delete them first.",
-            ]);
-        }
+        DB::transaction(function () use ($category): void {
+            $category->items()->delete();
+            $category->delete();
+        });
 
-        $category->delete();
-
-        return back()->with('success', 'Category deleted.');
+        return back()->with('success', $count > 0
+            ? "Category and {$count} ".Str::plural('item', $count).' deleted.'
+            : 'Category deleted.');
     }
 
     public function reorder(MenuCategoryReorderRequest $request, CurrentTenant $tenant): RedirectResponse

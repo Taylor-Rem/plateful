@@ -6,6 +6,7 @@ use App\Models\DeliveryIntegration;
 use App\Services\Delivery\UberDirect\UberDirectTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -18,32 +19,34 @@ beforeEach(function () {
     config(['services.doordash.developer_id' => 'dev_test']);
     config(['services.doordash.key_id' => 'key_test']);
     config(['services.doordash.signing_secret' => rtrim(strtr(base64_encode(str_repeat('k', 32)), '+/', '-_'), '=')]);
+    // Platform-level Uber creds + the root org sub-orgs are provisioned under.
+    config(['services.uber_direct.client_id' => 'cid_platform']);
+    config(['services.uber_direct.client_secret' => 'csec_platform']);
+    config(['services.uber_direct.customer_id' => 'root-org-uuid']);
 });
 
-function uberOkResponse(): array
+function uberTokenOkResponse(): array
 {
     return [
         'access_token' => 'uber_tok_live',
         'token_type' => 'Bearer',
         'expires_in' => 2_592_000,
-        'scope' => 'eats.deliveries',
+        'scope' => 'direct.organizations',
     ];
 }
 
-/**
- * @param  array<string, string>  $overrides
- * @return array<string, string>
- */
-function uberCredentials(array $overrides = []): array
+function fakeUberProvisioning(string $organizationId = 'org-uuid-1'): void
 {
-    return array_merge([
-        'client_id' => 'cid_paste',
-        'client_secret' => 'csec_paste',
-        'customer_id' => 'cust_paste',
-    ], $overrides);
+    Http::fake([
+        UberDirectTokenService::TOKEN_URL => Http::response(uberTokenOkResponse()),
+        'api.uber.com/v1/direct/organizations' => Http::response([
+            'organization_id' => $organizationId,
+            'info' => ['name' => 'Test', 'billing_type' => 'BILLING_TYPE_CENTRALIZED'],
+        ]),
+    ]);
 }
 
-test('the delivery settings page leads with DoorDash and lists Uber as connectable', function () {
+test('the delivery settings page lists both couriers as one-click connectable', function () {
     $r = adminOrderRestaurant('ubershow');
     $u = adminForRestaurant($r);
 
@@ -52,15 +55,12 @@ test('the delivery settings page leads with DoorDash and lists Uber as connectab
         ->assertOk()
         ->assertInertia(fn ($p) => $p
             ->component('Admin/TenantAdmin/DeliveryIntegrations')
-            // DoorDash is the launch provider, so it leads and enables in one click.
             ->where('providers.0.provider', 'doordash')
             ->where('providers.0.available', true)
-            ->where('providers.0.oneClick', true)
             ->where('providers.0.status', 'disconnected')
-            // Uber stays connectable for restaurants bringing their own account.
             ->where('providers.1.provider', 'uber')
             ->where('providers.1.available', true)
-            ->where('providers.1.oneClick', false));
+            ->where('providers.1.status', 'disconnected'));
 });
 
 test('self-delivery is not listed as a credentialed integration', function () {
@@ -76,14 +76,14 @@ test('self-delivery is not listed as a credentialed integration', function () {
         ));
 });
 
-test('pasting valid credentials verifies them with Uber and stores them encrypted', function () {
-    Http::fake([UberDirectTokenService::TOKEN_URL => Http::response(uberOkResponse())]);
+test('enabling Uber provisions a sub-organization and stores its id', function () {
+    fakeUberProvisioning();
 
     $r = adminOrderRestaurant('ubersave');
     $u = adminForRestaurant($r);
 
     $this->actingAs($u)
-        ->post("http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber", uberCredentials())
+        ->post("http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber")
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
@@ -93,88 +93,111 @@ test('pasting valid credentials verifies them with Uber and stores them encrypte
 
     expect($integration->provider)->toBe(DeliveryProviderName::Uber);
     expect($integration->status)->toBe(DeliveryIntegrationStatus::Connected);
-    expect($integration->client_id)->toBe('cid_paste');
-    expect($integration->customer_id)->toBe('cust_paste');
+    // The server-generated org id IS the customer id every delivery call is
+    // scoped under.
+    expect($integration->customer_id)->toBe('org-uuid-1');
+    // No pasted secrets: these stay null for a platform-authenticated provider.
+    expect($integration->client_id)->toBeNull();
 
-    // Verification already minted a token; reuse it rather than spend another
-    // against the 100/hour grant limit.
-    expect($integration->access_token)->toBe('uber_tok_live');
-    Http::assertSentCount(1);
-
-    // The cast must actually encrypt — the raw column may not hold plaintext.
-    $raw = DB::table('delivery_integrations')->where('id', $integration->id)->value('client_secret');
-    expect($raw)->not->toBe('csec_paste');
+    // One grant (direct.organizations) + one org create.
+    Http::assertSentCount(2);
 });
 
-test('credentials Uber rejects are reported and never stored', function () {
-    Http::fake([
-        UberDirectTokenService::TOKEN_URL => Http::response(['error' => 'invalid_client'], 401),
-    ]);
+test('enabling Uber creates a centralized, silently-invited org under the root account', function () {
+    fakeUberProvisioning();
 
-    $r = adminOrderRestaurant('uberbad');
+    $r = adminOrderRestaurant('uberwire');
+    $r->forceFill(['name' => 'Rose / Thorn: 100% <Pizza>'])->save();
     $u = adminForRestaurant($r);
 
     $this->actingAs($u)
-        ->post("http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber", uberCredentials())
-        ->assertRedirect()
-        ->assertSessionHasErrors('client_id');
+        ->post("http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber");
 
-    // A typo must not land in the database looking connected.
-    expect(DeliveryIntegration::withoutTenantScope()->count())->toBe(0);
+    Http::assertSent(function (Request $req): bool {
+        if ($req->url() !== 'https://api.uber.com/v1/direct/organizations') {
+            return false;
+        }
+
+        expect($req['info']['billing_type'])->toBe('BILLING_TYPE_CENTRALIZED');
+        expect($req['info']['merchant_type'])->toBe('MERCHANT_TYPE_RESTAURANT');
+        // Uber rejects contract_type under centralized billing (verified live);
+        // it applies CONTRACT_TYPE_PARENT itself.
+        expect($req['info'])->not->toHaveKey('contract_type');
+        // Uber forbids URLs and / \ : % < > # = in org names.
+        expect($req['info']['name'])->toBe('Rose Thorn 100 Pizza');
+        expect($req['hierarchy_info']['parent_organization_id'])->toBe('root-org-uuid');
+        // Silent provisioning: the restaurant never receives an Uber email.
+        expect($req['options']['onboarding_invite_type'])->toBe('ONBOARDING_INVITE_TYPE_INVALID');
+
+        return true;
+    });
 });
 
-test('re-pasting credentials updates the existing integration rather than duplicating it', function () {
-    Http::fake([UberDirectTokenService::TOKEN_URL => Http::response(uberOkResponse())]);
+test('enabling Uber busts the cached platform tokens so the new org is reachable', function () {
+    // A token only authorizes the orgs that existed when it was minted
+    // (verified live: a pre-provisioning token gets 403 for the new org).
+    fakeUberProvisioning();
+    Cache::put('uber_direct.platform_token.eats.deliveries', 'stale_tok', now()->addDays(20));
+
+    $r = adminOrderRestaurant('uberbust');
+    $u = adminForRestaurant($r);
+
+    $this->actingAs($u)
+        ->post("http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber");
+
+    expect(Cache::get('uber_direct.platform_token.eats.deliveries'))->toBeNull();
+});
+
+test('re-enabling Uber reuses the existing org without calling Uber', function () {
+    // Org ids are server-generated and orgs can only be deleted manually by
+    // Uber — re-provisioning would mint a duplicate org forever.
+    Http::fake();
 
     $r = adminOrderRestaurant('uberagain');
     $u = adminForRestaurant($r);
-
-    $this->actingAs($u)->post(
-        "http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber",
-        uberCredentials(),
-    )->assertSessionHas('success', 'Uber Direct connected.');
-    $this->actingAs($u)->post(
-        "http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber",
-        uberCredentials(['customer_id' => 'cust_second']),
-    )->assertSessionHas('success', 'Uber Direct updated.');
-
-    // The unique (restaurant_id, provider) index would throw rather than
-    // duplicate — this proves we take the update path, not that path.
-    expect(DeliveryIntegration::withoutTenantScope()->count())->toBe(1);
-    expect(DeliveryIntegration::withoutTenantScope()->first()->customer_id)->toBe('cust_second');
-});
-
-test('pasted credentials are trimmed', function () {
-    Http::fake([UberDirectTokenService::TOKEN_URL => Http::response(uberOkResponse())]);
-
-    $r = adminOrderRestaurant('ubertrim');
-    $u = adminForRestaurant($r);
-
-    $this->actingAs($u)->post(
-        "http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber",
-        uberCredentials(['client_id' => "  cid_paste\n"]),
-    );
-
-    expect(DeliveryIntegration::withoutTenantScope()->first()->client_id)->toBe('cid_paste');
-});
-
-test('every credential field is required', function () {
-    Http::fake();
-
-    $r = adminOrderRestaurant('uberreq');
-    $u = adminForRestaurant($r);
+    DeliveryIntegration::factory()->disconnected()->create([
+        'restaurant_id' => $r->id,
+        'customer_id' => 'org-existing',
+    ]);
 
     $this->actingAs($u)
-        ->post("http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber", [])
-        ->assertSessionHasErrors(['client_id', 'client_secret', 'customer_id']);
+        ->post("http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber")
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
 
+    $integration = DeliveryIntegration::withoutTenantScope()->firstOrFail();
+    expect($integration->status)->toBe(DeliveryIntegrationStatus::Connected);
+    expect($integration->customer_id)->toBe('org-existing');
     Http::assertNothingSent();
 });
 
-test('disconnecting clears the credentials', function () {
+test('an Uber provisioning failure is parked on the integration and no org id is stored', function () {
+    Http::fake([
+        UberDirectTokenService::TOKEN_URL => Http::response(uberTokenOkResponse()),
+        'api.uber.com/v1/direct/organizations' => Http::response(['message' => 'gateway error'], 500),
+    ]);
+
+    $r = adminOrderRestaurant('uberfail');
+    $u = adminForRestaurant($r);
+
+    $this->actingAs($u)
+        ->post("http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber")
+        ->assertRedirect();
+
+    $integration = DeliveryIntegration::withoutTenantScope()->firstOrFail();
+    expect($integration->status)->toBe(DeliveryIntegrationStatus::Error);
+    expect($integration->last_error)->not->toBeNull();
+    // A failed provision must not leave an org id that would make supports() true.
+    expect($integration->customer_id)->toBeNull();
+});
+
+test('disconnecting Uber keeps the org id so re-enabling cannot duplicate the org', function () {
     $r = adminOrderRestaurant('uberdrop');
     $u = adminForRestaurant($r);
-    DeliveryIntegration::factory()->create(['restaurant_id' => $r->id]);
+    DeliveryIntegration::factory()->create([
+        'restaurant_id' => $r->id,
+        'customer_id' => 'org-keep-me',
+    ]);
 
     $this->actingAs($u)
         ->post("http://admin.plateful.test/{$r->subdomain}/settings/delivery/uber/disconnect")
@@ -182,12 +205,11 @@ test('disconnecting clears the credentials', function () {
 
     $integration = DeliveryIntegration::withoutTenantScope()->firstOrFail();
     expect($integration->status)->toBe(DeliveryIntegrationStatus::Disconnected);
-    expect($integration->client_secret)->toBeNull();
-    expect($integration->access_token)->toBeNull();
+    expect($integration->customer_id)->toBe('org-keep-me');
 });
 
-test('an admin of another restaurant cannot read or write these credentials', function () {
-    Http::fake([UberDirectTokenService::TOKEN_URL => Http::response(uberOkResponse())]);
+test('an admin of another restaurant cannot read or enable this integration', function () {
+    fakeUberProvisioning();
 
     $mine = adminOrderRestaurant('ubermine');
     $theirs = adminOrderRestaurant('ubertheirs');
@@ -198,10 +220,11 @@ test('an admin of another restaurant cannot read or write these credentials', fu
         ->assertForbidden();
 
     $this->actingAs($outsider)
-        ->post("http://admin.plateful.test/{$mine->subdomain}/settings/delivery/uber", uberCredentials())
+        ->post("http://admin.plateful.test/{$mine->subdomain}/settings/delivery/uber")
         ->assertForbidden();
 
     expect(DeliveryIntegration::withoutTenantScope()->count())->toBe(0);
+    Http::assertNothingSent();
 });
 
 // --- DoorDash Drive: one-click umbrella provisioning (Session 2) ------------

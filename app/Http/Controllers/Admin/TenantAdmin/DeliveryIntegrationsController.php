@@ -12,19 +12,19 @@ use App\Enums\SelfDeliveryTipRecipient;
 use App\Exceptions\DeliveryProviderException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DeliverySettingsRequest;
-use App\Http\Requests\Admin\UberDirectCredentialsRequest;
 use App\Models\DeliveryIntegration;
 use App\Models\Restaurant;
 use App\Services\Delivery\DoorDash\DoorDashProvisioningService;
-use App\Services\Delivery\UberDirect\UberDirectTokenService;
+use App\Services\Delivery\UberDirect\UberDirectProvisioningService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Per-restaurant delivery credentials. Unlike POS, there is no OAuth redirect
- * to click through: Uber Direct is a client_credentials integration, so the
- * owner pastes credentials from their own Uber Direct dashboard.
+ * Per-restaurant delivery integrations. Both courier networks are umbrella
+ * integrations provisioned under Plateful's platform accounts, so there is
+ * nothing to paste and no OAuth redirect: the owner enables delivery with one
+ * click and Plateful registers the restaurant provider-side.
  */
 class DeliveryIntegrationsController extends Controller
 {
@@ -35,15 +35,10 @@ class DeliveryIntegrationsController extends Controller
             ->keyBy(fn (DeliveryIntegration $integration): string => $integration->provider->value);
 
         // Providers with a built adapter. Others render as "coming soon".
-        // DoorDash is the launch provider (one-click, platform-provisioned);
-        // Uber stays connectable for restaurants that bring their own account.
         $connectable = [DeliveryProviderName::DoorDash, DeliveryProviderName::Uber];
 
         return Inertia::render('Admin/TenantAdmin/DeliveryIntegrations', [
             'restaurant' => RestaurantData::fromModel($restaurant),
-            // The owner pastes this into their own Uber dashboard to create the
-            // webhook, so show it rather than making them ask for it.
-            'webhookUrl' => route('webhooks.uber'),
             'settings' => [
                 'deliveryEnabled' => (bool) $restaurant->delivery_enabled,
                 'deliveryMode' => $restaurant->delivery_mode?->value,
@@ -76,15 +71,9 @@ class DeliveryIntegrationsController extends Controller
                             ?? DeliveryIntegrationStatus::Disconnected->value,
                         'lastError' => $integration?->last_error,
                         'connectedAt' => $integration?->created_at?->toIso8601String(),
-                        // Never echo the client id/secret/signing key back —
-                        // only enough to show the owner which account is wired
-                        // up and whether status updates are live.
-                        'customerId' => $integration?->customer_id,
-                        'storeId' => $integration?->external_store_id,
-                        'hasWebhookKey' => $integration?->webhook_signing_key !== null,
-                        // DoorDash is provisioned in one click with no pasted
-                        // credentials; Uber needs the owner's own account.
-                        'oneClick' => $provider === DeliveryProviderName::DoorDash,
+                        // The provisioned provider-side id, so the owner can
+                        // quote it to support: Uber sub-org / DoorDash store.
+                        'storeId' => $integration?->external_store_id ?? $integration?->customer_id,
                         'available' => $available,
                         'saveUrl' => $available
                             ? route("admin.restaurant.delivery.{$provider->value}.save", ['restaurant' => $restaurant->subdomain])
@@ -141,65 +130,40 @@ class DeliveryIntegrationsController extends Controller
     }
 
     /**
-     * Verify pasted Uber Direct credentials against the live token endpoint,
-     * then store them. Verifying first means a typo fails here — in front of
-     * the person who can fix it — rather than silently at dispatch time on a
-     * customer's paid order.
+     * One-click Uber Direct enablement, the twin of {@see enableDoorDash}.
+     * Plateful provisions a sub-organization under its root Direct account
+     * (centralized billing, silent invite) and stores its id. A failure is
+     * parked on the integration row (status Error + reason) so the owner sees
+     * why on the card.
      */
-    public function saveUber(
-        UberDirectCredentialsRequest $request,
+    public function enableUber(
         Restaurant $restaurant,
-        UberDirectTokenService $tokens,
+        UberDirectProvisioningService $provisioning,
     ): RedirectResponse {
-        $validated = $request->validated();
-
         try {
-            $token = $tokens->requestToken($validated['client_id'], $validated['client_secret']);
+            $provisioning->provisionOrganizationFor($restaurant);
         } catch (DeliveryProviderException $e) {
-            return back()->withErrors(['client_id' => $e->getMessage()]);
+            DeliveryIntegration::updateOrCreate(
+                [
+                    'restaurant_id' => $restaurant->id,
+                    'provider' => DeliveryProviderName::Uber,
+                ],
+                [
+                    'status' => DeliveryIntegrationStatus::Error,
+                    'last_error' => $e->getMessage(),
+                ],
+            );
+
+            return back()->with('error', 'Could not enable Uber Direct delivery. Please try again.');
         }
 
-        $wasConnected = $restaurant->deliveryIntegrations()
-            ->where('provider', DeliveryProviderName::Uber)
-            ->where('status', DeliveryIntegrationStatus::Connected)
-            ->exists();
-
-        DeliveryIntegration::updateOrCreate(
-            [
-                'restaurant_id' => $restaurant->id,
-                'provider' => DeliveryProviderName::Uber,
-            ],
-            [
-                'client_id' => $validated['client_id'],
-                'client_secret' => $validated['client_secret'],
-                'customer_id' => $validated['customer_id'],
-                // Blank means "leave it alone" rather than "clear it": the key
-                // is issued in a separate dashboard step, so an owner
-                // re-pasting credentials later must not silently wipe it and
-                // switch status updates off.
-                ...($validated['webhook_signing_key'] ?? null) !== null
-                    ? ['webhook_signing_key' => $validated['webhook_signing_key']]
-                    : [],
-                // The verification above already minted a usable token; keeping
-                // it saves a redundant grant against the 100/hour limit.
-                'access_token' => $token->accessToken,
-                'token_expires_at' => $token->expiresAt,
-                'status' => DeliveryIntegrationStatus::Connected,
-                'last_error' => null,
-            ],
-        );
-
-        return back()->with(
-            'success',
-            $wasConnected ? 'Uber Direct updated.' : 'Uber Direct connected.',
-        );
+        return back()->with('success', 'Uber Direct enabled.');
     }
 
     /**
-     * Forget the restaurant's credentials. Note we cannot revoke the access
-     * token the way the Square disconnect does — a client_credentials token is
-     * minted from credentials the restaurant owns, so revoking is something
-     * only they can do, by rotating the secret in their Uber dashboard.
+     * Stop dispatching to the restaurant's Uber sub-organization. The org id is
+     * deliberately KEPT: Uber orgs are permanent (only Uber can delete one), so
+     * re-enabling must reuse the same org rather than provisioning a duplicate.
      */
     public function disconnectUber(Restaurant $restaurant): RedirectResponse
     {
@@ -207,11 +171,6 @@ class DeliveryIntegrationsController extends Controller
             ->where('provider', DeliveryProviderName::Uber)
             ->get()
             ->each(fn (DeliveryIntegration $integration) => $integration->forceFill([
-                'client_id' => null,
-                'client_secret' => null,
-                'customer_id' => null,
-                'access_token' => null,
-                'token_expires_at' => null,
                 'status' => DeliveryIntegrationStatus::Disconnected,
                 'last_error' => null,
             ])->save());
@@ -220,11 +179,10 @@ class DeliveryIntegrationsController extends Controller
     }
 
     /**
-     * One-click DoorDash Drive enablement. Unlike Uber there is nothing to
-     * paste: Plateful provisions the restaurant's Business + Store under its own
-     * platform account and stores the ids. A failure is parked on the
-     * integration row (status Error + reason) so the owner sees why on the card,
-     * mirroring how Uber records a rejected credential.
+     * One-click DoorDash Drive enablement: Plateful provisions the restaurant's
+     * Business + Store under its own platform account and stores the ids. A
+     * failure is parked on the integration row (status Error + reason) so the
+     * owner sees why on the card.
      */
     public function enableDoorDash(
         Restaurant $restaurant,

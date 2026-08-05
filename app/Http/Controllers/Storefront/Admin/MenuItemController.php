@@ -54,7 +54,7 @@ class MenuItemController extends Controller
             }
         });
 
-        return redirect()->to('/')->with('success', "Created \"{$validated['name']}\".");
+        return back()->with('success', "Created \"{$validated['name']}\".");
     }
 
     public function update(
@@ -109,7 +109,7 @@ class MenuItemController extends Controller
         $name = $menuItem->name;
         $menuItem->delete();
 
-        return redirect()->to('/')->with('success', "Deleted \"{$name}\".");
+        return back()->with('success', "Deleted \"{$name}\".");
     }
 
     /**

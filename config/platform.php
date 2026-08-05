@@ -153,6 +153,15 @@ return [
              */
             'quote_accept_window_minutes' => (int) env('DOORDASH_QUOTE_ACCEPT_WINDOW_MINUTES', 5),
         ],
+
+        'uber' => [
+            /*
+             * Uber Direct serves sandbox and production from the same host; the
+             * environment is a property of the credentials, not the URL.
+             * Overridable only so tests and any future host move have a seam.
+             */
+            'base_url' => env('UBER_DIRECT_BASE_URL', 'https://api.uber.com'),
+        ],
     ],
 
     'timezones' => [

@@ -114,12 +114,6 @@ const submit = (): void => {
                         type="button"
                         variant="destructive"
                         size="sm"
-                        :disabled="category.items.length > 0"
-                        :title="
-                            category.items.length > 0
-                                ? 'Move or delete its items first'
-                                : undefined
-                        "
                         @click="emit('delete-requested', category)"
                     >
                         Delete

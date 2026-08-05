@@ -19,8 +19,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Response;
 
 /**
- * Dispatches a paid Plateful order to the restaurant's own Uber Direct account
- * via the customer-scoped Direct API (`/v1/customers/{customer_id}/…`).
+ * Dispatches a paid Plateful order to the restaurant's provisioned Uber Direct
+ * sub-organization via the customer-scoped Direct API
+ * (`/v1/customers/{customer_id}/…`), authenticated with Plateful's platform
+ * credentials — umbrella model, centralized billing, so Plateful is the payer
+ * of record for every delivery. See UberDirectProvisioningService.
  *
  * Not to be confused with Uber's *store*-scoped Eats API
  * (`/v1/eats/deliveries/…`), which is a different product keyed on `store_id`
@@ -41,8 +44,8 @@ class UberDirectProvider implements DeliveryProvider
 
     /**
      * Unlike SelfDeliveryProvider, this asks whether the restaurant actually has
-     * usable credentials — `delivery_enabled` alone can't answer that once
-     * credentials are per-tenant.
+     * a provisioned, connected sub-organization — `delivery_enabled` alone
+     * can't answer that.
      */
     public function supports(Restaurant $restaurant): bool
     {
@@ -57,7 +60,7 @@ class UberDirectProvider implements DeliveryProvider
         $dropoff = UberDirectAddress::fromSnapshot($request->dropoffAddress);
 
         $response = $this->client
-            ->authed($this->tokens->freshAccessToken($integration))
+            ->authed($this->tokens->freshAccessToken())
             ->post($this->client->customerPath((string) $integration->customer_id, '/delivery_quotes'), [
                 'pickup_address' => $pickup,
                 'dropoff_address' => $dropoff,
@@ -100,7 +103,7 @@ class UberDirectProvider implements DeliveryProvider
         $tipCents = max(0, (int) $order->tip_cents);
 
         $response = $this->client
-            ->authed($this->tokens->freshAccessToken($integration))
+            ->authed($this->tokens->freshAccessToken())
             ->post($this->client->customerPath((string) $integration->customer_id, '/deliveries'), [
                 'quote_id' => $quote->externalQuoteId,
                 // Replayed byte-identical from the quote — see UberDirectAddress.
@@ -165,7 +168,7 @@ class UberDirectProvider implements DeliveryProvider
         $integration = $this->integrationOrFail($order->restaurant);
 
         $response = $this->client
-            ->authed($this->tokens->freshAccessToken($integration))
+            ->authed($this->tokens->freshAccessToken())
             ->get($this->client->customerPath(
                 (string) $integration->customer_id,
                 '/deliveries/'.$assignment->external_id,
@@ -195,8 +198,12 @@ class UberDirectProvider implements DeliveryProvider
         $order = $assignment->order;
         $integration = $this->integrationOrFail($order->restaurant);
 
+        // Captured before the flip to Cancelled below: this is the state that
+        // decides whether Uber charged for the cancellation.
+        $statusBeforeCancel = $assignment->status;
+
         $response = $this->client
-            ->authed($this->tokens->freshAccessToken($integration))
+            ->authed($this->tokens->freshAccessToken())
             ->post($this->client->customerPath(
                 (string) $integration->customer_id,
                 '/deliveries/'.$assignment->external_id.'/cancel',
@@ -208,10 +215,20 @@ class UberDirectProvider implements DeliveryProvider
 
         $assignment->forceFill(['status' => DeliveryStatus::Cancelled])->save();
 
-        // Uber bills the restaurant directly (pass-through), so Plateful never
-        // fronted the courier fee. There is nothing for Plateful to recover, and
-        // the delivery line follows the ordinary food-refund policy.
-        return DeliveryCancellation::fullyRefunded();
+        // Under central billing Plateful fronted the courier fee, so this
+        // decides whether the customer's delivery line can be refunded without
+        // Plateful eating the cost. Uber does not state the charge in the
+        // cancel response, so the Plateful-safe rule is: only a delivery no
+        // courier ever accepted is free; once a courier exists, assume the fee
+        // was kept. (Our DriverAssigned deliberately includes Uber's
+        // `pickup_complete`, so it cannot be trusted as "pre-pickup".)
+        if (! $statusBeforeCancel->hasCourier()) {
+            return DeliveryCancellation::fullyRefunded();
+        }
+
+        return DeliveryCancellation::courierFeeRetained(
+            (int) ($assignment->actual_fee_cents ?? $assignment->quote_fee_cents ?? 0),
+        );
     }
 
     /**
@@ -289,6 +306,9 @@ class UberDirectProvider implements DeliveryProvider
             ->where('restaurant_id', $restaurant->id)
             ->where('provider', DeliveryProviderName::Uber->value)
             ->where('status', DeliveryIntegrationStatus::Connected->value)
+            // The provisioned sub-organization id — without it there is no
+            // customer path to dispatch under.
+            ->whereNotNull('customer_id')
             ->first();
     }
 

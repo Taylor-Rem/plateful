@@ -144,7 +144,7 @@ class OrderPlacement
         // record (DoorDash), the Stripe application fee must also pull back the
         // courier cost `D`, Plateful's delivery margin, and the tip `T` (which
         // Plateful forwards to the Dasher). For pickup / self-delivery / a
-        // pass-through provider (Uber) none of this applies and the Stripe fee is
+        // non-central order (pickup / self-delivery) none of this applies and the Stripe fee is
         // simply the commission.
         $courierFeeCents = 0;
         $deliveryMarginCents = 0;
@@ -283,7 +283,7 @@ class OrderPlacement
      * A centrally-billed provider (DoorDash) grosses the courier cost up by
      * Plateful's margin and Stripe's variable fee (plan §4b) — this is the price
      * the quote endpoint showed, recomputed identically here from the same
-     * stored quote so it can never drift. A pass-through provider (Uber) keeps
+     * stored quote so it can never drift. Self-delivery keeps
      * the restaurant's own strategy, under which `Absorb` lets it eat the delta.
      */
     protected function customerDeliveryFeeCents(Restaurant $restaurant, DeliveryQuote $quote): int
@@ -427,7 +427,7 @@ class OrderPlacement
      * replays from re-queueing.
      *
      * On an authorized-not-captured order the POS push is deliberately HELD.
-     * The money is only a hold, and Uber has not found a courier yet — printing
+     * The money is only a hold, and no courier has been found yet — printing
      * a ticket now means the kitchen cooks a meal for an order we may be about
      * to void. It is released by {@see DeliverySettlement::onCourierConfirmed()}
      * off the same signal that captures the payment: the delivery is real now.

@@ -123,11 +123,13 @@ const submitCategory = (): void => {
 };
 
 const deleteCategory = (category: App.Data.MenuCategoryData): void => {
-    if (category.items.length > 0) {
-        return;
-    }
+    const count = category.items.length;
+    const warning =
+        count > 0
+            ? `Delete category "${category.name}" and the ${count} item${count === 1 ? '' : 's'} in it? This can't be undone.`
+            : `Delete category "${category.name}"?`;
 
-    if (!confirm(`Delete category "${category.name}"?`)) {
+    if (!confirm(warning)) {
         return;
     }
 
@@ -252,15 +254,10 @@ defineOptions({ layout: TenantAdminLayout });
                             <Pencil class="size-4" />
                         </button>
                         <button
-                            class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                            class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive"
                             type="button"
                             aria-label="Delete category"
-                            :title="
-                                category.items.length > 0
-                                    ? 'Move or delete items first'
-                                    : 'Delete category'
-                            "
-                            :disabled="category.items.length > 0"
+                            title="Delete category"
                             @click="deleteCategory(category)"
                         >
                             <Trash2 class="size-4" />
@@ -340,13 +337,6 @@ defineOptions({ layout: TenantAdminLayout });
                             :message="categoryForm.errors.description"
                         />
                     </div>
-                    <!-- Server-level error (category still has items), not a form field. -->
-                    <InputError
-                        :message="
-                            (categoryForm.errors as Record<string, string>)
-                                .category
-                        "
-                    />
                     <DialogFooter>
                         <Button
                             type="button"

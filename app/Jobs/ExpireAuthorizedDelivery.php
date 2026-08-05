@@ -36,7 +36,7 @@ class ExpireAuthorizedDelivery implements ShouldQueue
     public function __construct(public int $orderId) {}
 
     /**
-     * How long to let Uber look before giving up.
+     * How long to let the courier network look before giving up.
      *
      * Generous: courier assignment usually resolves in a couple of minutes, and
      * voiding a delivery that was about to be fine is a worse error than making
