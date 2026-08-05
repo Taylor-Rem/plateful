@@ -28,6 +28,7 @@ type DeliverySettings = {
     prepTimeMinutes: number;
     selfDeliveryTipRecipient: string;
     deliveryFallbackAction: string;
+    preferredCourier: string;
     restrictedItemsAttestedAt: string | null;
     saveUrl: string;
 };
@@ -52,6 +53,7 @@ const settingsForm = useForm({
     prep_time_minutes: props.settings.prepTimeMinutes,
     self_delivery_tip_recipient: props.settings.selfDeliveryTipRecipient,
     delivery_fallback_action: props.settings.deliveryFallbackAction,
+    preferred_courier: props.settings.preferredCourier,
     restricted_items_attested:
         props.settings.restrictedItemsAttestedAt !== null,
 });
@@ -59,6 +61,12 @@ const settingsForm = useForm({
 const alreadyAttested = props.settings.restrictedItemsAttestedAt !== null;
 
 const isSelfDelivery = computed(() => settingsForm.delivery_mode === 'self');
+
+// The preference only exists as a choice when there is more than one
+// connected network to choose between.
+const connectedCouriers = computed(() =>
+    props.providers.filter((p) => p.status === 'connected'),
+);
 
 const saveSettings = (): void => {
     settingsForm.put(props.settings.saveUrl, { preserveScroll: true });
@@ -169,6 +177,33 @@ defineOptions({ layout: TenantAdminLayout });
                             Customers pay the courier network's quoted delivery
                             fee at checkout, priced live for their address.
                         </p>
+
+                        <div
+                            v-if="
+                                !isSelfDelivery && connectedCouriers.length > 1
+                            "
+                        >
+                            <label class="mb-1 block text-sm font-medium"
+                                >Preferred courier network</label
+                            >
+                            <select
+                                v-model="settingsForm.preferred_courier"
+                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                                <option
+                                    v-for="c in connectedCouriers"
+                                    :key="c.provider"
+                                    :value="c.provider"
+                                >
+                                    {{ c.label }}
+                                </option>
+                            </select>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                Delivery orders are dispatched to this network
+                                first. If it can't take the order, the other
+                                network is tried next.
+                            </p>
+                        </div>
 
                         <div v-if="isSelfDelivery">
                             <label class="mb-1 block text-sm font-medium"
