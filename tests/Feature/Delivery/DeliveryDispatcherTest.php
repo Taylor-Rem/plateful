@@ -120,6 +120,26 @@ it('returns the configured priority for third-party mode', function () {
     ]);
 });
 
+it('defaults the chain to both courier networks when no priority is set', function () {
+    // One-click enabling EITHER network must make delivery work without
+    // anyone hand-editing delivery_provider_priority: providerFor() skips the
+    // unconnected one at quote time, so listing both here is what wires the
+    // enable button to actual dispatch.
+    $r = adminOrderRestaurant('defaultchain');
+    $r->update([
+        'delivery_enabled' => true,
+        'delivery_mode' => DeliveryMode::ThirdParty,
+        'delivery_provider_priority' => null,
+    ]);
+
+    $dispatcher = new DeliveryDispatcher([]);
+
+    expect($dispatcher->providerChainFor($r))->toBe([
+        DeliveryProviderName::DoorDash,
+        DeliveryProviderName::Uber,
+    ]);
+});
+
 it('self-delivery provider quotes the restaurant flat fee', function () {
     $r = adminOrderRestaurant('flat');
     $r->update([

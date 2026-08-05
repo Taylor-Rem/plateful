@@ -52,6 +52,37 @@ test('an owner can finally turn delivery on', function () {
     expect($r->delivery_fee_cents)->toBe(499);
 });
 
+test('choosing a preferred courier reorders the provider chain', function () {
+    $this->actingAs($this->owner)
+        ->put(settingsUrl(), settingsBody(['preferred_courier' => 'uber']))
+        ->assertSessionHasNoErrors();
+
+    // The preferred network leads; the other stays as the dispatcher's
+    // fallback rather than disappearing from the chain.
+    expect($this->restaurant->fresh()->delivery_provider_priority)->toBe(['uber', 'doordash']);
+
+    $this->actingAs($this->owner)
+        ->put(settingsUrl(), settingsBody(['preferred_courier' => 'doordash']));
+
+    expect($this->restaurant->fresh()->delivery_provider_priority)->toBe(['doordash', 'uber']);
+});
+
+test('saving without a preference leaves the stored priority untouched', function () {
+    $this->restaurant->forceFill(['delivery_provider_priority' => ['uber', 'doordash']])->save();
+
+    $this->actingAs($this->owner)
+        ->put(settingsUrl(), settingsBody())
+        ->assertSessionHasNoErrors();
+
+    expect($this->restaurant->fresh()->delivery_provider_priority)->toBe(['uber', 'doordash']);
+});
+
+test('an unknown courier preference is rejected', function () {
+    $this->actingAs($this->owner)
+        ->put(settingsUrl(), settingsBody(['preferred_courier' => 'self']))
+        ->assertSessionHasErrors('preferred_courier');
+});
+
 test('turning delivery on without choosing who delivers is rejected', function () {
     // Without a mode the dispatcher silently treats the restaurant as
     // third-party — an owner would get couriers they never asked for.
@@ -139,6 +170,8 @@ test('the settings page exposes current values', function () {
             ->where('settings.deliveryEnabled', true)
             ->where('settings.deliveryMode', 'self')
             ->where('settings.prepTimeMinutes', 25)
+            // Mirrors the dispatcher's default chain when nothing is stored.
+            ->where('settings.preferredCourier', 'doordash')
             ->missing('webhookUrl')
             ->has('options.modes', 2)
             // Split is gone: two strategies, two products.

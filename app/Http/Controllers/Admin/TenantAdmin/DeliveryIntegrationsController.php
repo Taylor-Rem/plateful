@@ -47,6 +47,10 @@ class DeliveryIntegrationsController extends Controller
                 'prepTimeMinutes' => (int) $restaurant->prep_time_minutes,
                 'selfDeliveryTipRecipient' => ($restaurant->self_delivery_tip_recipient ?? SelfDeliveryTipRecipient::Driver)->value,
                 'deliveryFallbackAction' => ($restaurant->delivery_fallback_action ?? DeliveryFallbackAction::TryNextProvider)->value,
+                // First entry of the provider chain — the network tried first
+                // when more than one is connected. Mirrors the dispatcher's
+                // default chain when no explicit priority is stored.
+                'preferredCourier' => $restaurant->delivery_provider_priority[0] ?? DeliveryProviderName::DoorDash->value,
                 'restrictedItemsAttestedAt' => $restaurant->restricted_items_attested_at?->toIso8601String(),
                 'saveUrl' => route('admin.restaurant.delivery.settings.update', ['restaurant' => $restaurant->subdomain]),
             ],
@@ -107,6 +111,14 @@ class DeliveryIntegrationsController extends Controller
             'prep_time_minutes' => (int) $validated['prep_time_minutes'],
             'self_delivery_tip_recipient' => $validated['self_delivery_tip_recipient'],
             'delivery_fallback_action' => $validated['delivery_fallback_action'],
+            // The preferred network leads the chain; the other stays as the
+            // fallback the dispatcher tries next. Absent (single-network or
+            // self-delivery saves) leaves the stored priority untouched.
+            ...isset($validated['preferred_courier'])
+                ? ['delivery_provider_priority' => $validated['preferred_courier'] === DeliveryProviderName::Uber->value
+                    ? [DeliveryProviderName::Uber->value, DeliveryProviderName::DoorDash->value]
+                    : [DeliveryProviderName::DoorDash->value, DeliveryProviderName::Uber->value]]
+                : [],
             // First acceptance stamps the attestation; it is never un-stamped
             // by a later save (the record of who agreed must survive edits).
             ...$request->boolean('restricted_items_attested') && $restaurant->restricted_items_attested_at === null

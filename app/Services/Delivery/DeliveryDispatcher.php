@@ -57,13 +57,13 @@ class DeliveryDispatcher
             return [DeliveryProviderName::Self];
         }
 
-        // DoorDash Drive is the launch delivery provider, so it is the default
-        // chain for any restaurant that hasn't set an explicit priority. The
-        // Uber adapter stays registered but dormant — it only runs for a
-        // restaurant that explicitly prioritizes it (having pasted its own Uber
-        // credentials). Both adapters exist, so neither yields
-        // `provider_unsupported` the way an unbuilt one would.
-        $priority = $restaurant->delivery_provider_priority ?: ['doordash'];
+        // Both courier networks are in the default chain: providerFor() skips
+        // any that isn't connected (supports() gates on a provisioned
+        // integration), so one-click enabling EITHER network makes delivery
+        // work without touching this column. An explicit priority — written by
+        // the "preferred courier network" setting when both are connected —
+        // only reorders the attempts.
+        $priority = $restaurant->delivery_provider_priority ?: ['doordash', 'uber'];
         $chain = [];
         foreach ($priority as $name) {
             $enum = DeliveryProviderName::tryFrom((string) $name);
