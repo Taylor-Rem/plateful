@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\DeliveryFallbackAction;
 use App\Enums\DeliveryFeeStrategy;
 use App\Enums\DeliveryMode;
+use App\Enums\DeliveryProviderName;
 use App\Enums\SelfDeliveryTipRecipient;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -32,6 +33,12 @@ class DeliverySettingsRequest extends FormRequest
             'prep_time_minutes' => ['required', 'integer', 'between:0,180'],
             'self_delivery_tip_recipient' => ['required', Rule::enum(SelfDeliveryTipRecipient::class)],
             'delivery_fallback_action' => ['required', Rule::enum(DeliveryFallbackAction::class)],
+            // Which courier network to try first when more than one is
+            // connected. Self is a mode, not a network, so it is not a choice.
+            'preferred_courier' => ['nullable', Rule::in([
+                DeliveryProviderName::DoorDash->value,
+                DeliveryProviderName::Uber->value,
+            ])],
             'restricted_items_attested' => ['nullable', 'boolean'],
         ];
     }
