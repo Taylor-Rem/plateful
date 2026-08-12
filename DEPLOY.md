@@ -147,6 +147,11 @@ Its `whsec_…` signing secret lives **only** in the Laravel Cloud environment a
 this value** — if production doesn't set these explicitly, every OAuth connect and every ticket
 push silently goes to the sandbox hosts and real registers never see an order.
 
+**Status (2026-08-12):** the `SQUARE_*` rows below are **set in production** — Square is live, and
+the OAuth connect flow was verified against a real Square account. The `CLOVER_*` rows are **still
+pending**: Clover's production developer-account + app approvals haven't been granted yet (todo.md
+§0). The sandbox-default warning above still applies to any fresh environment.
+
 | Key | Value |
 |---|---|
 | `SQUARE_ENVIRONMENT` | `production` |

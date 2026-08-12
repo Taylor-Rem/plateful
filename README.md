@@ -82,7 +82,8 @@ Test card: `4242 4242 4242 4242`, any future expiry/CVC/ZIP.
 
 Each integration is off until its keys exist in `.env` — see `config/services.php`:
 
-- **Square / Clover** — `SQUARE_*` / `CLOVER_*` OAuth app credentials (sandbox).
+- **Square / Clover** — `SQUARE_*` / `CLOVER_*` OAuth app credentials (sandbox creds locally;
+  in production Square is live as of 2026-08-12, Clover still pending its prod approvals).
 - **DoorDash Drive** — `DOORDASH_*` (umbrella model: one platform credential set, JWTs
   minted per request; restaurants store nothing).
 - **Uber Direct** — `UBER_DIRECT_*` (same umbrella model: one platform credential set for the

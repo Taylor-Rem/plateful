@@ -29,7 +29,8 @@ write it into this repo), and the business bank account is **open at Mercury**, 
 platform payouts routed there. Stripe live mode is **done**: live keys in Cloud, the live Connect
 webhook + `STRIPE_WEBHOOK_SECRET` configured, the platform-profile loss-liability step completed,
 and the **first live end-to-end order verified 2026-08-11** (details in the §0 item below).
-What's left in §0: POS production env vars, Sentry, S3, credential rotation, and the final
+What's left in §0: POS production env vars (**Clover only — Square done**, live + OAuth-verified
+2026-08-12, see the split item below), Sentry, S3, credential rotation, and the final
 `cloud-check.php` pass — and **DoorDash prod access (§3 Session 0/6) is still unfiled and still
 the critical path.** Clover's production developer-account approval was waiting on the EIN; that
 field is now fillable, so the submission packet is unblocked.
@@ -53,10 +54,11 @@ nothing below waits on either anymore):**
 - **Stripe live mode — WAS gated, now DONE (2026-08-11).** Platform activation + payout of
   application fees needed the EIN and a business bank account; both landed, Stripe is live, and
   payouts route to Mercury. See the checked-off item below.
-- **Square production — NOT GATED. Do it today.** For an OAuth app the *sellers* are the activated
-  Square accounts, not us. Square Developer confirmed the whole production step is: move the OAuth
-  code to prod, set the production redirect URI, swap in the production app ID + secret. No Square
-  seller activation, no bank account, no approval queue on our side.
+- **Square production — DONE (2026-08-12).** It went exactly as Square Developer described: no
+  seller activation, no bank account, no approval queue on our side — just the production app
+  ID + secret, the production redirect URI, and `SQUARE_ENVIRONMENT=production` in Cloud. The
+  OAuth connect flow was verified against a real Square account the same day. (For an OAuth app
+  the *sellers* are the activated Square accounts, not us.)
 - **Clover production — gated by the EIN, NOT the bank account.** Production developer-account
   approval wants identity verification (name, DOB, home address, ID, OFAC) plus, for a corporate
   developer, **Business EIN/Tax ID + company legal name**. Separately the *app* needs approval before
@@ -99,12 +101,19 @@ nothing below waits on either anymore):**
       correctly excluded); Stripe fee $0.67 paid by the restaurant; restaurant net $11.77,
       payout scheduled Aug 18. The order materialized via the webhook and ran the full
       lifecycle to Completed — live webhook + signing secret confirmed working.
-- [ ] **POS environment vars — `SQUARE_ENVIRONMENT=production` + `CLOVER_ENVIRONMENT=production`
-      in Cloud.** Both default to `sandbox` in `config/services.php` and the API/OAuth hosts key
-      entirely off them — unset, every connect and ticket push silently goes to sandbox hosts and
-      real registers never see an order (the same silent-fallback class as the `MEDIA_DISK` item
-      below). Also set the production `SQUARE_*`/`CLOVER_*` app creds + redirect URIs.
-      `cloud-check.php` now checks all of these (added 2026-07-15). DEPLOY.md Step 5 documents them.
+- [x] **Square production env vars — DONE (2026-08-12).** `SQUARE_ENVIRONMENT=production`, the
+      production `SQUARE_APPLICATION_ID` / `SQUARE_APPLICATION_SECRET`, and
+      `SQUARE_REDIRECT_URI=https://admin.plateful.fyi/pos/square/callback` are all set in Laravel
+      Cloud, and the OAuth connect flow was **verified against a real Square account** the same
+      day. (This was the Square half of the old combined "POS environment vars" blocker.)
+- [ ] **Clover production env vars — `CLOVER_ENVIRONMENT=production` + production `CLOVER_*` app
+      creds + redirect URI in Cloud.** Blocked behind Clover's production developer-account + app
+      approvals (see the gating note above — the submission packet is unblocked, approvals not yet
+      granted). `CLOVER_ENVIRONMENT` defaults to `sandbox` in `config/services.php` and the
+      API/OAuth hosts key entirely off it — unset, every connect and ticket push silently goes to
+      sandbox hosts and real registers never see an order (the same silent-fallback class as the
+      `MEDIA_DISK` item below). `cloud-check.php` checks these (added 2026-07-15). DEPLOY.md
+      Step 5 documents them.
 - [x] **Onboarding/delivery keys in Cloud — DONE (confirmed by Taylor 2026-07-31).**
       `CLAUDE_API_KEY` and `GOOGLE_MAPS_API_KEY` are both present in Laravel Cloud. Both are checked
       by `cloud-check.php`. (Key restriction is still open — see §3's "restrict the Google Maps key
@@ -260,7 +269,9 @@ register.** Both live-sandbox tests skip for want of credentials; see the two it
       added to the admin `$connectable` list (`available => true`). `CLOVER_*` env + `config/services.php`.
       Tests: CloverOAuthServiceTest, CloverPushOrderTest, CloverConnectTest, CloverLiveSandboxTest
       (opt-in real-sandbox push+read-back, skipped without creds — mirrors Square's).
-- [ ] **Square live verification — same gap as Clover's, and it was never tracked.** Corrected
+- [ ] **Square live verification — same gap as Clover's, and it was never tracked.** (Distinct
+      from Square *production*, which went live 2026-08-12 with the OAuth connect flow verified —
+      §0. This item is about proving a real **order push**, which still hasn't happened.) Corrected
       2026-07-15: `SQUARE_SANDBOX_ACCESS_TOKEN` / `SQUARE_SANDBOX_LOCATION_ID` are not set, so
       `SquareLiveSandboxTest` **skips** — it has never run. Neither adapter has pushed to a real
       register; only Uber Direct is genuinely sandbox-verified (its live tests do run and pass
