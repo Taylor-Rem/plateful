@@ -96,7 +96,7 @@ return [
     'doordash' => [
         // DoorDash Drive is an umbrella / central-billing integration: ONE set
         // of platform credentials authenticates every restaurant's deliveries,
-        // unlike Uber Direct's per-restaurant credentials. Each request is
+        // exactly like Uber Direct above. Each request is
         // signed with a freshly minted DD-JWT-V1 (HS256) token — see
         // DoorDashJwtService — so nothing is stored per restaurant beyond the
         // provisioned Business/Store ids on the integration row.

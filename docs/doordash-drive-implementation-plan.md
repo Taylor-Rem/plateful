@@ -21,8 +21,12 @@ real money: Session 0/6 only (prod access + a running queue worker — Stripe we
 (4a+4b) — the final money gate — is complete.
 
 DoorDash Drive is Plateful's **launch delivery provider**. The complete Uber Direct adapter stays
-in the tree **dormant** (behind the `DeliveryProvider` contract; `DeliveryFallbackAction` already
-supports `try_next_provider`) — do not delete it. This plan is broken into sessions that can each be
+in the tree behind the `DeliveryProvider` contract (`DeliveryFallbackAction` already
+supports `try_next_provider`) — do not delete it. *(2026-08-12 update: Uber Direct has since been
+converted to the same umbrella / central-billing model as DoorDash — commits `1d83667` +
+`59358d2` — and is an active second network with a preferred-courier picker, default chain
+`['doordash','uber']`. The "per-restaurant / dormant" contrasts in this plan's §0 table and
+later prose are historical; see todo.md §3's umbrella update.)* This plan is broken into sessions that can each be
 implemented independently. **Execution order:** `0 → 1 → 4a → 4b → 2 → 3 → 5 → 6` — the session
 *numbers* are stable labels (Session 2 always means provisioning), but they're **run** in that order.
 Rationale: Session 1 (thin adapter) first gives a live sandbox dispatch to observe *and* proves

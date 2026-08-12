@@ -164,7 +164,14 @@ push silently goes to the sandbox hosts and real registers never see an order.
 | `DOORDASH_DEVELOPER_ID` / `DOORDASH_KEY_ID` / `DOORDASH_SIGNING_SECRET` | **launch delivery provider.** Platform-level DoorDash Drive credentials (one set for all restaurants; every request is signed with a per-request DD-JWT-V1). Use the **production** set once DoorDash grants prod access — until then these are sandbox creds. Restaurants paste nothing; Plateful provisions each Business/Store. |
 | `DOORDASH_WEBHOOK_SECRET` | shared secret for the DoorDash status webhook at `https://admin.<primary>/webhooks/doordash`. Register the URL in the DoorDash portal and **confirm the signature scheme** matches `DoorDashWebhookController::signatureIsValid()` (HMAC-SHA256; header + base64-vs-hex currently assumed). |
 | `DOORDASH_BASE_URL` | optional; defaults to `https://openapi.doordash.com` (same host for sandbox and prod — the environment is a property of the credentials). |
-| `UBER_DIRECT_SANDBOX_*` | Uber Direct is now the **dormant** fallback provider. Leave **unset** in production — Uber credentials are per-restaurant and live encrypted in `delivery_integrations`; the sandbox vars exist only for local dev and the opt-in live test. |
+| `UBER_DIRECT_CLIENT_ID` / `UBER_DIRECT_CLIENT_SECRET` | **second courier network (umbrella model, same shape as DoorDash).** Platform credentials for Plateful's **root** Uber Direct account (production set; the root account must be able to mint the `eats.deliveries` scope). One set for all restaurants — restaurants sign up for nothing and paste nothing; Plateful provisions each one one-click as a **sub-organization** via the Organizations API (`UberDirectProvisioningService`), storing only the org id on `delivery_integrations`. |
+| `UBER_DIRECT_CUSTOMER_ID` | the **root** organization id — shown as **"Customer ID"** on the Uber Direct developer dashboard's billing page. The parent under which restaurant sub-orgs are created. |
+| `UBER_DIRECT_WEBHOOK_SECRET` | signing key of the **one** webhook configured on the root Direct account, pointed at `https://admin.<primary>/webhooks/uber` (production: `https://admin.plateful.fyi/webhooks/uber`). Platform-level, exactly like DoorDash's — there is no per-restaurant webhook or key. |
+
+Like DoorDash (and unlike Square/Clover) Uber Direct has **no environment/host switch**: test and
+production share `api.uber.com`, and test mode is a property of the credentials. The dispatcher
+runs both courier networks with a per-restaurant **preferred courier network** picker
+(`DeliveryDispatcher`; default chain `['doordash', 'uber']`).
 
 ### Google login (optional but wired)
 

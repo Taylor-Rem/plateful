@@ -21,12 +21,12 @@ food subtotal.)
 | Admin console | `admin.plateful.test` | Super admin + per-restaurant tenant admin at `/{subdomain}/…` |
 | Payments | `app/Services/Stripe` | Stripe Connect Express, direct charges + application fee |
 | POS injection | `app/Services/Pos` | Square and Clover — orders push into the restaurant's POS |
-| Delivery | `app/Services/Delivery` | DoorDash Drive (launch provider, centrally billed), self-delivery; Uber Direct adapter dormant |
+| Delivery | `app/Services/Delivery` | DoorDash Drive (launch provider) + Uber Direct, both umbrella/centrally billed with a preferred-courier picker; plus self-delivery |
 | AI menu import | `app/Services/MenuExtractionService.php` | Claude extracts a structured menu (incl. option sets) from a PDF/photo; re-import anytime from the admin Menu page |
 | Auth | Fortify + Socialite | Email/password + Google OAuth; TOTP two-factor (required for super admins) |
 | Revenue split | `app/Services/RevenueSplitResolver.php` | Founder/operator/recruiter attribution ledger + monthly earnings |
 
-Deeper design docs live in `docs/` (POS strategy, DoorDash Drive plan, the dormant Uber
+Deeper design docs live in `docs/` (POS strategy, DoorDash Drive plan, the original Uber
 Direct plan, admin overhaul, user management). Deployment to Laravel Cloud is covered in
 `DEPLOY.md`.
 
@@ -85,6 +85,8 @@ Each integration is off until its keys exist in `.env` — see `config/services.
 - **Square / Clover** — `SQUARE_*` / `CLOVER_*` OAuth app credentials (sandbox).
 - **DoorDash Drive** — `DOORDASH_*` (umbrella model: one platform credential set, JWTs
   minted per request; restaurants store nothing).
+- **Uber Direct** — `UBER_DIRECT_*` (same umbrella model: one platform credential set for the
+  root Direct account; restaurants are provisioned as sub-orgs and store nothing).
 - **AI menu import** — `CLAUDE_API_KEY` (extraction costs ~$0.11/menu).
 - **Google** — `GOOGLE_CLIENT_ID`/`SECRET` for social login, `GOOGLE_MAPS_API_KEY` for
   address handling.
