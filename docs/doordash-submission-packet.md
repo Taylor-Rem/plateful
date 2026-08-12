@@ -8,14 +8,16 @@ there before booking the demo._
 
 ## The split that matters
 
-DoorDash's process has two doors, and **only the second one is waiting on the bank account.**
+DoorDash's process has two doors. **Only the second one was waiting on the bank account — and as
+of 2026-08-12 that account is open (Mercury), so both doors are unblocked. Nothing is waiting on
+us but the filing itself.**
 
 | | Part A — record interest | Part B — production access request |
 |---|---|---|
 | What | A short Google Form | Portal request → business details → **payment method** → accept Drive terms → Zoom demo |
 | Needs a payment method? | **No** | **Yes** — the card/ACH DoorDash centrally bills |
-| Needs the EIN or bank? | **No** | Yes, if you want it on the business account |
-| Can you do it today? | **Yes** | No |
+| Needs the EIN or bank? | **No** | Yes, if you want it on the business account — **both now exist** |
+| Can you do it today? | **Yes** | **Yes** — unblocked 2026-08-12 (Mercury account open) |
 | Cost | Zero | Zero, but starts the real clock |
 
 **File Part A today.** It costs nothing, needs nothing you don't already have, and it starts the
@@ -47,7 +49,8 @@ Form: https://docs.google.com/forms/d/e/1FAIpQLSfggU_NjGWCdi9vyWUicrnzJmtu9vC4zg
 
 ## Part B — production access request answer sheet
 
-File when the business bank account exists. Keep this open in a second window.
+The business bank account now exists (Mercury, open as of 2026-08-12) — this can be filed
+immediately. Keep this open in a second window.
 
 ### Business details
 
@@ -59,7 +62,7 @@ File when the business bank account exists. Keep this open in a second window.
 | State of organization | Utah |
 | Utah entity number | 14714085-0160 |
 | Filing effective date | July 10, 2026 |
-| EIN | ⚠️ **PENDING** — SS-4 faxed 2026-07-30, expected ~2026-08-05 |
+| EIN | ✅ **Assigned 2026-08-06** — EIN on file (see private records; never written into this repo). Official CP 575 letter to follow by mail. |
 | Business address | 975 W 540 S, American Fork, UT 84003 |
 | County | Utah County, Utah |
 | Responsible party | Taylor Grant Remund, Sole Member |
@@ -67,16 +70,16 @@ File when the business bank account exists. Keep this open in a second window.
 | Website | https://plateful.fyi |
 | Business category | Software / technology — online food-ordering platform (SaaS) |
 
-### Payment method — ⚠️ THE ONE BLOCKED FIELD
+### Payment method — ✅ UNBLOCKED (was the one blocked field)
 
 DoorDash centrally bills **Plateful**, not the restaurant — this is the umbrella model the whole
 money design assumes (`DeliveryProviderName::isCentrallyBilled()`, customer gross-up and
 central-billing recovery, Session 4b). So the card or ACH you put here is the account that pays
 every courier fee for every restaurant, and gets recovered through the customer gross-up.
 
-You chose to wait for the business bank account. That is the clean call for an account that will
-carry real courier spend. Just be aware this field — not the EIN, not the code — is what is holding
-Part B.
+You chose to wait for the business bank account — the clean call for an account that will carry
+real courier spend. That account is now open (**Mercury**, Plateful LLC), so use it here.
+Nothing is holding Part B anymore.
 
 ### Integration description
 

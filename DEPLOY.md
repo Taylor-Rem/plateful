@@ -128,6 +128,19 @@ On Growth+ with Redis/KV available, switch all three to `redis`.
 
 `scripts/cloud-check.php` reports these as LIVE/TEST by prefix — run it after setting them.
 
+**The live webhook (configured 2026-08-11, verified with a real order).** The production
+endpoint is `https://admin.plateful.fyi/stripe/webhook`, created in the Stripe dashboard as a
+**Connect endpoint** — it must listen to *connected-account* events, not account events, or
+`checkout.session.completed` from direct charges never arrives and orders never materialize.
+It subscribes to exactly the three events `StripeWebhookController` handles:
+
+- `account.updated` — connected-account onboarding status
+- `checkout.session.completed` — order materialization
+- `charge.dispute.created` — chargeback visibility
+
+Its `whsec_…` signing secret lives **only** in the Laravel Cloud environment as
+`STRIPE_WEBHOOK_SECRET` — never in the repo, `.env.example`, or a chat session.
+
 ### POS — Square & Clover (⚠ both default to `sandbox`)
 
 `config/services.php` falls back to `sandbox` for both providers and the API/OAuth **hosts key off
@@ -291,6 +304,12 @@ placeholders):
 - **Host:** Laravel Cloud, project `plateful`, environment `main`, live at
   <https://plateful.fyi>. Dashboard: <https://cloud.laravel.com/taylor-remund/plateful/main>.
 - **DNS:** Porkbun (Cloudflare backend) for `plateful.fyi`.
+- **Payments:** Stripe **live mode** since 2026-08-11 (platform account `founder@plateful.fyi`;
+  Standard-platform loss-liability profile completed; restaurants are Express connected
+  accounts, direct charges + application fee). Live Connect webhook at
+  `https://admin.plateful.fyi/stripe/webhook` — see the Stripe env section above.
+- **Payouts:** Plateful LLC business account at **Mercury** — Stripe platform payouts route
+  there.
 - **Ops without the dashboard:** Laravel Cloud REST API / CLI. A token lives in
   local `.env` as `LARAVEL_CLOUD_TOKEN` (gitignored, never in the repo or Cloud).
   Read-only readiness check: `php scripts/cloud-check.php`.

@@ -61,7 +61,10 @@ Nearly everything asynchronous rides the database queue (`QUEUE_CONNECTION=datab
 Without a running worker, orders never push to the POS, deliveries never dispatch, mail
 never sends, and card holds never release. `composer run dev` starts one for you.
 
-### Stripe (test mode)
+### Stripe (test mode locally — production is live)
+
+Production runs Stripe **live mode** (since 2026-08-11) with a live Connect webhook — see
+`DEPLOY.md`. Local development stays on test keys:
 
 1. Add test keys to `.env`: `STRIPE_KEY` (publishable), `STRIPE_SECRET`, and
    `STRIPE_CONNECT_COUNTRY=US`.

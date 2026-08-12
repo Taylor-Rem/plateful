@@ -23,15 +23,28 @@ of the bank account.** Only Stripe genuinely waits on the EIN/bank; Square produ
 DoorDash request do not (see the gating note at the top of §0). **CI on `dev` is fixed**
 (2026-07-31, see the §8 item) — it was env/lint drift, never failing product code.
 
+**§0 update 2026-08-12 — Stripe is LIVE.** Plateful LLC is formed (Utah single-member LLC,
+effective 2026-07-10), the EIN was assigned 2026-08-06 (EIN on file — see private records; never
+write it into this repo), and the business bank account is **open at Mercury**, with Stripe
+platform payouts routed there. Stripe live mode is **done**: live keys in Cloud, the live Connect
+webhook + `STRIPE_WEBHOOK_SECRET` configured, the platform-profile loss-liability step completed,
+and the **first live end-to-end order verified 2026-08-11** (details in the §0 item below).
+What's left in §0: POS production env vars, Sentry, S3, credential rotation, and the final
+`cloud-check.php` pass — and **DoorDash prod access (§3 Session 0/6) is still unfiled and still
+the critical path.** Clover's production developer-account approval was waiting on the EIN; that
+field is now fillable, so the submission packet is unblocked.
+
 ---
 
 ## 0. Launch blockers — clear before selling to anyone
 _These gate real revenue and are independent of everything below. Do first._
 
-**What the business bank account actually gates (checked 2026-07-31 against each vendor's own docs
-— the EIN is in flight, faxed 07-30, expect it ~08-05):**
-- **Stripe live mode — GENUINELY GATED.** Platform activation + payout of application fees needs the
-  EIN and a business bank account. Nothing to do here but wait.
+**What the business bank account actually gates (checked 2026-07-31 against each vendor's own docs;
+updated 2026-08-12 — the EIN was assigned 2026-08-06 and the Mercury business account is OPEN, so
+nothing below waits on either anymore):**
+- **Stripe live mode — WAS gated, now DONE (2026-08-11).** Platform activation + payout of
+  application fees needed the EIN and a business bank account; both landed, Stripe is live, and
+  payouts route to Mercury. See the checked-off item below.
 - **Square production — NOT GATED. Do it today.** For an OAuth app the *sellers* are the activated
   Square accounts, not us. Square Developer confirmed the whole production step is: move the OAuth
   code to prod, set the production redirect URI, swap in the production app ID + secret. No Square
@@ -41,7 +54,8 @@ _These gate real revenue and are independent of everything below. Do first._
   developer, **Business EIN/Tax ID + company legal name**. Separately the *app* needs approval before
   it can OAuth to any real merchant: payment-flow videos, EULA, privacy policy, ToS, support
   email/phone/website, icon, screenshots, two-plus stated benefits. Both approvals must land before
-  launch. **The submission packet can be assembled now** — only the EIN field is waiting.
+  launch. **The submission packet is fully unblocked (2026-08-12)** — the EIN field was the last
+  thing waiting, and the EIN is now on file.
 - **DoorDash Drive — NOT gated by the bank account, and the biggest schedule risk we have.** See §3.
 
 - [ ] **Credential rotation (audit 2026-07-16).** A repo/machine-wide scan found **no secret in git
@@ -59,12 +73,21 @@ _These gate real revenue and are independent of everything below. Do first._
             the Uber **sandbox** secret, and `APP_KEY` (rotating it invalidates existing sessions
             and any `encrypted` cast — **do NOT rotate once `pos_integrations` /
             `delivery_integrations` hold real tokens**; it would render them undecryptable).
-      - [ ] Stripe test keys: **do not bother rotating** — they're being replaced with live keys
-            anyway. **Set the live keys directly in the Cloud dashboard, never paste them into a
-            chat session**, or they land in a transcript too. Same rule for every secret above.
-- [ ] **Stripe live mode**: swap to live keys, create live webhook + `STRIPE_WEBHOOK_SECRET`,
-      have first restaurant (Marcos) complete **live** Connect onboarding, place one real
-      end-to-end order and confirm application fee + payout land.
+      - [x] Stripe test keys: **do not bother rotating** — superseded by the live swap. The live
+            keys were set **directly in the Cloud dashboard** (2026-08-11), never pasted into a
+            chat session. Same rule for every secret above.
+- [x] **Stripe live mode — DONE (verified 2026-08-11).** Live publishable/secret keys are set in
+      Cloud. The live webhook is created as a **Connect endpoint** at
+      `https://admin.plateful.fyi/stripe/webhook` (listens to connected-account events:
+      `account.updated`, `checkout.session.completed`, `charge.dispute.created`) and
+      `STRIPE_WEBHOOK_SECRET` is set in Cloud. The Connect platform-profile **loss-liability
+      responsibilities are completed** (required before live connected accounts could be
+      created; Stripe manages risk / carries loss liability on Standard). First live end-to-end
+      order verified: **TES-PQXYD** at "testaurant" — subtotal $10.50, tax $0.78, tip $1.58,
+      total $12.86; application fee **$0.42 = exactly 4% of the $10.50 subtotal** (tax + tip
+      correctly excluded); Stripe fee $0.67 paid by the restaurant; restaurant net $11.77,
+      payout scheduled Aug 18. The order materialized via the webhook and ran the full
+      lifecycle to Completed — live webhook + signing secret confirmed working.
 - [ ] **POS environment vars — `SQUARE_ENVIRONMENT=production` + `CLOVER_ENVIRONMENT=production`
       in Cloud.** Both default to `sandbox` in `config/services.php` and the API/OAuth hosts key
       entirely off them — unset, every connect and ticket push silently goes to sandbox hosts and
@@ -671,8 +694,9 @@ shipped and logged in §8 (checkout throttle, dispute webhook, cloud-check cover
 3. ~~**§2b/2c Square injection + pickup**~~ — Square + Clover adapters done; catalog matcher open.
 4. ~~**§3 delivery**~~ — Uber Direct complete 2026-07-15. Both halves of the strategy ("get the
    order to the kitchen" and "deliver it") now have a shipped path.
-5. **Next: §0 launch blockers.** The build has outrun the launch prep — delivery is done and Stripe
-   is still in test mode. §0 + §3's "Before this can take real money" list are what stand between
+5. **Next: §0 launch blockers.** Stripe went **live 2026-08-11** (first real order verified) —
+   what remains of §0 (DoorDash prod access above all, plus POS prod env, Sentry, S3, rotation)
+   + §3's "Before this can take real money" list are what stand between
    this and a paying restaurant. The **§11 hardening decisions** (email verification, dispute
    surface, restaurant go-live checklist) come before onboarding restaurants at volume.
 6. **§4 customer ownership** to make the pitch real; **§5 calculator** once pricing is locked.

@@ -16,7 +16,8 @@
 | **6** | Production go-live | ⬜ Not started |
 
 Full suite green at 1019 tests (2026-07-31). All code sessions (1–5) are done. Remaining before
-real money: Session 0/6 only (prod access + Stripe live + a running queue worker). The money model
+real money: Session 0/6 only (prod access + a running queue worker — Stripe went **live**
+2026-08-11 and is no longer a blocker). The money model
 (4a+4b) — the final money gate — is complete.
 
 DoorDash Drive is Plateful's **launch delivery provider**. The complete Uber Direct adapter stays
