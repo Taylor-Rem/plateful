@@ -2,6 +2,13 @@
 
 **Status:** in progress · **Decision locked 2026-07-18** · Supersedes the Uber-first launch plan.
 
+> **⚠ Historical framing (noted 2026-08-12).** This plan's "Uber Direct = dormant /
+> per-restaurant" contrasts (the §0 comparison table and later prose) describe Uber as it was when
+> the plan was written. Uber Direct has since been converted to the same **umbrella /
+> central-billing model** as DoorDash and is **live in production** as the **interim delivery
+> provider** until DoorDash prod access lands — see todo.md §3's umbrella update. The DoorDash
+> sessions and money model documented here are unaffected.
+
 ### Progress (updated 2026-07-31)
 
 | Session | What | State |

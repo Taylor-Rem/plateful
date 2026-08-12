@@ -6,12 +6,20 @@ _Status: revised draft · Last updated: 2026-07-09_
 > and phased roadmap (§7–§9) are frozen at 2026-07-09 and have been overtaken by the build. Since
 > then: the per-tenant encrypted credential store (`pos_integrations`), the **Square and Clover
 > adapters** (OAuth connect + order push), **Uber Direct delivery end-to-end** (per-restaurant
-> credentials, quote-before-payment, webhooks, auth/capture), and — as of 2026-07-17 —
+> credentials *at the time — since converted, see the 2026-08-12 line below*, quote-before-payment,
+> webhooks, auth/capture), and — as of 2026-07-17 —
 > **DoorDash Drive as the launch delivery provider** (umbrella/central-billing model, full money
-> model incl. the $249/mo commission cap, provisioning, webhooks, refunds; the Uber adapter is kept
-> dormant; see [doordash-drive-implementation-plan.md](doordash-drive-implementation-plan.md)) have
+> model incl. the $249/mo commission cap, provisioning, webhooks, refunds; the Uber adapter was
+> kept dormant *at the time*; see
+> [doordash-drive-implementation-plan.md](doordash-drive-implementation-plan.md)) have
 > all shipped. The "first sellable milestone" (§9) — Square injection + pickup, then delivery — is
-> **built**; what remains is launch prep (todo.md §0) plus DoorDash production access. For current
+> **built**; what remains is launch prep (todo.md §0) plus DoorDash production access.
+>
+> **Update 2026-08-12:** Uber Direct has since been converted to the same **umbrella /
+> central-billing model** as DoorDash (one platform credential set; restaurants provisioned as
+> sub-orgs; one root-account webhook) and is **live in production** as the **interim delivery
+> provider** until DoorDash prod access lands. **Stripe is live** (first real order verified
+> 2026-08-11) and **Square production is live** too. For current
 > build state always read [todo.md](../todo.md); the strategy and pricing reasoning here still stand.
 
 This document started as a POS-integration brief centered on winning Toast restaurants by
@@ -307,8 +315,9 @@ accessible to a solo dev than Toast's gated program (direct API signup).
 > **Code reality (2026-07-09; since superseded — both adapters are shipped).** The
 > `DeliveryDispatcher` (`app/Services/Delivery/DeliveryDispatcher.php`), its `DeliveryProvider`
 > contract (`app/Contracts/DeliveryProvider.php`), and the `DoorDash`/`Uber` entries in
-> `DeliveryProviderName` are the extension points. `DoorDashProvider` (launch provider) and
-> `UberDirectProvider` (dormant) now fill them alongside `SelfDeliveryProvider`.
+> `DeliveryProviderName` are the extension points. `DoorDashProvider` (launch provider, prod
+> access pending) and `UberDirectProvider` (live — umbrella since 2026-08-12, the interim
+> provider) now fill them alongside `SelfDeliveryProvider`.
 
 ### 7c. Per-tenant encrypted credential store (~~net-new — build first~~ shipped as `pos_integrations` + `delivery_integrations`)
 

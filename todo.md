@@ -10,7 +10,7 @@ via flat-fee APIs. Target = independent restaurants dependent on DoorDash/Uber.
 The build splits into two independent jobs: **get the order to the kitchen** (POS injection or
 cloud printer) and **deliver it** (DoorDash Drive / Uber Direct). Sequenced below by dependency.
 
-**Position (2026-07-31):** both jobs have a shipped path — Square + Clover injection, and delivery
+**Position (2026-07-31)** *(SUPERSEDED — see the 2026-08-12 updates below)*: both jobs have a shipped path — Square + Clover injection, and delivery
 via **DoorDash Drive (launch provider, Sessions 1–5 all done incl. refunds; Uber Direct dormant)**.
 Since 07-15 the platform work also landed: the 10-session admin overhaul (2026-07-24), user
 soft-deletes + super-admin Users console, TOTP 2FA (required for supers), and menu-import option
