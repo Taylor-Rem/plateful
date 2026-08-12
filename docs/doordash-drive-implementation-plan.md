@@ -24,7 +24,8 @@ DoorDash Drive is Plateful's **launch delivery provider**. The complete Uber Dir
 in the tree behind the `DeliveryProvider` contract (`DeliveryFallbackAction` already
 supports `try_next_provider`) — do not delete it. *(2026-08-12 update: Uber Direct has since been
 converted to the same umbrella / central-billing model as DoorDash — commits `1d83667` +
-`59358d2` — and is an active second network with a preferred-courier picker, default chain
+`59358d2` — and went **live in production the same day** as the **interim** courier network until
+DoorDash prod access lands, with a preferred-courier picker, default chain
 `['doordash','uber']`. The "per-restaurant / dormant" contrasts in this plan's §0 table and
 later prose are historical; see todo.md §3's umbrella update.)* This plan is broken into sessions that can each be
 implemented independently. **Execution order:** `0 → 1 → 4a → 4b → 2 → 3 → 5 → 6` — the session

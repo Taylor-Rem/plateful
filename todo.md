@@ -34,11 +34,13 @@ What's left in §0: POS production env vars, Sentry, S3, credential rotation, an
 the critical path.** Clover's production developer-account approval was waiting on the EIN; that
 field is now fillable, so the submission packet is unblocked.
 
-**Delivery update 2026-08-12 — Uber Direct is umbrella now, not dormant.** Commits `1d83667` +
-`59358d2` converted Uber Direct from per-restaurant credentials to the same umbrella /
-central-billing model as DoorDash, with a per-restaurant preferred-courier picker and the default
-dispatch chain back to both networks. Details + the remaining (operational-only) work in the §3
-umbrella update.
+**Delivery update 2026-08-12 — Uber Direct is umbrella now, not dormant, and it is LIVE.**
+Commits `1d83667` + `59358d2` converted Uber Direct from per-restaurant credentials to the same
+umbrella / central-billing model as DoorDash, with a per-restaurant preferred-courier picker and
+the default dispatch chain back to both networks. Later the same day the four `UBER_DIRECT_*`
+vars went into Cloud and auth + the organizations scope were verified by minting real production
+tokens (no delivery created) — **Uber Direct is the interim delivery provider until DoorDash prod
+access lands.** Details + what's still open in the §3 umbrella update.
 
 ---
 
@@ -72,7 +74,10 @@ nothing below waits on either anymore):**
       rotation**: every value below is still live until rotated at its source. Priority order:
       - [ ] `LARAVEL_CLOUD_TOKEN` — highest value: it can read the production env, which will soon
             hold **live** Stripe keys. Rotate in the Laravel Cloud dashboard.
-      - [ ] **Production Uber Client Secret** — rotate when provisioning the prod account (§3).
+      - [ ] **Production Uber Client Secret** — the prod account is now live (2026-08-12, §3), so
+            this is due NOW if the live credentials descend from the set exposed 2026-07-14; a
+            freshly issued secret moots it. Rotating means updating `UBER_DIRECT_CLIENT_SECRET`
+            in Cloud too.
       - [ ] `CLAUDE_API_KEY` — live and billed; one click in the Anthropic console.
       - [ ] Low value / rotate at leisure: `SQUARE_APPLICATION_SECRET`, `CLOVER_APP_SECRET`,
             `GOOGLE_CLIENT_SECRET`, `GOOGLE_MAPS_API_KEY` (the IP restriction below matters more),
@@ -286,7 +291,7 @@ and run CloverLiveSandboxTest.
 
 ---
 
-## 3. Delivery dispatch (Phase 2) — **Uber Direct COMPLETE (2026-07-15, umbrella since 2026-08-12); DoorDash Drive the launch provider, mostly built (2026-07-17)**
+## 3. Delivery dispatch (Phase 2) — **Uber Direct COMPLETE (2026-07-15) and LIVE (umbrella, 2026-08-12); DoorDash Drive the launch provider, mostly built (2026-07-17)**
 _Built end-to-end and verified against the real Uber sandbox: the adapter, status webhooks,
 Places address capture, quote-before-payment, and auth/capture. The
 customer now gets a committed fee and ETA before paying, and is only ever charged once a courier
@@ -294,8 +299,8 @@ actually exists. `DeliveryFeeStrategy` is wired and `DeliveryDispatcher::quote()
 (Originally built on per-restaurant credentials — since converted to umbrella, see the
 2026-08-12 update below.)_
 
-**DoorDash Drive is the launch delivery provider**, with Uber Direct as the second courier
-network (no longer dormant — see the umbrella update below). As of 2026-07-17,
+**DoorDash Drive is the launch delivery provider**, with Uber Direct **live as the interim
+provider** until DoorDash prod access lands (see the umbrella update below). As of 2026-07-17,
 Sessions 1, 4a, 4b, 2, 3 of the DoorDash plan are DONE (adapter, full money model, one-click
 provisioning, webhooks) — JWT+quote and the §1 money model both verified live against the sandbox.
 Session 5 (refunds) shipped 2026-07-17 (see below). Remaining: Session 0/6 (prod access + go-live).
@@ -312,9 +317,12 @@ platform-level signing key, received at `https://admin.plateful.fyi/webhooks/ube
 (and unlike Square/Clover) there is no environment/host switch — test and prod share
 `api.uber.com`; test mode is a property of the credentials. The dispatcher runs **both** networks
 with a per-restaurant **preferred-courier picker** (default chain `['doordash','uber']`).
-**The remaining Uber work is operational, not code:** obtain the production root Direct account
-with the `eats.deliveries` scope, set the four `UBER_DIRECT_*` vars in Cloud, and configure the
-one root-account webhook. Per-restaurant statements in the dated "Done" logs below are
+**LIVE as of 2026-08-12:** the four `UBER_DIRECT_*` vars are set in Cloud, and auth + the
+organizations scope were verified by minting real production tokens (no delivery created).
+**Uber Direct is the interim delivery provider until DoorDash prod access lands.** Still open
+before selling delivery on it: a first live end-to-end Uber delivery (quote → courier → capture →
+settlement) has not been placed, so the delivery path itself is production-unexercised — sandbox
+green is the only evidence. Per-restaurant statements in the dated "Done" logs below are
 historical — superseded by this conversion.
 
 **Full plans:**
@@ -395,16 +403,15 @@ historical — superseded by this conversion.
       demo**; (3) demo an end-to-end test delivery — they review API logs, the customer-facing UI,
       compliance handling, and our go-to-market story; (4) on approval, mint production credentials.
       Then go-live: swap to prod creds, confirm the webhook secret + signature scheme in the
-      DoorDash portal; Uber rides alongside as the second courier network (umbrella — §3 update).
+      DoorDash portal; Uber is already live alongside as the interim network (umbrella — §3 update).
       **Prep before the demo:** the restricted-items safeguard is an integration requirement
       (tobacco/cannabis/weapons/explosives; alcohol needs licensing + a signed alcohol addendum) —
       confirm we block or are out of scope for these before they ask on the call.
-      **Contingency if approval stalls or is refused:** delivery is not all-or-nothing — pickup and
-      self-delivery ship without any courier network, and the Uber Direct adapter is complete and
-      platform-level (umbrella, §3 update); activating it in production is operational only — a
-      root Direct account with the `eats.deliveries` scope, the four `UBER_DIRECT_*` vars, and the
-      root-account webhook. Decide the
-      fallback *before* the first restaurant is sold on delivery.
+      **Contingency if approval stalls or is refused: already in place.** Pickup and self-delivery
+      ship without any courier network, and Uber Direct is **live in production (2026-08-12)** as
+      the interim courier network (umbrella, §3 update) — the fallback question is answered.
+      What Uber still lacks is a first live end-to-end delivery (§3 umbrella update); verify one
+      *before* the first restaurant is sold on delivery.
 
 **Before this can take real money** (full list in the plan)
 - [ ] **A queue worker must be running.** Delivery dispatch and the auth/capture deadline are queued
@@ -416,14 +423,19 @@ historical — superseded by this conversion.
       `SIGNING_SECRET` / `WEBHOOK_SECRET` once prod access is granted; register the webhook URL
       (`/webhooks/doordash`) in the DoorDash portal and **confirm the signature scheme** matches
       `DoorDashWebhookController::signatureIsValid()` (header + base64-vs-hex, currently assumed).
-- [ ] **Uber go-live env** (second courier network, umbrella — §3 update): provision Plateful's
-      **production** root Direct account — the current account can mint only
-      `direct.organizations`, not `eats.deliveries`, and sandbox working says nothing about it.
-      Then set the four `UBER_DIRECT_*` vars (`CLIENT_ID`/`CLIENT_SECRET`/`CUSTOMER_ID`/
-      `WEBHOOK_SECRET`) in Cloud and configure the **one** root-account webhook pointed at
-      `https://admin.plateful.fyi/webhooks/uber`. (The old per-restaurant webhook step is gone
-      with the umbrella conversion — restaurants set up nothing.)
-- [ ] Rotate the production Uber Client Secret (exposed in a session transcript 2026-07-14).
+- [x] **Uber go-live env — DONE (2026-08-12; interim live provider, umbrella — §3 update).** The
+      four `UBER_DIRECT_*` vars (`CLIENT_ID`/`CLIENT_SECRET`/`CUSTOMER_ID`/`WEBHOOK_SECRET`) are
+      set in Cloud for the production root Direct account, with the **one** root-account webhook
+      pointed at `https://admin.plateful.fyi/webhooks/uber`. Auth + the organizations scope
+      verified by minting real production tokens — no delivery created. (The old per-restaurant
+      webhook step is gone with the umbrella conversion — restaurants set up nothing.)
+- [ ] **First live end-to-end Uber delivery.** Quote → courier confirmed → capture → settlement on
+      a real order — the production delivery path is unexercised until this runs (§3 umbrella
+      update). Do it before the first restaurant is sold on delivery.
+- [ ] Rotate the production Uber Client Secret (exposed in a session transcript 2026-07-14) — now
+      urgent if the live account's credentials descend from that set, since Uber went live
+      2026-08-12; moot if the live account minted a fresh secret. Update
+      `UBER_DIRECT_CLIENT_SECRET` in Cloud when rotating.
 - [ ] Restrict the Google Maps key to Places API (New) + the production server's IP.
 
 ---

@@ -21,7 +21,7 @@ food subtotal.)
 | Admin console | `admin.plateful.test` | Super admin + per-restaurant tenant admin at `/{subdomain}/…` |
 | Payments | `app/Services/Stripe` | Stripe Connect Express, direct charges + application fee |
 | POS injection | `app/Services/Pos` | Square and Clover — orders push into the restaurant's POS |
-| Delivery | `app/Services/Delivery` | DoorDash Drive (launch provider) + Uber Direct, both umbrella/centrally billed with a preferred-courier picker; plus self-delivery |
+| Delivery | `app/Services/Delivery` | Uber Direct (live — interim provider) + DoorDash Drive (launch provider, pending prod access), both umbrella/centrally billed with a preferred-courier picker; plus self-delivery |
 | AI menu import | `app/Services/MenuExtractionService.php` | Claude extracts a structured menu (incl. option sets) from a PDF/photo; re-import anytime from the admin Menu page |
 | Auth | Fortify + Socialite | Email/password + Google OAuth; TOTP two-factor (required for super admins) |
 | Revenue split | `app/Services/RevenueSplitResolver.php` | Founder/operator/recruiter attribution ledger + monthly earnings |

@@ -164,7 +164,7 @@ push silently goes to the sandbox hosts and real registers never see an order.
 | `DOORDASH_DEVELOPER_ID` / `DOORDASH_KEY_ID` / `DOORDASH_SIGNING_SECRET` | **launch delivery provider.** Platform-level DoorDash Drive credentials (one set for all restaurants; every request is signed with a per-request DD-JWT-V1). Use the **production** set once DoorDash grants prod access — until then these are sandbox creds. Restaurants paste nothing; Plateful provisions each Business/Store. |
 | `DOORDASH_WEBHOOK_SECRET` | shared secret for the DoorDash status webhook at `https://admin.<primary>/webhooks/doordash`. Register the URL in the DoorDash portal and **confirm the signature scheme** matches `DoorDashWebhookController::signatureIsValid()` (HMAC-SHA256; header + base64-vs-hex currently assumed). |
 | `DOORDASH_BASE_URL` | optional; defaults to `https://openapi.doordash.com` (same host for sandbox and prod — the environment is a property of the credentials). |
-| `UBER_DIRECT_CLIENT_ID` / `UBER_DIRECT_CLIENT_SECRET` | **second courier network (umbrella model, same shape as DoorDash).** Platform credentials for Plateful's **root** Uber Direct account (production set; the root account must be able to mint the `eats.deliveries` scope). One set for all restaurants — restaurants sign up for nothing and paste nothing; Plateful provisions each one one-click as a **sub-organization** via the Organizations API (`UberDirectProvisioningService`), storing only the org id on `delivery_integrations`. |
+| `UBER_DIRECT_CLIENT_ID` / `UBER_DIRECT_CLIENT_SECRET` | **interim live courier network (umbrella model, same shape as DoorDash) until DoorDash prod access lands.** Platform credentials for Plateful's **root** Uber Direct account (production set; the root account must be able to mint the `eats.deliveries` scope). One set for all restaurants — restaurants sign up for nothing and paste nothing; Plateful provisions each one one-click as a **sub-organization** via the Organizations API (`UberDirectProvisioningService`), storing only the org id on `delivery_integrations`. **Set in Cloud 2026-08-12.** |
 | `UBER_DIRECT_CUSTOMER_ID` | the **root** organization id — shown as **"Customer ID"** on the Uber Direct developer dashboard's billing page. The parent under which restaurant sub-orgs are created. |
 | `UBER_DIRECT_WEBHOOK_SECRET` | signing key of the **one** webhook configured on the root Direct account, pointed at `https://admin.<primary>/webhooks/uber` (production: `https://admin.plateful.fyi/webhooks/uber`). Platform-level, exactly like DoorDash's — there is no per-restaurant webhook or key. |
 
@@ -317,6 +317,10 @@ placeholders):
   `https://admin.plateful.fyi/stripe/webhook` — see the Stripe env section above.
 - **Payouts:** Plateful LLC business account at **Mercury** — Stripe platform payouts route
   there.
+- **Delivery:** Uber Direct **live** (2026-08-12) as the **interim** courier network until
+  DoorDash Drive production access lands — umbrella model, all four `UBER_DIRECT_*` vars set in
+  Cloud; auth + the organizations scope verified by minting real production tokens (no live
+  delivery placed yet). Root-account webhook at `https://admin.plateful.fyi/webhooks/uber`.
 - **Ops without the dashboard:** Laravel Cloud REST API / CLI. A token lives in
   local `.env` as `LARAVEL_CLOUD_TOKEN` (gitignored, never in the repo or Cloud).
   Read-only readiness check: `php scripts/cloud-check.php`.

@@ -7,8 +7,10 @@
 > how the adapter works** — Uber Direct now uses ONE platform credential set
 > (`config('services.uber_direct')`), restaurants are provisioned as sub-organizations under
 > Plateful's root Direct account, and one platform-level webhook lives on the root account, exactly
-> like DoorDash. Uber is an **active second courier network** with a preferred-courier picker; the
-> default provider chain is `['doordash','uber']`. This document remains the source of truth for
+> like DoorDash. Uber is **LIVE in production (2026-08-12)** — the four `UBER_DIRECT_*` vars are
+> set in Cloud and auth + the organizations scope were verified with real tokens — serving as the
+> **interim courier network** until DoorDash prod access lands, with a preferred-courier picker;
+> the default provider chain is `['doordash','uber']`. This document remains the source of truth for
 > the auth/capture design and the corrections the live Uber API forced, which the shared settlement
 > path still relies on.
 
