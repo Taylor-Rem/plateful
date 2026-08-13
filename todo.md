@@ -30,10 +30,14 @@ platform payouts routed there. Stripe live mode is **done**: live keys in Cloud,
 webhook + `STRIPE_WEBHOOK_SECRET` configured, the platform-profile loss-liability step completed,
 and the **first live end-to-end order verified 2026-08-11** (details in the §0 item below).
 What's left in §0: POS production env vars (**Clover only — Square done**, live + OAuth-verified
-2026-08-12, see the split item below), Sentry, S3, credential rotation, and the final
+2026-08-12, see the split item below), Sentry, credential rotation, and the final
 `cloud-check.php` pass — and **DoorDash prod access (§3 Session 0/6) is still unfiled and still
 the critical path.** Clover's production developer-account approval was waiting on the EIN; that
-field is now fillable, so the submission packet is unblocked.
+field is now fillable, so the submission packet is unblocked. **Later 2026-08-12 (confirmed by
+Taylor): S3 is configured and working in Laravel Cloud, and the queue worker is running** — both
+checked off below. **Decision: launch on Uber Direct as the courier network while the DoorDash
+production-access request is in flight** (file DoorDash + Clover in parallel with marketing; they
+don't gate outreach).
 
 **Delivery update 2026-08-12 — Uber Direct is umbrella now, not dormant, and it is LIVE.**
 Commits `1d83667` + `59358d2` converted Uber Direct from per-restaurant credentials to the same
@@ -122,9 +126,10 @@ nothing below waits on either anymore):**
       sending.
 - [ ] **Sentry error monitoring**: set `SENTRY_LARAVEL_DSN` in Cloud. `cloud-check.php` already
       checks for it; confirm errors report before launch.
-- [ ] **S3 restaurant-asset storage**: set `FILESYSTEM_DISK=s3` and leave `MEDIA_DISK` unset, + AWS
+- [x] **S3 restaurant-asset storage — DONE (confirmed by Taylor 2026-08-12: configured and
+      working in Laravel Cloud).** Set `FILESYSTEM_DISK=s3` and leave `MEDIA_DISK` unset, + AWS
       creds/bucket in Cloud (menu/logo/hero images). `cloud-check.php` reports the **effective**
-      media disk, not just the raw vars. (Corrected 2026-07-15: this item used to say
+      media disk, not just the raw vars — run it to confirm the effective disk really is s3. (Corrected 2026-07-15: this item used to say
       `FILESYSTEM_RESTAURANT_ASSETS_DRIVER=s3` — that var is read by nothing, and DEPLOY.md paired it
       with `FILESYSTEM_DISK=local`, so following the runbook would have parked every upload on the
       container's ephemeral disk while the check printed green. The real knob is `config/media.php`:
@@ -425,11 +430,12 @@ historical — superseded by this conversion.
       *before* the first restaurant is sold on delivery.
 
 **Before this can take real money** (full list in the plan)
-- [ ] **A queue worker must be running.** Delivery dispatch and the auth/capture deadline are queued
+- [x] **A queue worker must be running — DONE (confirmed by Taylor 2026-08-12: worker up and
+      running on Laravel Cloud).** Delivery dispatch and the auth/capture deadline are queued
       jobs on `QUEUE_CONNECTION=database`. Without a worker, authorized orders never dispatch AND
       never expire — holds sit on customer cards with nothing scheduled to release them. This is the
-      one operational dependency with no in-code backstop. Worth a Sentry alert on
-      `payment_state = 'authorized'` older than an hour.
+      one operational dependency with no in-code backstop. Still worth a Sentry alert on
+      `payment_state = 'authorized'` older than an hour (once Sentry is set, §0).
 - [ ] **DoorDash go-live env** (launch provider): set production `DOORDASH_DEVELOPER_ID` / `KEY_ID` /
       `SIGNING_SECRET` / `WEBHOOK_SECRET` once prod access is granted; register the webhook URL
       (`/webhooks/doordash`) in the DoorDash portal and **confirm the signature scheme** matches
@@ -442,7 +448,13 @@ historical — superseded by this conversion.
       webhook step is gone with the umbrella conversion — restaurants set up nothing.)
 - [ ] **First live end-to-end Uber delivery.** Quote → courier confirmed → capture → settlement on
       a real order — the production delivery path is unexercised until this runs (§3 umbrella
-      update). Do it before the first restaurant is sold on delivery.
+      update). Do it before the first restaurant is sold on delivery. **No customer needed
+      (plan 2026-08-12):** use "testaurant" (the same live test restaurant that verified Stripe) —
+      set its pickup address to a real address (home/a friend's), enable delivery, provision it as
+      an Uber sub-org, place a real order on the live storefront delivering a mile or two away,
+      and hand the courier an actual bag. Cost ≈ one courier fee + Stripe's cut on a small order;
+      the subtotal settles back to the connected account. Exercises quote → auth → courier webhook
+      → capture → POS-push signal → settlement in production.
 - [ ] Rotate the production Uber Client Secret (exposed in a session transcript 2026-07-14) — now
       urgent if the live account's credentials descend from that set, since Uber went live
       2026-08-12; moot if the live account minted a fresh secret. Update
