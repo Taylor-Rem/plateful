@@ -115,6 +115,14 @@ defineProps<{
                         </p>
                         <ul class="mt-4 space-y-2.5">
                             <li>
+                                <!-- Plain anchor: Stories is server-rendered Blade, not an Inertia page. -->
+                                <a
+                                    href="/stories"
+                                    class="transition hover:text-white"
+                                    >Stories</a
+                                >
+                            </li>
+                            <li>
                                 <Link
                                     :href="support()"
                                     class="transition hover:text-white"
