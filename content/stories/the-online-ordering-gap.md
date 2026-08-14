@@ -4,7 +4,7 @@ date: '2026-08-14'
 excerpt: "I catalogued the independent restaurants of the Wasatch Front — 855 of them, across 50 cities. More than half have no way to take an online order of their own. Here's the data."
 author: 'Taylor Remund, founder of Plateful'
 tags: [data]
-published: false
+published: true
 hero: '/images/stories/ordering-gap-hero.png'
 ---
 
