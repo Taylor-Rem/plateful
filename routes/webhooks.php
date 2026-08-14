@@ -17,8 +17,9 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
     Route::post('/stripe/webhook', StripeWebhookController::class)->name('stripe.webhook');
 
     // Uber Direct delivery-status webhooks. One URL for every tenant; the
-    // payload's customer_id selects which restaurant's signing key to verify
-    // against, since each restaurant owns its own Uber account and key.
+    // webhook is configured once on Plateful's root Direct account, so a single
+    // platform-level signing key verifies the signature and the payload
+    // resolves to the restaurant via its provisioned sub-org / delivery ids.
     Route::post('/webhooks/uber', UberDirectWebhookController::class)->name('webhooks.uber');
 
     // DoorDash Drive delivery-status webhooks. One URL for every restaurant;

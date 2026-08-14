@@ -2,6 +2,13 @@
 
 **Status:** in progress · **Decision locked 2026-07-18** · Supersedes the Uber-first launch plan.
 
+> **⚠ Historical framing (noted 2026-08-12).** This plan's "Uber Direct = dormant /
+> per-restaurant" contrasts (the §0 comparison table and later prose) describe Uber as it was when
+> the plan was written. Uber Direct has since been converted to the same **umbrella /
+> central-billing model** as DoorDash and is **live in production** as the **interim delivery
+> provider** until DoorDash prod access lands — see todo.md §3's umbrella update. The DoorDash
+> sessions and money model documented here are unaffected.
+
 ### Progress (updated 2026-07-31)
 
 | Session | What | State |
@@ -16,12 +23,18 @@
 | **6** | Production go-live | ⬜ Not started |
 
 Full suite green at 1019 tests (2026-07-31). All code sessions (1–5) are done. Remaining before
-real money: Session 0/6 only (prod access + Stripe live + a running queue worker). The money model
+real money: Session 0/6 only (prod access + a running queue worker — Stripe went **live**
+2026-08-11 and is no longer a blocker). The money model
 (4a+4b) — the final money gate — is complete.
 
 DoorDash Drive is Plateful's **launch delivery provider**. The complete Uber Direct adapter stays
-in the tree **dormant** (behind the `DeliveryProvider` contract; `DeliveryFallbackAction` already
-supports `try_next_provider`) — do not delete it. This plan is broken into sessions that can each be
+in the tree behind the `DeliveryProvider` contract (`DeliveryFallbackAction` already
+supports `try_next_provider`) — do not delete it. *(2026-08-12 update: Uber Direct has since been
+converted to the same umbrella / central-billing model as DoorDash — commits `1d83667` +
+`59358d2` — and went **live in production the same day** as the **interim** courier network until
+DoorDash prod access lands, with a preferred-courier picker, default chain
+`['doordash','uber']`. The "per-restaurant / dormant" contrasts in this plan's §0 table and
+later prose are historical; see todo.md §3's umbrella update.)* This plan is broken into sessions that can each be
 implemented independently. **Execution order:** `0 → 1 → 4a → 4b → 2 → 3 → 5 → 6` — the session
 *numbers* are stable labels (Session 2 always means provisioning), but they're **run** in that order.
 Rationale: Session 1 (thin adapter) first gives a live sandbox dispatch to observe *and* proves

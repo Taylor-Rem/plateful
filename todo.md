@@ -10,7 +10,7 @@ via flat-fee APIs. Target = independent restaurants dependent on DoorDash/Uber.
 The build splits into two independent jobs: **get the order to the kitchen** (POS injection or
 cloud printer) and **deliver it** (DoorDash Drive / Uber Direct). Sequenced below by dependency.
 
-**Position (2026-07-31):** both jobs have a shipped path — Square + Clover injection, and delivery
+**Position (2026-07-31)** *(SUPERSEDED — see the 2026-08-12 updates below)*: both jobs have a shipped path — Square + Clover injection, and delivery
 via **DoorDash Drive (launch provider, Sessions 1–5 all done incl. refunds; Uber Direct dormant)**.
 Since 07-15 the platform work also landed: the 10-session admin overhaul (2026-07-24), user
 soft-deletes + super-admin Users console, TOTP 2FA (required for supers), and menu-import option
@@ -23,25 +23,53 @@ of the bank account.** Only Stripe genuinely waits on the EIN/bank; Square produ
 DoorDash request do not (see the gating note at the top of §0). **CI on `dev` is fixed**
 (2026-07-31, see the §8 item) — it was env/lint drift, never failing product code.
 
+**§0 update 2026-08-12 — Stripe is LIVE.** Plateful LLC is formed (Utah single-member LLC,
+effective 2026-07-10), the EIN was assigned 2026-08-06 (EIN on file — see private records; never
+write it into this repo), and the business bank account is **open at Mercury**, with Stripe
+platform payouts routed there. Stripe live mode is **done**: live keys in Cloud, the live Connect
+webhook + `STRIPE_WEBHOOK_SECRET` configured, the platform-profile loss-liability step completed,
+and the **first live end-to-end order verified 2026-08-11** (details in the §0 item below).
+What's left in §0: POS production env vars (**Clover only — Square done**, live + OAuth-verified
+2026-08-12, see the split item below), Sentry, credential rotation, and the final
+`cloud-check.php` pass — and **DoorDash prod access (§3 Session 0/6) is still unfiled and still
+the critical path.** Clover's production developer-account approval was waiting on the EIN; that
+field is now fillable, so the submission packet is unblocked. **Later 2026-08-12 (confirmed by
+Taylor): S3 is configured and working in Laravel Cloud, and the queue worker is running** — both
+checked off below. **Decision: launch on Uber Direct as the courier network while the DoorDash
+production-access request is in flight** (file DoorDash + Clover in parallel with marketing; they
+don't gate outreach).
+
+**Delivery update 2026-08-12 — Uber Direct is umbrella now, not dormant, and it is LIVE.**
+Commits `1d83667` + `59358d2` converted Uber Direct from per-restaurant credentials to the same
+umbrella / central-billing model as DoorDash, with a per-restaurant preferred-courier picker and
+the default dispatch chain back to both networks. Later the same day the four `UBER_DIRECT_*`
+vars went into Cloud and auth + the organizations scope were verified by minting real production
+tokens (no delivery created) — **Uber Direct is the interim delivery provider until DoorDash prod
+access lands.** Details + what's still open in the §3 umbrella update.
+
 ---
 
 ## 0. Launch blockers — clear before selling to anyone
 _These gate real revenue and are independent of everything below. Do first._
 
-**What the business bank account actually gates (checked 2026-07-31 against each vendor's own docs
-— the EIN is in flight, faxed 07-30, expect it ~08-05):**
-- **Stripe live mode — GENUINELY GATED.** Platform activation + payout of application fees needs the
-  EIN and a business bank account. Nothing to do here but wait.
-- **Square production — NOT GATED. Do it today.** For an OAuth app the *sellers* are the activated
-  Square accounts, not us. Square Developer confirmed the whole production step is: move the OAuth
-  code to prod, set the production redirect URI, swap in the production app ID + secret. No Square
-  seller activation, no bank account, no approval queue on our side.
+**What the business bank account actually gates (checked 2026-07-31 against each vendor's own docs;
+updated 2026-08-12 — the EIN was assigned 2026-08-06 and the Mercury business account is OPEN, so
+nothing below waits on either anymore):**
+- **Stripe live mode — WAS gated, now DONE (2026-08-11).** Platform activation + payout of
+  application fees needed the EIN and a business bank account; both landed, Stripe is live, and
+  payouts route to Mercury. See the checked-off item below.
+- **Square production — DONE (2026-08-12).** It went exactly as Square Developer described: no
+  seller activation, no bank account, no approval queue on our side — just the production app
+  ID + secret, the production redirect URI, and `SQUARE_ENVIRONMENT=production` in Cloud. The
+  OAuth connect flow was verified against a real Square account the same day. (For an OAuth app
+  the *sellers* are the activated Square accounts, not us.)
 - **Clover production — gated by the EIN, NOT the bank account.** Production developer-account
   approval wants identity verification (name, DOB, home address, ID, OFAC) plus, for a corporate
   developer, **Business EIN/Tax ID + company legal name**. Separately the *app* needs approval before
   it can OAuth to any real merchant: payment-flow videos, EULA, privacy policy, ToS, support
   email/phone/website, icon, screenshots, two-plus stated benefits. Both approvals must land before
-  launch. **The submission packet can be assembled now** — only the EIN field is waiting.
+  launch. **The submission packet is fully unblocked (2026-08-12)** — the EIN field was the last
+  thing waiting, and the EIN is now on file.
 - **DoorDash Drive — NOT gated by the bank account, and the biggest schedule risk we have.** See §3.
 
 - [ ] **Credential rotation (audit 2026-07-16).** A repo/machine-wide scan found **no secret in git
@@ -52,25 +80,44 @@ _These gate real revenue and are independent of everything below. Do first._
       rotation**: every value below is still live until rotated at its source. Priority order:
       - [ ] `LARAVEL_CLOUD_TOKEN` — highest value: it can read the production env, which will soon
             hold **live** Stripe keys. Rotate in the Laravel Cloud dashboard.
-      - [ ] **Production Uber Client Secret** — rotate when provisioning the prod account (§3).
+      - [ ] **Production Uber Client Secret** — the prod account is now live (2026-08-12, §3), so
+            this is due NOW if the live credentials descend from the set exposed 2026-07-14; a
+            freshly issued secret moots it. Rotating means updating `UBER_DIRECT_CLIENT_SECRET`
+            in Cloud too.
       - [ ] `CLAUDE_API_KEY` — live and billed; one click in the Anthropic console.
       - [ ] Low value / rotate at leisure: `SQUARE_APPLICATION_SECRET`, `CLOVER_APP_SECRET`,
             `GOOGLE_CLIENT_SECRET`, `GOOGLE_MAPS_API_KEY` (the IP restriction below matters more),
             the Uber **sandbox** secret, and `APP_KEY` (rotating it invalidates existing sessions
             and any `encrypted` cast — **do NOT rotate once `pos_integrations` /
             `delivery_integrations` hold real tokens**; it would render them undecryptable).
-      - [ ] Stripe test keys: **do not bother rotating** — they're being replaced with live keys
-            anyway. **Set the live keys directly in the Cloud dashboard, never paste them into a
-            chat session**, or they land in a transcript too. Same rule for every secret above.
-- [ ] **Stripe live mode**: swap to live keys, create live webhook + `STRIPE_WEBHOOK_SECRET`,
-      have first restaurant (Marcos) complete **live** Connect onboarding, place one real
-      end-to-end order and confirm application fee + payout land.
-- [ ] **POS environment vars — `SQUARE_ENVIRONMENT=production` + `CLOVER_ENVIRONMENT=production`
-      in Cloud.** Both default to `sandbox` in `config/services.php` and the API/OAuth hosts key
-      entirely off them — unset, every connect and ticket push silently goes to sandbox hosts and
-      real registers never see an order (the same silent-fallback class as the `MEDIA_DISK` item
-      below). Also set the production `SQUARE_*`/`CLOVER_*` app creds + redirect URIs.
-      `cloud-check.php` now checks all of these (added 2026-07-15). DEPLOY.md Step 5 documents them.
+      - [x] Stripe test keys: **do not bother rotating** — superseded by the live swap. The live
+            keys were set **directly in the Cloud dashboard** (2026-08-11), never pasted into a
+            chat session. Same rule for every secret above.
+- [x] **Stripe live mode — DONE (verified 2026-08-11).** Live publishable/secret keys are set in
+      Cloud. The live webhook is created as a **Connect endpoint** at
+      `https://admin.plateful.fyi/stripe/webhook` (listens to connected-account events:
+      `account.updated`, `checkout.session.completed`, `charge.dispute.created`) and
+      `STRIPE_WEBHOOK_SECRET` is set in Cloud. The Connect platform-profile **loss-liability
+      responsibilities are completed** (required before live connected accounts could be
+      created; Stripe manages risk / carries loss liability on Standard). First live end-to-end
+      order verified: **TES-PQXYD** at "testaurant" — subtotal $10.50, tax $0.78, tip $1.58,
+      total $12.86; application fee **$0.42 = exactly 4% of the $10.50 subtotal** (tax + tip
+      correctly excluded); Stripe fee $0.67 paid by the restaurant; restaurant net $11.77,
+      payout scheduled Aug 18. The order materialized via the webhook and ran the full
+      lifecycle to Completed — live webhook + signing secret confirmed working.
+- [x] **Square production env vars — DONE (2026-08-12).** `SQUARE_ENVIRONMENT=production`, the
+      production `SQUARE_APPLICATION_ID` / `SQUARE_APPLICATION_SECRET`, and
+      `SQUARE_REDIRECT_URI=https://admin.plateful.fyi/pos/square/callback` are all set in Laravel
+      Cloud, and the OAuth connect flow was **verified against a real Square account** the same
+      day. (This was the Square half of the old combined "POS environment vars" blocker.)
+- [ ] **Clover production env vars — `CLOVER_ENVIRONMENT=production` + production `CLOVER_*` app
+      creds + redirect URI in Cloud.** Blocked behind Clover's production developer-account + app
+      approvals (see the gating note above — the submission packet is unblocked, approvals not yet
+      granted). `CLOVER_ENVIRONMENT` defaults to `sandbox` in `config/services.php` and the
+      API/OAuth hosts key entirely off it — unset, every connect and ticket push silently goes to
+      sandbox hosts and real registers never see an order (the same silent-fallback class as the
+      `MEDIA_DISK` item below). `cloud-check.php` checks these (added 2026-07-15). DEPLOY.md
+      Step 5 documents them.
 - [x] **Onboarding/delivery keys in Cloud — DONE (confirmed by Taylor 2026-07-31).**
       `CLAUDE_API_KEY` and `GOOGLE_MAPS_API_KEY` are both present in Laravel Cloud. Both are checked
       by `cloud-check.php`. (Key restriction is still open — see §3's "restrict the Google Maps key
@@ -79,9 +126,10 @@ _These gate real revenue and are independent of everything below. Do first._
       sending.
 - [ ] **Sentry error monitoring**: set `SENTRY_LARAVEL_DSN` in Cloud. `cloud-check.php` already
       checks for it; confirm errors report before launch.
-- [ ] **S3 restaurant-asset storage**: set `FILESYSTEM_DISK=s3` and leave `MEDIA_DISK` unset, + AWS
+- [x] **S3 restaurant-asset storage — DONE (confirmed by Taylor 2026-08-12: configured and
+      working in Laravel Cloud).** Set `FILESYSTEM_DISK=s3` and leave `MEDIA_DISK` unset, + AWS
       creds/bucket in Cloud (menu/logo/hero images). `cloud-check.php` reports the **effective**
-      media disk, not just the raw vars. (Corrected 2026-07-15: this item used to say
+      media disk, not just the raw vars — run it to confirm the effective disk really is s3. (Corrected 2026-07-15: this item used to say
       `FILESYSTEM_RESTAURANT_ASSETS_DRIVER=s3` — that var is read by nothing, and DEPLOY.md paired it
       with `FILESYSTEM_DISK=local`, so following the runbook would have parked every upload on the
       container's ephemeral disk while the check printed green. The real knob is `config/media.php`:
@@ -226,11 +274,14 @@ register.** Both live-sandbox tests skip for want of credentials; see the two it
       added to the admin `$connectable` list (`available => true`). `CLOVER_*` env + `config/services.php`.
       Tests: CloverOAuthServiceTest, CloverPushOrderTest, CloverConnectTest, CloverLiveSandboxTest
       (opt-in real-sandbox push+read-back, skipped without creds — mirrors Square's).
-- [ ] **Square live verification — same gap as Clover's, and it was never tracked.** Corrected
+- [ ] **Square live verification — same gap as Clover's, and it was never tracked.** (Distinct
+      from Square *production*, which went live 2026-08-12 with the OAuth connect flow verified —
+      §0. This item is about proving a real **order push**, which still hasn't happened.) Corrected
       2026-07-15: `SQUARE_SANDBOX_ACCESS_TOKEN` / `SQUARE_SANDBOX_LOCATION_ID` are not set, so
       `SquareLiveSandboxTest` **skips** — it has never run. Neither adapter has pushed to a real
-      register; only Uber Direct is genuinely sandbox-verified (its 5 live tests do run and pass
-      locally, because the `UBER_DIRECT_SANDBOX_*` creds are in `.env`). §2c reads as though Square
+      register; only Uber Direct is genuinely sandbox-verified (its live tests do run and pass
+      locally, because the `UBER_DIRECT_*` platform creds are in `.env` — the old
+      `UBER_DIRECT_SANDBOX_*` vars went away with the umbrella conversion, §3). §2c reads as though Square
       is proven and only Clover is pending; they are in identical shape. Note (corrected
       2026-07-15): there are **three** credential-gated live-sandbox suites, not two —
       SquareLiveSandboxTest, CloverLiveSandboxTest, and UberDirectLiveSandboxTest. In CI all three
@@ -256,30 +307,57 @@ and run CloverLiveSandboxTest.
 
 ---
 
-## 3. Delivery dispatch (Phase 2) — **Uber Direct COMPLETE (2026-07-15); DoorDash Drive the launch provider, mostly built (2026-07-17)**
-_Built end-to-end and verified against the real Uber sandbox: per-restaurant credentials, the
-adapter, status webhooks, Places address capture, quote-before-payment, and auth/capture. The
+## 3. Delivery dispatch (Phase 2) — **Uber Direct COMPLETE (2026-07-15) and LIVE (umbrella, 2026-08-12); DoorDash Drive the launch provider, mostly built (2026-07-17)**
+_Built end-to-end and verified against the real Uber sandbox: the adapter, status webhooks,
+Places address capture, quote-before-payment, and auth/capture. The
 customer now gets a committed fee and ETA before paying, and is only ever charged once a courier
-actually exists. `DeliveryFeeStrategy` is wired and `DeliveryDispatcher::quote()` has a caller._
+actually exists. `DeliveryFeeStrategy` is wired and `DeliveryDispatcher::quote()` has a caller.
+(Originally built on per-restaurant credentials — since converted to umbrella, see the
+2026-08-12 update below.)_
 
-**DoorDash Drive is now the launch delivery provider** (Uber kept dormant). As of 2026-07-17,
+**DoorDash Drive is the launch delivery provider**, with Uber Direct **live as the interim
+provider** until DoorDash prod access lands (see the umbrella update below). As of 2026-07-17,
 Sessions 1, 4a, 4b, 2, 3 of the DoorDash plan are DONE (adapter, full money model, one-click
 provisioning, webhooks) — JWT+quote and the §1 money model both verified live against the sandbox.
 Session 5 (refunds) shipped 2026-07-17 (see below). Remaining: Session 0/6 (prod access + go-live).
+
+**Umbrella update 2026-08-12 (commits `1d83667` + `59358d2`):** Uber Direct was converted from
+per-restaurant credentials to the same **umbrella / central-billing model as DoorDash**. One
+platform credential set from `config('services.uber_direct')` — `UBER_DIRECT_CLIENT_ID` /
+`_CLIENT_SECRET` / `_CUSTOMER_ID` (the ROOT org id, shown as "Customer ID" on the Uber billing
+page) / `_WEBHOOK_SECRET` — authenticates every restaurant's deliveries. Restaurants are
+provisioned one-click as **sub-organizations** under Plateful's root Direct account
+(`UberDirectProvisioningService`, Uber Organizations API); only the sub-org id is stored on the
+`delivery_integrations` row. The webhook is configured **once** on the root account with one
+platform-level signing key, received at `https://admin.plateful.fyi/webhooks/uber`. Like DoorDash
+(and unlike Square/Clover) there is no environment/host switch — test and prod share
+`api.uber.com`; test mode is a property of the credentials. The dispatcher runs **both** networks
+with a per-restaurant **preferred-courier picker** (default chain `['doordash','uber']`).
+**LIVE as of 2026-08-12:** the four `UBER_DIRECT_*` vars are set in Cloud, and auth + the
+organizations scope were verified by minting real production tokens (no delivery created).
+**Uber Direct is the interim delivery provider until DoorDash prod access lands.** Still open
+before selling delivery on it: a first live end-to-end Uber delivery (quote → courier → capture →
+settlement) has not been placed, so the delivery path itself is production-unexercised — sandbox
+green is the only evidence. Per-restaurant statements in the dated "Done" logs below are
+historical — superseded by this conversion.
 
 **Full plans:**
 - **[docs/doordash-drive-implementation-plan.md](docs/doordash-drive-implementation-plan.md)** — the
   active plan (launch provider), with a per-session progress table at the top. **Read this first.**
 - [docs/uber-direct-implementation-plan.md](docs/uber-direct-implementation-plan.md) — the Uber
-  adapter (now dormant); carries the auth/capture decisions and the corrections the live API forced.
+  adapter's original plan (its per-restaurant account model is superseded by the 2026-08-12
+  umbrella conversion); still carries the auth/capture decisions and the corrections the live API
+  forced.
 
 **Done 2026-07-14**
 - [x] Live bug: every storefront offered delivery regardless of `delivery_enabled`, charged the fee,
       and the dispatch job returned silently. Gated in `OrderPlacement::prepare()`.
 - [x] `UberDirectProvider` (quote/create/status/cancel) + per-restaurant `delivery_integrations` +
-      `UberDirectTokenService`. Verified live: real token, real priced quote.
-- [x] Status webhooks. The signing key is **per-restaurant** — each restaurant creates its own
-      webhook in its own Uber dashboard, so there is no platform secret.
+      `UberDirectTokenService`. Verified live: real token, real priced quote. *(Credential model
+      since superseded — platform-level umbrella as of 2026-08-12, see the update above.)*
+- [x] Status webhooks. The signing key was **per-restaurant** — each restaurant created its own
+      webhook in its own Uber dashboard. *(Superseded 2026-08-12: one platform-level key on the
+      root Direct account, like DoorDash's.)*
 - [x] Quote before payment. A failed quote = delivery not offered, which is the out-of-range check
       for free.
 - [x] Dropped `customer_delivery_fee_cents_max` and `DeliveryFeeStrategy::Split`; wired
@@ -341,32 +419,47 @@ Session 5 (refunds) shipped 2026-07-17 (see below). Remaining: Session 0/6 (prod
       demo**; (3) demo an end-to-end test delivery — they review API logs, the customer-facing UI,
       compliance handling, and our go-to-market story; (4) on approval, mint production credentials.
       Then go-live: swap to prod creds, confirm the webhook secret + signature scheme in the
-      DoorDash portal, keep the Uber adapter dormant.
+      DoorDash portal; Uber is already live alongside as the interim network (umbrella — §3 update).
       **Prep before the demo:** the restricted-items safeguard is an integration requirement
       (tobacco/cannabis/weapons/explosives; alcohol needs licensing + a signed alcohol addendum) —
       confirm we block or are out of scope for these before they ask on the call.
-      **Contingency if approval stalls or is refused:** delivery is not all-or-nothing — pickup and
-      self-delivery ship without any courier network, and the Uber Direct adapter is complete and
-      dormant (§3, needs a production Uber account that can mint `eats.deliveries`). Decide the
-      fallback *before* the first restaurant is sold on delivery.
+      **Contingency if approval stalls or is refused: already in place.** Pickup and self-delivery
+      ship without any courier network, and Uber Direct is **live in production (2026-08-12)** as
+      the interim courier network (umbrella, §3 update) — the fallback question is answered.
+      What Uber still lacks is a first live end-to-end delivery (§3 umbrella update); verify one
+      *before* the first restaurant is sold on delivery.
 
 **Before this can take real money** (full list in the plan)
-- [ ] **A queue worker must be running.** Delivery dispatch and the auth/capture deadline are queued
+- [x] **A queue worker must be running — DONE (confirmed by Taylor 2026-08-12: worker up and
+      running on Laravel Cloud).** Delivery dispatch and the auth/capture deadline are queued
       jobs on `QUEUE_CONNECTION=database`. Without a worker, authorized orders never dispatch AND
       never expire — holds sit on customer cards with nothing scheduled to release them. This is the
-      one operational dependency with no in-code backstop. Worth a Sentry alert on
-      `payment_state = 'authorized'` older than an hour.
+      one operational dependency with no in-code backstop. Still worth a Sentry alert on
+      `payment_state = 'authorized'` older than an hour (once Sentry is set, §0).
 - [ ] **DoorDash go-live env** (launch provider): set production `DOORDASH_DEVELOPER_ID` / `KEY_ID` /
       `SIGNING_SECRET` / `WEBHOOK_SECRET` once prod access is granted; register the webhook URL
       (`/webhooks/doordash`) in the DoorDash portal and **confirm the signature scheme** matches
       `DoorDashWebhookController::signatureIsValid()` (header + base64-vs-hex, currently assumed).
-- [ ] Provision Plateful's **production** Uber account — it can currently mint only
-      `direct.organizations`, not `eats.deliveries`. Only needed if Uber is un-dormanted; sandbox
-      working says nothing about it.
-- [ ] Rotate the production Uber Client Secret (exposed in a session transcript 2026-07-14).
+- [x] **Uber go-live env — DONE (2026-08-12; interim live provider, umbrella — §3 update).** The
+      four `UBER_DIRECT_*` vars (`CLIENT_ID`/`CLIENT_SECRET`/`CUSTOMER_ID`/`WEBHOOK_SECRET`) are
+      set in Cloud for the production root Direct account, with the **one** root-account webhook
+      pointed at `https://admin.plateful.fyi/webhooks/uber`. Auth + the organizations scope
+      verified by minting real production tokens — no delivery created. (The old per-restaurant
+      webhook step is gone with the umbrella conversion — restaurants set up nothing.)
+- [ ] **First live end-to-end Uber delivery.** Quote → courier confirmed → capture → settlement on
+      a real order — the production delivery path is unexercised until this runs (§3 umbrella
+      update). Do it before the first restaurant is sold on delivery. **No customer needed
+      (plan 2026-08-12):** use "testaurant" (the same live test restaurant that verified Stripe) —
+      set its pickup address to a real address (home/a friend's), enable delivery, provision it as
+      an Uber sub-org, place a real order on the live storefront delivering a mile or two away,
+      and hand the courier an actual bag. Cost ≈ one courier fee + Stripe's cut on a small order;
+      the subtotal settles back to the connected account. Exercises quote → auth → courier webhook
+      → capture → POS-push signal → settlement in production.
+- [ ] Rotate the production Uber Client Secret (exposed in a session transcript 2026-07-14) — now
+      urgent if the live account's credentials descend from that set, since Uber went live
+      2026-08-12; moot if the live account minted a fresh secret. Update
+      `UBER_DIRECT_CLIENT_SECRET` in Cloud when rotating.
 - [ ] Restrict the Google Maps key to Places API (New) + the production server's IP.
-- [ ] (Uber only) Each restaurant creates its own Uber webhook and pastes the signing key. DoorDash's
-      webhook is platform-level (one secret), so this per-restaurant step does not apply to it.
 
 ---
 
@@ -385,10 +478,29 @@ never in the tenant admin. So this is a partial data foundation, not a blank sla
       (Only transactional mail exists today — no campaign/broadcast/newsletter infrastructure.)
 
 ## 5. Public savings calculator (prospect-facing; needs pricing locked, §1)
-- [ ] Public marketing-site calculator: inputs = monthly delivery volume, current effective
-      commission %, Toast add-ons; output = projected monthly/annual savings vs Plateful.
-      (Reuse logic in `docs/plateful_fee_comparison.xlsx`.)
-- [ ] Lead capture + "book a demo" on the result.
+- [x] **Public marketing-site calculator — DONE (2026-08-14).** Live at `/savings` (root domain,
+      route name `savings`): sliders for monthly delivery-app sales, average order size, and
+      commission % (15/20/25/30 presets); output = monthly fees today vs the same orders on
+      Plateful, plus monthly/annual savings. The comparison is deliberately all-in honest: the
+      Plateful side includes Stripe processing (4% + 2.9% + 30¢/order ≈ 7.9%), since app
+      commissions bundle processing. Rates arrive as props from `config/platform.php`
+      (`SavingsCalculatorController`), so page math can't drift from real pricing. Toast add-on
+      inputs were dropped on purpose — we don't chase Toast restaurants (§0 strategy note).
+      Crawlable SEO prose section below the calculator targets "delivery app fees Utah
+      restaurants". Tests: `SavingsPageTest`. Linked from the for-restaurants nav + hero
+      ("Run your own numbers"), the marketing footer, and the sitemap.
+- [x] **"Book a call" on the result — DONE (2026-08-14).** The result CTA points at `/book`
+      (route name `booking`, `BookingController`), which embeds the Cal.com calendar inline
+      (`resources/js/lib/calEmbed.ts`) so prospects schedule without leaving plateful.fyi;
+      plain-link fallback if the embed script can't load. Configured via `PLATFORM_BOOKING_URL`
+      (primary 15-min event) + optional `PLATFORM_BOOKING_URL_LONG` (30-min) — see DEPLOY.md
+      Step 5. Unset → CTAs fall back to signup and `/book` redirects to `/for-restaurants`, so
+      printed links never 404. Both vars are pinned empty in `phpunit.xml` (same pattern as the
+      `DOORDASH_*` pins) so a developer's real links can't flip suite defaults. Entry points:
+      `/savings` CTA, for-restaurants final CTA ("book a 15-minute call", rendered only when
+      configured), marketing footer. Tests: `BookingPageTest`. Classic lead-capture form (name +
+      email) deliberately not built — the booking link IS the capture mechanism (pull, not push);
+      revisit only if calls don't book.
 
 ## 6. Onboarding automation (reduces setup friction — enables the "free setup" pitch)
 - [x] AI menu import from **photos + PDF** — `MenuImportController` → `ExtractMenuJob` →
@@ -671,8 +783,9 @@ shipped and logged in §8 (checkout throttle, dispute webhook, cloud-check cover
 3. ~~**§2b/2c Square injection + pickup**~~ — Square + Clover adapters done; catalog matcher open.
 4. ~~**§3 delivery**~~ — Uber Direct complete 2026-07-15. Both halves of the strategy ("get the
    order to the kitchen" and "deliver it") now have a shipped path.
-5. **Next: §0 launch blockers.** The build has outrun the launch prep — delivery is done and Stripe
-   is still in test mode. §0 + §3's "Before this can take real money" list are what stand between
+5. **Next: §0 launch blockers.** Stripe went **live 2026-08-11** (first real order verified) —
+   what remains of §0 (DoorDash prod access above all, plus POS prod env, Sentry, S3, rotation)
+   + §3's "Before this can take real money" list are what stand between
    this and a paying restaurant. The **§11 hardening decisions** (email verification, dispute
    surface, restaurant go-live checklist) come before onboarding restaurants at volume.
 6. **§4 customer ownership** to make the pitch real; **§5 calculator** once pricing is locked.

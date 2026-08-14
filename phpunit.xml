@@ -29,6 +29,11 @@
              admin.plateful.test in tests (e.g. AdminHomeTest's HOME_ADMIN_BASE). -->
         <env name="APP_URL" value="http://plateful.test"/>
         <env name="PLATFORM_PRIMARY_DOMAIN" value="plateful.test"/>
+        <!-- Pinned empty (same pattern as the DOORDASH_* pins below) so a
+             developer's real scheduling links in .env can't flip the
+             booking-page defaults the suite asserts on. -->
+        <env name="PLATFORM_BOOKING_URL" value="" force="true"/>
+        <env name="PLATFORM_BOOKING_URL_LONG" value="" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <!-- No SSR gateway runs in tests; without this every Inertia render
              attempts an HTTP call to 127.0.0.1:13714, which the global

@@ -1,7 +1,11 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\OwnerSignupController;
+use App\Http\Controllers\SavingsCalculatorController;
+use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\StoryController;
 use App\Models\Restaurant;
 use Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests;
 use Illuminate\Http\Request;
@@ -47,6 +51,48 @@ Route::domain(config('platform.primary_domain'))->group(function () {
             'hasAdminAccess' => (bool) $request->user()?->isAdmin(),
         ]);
     })->name('home');
+
+    /*
+    |---------------------------------------------------------------------------
+    | Stories
+    |---------------------------------------------------------------------------
+    |
+    | A flat-file publication about Utah's independent restaurants, rendered
+    | as plain server-side Blade (not Inertia) so every page ships complete,
+    | crawlable HTML. Posts live in content/stories/*.md.
+    |
+    */
+    Route::prefix('stories')->name('stories.')->controller(StoryController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('feed', 'feed')->name('feed');
+        Route::get('{slug}', 'show')->where('slug', '[a-z0-9-]+')->name('show');
+    });
+
+    Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+
+    /*
+    |---------------------------------------------------------------------------
+    | Savings calculator
+    |---------------------------------------------------------------------------
+    |
+    | The self-serve "what do the delivery apps cost you" calculator every
+    | marketing channel points at. Public, guest-accessible, on the root
+    | domain — /savings is deliberately short enough to say out loud.
+    |
+    */
+    Route::get('/savings', SavingsCalculatorController::class)->name('savings');
+
+    /*
+    |---------------------------------------------------------------------------
+    | Book a call
+    |---------------------------------------------------------------------------
+    |
+    | The speakable scheduling URL (one-pagers, bios, calculator CTA). Embeds
+    | the configured Cal.com calendar inline; falls back to the marketing
+    | page when no scheduling link is configured yet.
+    |
+    */
+    Route::get('/book', BookingController::class)->name('booking');
 
     Route::get('/terms', fn () => Inertia::render('Legal/Terms'))->name('terms');
     Route::get('/privacy', fn () => Inertia::render('Legal/Privacy'))->name('privacy');

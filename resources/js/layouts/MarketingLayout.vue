@@ -5,7 +5,7 @@ import {
     landing as forRestaurantsLanding,
 } from '@/actions/App/Http/Controllers/OwnerSignupController';
 import AppWordmark from '@/components/AppWordmark.vue';
-import { home, privacy, support, terms } from '@/routes';
+import { booking, home, privacy, savings, support, terms } from '@/routes';
 
 defineProps<{
     adminUrl?: string | null;
@@ -99,6 +99,23 @@ defineProps<{
                             </li>
                             <li>
                                 <Link
+                                    :href="savings()"
+                                    class="transition hover:text-white"
+                                    >Savings calculator</Link
+                                >
+                            </li>
+                            <li>
+                                <!-- Plain anchor: /book may redirect off-site
+                                     to an external scheduler, which an Inertia
+                                     visit can't follow. -->
+                                <a
+                                    :href="booking().url"
+                                    class="transition hover:text-white"
+                                    >Book a call</a
+                                >
+                            </li>
+                            <li>
+                                <Link
                                     :href="createSignup()"
                                     class="transition hover:text-white"
                                     >Get started</Link
@@ -114,6 +131,14 @@ defineProps<{
                             Company
                         </p>
                         <ul class="mt-4 space-y-2.5">
+                            <li>
+                                <!-- Plain anchor: Stories is server-rendered Blade, not an Inertia page. -->
+                                <a
+                                    href="/stories"
+                                    class="transition hover:text-white"
+                                    >Stories</a
+                                >
+                            </li>
                             <li>
                                 <Link
                                     :href="support()"

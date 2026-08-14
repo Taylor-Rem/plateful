@@ -1,12 +1,18 @@
 # Uber Direct — Implementation Plan
 
-> **⚠ SUPERSEDED as the launch plan (2026-07-17).** DoorDash Drive is now Plateful's launch delivery
+> **⚠ SUPERSEDED as the launch plan (2026-07-17).** DoorDash Drive is Plateful's launch delivery
 > provider — see **[docs/doordash-drive-implementation-plan.md](doordash-drive-implementation-plan.md)**.
-> This Uber Direct adapter is **complete and kept DORMANT** behind the provider-agnostic
-> `DeliveryProvider` contract (it only runs for a restaurant that explicitly prioritizes `uber`); the
-> default provider chain is now `['doordash']`. Do **not** delete it — it's a free fallback / future
-> price-routing option. This document remains the source of truth for the auth/capture design and the
-> corrections the live Uber API forced, which the shared settlement path still relies on.
+> **Umbrella conversion (2026-08-12, commits `1d83667` + `59358d2`):** the per-restaurant account
+> model this plan describes (§0, and the per-restaurant webhook signing key below) is **no longer
+> how the adapter works** — Uber Direct now uses ONE platform credential set
+> (`config('services.uber_direct')`), restaurants are provisioned as sub-organizations under
+> Plateful's root Direct account, and one platform-level webhook lives on the root account, exactly
+> like DoorDash. Uber is **LIVE in production (2026-08-12)** — the four `UBER_DIRECT_*` vars are
+> set in Cloud and auth + the organizations scope were verified with real tokens — serving as the
+> **interim courier network** until DoorDash prod access lands, with a preferred-courier picker;
+> the default provider chain is `['doordash','uber']`. This document remains the source of truth for
+> the auth/capture design and the corrections the live Uber API forced, which the shared settlement
+> path still relies on.
 
 Drafted 2026-07-14. Covers §3 of [todo.md](../todo.md) (delivery dispatch), Uber Direct half.
 DoorDash Drive followed the same shape and is now the launch provider (its own plan above).

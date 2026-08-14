@@ -31,6 +31,7 @@ class OwnerSignupController extends Controller
             'authUserName' => $user?->name,
             'hasAdminAccess' => (bool) $user?->isAdmin(),
             'adminUrl' => $request->getScheme().'://admin.'.config('platform.primary_domain'),
+            'canBookCall' => (bool) config('platform.booking_url'),
         ]);
     }
 

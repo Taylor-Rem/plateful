@@ -128,11 +128,29 @@ On Growth+ with Redis/KV available, switch all three to `redis`.
 
 `scripts/cloud-check.php` reports these as LIVE/TEST by prefix — run it after setting them.
 
+**The live webhook (configured 2026-08-11, verified with a real order).** The production
+endpoint is `https://admin.plateful.fyi/stripe/webhook`, created in the Stripe dashboard as a
+**Connect endpoint** — it must listen to *connected-account* events, not account events, or
+`checkout.session.completed` from direct charges never arrives and orders never materialize.
+It subscribes to exactly the three events `StripeWebhookController` handles:
+
+- `account.updated` — connected-account onboarding status
+- `checkout.session.completed` — order materialization
+- `charge.dispute.created` — chargeback visibility
+
+Its `whsec_…` signing secret lives **only** in the Laravel Cloud environment as
+`STRIPE_WEBHOOK_SECRET` — never in the repo, `.env.example`, or a chat session.
+
 ### POS — Square & Clover (⚠ both default to `sandbox`)
 
 `config/services.php` falls back to `sandbox` for both providers and the API/OAuth **hosts key off
 this value** — if production doesn't set these explicitly, every OAuth connect and every ticket
 push silently goes to the sandbox hosts and real registers never see an order.
+
+**Status (2026-08-12):** the `SQUARE_*` rows below are **set in production** — Square is live, and
+the OAuth connect flow was verified against a real Square account. The `CLOVER_*` rows are **still
+pending**: Clover's production developer-account + app approvals haven't been granted yet (todo.md
+§0). The sandbox-default warning above still applies to any fresh environment.
 
 | Key | Value |
 |---|---|
@@ -151,7 +169,14 @@ push silently goes to the sandbox hosts and real registers never see an order.
 | `DOORDASH_DEVELOPER_ID` / `DOORDASH_KEY_ID` / `DOORDASH_SIGNING_SECRET` | **launch delivery provider.** Platform-level DoorDash Drive credentials (one set for all restaurants; every request is signed with a per-request DD-JWT-V1). Use the **production** set once DoorDash grants prod access — until then these are sandbox creds. Restaurants paste nothing; Plateful provisions each Business/Store. |
 | `DOORDASH_WEBHOOK_SECRET` | shared secret for the DoorDash status webhook at `https://admin.<primary>/webhooks/doordash`. Register the URL in the DoorDash portal and **confirm the signature scheme** matches `DoorDashWebhookController::signatureIsValid()` (HMAC-SHA256; header + base64-vs-hex currently assumed). |
 | `DOORDASH_BASE_URL` | optional; defaults to `https://openapi.doordash.com` (same host for sandbox and prod — the environment is a property of the credentials). |
-| `UBER_DIRECT_SANDBOX_*` | Uber Direct is now the **dormant** fallback provider. Leave **unset** in production — Uber credentials are per-restaurant and live encrypted in `delivery_integrations`; the sandbox vars exist only for local dev and the opt-in live test. |
+| `UBER_DIRECT_CLIENT_ID` / `UBER_DIRECT_CLIENT_SECRET` | **interim live courier network (umbrella model, same shape as DoorDash) until DoorDash prod access lands.** Platform credentials for Plateful's **root** Uber Direct account (production set; the root account must be able to mint the `eats.deliveries` scope). One set for all restaurants — restaurants sign up for nothing and paste nothing; Plateful provisions each one one-click as a **sub-organization** via the Organizations API (`UberDirectProvisioningService`), storing only the org id on `delivery_integrations`. **Set in Cloud 2026-08-12.** |
+| `UBER_DIRECT_CUSTOMER_ID` | the **root** organization id — shown as **"Customer ID"** on the Uber Direct developer dashboard's billing page. The parent under which restaurant sub-orgs are created. |
+| `UBER_DIRECT_WEBHOOK_SECRET` | signing key of the **one** webhook configured on the root Direct account, pointed at `https://admin.<primary>/webhooks/uber` (production: `https://admin.plateful.fyi/webhooks/uber`). Platform-level, exactly like DoorDash's — there is no per-restaurant webhook or key. |
+
+Like DoorDash (and unlike Square/Clover) Uber Direct has **no environment/host switch**: test and
+production share `api.uber.com`, and test mode is a property of the credentials. The dispatcher
+runs both courier networks with a per-restaurant **preferred courier network** picker
+(`DeliveryDispatcher`; default chain `['doordash', 'uber']`).
 
 ### Google login (optional but wired)
 
@@ -197,6 +222,13 @@ menu photo writes to the container's ephemeral disk and disappears on the next d
 |---|---|
 | `PLATFORM_PRIMARY_DOMAIN` | the bare host Cloud assigned, e.g. `your-app.laravel.cloud` |
 | `PLATFORM_ADMIN_SUBDOMAIN` | `admin` |
+
+### Marketing / booking (optional)
+
+| Key | Value |
+|---|---|
+| `PLATFORM_BOOKING_URL` | primary Cal.com event, e.g. `https://cal.com/plateful-founder/15min` — powers `/book` (embedded inline) and the "book a call" CTAs on `/savings` and `/for-restaurants`. Unset → those CTAs fall back to signup and `/book` redirects to `/for-restaurants`. |
+| `PLATFORM_BOOKING_URL_LONG` | optional longer event, e.g. `https://cal.com/plateful-founder/30min` — offered as a secondary link on `/book`. |
 
 ---
 
@@ -291,6 +323,16 @@ placeholders):
 - **Host:** Laravel Cloud, project `plateful`, environment `main`, live at
   <https://plateful.fyi>. Dashboard: <https://cloud.laravel.com/taylor-remund/plateful/main>.
 - **DNS:** Porkbun (Cloudflare backend) for `plateful.fyi`.
+- **Payments:** Stripe **live mode** since 2026-08-11 (platform account `founder@plateful.fyi`;
+  Standard-platform loss-liability profile completed; restaurants are Express connected
+  accounts, direct charges + application fee). Live Connect webhook at
+  `https://admin.plateful.fyi/stripe/webhook` — see the Stripe env section above.
+- **Payouts:** Plateful LLC business account at **Mercury** — Stripe platform payouts route
+  there.
+- **Delivery:** Uber Direct **live** (2026-08-12) as the **interim** courier network until
+  DoorDash Drive production access lands — umbrella model, all four `UBER_DIRECT_*` vars set in
+  Cloud; auth + the organizations scope verified by minting real production tokens (no live
+  delivery placed yet). Root-account webhook at `https://admin.plateful.fyi/webhooks/uber`.
 - **Ops without the dashboard:** Laravel Cloud REST API / CLI. A token lives in
   local `.env` as `LARAVEL_CLOUD_TOKEN` (gitignored, never in the repo or Cloud).
   Read-only readiness check: `php scripts/cloud-check.php`.
