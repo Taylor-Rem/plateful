@@ -14,6 +14,7 @@ const props = defineProps<{
     hasAdminAccess: boolean;
     adminUrl: string;
     feePercent: number;
+    feeCapCents: number;
     stripeVariableRate: number;
     stripeFixedFeeCents: number;
     bookingUrl: string | null;
@@ -35,7 +36,8 @@ const commissionPresets = [15, 20, 25, 30];
  * The honest all-in comparison. Delivery-app commissions include payment
  * processing, so the Plateful side must carry Stripe's processing cost too:
  * fee % + Stripe's variable rate on every dollar, plus the fixed per-charge
- * fee on every order.
+ * fee on every order. The platform fee is capped per calendar month; Stripe
+ * processing is not (it goes to Stripe, not Plateful).
  */
 const ordersPerMonth = computed(() =>
     averageOrder.value > 0 ? monthlySales.value / averageOrder.value : 0,
@@ -45,10 +47,23 @@ const feesTodayMonthly = computed(
     () => monthlySales.value * (commissionPercent.value / 100),
 );
 
+const feeCapDollars = computed(() => props.feeCapCents / 100);
+
+const platefulPlatformFeeMonthly = computed(() =>
+    Math.min(
+        monthlySales.value * (props.feePercent / 100),
+        feeCapDollars.value,
+    ),
+);
+
+const capActive = computed(
+    () => monthlySales.value * (props.feePercent / 100) >= feeCapDollars.value,
+);
+
 const platefulFeesMonthly = computed(
     () =>
-        monthlySales.value *
-            (props.feePercent / 100 + props.stripeVariableRate) +
+        platefulPlatformFeeMonthly.value +
+        monthlySales.value * props.stripeVariableRate +
         ordersPerMonth.value * (props.stripeFixedFeeCents / 100),
 );
 
@@ -348,11 +363,25 @@ function money(value: number): string {
                                         ></div>
                                     </div>
                                     <p class="mt-1.5 text-xs text-stone-500">
-                                        {{ feePercent }}% Plateful + Stripe
-                                        processing ≈
-                                        {{
-                                            platefulEffectivePercent.toFixed(1)
-                                        }}% all-in
+                                        <template v-if="capActive">
+                                            {{ feePercent }}% fee capped at
+                                            {{ money(feeCapDollars) }}/mo +
+                                            Stripe processing ≈
+                                            {{
+                                                platefulEffectivePercent.toFixed(
+                                                    1,
+                                                )
+                                            }}% all-in
+                                        </template>
+                                        <template v-else>
+                                            {{ feePercent }}% Plateful + Stripe
+                                            processing ≈
+                                            {{
+                                                platefulEffectivePercent.toFixed(
+                                                    1,
+                                                )
+                                            }}% all-in
+                                        </template>
                                     </p>
                                 </div>
                             </div>
@@ -383,6 +412,16 @@ function money(value: number): string {
                                         money(savingsYearly)
                                     }}</span>
                                     a year back in your pocket.
+                                </p>
+                                <p
+                                    v-if="capActive"
+                                    class="mt-3 border-t border-white/15 pt-3 text-xs leading-relaxed text-teal-100/80"
+                                    data-test="cap-note"
+                                >
+                                    Includes our
+                                    {{ money(feeCapDollars) }}/month fee cap —
+                                    past that, extra orders only cost card
+                                    processing.
                                 </p>
                             </div>
                             <div
@@ -446,14 +485,15 @@ function money(value: number): string {
                     class="mx-auto mt-8 max-w-3xl text-center text-xs leading-relaxed text-stone-400"
                 >
                     Plateful charges {{ feePercent }}% of the food subtotal —
-                    tax, tips, and delivery fees excluded. The Plateful figure
-                    above includes Stripe's standard card processing ({{
+                    tax, tips, and delivery fees excluded — capped at
+                    {{ money(feeCapDollars) }} per calendar month. The Plateful
+                    figure above includes Stripe's standard card processing ({{
                         (stripeVariableRate * 100).toFixed(1)
                     }}% + {{ stripeFixedFeeCents }}¢ per order), which delivery
-                    apps bundle into their commission. Marketplace apps also
-                    bring new customers; this comparison is about your own
-                    repeat and direct orders. Third-party pricing varies by plan
-                    and region.
+                    apps bundle into their commission and which isn't subject to
+                    the cap. Marketplace apps also bring new customers; this
+                    comparison is about your own repeat and direct orders.
+                    Third-party pricing varies by plan and region.
                 </p>
             </div>
         </section>
@@ -479,10 +519,12 @@ function money(value: number): string {
                         Plateful is the other way to take online orders: your
                         own branded ordering site, where customers order and pay
                         you directly. Plateful charges a flat
-                        {{ feePercent }}% of the food subtotal. Card processing
-                        goes through Stripe at its standard rate, so your true
-                        all-in cost is around 8% — roughly a third of what a 25%
-                        marketplace plan takes.
+                        {{ feePercent }}% of the food subtotal, capped at
+                        {{ money(feeCapDollars) }} a month — a busy month never
+                        gets expensive. Card processing goes through Stripe at
+                        its standard rate, so your true all-in cost is around 8%
+                        — roughly a third of what a 25% marketplace plan takes —
+                        and past the cap it only falls as you grow.
                     </p>
                     <p>
                         Just as important: on your own storefront, the customer

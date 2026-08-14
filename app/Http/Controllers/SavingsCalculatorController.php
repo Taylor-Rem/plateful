@@ -32,6 +32,7 @@ class SavingsCalculatorController extends Controller
             'hasAdminAccess' => (bool) $user?->isAdmin(),
             'adminUrl' => $request->getScheme().'://admin.'.config('platform.primary_domain'),
             'feePercent' => (float) config('platform.default_application_fee_percent'),
+            'feeCapCents' => (int) config('platform.commission_monthly_cap_cents'),
             'stripeVariableRate' => (float) config('platform.stripe_variable_rate'),
             'stripeFixedFeeCents' => self::STRIPE_FIXED_FEE_CENTS,
             'bookingUrl' => config('platform.booking_url'),

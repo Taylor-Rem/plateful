@@ -19,6 +19,7 @@ const props = defineProps<{
     hasAdminAccess: boolean;
     adminUrl: string;
     canBookCall: boolean;
+    feeCapDollars: number;
 }>();
 
 // Owners sign in on the admin host, so post-login `/` resolves to the admin
@@ -400,7 +401,9 @@ const feeComparison: {
                         <p class="mt-4 leading-relaxed text-stone-600">
                             We charge 4% of the food subtotal — not tax, not
                             tips, not delivery fees. No monthly fee, no tiers,
-                            no minimums. Just a simple cut when you make a sale.
+                            no minimums. Just a simple cut when you make a sale
+                            — and it's capped at ${{ feeCapDollars }} a month,
+                            so a busy month never gets expensive.
                         </p>
                         <div class="mt-8 flex items-baseline gap-3">
                             <span

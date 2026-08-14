@@ -4,7 +4,7 @@ date: '2026-08-13'
 excerpt: "I couldn't order dinner from a restaurant that had no website. That small annoyance turned into a question, then an idea, then a company."
 author: 'Taylor Remund, founder of Plateful'
 tags: [explainer]
-published: false
+published: true
 ---
 
 Plateful started because I was hungry.
