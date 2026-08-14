@@ -5,7 +5,7 @@ import {
     landing as forRestaurantsLanding,
 } from '@/actions/App/Http/Controllers/OwnerSignupController';
 import AppWordmark from '@/components/AppWordmark.vue';
-import { home, privacy, support, terms } from '@/routes';
+import { booking, home, privacy, savings, support, terms } from '@/routes';
 
 defineProps<{
     adminUrl?: string | null;
@@ -95,6 +95,23 @@ defineProps<{
                                     "
                                     class="transition hover:text-white"
                                     >Pricing</a
+                                >
+                            </li>
+                            <li>
+                                <Link
+                                    :href="savings()"
+                                    class="transition hover:text-white"
+                                    >Savings calculator</Link
+                                >
+                            </li>
+                            <li>
+                                <!-- Plain anchor: /book may redirect off-site
+                                     to an external scheduler, which an Inertia
+                                     visit can't follow. -->
+                                <a
+                                    :href="booking().url"
+                                    class="transition hover:text-white"
+                                    >Book a call</a
                                 >
                             </li>
                             <li>

@@ -223,6 +223,13 @@ menu photo writes to the container's ephemeral disk and disappears on the next d
 | `PLATFORM_PRIMARY_DOMAIN` | the bare host Cloud assigned, e.g. `your-app.laravel.cloud` |
 | `PLATFORM_ADMIN_SUBDOMAIN` | `admin` |
 
+### Marketing / booking (optional)
+
+| Key | Value |
+|---|---|
+| `PLATFORM_BOOKING_URL` | primary Cal.com event, e.g. `https://cal.com/plateful-founder/15min` — powers `/book` (embedded inline) and the "book a call" CTAs on `/savings` and `/for-restaurants`. Unset → those CTAs fall back to signup and `/book` redirects to `/for-restaurants`. |
+| `PLATFORM_BOOKING_URL_LONG` | optional longer event, e.g. `https://cal.com/plateful-founder/30min` — offered as a secondary link on `/book`. |
+
 ---
 
 ## Step 6: First deploy

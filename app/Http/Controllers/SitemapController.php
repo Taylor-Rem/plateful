@@ -16,6 +16,7 @@ class SitemapController extends Controller
         $pages = [
             route('home'),
             route('owner-signup.landing'),
+            route('savings'),
             route('support'),
             route('stories.index'),
         ];

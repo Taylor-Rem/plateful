@@ -478,10 +478,29 @@ never in the tenant admin. So this is a partial data foundation, not a blank sla
       (Only transactional mail exists today — no campaign/broadcast/newsletter infrastructure.)
 
 ## 5. Public savings calculator (prospect-facing; needs pricing locked, §1)
-- [ ] Public marketing-site calculator: inputs = monthly delivery volume, current effective
-      commission %, Toast add-ons; output = projected monthly/annual savings vs Plateful.
-      (Reuse logic in `docs/plateful_fee_comparison.xlsx`.)
-- [ ] Lead capture + "book a demo" on the result.
+- [x] **Public marketing-site calculator — DONE (2026-08-14).** Live at `/savings` (root domain,
+      route name `savings`): sliders for monthly delivery-app sales, average order size, and
+      commission % (15/20/25/30 presets); output = monthly fees today vs the same orders on
+      Plateful, plus monthly/annual savings. The comparison is deliberately all-in honest: the
+      Plateful side includes Stripe processing (4% + 2.9% + 30¢/order ≈ 7.9%), since app
+      commissions bundle processing. Rates arrive as props from `config/platform.php`
+      (`SavingsCalculatorController`), so page math can't drift from real pricing. Toast add-on
+      inputs were dropped on purpose — we don't chase Toast restaurants (§0 strategy note).
+      Crawlable SEO prose section below the calculator targets "delivery app fees Utah
+      restaurants". Tests: `SavingsPageTest`. Linked from the for-restaurants nav + hero
+      ("Run your own numbers"), the marketing footer, and the sitemap.
+- [x] **"Book a call" on the result — DONE (2026-08-14).** The result CTA points at `/book`
+      (route name `booking`, `BookingController`), which embeds the Cal.com calendar inline
+      (`resources/js/lib/calEmbed.ts`) so prospects schedule without leaving plateful.fyi;
+      plain-link fallback if the embed script can't load. Configured via `PLATFORM_BOOKING_URL`
+      (primary 15-min event) + optional `PLATFORM_BOOKING_URL_LONG` (30-min) — see DEPLOY.md
+      Step 5. Unset → CTAs fall back to signup and `/book` redirects to `/for-restaurants`, so
+      printed links never 404. Both vars are pinned empty in `phpunit.xml` (same pattern as the
+      `DOORDASH_*` pins) so a developer's real links can't flip suite defaults. Entry points:
+      `/savings` CTA, for-restaurants final CTA ("book a 15-minute call", rendered only when
+      configured), marketing footer. Tests: `BookingPageTest`. Classic lead-capture form (name +
+      email) deliberately not built — the booking link IS the capture mechanism (pull, not push);
+      revisit only if calls don't book.
 
 ## 6. Onboarding automation (reduces setup friction — enables the "free setup" pitch)
 - [x] AI menu import from **photos + PDF** — `MenuImportController` → `ExtractMenuJob` →

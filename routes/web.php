@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\OwnerSignupController;
+use App\Http\Controllers\SavingsCalculatorController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StoryController;
 use App\Models\Restaurant;
@@ -67,6 +69,30 @@ Route::domain(config('platform.primary_domain'))->group(function () {
     });
 
     Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+
+    /*
+    |---------------------------------------------------------------------------
+    | Savings calculator
+    |---------------------------------------------------------------------------
+    |
+    | The self-serve "what do the delivery apps cost you" calculator every
+    | marketing channel points at. Public, guest-accessible, on the root
+    | domain — /savings is deliberately short enough to say out loud.
+    |
+    */
+    Route::get('/savings', SavingsCalculatorController::class)->name('savings');
+
+    /*
+    |---------------------------------------------------------------------------
+    | Book a call
+    |---------------------------------------------------------------------------
+    |
+    | The speakable scheduling URL (one-pagers, bios, calculator CTA). Embeds
+    | the configured Cal.com calendar inline; falls back to the marketing
+    | page when no scheduling link is configured yet.
+    |
+    */
+    Route::get('/book', BookingController::class)->name('booking');
 
     Route::get('/terms', fn () => Inertia::render('Legal/Terms'))->name('terms');
     Route::get('/privacy', fn () => Inertia::render('Legal/Privacy'))->name('privacy');

@@ -21,6 +21,10 @@ createInertiaApp({
             case name === 'Support':
                 // Public legal and support pages wrap themselves in LegalLayout.
                 return null;
+            case name === 'Savings':
+            case name === 'Book':
+                // Public marketing pages that wrap themselves in MarketingLayout.
+                return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
             case name.startsWith('settings/'):

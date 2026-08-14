@@ -6,6 +6,25 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Booking URL
+    |---------------------------------------------------------------------------
+    |
+    | External scheduling link (e.g. Cal.com) used by marketing pages as the
+    | "book a call" call to action. Null until a scheduling page exists —
+    | pages fall back to the self-serve signup flow when unset.
+    |
+    | The `?: null` collapses an empty env value ("PLATFORM_BOOKING_URL=") to
+    | null, so pages get one falsy shape instead of two.
+    |
+    | `booking_url` is the primary (short) event; `booking_url_long` is an
+    | optional longer slot offered as a secondary link on the /book page.
+    |
+    */
+    'booking_url' => env('PLATFORM_BOOKING_URL') ?: null,
+    'booking_url_long' => env('PLATFORM_BOOKING_URL_LONG') ?: null,
+
+    /*
+    |---------------------------------------------------------------------------
     | Default Application Fee Percent
     |---------------------------------------------------------------------------
     |

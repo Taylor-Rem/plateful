@@ -12,11 +12,13 @@ import {
 import { computed } from 'vue';
 import { create as createSignup } from '@/actions/App/Http/Controllers/OwnerSignupController';
 import MarketingLayout from '@/layouts/MarketingLayout.vue';
+import { booking, savings as savingsCalculator } from '@/routes';
 
 const props = defineProps<{
     authUserName: string | null;
     hasAdminAccess: boolean;
     adminUrl: string;
+    canBookCall: boolean;
 }>();
 
 // Owners sign in on the admin host, so post-login `/` resolves to the admin
@@ -125,6 +127,11 @@ const feeComparison: {
                 href="#pricing"
                 class="hidden rounded-full px-3.5 py-2 font-medium text-stone-600 transition hover:bg-stone-900/5 hover:text-stone-900 sm:inline-block"
                 >Pricing</a
+            >
+            <Link
+                :href="savingsCalculator()"
+                class="hidden rounded-full px-3.5 py-2 font-medium text-stone-600 transition hover:bg-stone-900/5 hover:text-stone-900 sm:inline-block"
+                >Savings</Link
             >
             <a
                 href="#how-it-works"
@@ -326,6 +333,15 @@ const feeComparison: {
                             varies by plan and region. Stripe's standard
                             processing fees apply on every platform.
                         </p>
+
+                        <Link
+                            :href="savingsCalculator()"
+                            class="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-teal-700 underline-offset-4 hover:underline"
+                            data-test="hero-savings-link"
+                        >
+                            Run your own numbers
+                            <ArrowRight class="size-3.5" />
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -531,6 +547,21 @@ const feeComparison: {
                             Get started
                             <ArrowRight class="size-4" />
                         </Link>
+                        <!-- Plain anchor: /book may redirect off-site to an
+                             external scheduler, which an Inertia visit can't
+                             follow. -->
+                        <p
+                            v-if="canBookCall"
+                            class="mt-4 text-sm text-teal-100/80"
+                        >
+                            Prefer to talk it through first?
+                            <a
+                                :href="booking().url"
+                                class="font-semibold text-white underline underline-offset-4 transition hover:text-teal-50"
+                                data-test="cta-book-call"
+                                >Book a 15-minute call</a
+                            >.
+                        </p>
                     </div>
                 </div>
             </div>
