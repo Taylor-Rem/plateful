@@ -148,6 +148,15 @@ self-contained; unblocks the savings calculator and the whole fee story. Do earl
 - **Rate: 4.00% flat.** No tiers, no volume discounts. Simple to quote, honest, and a blowout vs.
   the 15–40% the delivery apps take. A high-volume restaurant that ever balks gets negotiated 1:1
   later — not a system to build now.
+- **Monthly fee cap — raised $249 → $399 and made PUBLIC (2026-08-14).** The cap
+  (`platform.commission_monthly_cap_cents`, snapshotted per restaurant at creation) now appears in
+  the savings calculator math + copy and the /for-restaurants pricing section, both fed from config
+  so copy can't drift. Rationale: competitors charge flat monthly (Owner.com ~$249–499/mo,
+  ChowNow ~$119–328/mo) as guaranteed income regardless of sales; our cap is a *worst-case* that
+  only bites past ~$9,975/mo of direct food sales — "past $10k a month, extra orders only cost
+  card processing." $399 keeps whale revenue while still undercutting Owner.com's flat rate on
+  the restaurant's *best* month. Public now = pricing promise: lowering the default later is a
+  marketing decision, not just a config edit (existing restaurants keep their snapshot either way).
 - **Base — PINNED (2026-07-15): 4% of the post-redemption food subtotal.** One sentence, rewards or
   no rewards: *we take 4% of what the customer actually pays for food.* Tax, tip, and the delivery
   fee are excluded. `OrderPlacement::prepare()` already computes on the food subtotal — the only

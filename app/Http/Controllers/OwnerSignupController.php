@@ -32,6 +32,7 @@ class OwnerSignupController extends Controller
             'hasAdminAccess' => (bool) $user?->isAdmin(),
             'adminUrl' => $request->getScheme().'://admin.'.config('platform.primary_domain'),
             'canBookCall' => (bool) config('platform.booking_url'),
+            'feeCapDollars' => (int) round(config('platform.commission_monthly_cap_cents') / 100),
         ]);
     }
 

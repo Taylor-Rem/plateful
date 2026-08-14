@@ -46,11 +46,14 @@ return [
     | single calendar month. Snapshotted onto each restaurant at creation
     | (nullable `restaurants.commission_monthly_cap_cents` overrides it), so
     | changing this default never alters an existing restaurant's cap
-    | (grandfathering), exactly like the fee percent above. Default $249/mo;
-    | breakeven is roughly $6,225/mo of food at the 4% rate.
+    | (grandfathering), exactly like the fee percent above. Default $399/mo
+    | (raised from $249 on 2026-08-14 when the cap went PUBLIC — it now
+    | appears in the savings calculator and marketing copy, so lowering it
+    | for future signups is a marketing change, not just a config change);
+    | breakeven is roughly $9,975/mo of food at the 4% rate.
     |
     */
-    'commission_monthly_cap_cents' => (int) env('PLATFORM_COMMISSION_MONTHLY_CAP_CENTS', 24900),
+    'commission_monthly_cap_cents' => (int) env('PLATFORM_COMMISSION_MONTHLY_CAP_CENTS', 39900),
 
     /*
     |---------------------------------------------------------------------------
