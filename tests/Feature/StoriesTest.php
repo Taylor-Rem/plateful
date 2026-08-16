@@ -153,6 +153,6 @@ it('parses the committed seed content', function () {
 
     expect($seed)->not->toBeNull()
         ->and($seed->title)->toBe("Why I'm building Plateful")
-        ->and($seed->published)->toBeFalse()
+        ->and($seed->published)->toBeTrue()
         ->and($seed->excerpt)->not->toBe('');
 });
