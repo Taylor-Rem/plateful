@@ -5,6 +5,7 @@ excerpt: "I couldn't order dinner from a restaurant that had no website. That sm
 author: 'Taylor Remund, founder of Plateful'
 tags: [explainer]
 published: true
+hero: '/images/stories/founder-hero.png'
 ---
 
 Plateful started because I was hungry.

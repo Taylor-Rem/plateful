@@ -156,3 +156,17 @@ it('parses the committed seed content', function () {
         ->and($seed->published)->toBeTrue()
         ->and($seed->excerpt)->not->toBe('');
 });
+
+/*
+| The front-matter parser (league/commonmark's FrontMatterExtension) needs
+| symfony/yaml at runtime, but commonmark only *suggests* it. When it rode
+| in solely as a dev dependency, production (--no-dev) lacked it, every
+| story's parse threw, StoryRepository's production catch swallowed the
+| error, and /stories silently showed "No stories yet" — while local and
+| CI (with dev deps) stayed green. Found live 2026-08-14.
+*/
+it('declares the YAML front-matter parser as a production dependency', function () {
+    $require = json_decode(File::get(base_path('composer.json')), true)['require'];
+
+    expect($require)->toHaveKey('symfony/yaml');
+});
