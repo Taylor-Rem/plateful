@@ -2,6 +2,7 @@
 
 namespace App\Services\Stories;
 
+use App\Models\StoryPublishOverride;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -36,11 +37,18 @@ class StoryRepository
             return collect();
         }
 
+        $overrides = StoryPublishOverride::query()->pluck('published', 'slug');
+
         return collect(File::files($path))
             ->filter(fn (SplFileInfo $file) => str_ends_with($file->getFilename(), '.md')
                 && $file->getFilename() !== 'TEMPLATE.md')
             ->map(fn (SplFileInfo $file) => $this->parse($file))
             ->filter()
+            ->each(function (Story $story) use ($overrides) {
+                $story->publishedOverride = $overrides->has($story->slug)
+                    ? (bool) $overrides->get($story->slug)
+                    : null;
+            })
             ->sortByDesc(fn (Story $story) => $story->date)
             ->values();
     }

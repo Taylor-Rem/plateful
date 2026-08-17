@@ -21,7 +21,18 @@ class Story
         public array $tags,
         public bool $published,
         public string $html,
+        public ?bool $publishedOverride = null,
     ) {}
+
+    /**
+     * Effective published state: `published` holds what the file's front
+     * matter says; a super-admin override (story_publish_overrides) wins
+     * when present so publishing doesn't have to wait for a deploy.
+     */
+    public function isPublished(): bool
+    {
+        return $this->publishedOverride ?? $this->published;
+    }
 
     /**
      * Publicly visible: published and not future-dated. Anything else is a
@@ -29,7 +40,7 @@ class Story
      */
     public function isLive(): bool
     {
-        return $this->published && ! $this->date->isFuture();
+        return $this->isPublished() && ! $this->date->isFuture();
     }
 
     public function heroImageUrl(): ?string

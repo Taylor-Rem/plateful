@@ -31,6 +31,11 @@ Route::domain('admin.'.config('platform.primary_domain'))
         Route::post('/restaurants/{subdomain}/restore', [SuperAdmin\RestaurantLifecycleController::class, 'restore'])->name('restaurants.restore');
         Route::delete('/restaurants/{subdomain}/force', [SuperAdmin\RestaurantLifecycleController::class, 'forceDelete'])->name('restaurants.forceDelete');
 
+        Route::get('/stories', [SuperAdmin\StoriesController::class, 'index'])->name('stories.index');
+        Route::put('/stories/{slug}', [SuperAdmin\StoriesController::class, 'update'])
+            ->where('slug', '[a-z0-9-]+')
+            ->name('stories.update');
+
         Route::get('/earnings', [SuperAdmin\EarningsController::class, 'index'])->name('earnings.index');
         Route::put('/platform-roles', [SuperAdmin\PlatformRolesController::class, 'update'])->name('platformRoles.update');
 
