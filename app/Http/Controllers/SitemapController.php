@@ -19,6 +19,7 @@ class SitemapController extends Controller
             route('savings'),
             route('support'),
             route('stories.index'),
+            route('press'),
         ];
 
         return response()

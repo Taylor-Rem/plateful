@@ -132,11 +132,18 @@ defineProps<{
                         </p>
                         <ul class="mt-4 space-y-2.5">
                             <li>
-                                <!-- Plain anchor: Stories is server-rendered Blade, not an Inertia page. -->
+                                <!-- Plain anchors: Stories and Press are server-rendered Blade, not Inertia pages. -->
                                 <a
                                     href="/stories"
                                     class="transition hover:text-white"
                                     >Stories</a
+                                >
+                            </li>
+                            <li>
+                                <a
+                                    href="/press"
+                                    class="transition hover:text-white"
+                                    >Press</a
                                 >
                             </li>
                             <li>

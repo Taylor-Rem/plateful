@@ -70,6 +70,10 @@ Route::domain(config('platform.primary_domain'))->group(function () {
 
     Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 
+    // Press page: plain Blade like Stories — reporters and their crawlers get
+    // complete server-rendered HTML.
+    Route::get('/press', fn () => view('press'))->name('press');
+
     /*
     |---------------------------------------------------------------------------
     | Savings calculator
