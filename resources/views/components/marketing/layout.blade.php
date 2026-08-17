@@ -108,6 +108,7 @@
                             <p class="text-xs font-semibold tracking-wider text-white/90 uppercase">Company</p>
                             <ul class="mt-4 space-y-2.5">
                                 <li><a href="{{ route('stories.index') }}" class="transition hover:text-white">Stories</a></li>
+                                <li><a href="{{ route('press') }}" class="transition hover:text-white">Press</a></li>
                                 <li><a href="{{ route('support') }}" class="transition hover:text-white">Support</a></li>
                                 <li><a href="{{ route('terms') }}" class="transition hover:text-white">Terms</a></li>
                                 <li><a href="{{ route('privacy') }}" class="transition hover:text-white">Privacy</a></li>
