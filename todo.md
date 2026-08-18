@@ -481,8 +481,12 @@ never in the tenant admin. So this is a partial data foundation, not a blank sla
       redemption) and are the sharpest "own your customers" lever we have. The full state, the
       decided model, and the open questions live in **§10** — one section, so this doesn't drift
       into two conflicting accounts.
-- [ ] Surface a per-restaurant customer contact list (join `restaurant_customer` → `User` for
-      email/phone) in the tenant admin; add CSV export. No admin customer page exists today.
+- [ ] **Customers page + CSV export, then regulars stats — SPEC'D 2026-08-18, deliberately
+      deferred**: full plan in `docs/customers_page_plan.md`. Sequencing triggers: build the
+      Customers page (list + CSV export) in the lighthouse restaurant's first weeks; the
+      regulars-stats view before the ~60-day money story; both shipped before any
+      DoorDash-Storefront-segment outreach (that pitch is purely the ownership pitch, and the
+      CSV export button *is* the demo).
 - [ ] Fee-free remarketing: email/SMS campaigns — core differentiator vs DoorDash/Toast.
       (Only transactional mail exists today — no campaign/broadcast/newsletter infrastructure.)
 
@@ -783,6 +787,24 @@ shipped and logged in §8 (checkout throttle, dispute webhook, cloud-check cover
       via `PendingCheckout` consumption, but there's no dedup on Stripe `evt_` ids and no handlers
       for `charge.refunded` / `payment_intent.*` reconciliation. Fine for launch; revisit with the
       §7 refund work.
+
+---
+
+## 12. Multi-location (chain) restaurants — build-on-demand
+_Added 2026-08-18 after the DoorDash-Storefront competitive pass surfaced small local chains
+(e.g. Rancherito's) as plausible eventual clients. Full plan in
+`docs/chain_restaurant_plan.md` — **nothing here gets built before a real multi-location
+prospect exists.** Today's honest sell: "each location gets its own storefront; you manage
+them all from one login" (the users↔restaurants pivot already handles this)._
+
+- [ ] Umbrella storefront / location-picker page (each location is its own tenant today).
+- [ ] Menu sync across locations — v1 is copy-menu-to-location (one-shot clone); true
+      shared-master sync only on real client demand.
+- [ ] Cross-location loyalty (points are keyed user+restaurant today) — design together with
+      the §10 redemption decision, not before.
+- [ ] Owner-level roll-up reporting across their locations.
+- [ ] **Pricing decision before the first multi-location conversation:** the $399/mo cap is
+      per location (5 locations = $1,995/mo) — keep, or offer a negotiated group cap.
 
 ---
 
