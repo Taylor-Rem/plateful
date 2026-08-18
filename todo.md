@@ -808,6 +808,28 @@ them all from one login" (the users↔restaurants pivot already handles this)._
 
 ---
 
+## 13. Marketplace menu browsing — browse menus on plateful.fyi, order on the storefront
+_Added 2026-08-18. Full plan in `docs/marketplace_menu_browsing_plan.md`. The pitch it unlocks:
+**marketplace-sourced customers are still the restaurant's customers, at the same 4%** — DoorDash
+charges 15–30% for exactly this demand generation. Diners browse any restaurant's menu without
+leaving plateful.fyi; only the "order" click hands them to the storefront (`publicUrl()`,
+custom-domain aware). Growth surface, not launch surface — build after §0, once a handful of real
+menus exist for the SEO to compound on._
+
+- [ ] **Phase 1 — crawlable menu page per restaurant** at `/restaurants/{subdomain}` on the root
+      domain: reuse the `Storefront\MenuController` category query (extracted so the two can't
+      drift), read-only render, "Order from {name}" CTA, JSON-LD Restaurant+Menu markup, sitemap
+      entries. No cart, no admin `editor` payload.
+- [ ] **Phase 2 — homepage quick preview**: lazy-loaded menu drawer on each `Welcome.vue` card,
+      same serialized data, links out to the Phase 1 page and the storefront.
+- [ ] **Phase 3 — city/cuisine browse pages** (on traffic evidence). Blocker: no cuisine column
+      exists — the homepage search placeholder already over-promises "cuisine"
+      (`Welcome.vue:39-46` matches name/city/state/description only).
+- [ ] Marketing: the no-extra-commission promise on /for-restaurants when Phase 1 ships — same
+      pricing-promise class as the public $399 cap (§1): once said, it's a commitment.
+
+---
+
 ## Suggested sequence
 1. **§0 launch blockers** + **§1 pricing** (parallel; both small, both gate revenue/story).
 2. ~~**§2a foundations**~~ — done.
