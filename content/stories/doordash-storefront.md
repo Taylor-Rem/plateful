@@ -125,6 +125,6 @@ together.
 *Sources: DoorDash merchant pricing page and the US Storefront Product
 Addendum (DoorDash Help Center), both retrieved August 2026; processing rates
 as reported in current third-party fee guides. Storefront usage counts from my
-verified catalogue of 852 Wasatch Front independents (websites checked July
+verified catalogue of 851 Wasatch Front independents (websites checked July
 2026, platforms verified August 2026). If DoorDash's terms
 change or I've misread a clause, email me and I'll correct it.*

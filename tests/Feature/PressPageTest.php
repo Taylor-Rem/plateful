@@ -16,7 +16,7 @@ it('serves the press page to guests with full SEO head tags', function () {
         ->assertSee('<link rel="canonical" href="http://plateful.test/press">', false)
         ->assertSee('founder@plateful.fyi')
         ->assertSee('Taylor Remund')
-        ->assertSee('486 of 852')
+        ->assertSee('476 of 851')
         ->assertSee('/plateful-logo.svg', false);
 });
 

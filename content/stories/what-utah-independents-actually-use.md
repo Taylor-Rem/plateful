@@ -1,7 +1,7 @@
 ---
 title: "What Utah's independent restaurants actually use for online ordering"
 date: '2026-08-17'
-excerpt: "Of 852 Wasatch Front independents, 366 run their own online ordering. Toast powers 154 of them. Here's the whole vendor map — and the pattern in who gets ordering tech and who doesn't."
+excerpt: "Of 851 Wasatch Front independents, 375 run their own online ordering. Toast powers 155 of them. Here's the whole vendor map — and the pattern in who gets ordering tech and who doesn't."
 author: 'Taylor Remund, founder of Plateful'
 tags: [data, explainer]
 published: false
@@ -12,10 +12,10 @@ hero: '/images/stories/vendor-landscape-hero.png'
 DRAFT NOTES — verify before publishing:
 1. Vendor counts and price-level cuts recomputed 2026-08-19 from wasatch.db
    v2 (website scan + platform verification + rendered-browser recheck);
-   they match DATA_STORY_STATS.md v2 exactly. Toast = 135 site-detected +
-   19 Toast-hosted pages found only by platform search. Two Toast locations
-   lack a Google price level, hence "27 of 154" alongside "82%" (125 of
-   152 priced).
+   they match DATA_STORY_STATS.md v2 exactly. Toast = 136 site-detected +
+   19 Toast-hosted pages found only by search/manual audit. Two Toast
+   locations lack a Google price level, hence "28 of 155" alongside "82%"
+   (125 of 153 priced).
 2. Pricing anchors are from third-party 2026 guides, not vendor rate cards:
    Toast POS from $69/mo + ~$75/mo digital ordering, online processing
    3.5% + 15¢ (getsauce/upmenu/restolabs); ChowNow flat plans from ~$119/mo
@@ -27,24 +27,26 @@ DRAFT NOTES — verify before publishing:
    factual — read once with "would I say this to their rep?" in mind.
 -->
 
-When I catalogued the Wasatch Front's 852 independent restaurants for
+When I catalogued the Wasatch Front's 851 independent restaurants for
 [the ordering-gap piece](/stories/the-online-ordering-gap), I recorded more
-than whether each one could take a direct online order. For the 366 that
+than whether each one could take a direct online order. For the 375 that
 can — verified against both their websites and the ordering platforms
 themselves — I recorded *what they use*. As far as I know, nobody has
 published a picture of Utah's restaurant ordering tech before, so here it is.
 
 ## The map
 
-![Vendor split among the 366 Wasatch Front independents with first-party ordering](/images/stories/vendor-landscape.svg)
+![Vendor split among the 375 Wasatch Front independents with first-party ordering](/images/stories/vendor-landscape.svg)
 
-Toast towers over everything: **154 restaurants — 42% of all first-party
+Toast towers over everything: **155 restaurants — 41% of all first-party
 ordering in the corridor** — run on it, and 19 of those have no findable
 website at all; their Toast-hosted ordering page *is* their web presence.
 Add Olo's 61 and two vendors hold a majority. After that the tail scatters
 fast: Square (42), Clover (26), Owner.com (21), ChowNow (20), SpotOn and
-Menufy (15 each), then a handful on BentoBox, GloriaFood, Wix, and exactly
-one restaurant on Popmenu.
+Menufy (15 each), then a long tail: BentoBox, GloriaFood, Wix, Popmenu, and
+a scattering of smaller vendors and bespoke sites (Heartland, NetWaiter,
+GoToEat, Joe, and one-off ordering pages) that a by-hand verification pass
+surfaced — proof the tail is longer than any single scan reveals.
 
 (DoorDash Storefront's 160 restaurants aren't in this chart — ordering that
 lives on the delivery platform's infrastructure is
@@ -56,7 +58,7 @@ everything but Toast.)
 
 Twelve logos, but really four models:
 
-**Ordering attached to a POS** — Toast, Square, Clover, SpotOn: 237
+**Ordering attached to a POS** — Toast, Square, Clover, SpotOn: 238
 restaurants, nearly two-thirds of the market. Online ordering comes bundled
 with (or bolted onto) the register. It's a natural pairing — orders flow
 straight to the kitchen — and it's how Toast won Utah. The cost structure is
@@ -84,13 +86,13 @@ your online volume.
 
 Here's the cut that makes this more than a market-share chart. Across the
 corridor, budget ($) restaurants are 39% of independents. Among restaurants
-with their own ordering, they're **26%**. And at the top of the market it's
-starkest: only 27 of Toast's 154 Utah installs are budget restaurants —
+with their own ordering, they're **27%**. And at the top of the market it's
+starkest: only 28 of Toast's 155 Utah installs are budget restaurants —
 **82% are mid-range or above**.
 
 Flip it around and it's the gap piece's finding from the other side:
-[72% of Utah's budget independents have no direct channel at
-all](/stories/the-online-ordering-gap). The tools work — 366 restaurants
+[70% of Utah's budget independents have no direct channel at
+all](/stories/the-online-ordering-gap). The tools work — 375 restaurants
 prove it. The *pricing model* is the filter. A fixed monthly bill is easy
 math at $15,000 a month in online orders and terrifying math at $2,000,
 which is exactly why the family-run taqueria with 900 Google reviews still
@@ -109,7 +111,7 @@ software" is part of the same filter.
 If you're already on Toast or ChowNow and it's earning its bill, genuinely:
 keep it. A restaurant with working first-party ordering is most of the way
 to owning [its regulars](/stories/your-regulars-are-the-expensive-part)
-already. This piece — and Plateful — is for the 486 that have nothing of
+already. This piece — and Plateful — is for the 476 that have nothing of
 their own yet.
 
 Curious what your volume pencils out to? The

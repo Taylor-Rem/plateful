@@ -1,7 +1,7 @@
 ---
-title: "We checked 852 Utah restaurants — twice. 57% can't take an online order of their own."
+title: "We checked 851 Utah restaurants — twice. 56% can't take an online order of their own."
 date: '2026-08-14'
-excerpt: "I catalogued the independent restaurants of the Wasatch Front, checked every website — then went back and checked every delivery platform too. 57% have no online ordering of their own, and only 17 have none at all. Here's the data."
+excerpt: "I catalogued the independent restaurants of the Wasatch Front, checked every website — then checked every delivery platform, and hand-verified the stragglers. 56% have no online ordering of their own, and only 6 have none at all. Here's the data."
 author: 'Taylor Remund, founder of Plateful'
 tags: [data]
 published: true
@@ -11,9 +11,10 @@ hero: '/images/stories/ordering-gap-hero.png'
 *Updated August 19, 2026: this analysis originally relied on checking each
 restaurant's website. I've since verified every restaurant against the
 delivery platforms themselves — DoorDash, Uber Eats, Grubhub, order.online,
-and Toast-hosted pages — plus a full rendered-browser recheck of every site,
-and caught three chains that had slipped my independent filter. The numbers
-below are the corrected ones, and the story they tell is sharper than the
+and Toast-hosted pages — re-checked every site with a full rendered browser,
+hand-verified every restaurant that still showed no ordering anywhere, and
+caught four chains that had slipped my independent filter. The numbers below
+are the corrected ones, and the story they tell is sharper than the
 original. The old version's headline claim survives; most of its
 sub-numbers don't. Details in the methodology note at the bottom.*
 
@@ -30,42 +31,45 @@ ability from someone else?**
 
 Using Google's Places data, I searched cuisine by cuisine, city by city, for
 budget and mid-range ($ and $$) restaurants across the Wasatch Front. After
-removing chains, that left **852 independents**. In July 2026 I checked every
+removing chains, that left **851 independents**. In July 2026 I checked every
 one of their websites — including the JavaScript-rendered ones a simple scrape
 would miss. Then in August I did what a website check can't: I searched every
 restaurant against the delivery platforms themselves, because a restaurant
 with no website can still be listed on DoorDash, and a restaurant's "own"
-ordering page can secretly live on DoorDash's domain.
+ordering page can secretly live on DoorDash's domain. Every restaurant that
+*still* showed nothing anywhere, I verified by hand.
 
 ## The finding
 
-**486 of the 852 — 57% — have no online-ordering channel of their own.**
+**476 of the 851 — 56% — have no online-ordering channel of their own.**
 
-![How 852 Wasatch Front independents take (or don't take) online orders](/images/stories/ordering-gap-breakdown.svg)
+![How 851 Wasatch Front independents take (or don't take) online orders](/images/stories/ordering-gap-breakdown.svg)
 
-The breakdown: 309 restaurants (36%) are **marketplace-only** — their only
+The breakdown: 310 restaurants (36%) are **marketplace-only** — their only
 online ordering is a DoorDash, Uber Eats, or Grubhub listing, at 15–30%
 commission per order. Another 160 (19%) run what looks like their own
 ordering but is actually **DoorDash Storefront** — hosted on DoorDash's
 domain, under [DoorDash's terms](/stories/doordash-storefront), with DoorDash
-keeping the customer data. And 17 (2%) have **no online ordering anywhere** —
-verified against every platform.
+keeping the customer data. And just 6 (under 1%) have **no online ordering
+anywhere** — each one verified by hand.
 
-On the other side, 366 restaurants (43%) genuinely run their own first-party
-ordering — Toast is the biggest at 154 installs, followed by Olo, Square, and
-Clover. And 58 independents still have no website at all.
+On the other side, 375 restaurants (44%) genuinely run their own first-party
+ordering — Toast is the biggest at 155 installs, followed by Olo, Square, and
+Clover, with a long tail of smaller vendors down to bespoke one-off ordering
+sites. And 56 independents still have no website at all.
 
-Two things in that breakdown surprised me. First, **online demand is nearly
-universal**: only 17 of 852 restaurants are truly offline. The gap was never
-about whether these kitchens sell online — they do — it's about *who owns the
-channel*. Second, **DoorDash's reach is four times bigger than websites
-reveal**: my July website check found 39 restaurants on Storefront; the
-platform check found 160. The most invisible commission structure on the
+Two things in that breakdown surprised me. First, **online demand is
+essentially universal**: only 6 of 851 restaurants are truly offline — and
+most of those are dine-in concepts like hotpot and conveyor sushi. The gap
+was never about whether these kitchens sell online — they do — it's about
+*who owns the channel*. Second, **DoorDash's reach is four times bigger than
+websites reveal**: my July website check found 39 restaurants on Storefront;
+the platform check found 160. The most invisible commission structure on the
 Front is the one that looks like independence.
 
 Here's the part that stuck with me most: **these are not struggling
 businesses.** The restaurants with no channel of their own have a *median* of
-843 Google reviews, 96% of them have more than a hundred, and the group
+840 Google reviews, 96% of them have more than a hundred, and the group
 averages a 4.4-star rating. These are beloved, busy, established places.
 They're just paying rent, one order at a time, on customers they earned
 themselves.
@@ -74,9 +78,9 @@ themselves.
 
 ![Share with no direct online-ordering channel, by price level](/images/stories/ordering-gap-price.svg)
 
-Among budget ($) restaurants, **72%** have no channel of their own, versus
+Among budget ($) restaurants, **70%** have no channel of their own, versus
 **47%** of mid-range ($$) spots. Budget kitchens are 39% of the corridor but
-only 26% of first-party-ordering adopters. And look at what dominates the
+only 27% of first-party-ordering adopters. And look at what dominates the
 dataset: Mexican (the largest group), Chinese, Thai, Vietnamese, Indian,
 Korean. The Wasatch Front's ordering gap is concentrated in exactly the
 kitchens least likely to have someone with spare evenings to fight with web
@@ -88,7 +92,7 @@ Delivery-app commissions on marketplace orders run 15–30%. A restaurant doing
 $6,000 a month through the apps at 25% pays $1,500 a month — $18,000 a year.
 
 Scaling that requires assumptions, so here are mine, conservatively: the
-platform check found **309 independents whose only online channel is a
+platform check found **310 independents whose only online channel is a
 marketplace listing**. If just half of them sell $4,000 a month through the
 apps at 25%, commissions take about **$1.85 million a year** from this one
 stretch of Utah. Either way: millions, annually, from independent kitchens
@@ -118,13 +122,16 @@ walk you through your own math.
 *Methodology (v2, August 2026): 965 restaurants collected via Google Places
 text search (cuisine × city, $–$$ price levels, 50 Wasatch Front localities),
 July 2026. Chains excluded by name frequency (3+ locations) plus manual
-flags, leaving 852 independents. Ordering channels detected in two passes:
+flags, leaving 851 independents. Ordering channels detected in three passes:
 (1) each restaurant's own website, first as raw HTML, then re-checked with a
 fully rendered browser to catch JavaScript-injected ordering; (2) a
 platform-verification pass searching every restaurant — by name, shortened
 name, and phone number — against DoorDash, Uber Eats, Grubhub, order.online,
-and Toast-hosted ordering pages. "No channel of their own" counts
-marketplace-only listings and DoorDash-Storefront-hosted pages, per
+and Toast-hosted ordering pages; (3) a manual, one-by-one verification of
+every restaurant that still showed no ordering anywhere, which surfaced
+smaller vendors (Heartland, NetWaiter, GoToEat, and others) the automated
+passes didn't know. "No channel of their own" counts marketplace-only
+listings and DoorDash-Storefront-hosted pages, per
 [the Storefront analysis](/stories/doordash-storefront). Classification can
 still err on edge cases — if your restaurant is listed wrong, email me and
 I'll correct it.*

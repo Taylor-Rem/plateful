@@ -61,7 +61,7 @@ menu for you, and 4% capped is the whole price.
 
 ---
 
-*Methodology: subset of the verified Wasatch Front catalogue (852
+*Methodology: subset of the verified Wasatch Front catalogue (851
 independents; July 2026 website scan + August 2026 platform verification);
 full methodology in [the corridor piece](/stories/the-online-ordering-gap).
 Review counts and ratings from Google Places. The dollar scenario is

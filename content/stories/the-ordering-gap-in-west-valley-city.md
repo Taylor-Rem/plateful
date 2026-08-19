@@ -33,7 +33,7 @@ all, verified against every platform.
 ## The pattern, at its sharpest
 
 In [the corridor-wide data](/stories/the-online-ordering-gap), one finding
-stood out: the cheaper the restaurant, the bigger the gap — 72% of budget
+stood out: the cheaper the restaurant, the bigger the gap — 70% of budget
 ($) independents have no channel of their own, versus 47% of mid-range ($$)
 spots. West Valley City is where that filter is most visible, because West
 Valley is where the corridor's budget kitchens *are*. These are busy,
@@ -65,7 +65,7 @@ menu for you, in English or Spanish, and 4% capped is the whole price.
 
 ---
 
-*Methodology: subset of the verified Wasatch Front catalogue (852
+*Methodology: subset of the verified Wasatch Front catalogue (851
 independents; July 2026 website scan + August 2026 platform verification);
 full methodology in [the corridor piece](/stories/the-online-ordering-gap).
 Review counts and ratings from Google Places. The dollar scenario is
