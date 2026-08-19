@@ -48,12 +48,31 @@ the move is: click Export, hand them the file, say "that's your list — take it
 to Mailchimp or to a competitor; DoorDash's contract says you'll never have
 this." Build the page *around* that moment.
 
+**Amendment (2026-08-19): marketing consent capture ships in this phase.** The
+campaigns plan (`docs/campaigns_plan.md`) decided strict opt-in — which means the
+campaignable list only accrues from the day the checkbox exists, so capture is
+pulled forward out of the campaigns phase. Added Phase 1 scope (full data model
+and rationale in the campaigns doc):
+
+- consent columns on `restaurant_customer` + append-only
+  `marketing_consent_events` audit table
+- unchecked-by-default opt-in checkbox at checkout (logged-in customers;
+  persisted at order materialization), plus a per-restaurant toggle on the
+  storefront `/account` page
+- signed-URL unsubscribe endpoint (login-free) — built now, used by Phase 3
+- Customers page shows a "Marketing ✓" badge, opted-in count, opted-in filter;
+  CSV export gains consent columns so the exported list is *legally usable*
+  elsewhere, not just data
+- effort: ~1 extra session on top of the original Phase 1 estimate
+
 Notes:
 - Respect soft-deleted users (deleted accounts should not export contact info).
 - Guests/phone-order customers don't exist in the data — the page shows online
-  ordering customers only; label it honestly.
+  ordering customers only; label it honestly. (Guest consent capture is a
+  flagged decision in the campaigns doc — deferred.)
 - Tests: scoping (restaurant A admin never sees restaurant B customers), export
-  contents, member-role authorization.
+  contents, member-role authorization, consent persistence + cross-restaurant
+  consent scoping, logged-out unsubscribe.
 
 ## Phase 2 — the regulars stats view (the editorial thesis as a product screen)
 
@@ -72,11 +91,15 @@ deliberately operational (today's orders/pending), so a separate view likely
 fits better. Marketing tie-in: screenshots of this page (with permission)
 become the lighthouse money-story exhibit.
 
-## Phase 3 — later, explicitly out of scope for 1–2
+## Phase 3+ — campaigns (spec'd 2026-08-19, own doc)
 
-- **Campaigns** (email/SMS blasts from inside Plateful): tracked in todo.md §4;
-  no broadcast infrastructure exists (transactional mail only). Phase 1's CSV
-  export is the bridge — owners can act on the list with existing tools.
+- **Campaigns** (email, then SMS) are now fully planned in
+  `docs/campaigns_plan.md`: Phase 3 = email campaigns (Resend send API on a
+  dedicated marketing domain, strict opt-in, platform-enforced compliance +
+  abuse controls), Phase 4 = SMS (hard-gated behind TCPA consent capture,
+  10DLC registration, and actual demand). Consent capture itself moved into
+  Phase 1 (amendment above). Phase 1's CSV export remains the bridge until
+  Phase 3 ships.
 - **Loyalty redemption**: earn path shipped, spend path missing — todo.md §10
   owns that decision; don't fork it here.
 

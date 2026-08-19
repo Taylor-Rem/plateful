@@ -488,7 +488,12 @@ never in the tenant admin. So this is a partial data foundation, not a blank sla
       DoorDash-Storefront-segment outreach (that pitch is purely the ownership pitch, and the
       CSV export button *is* the demo).
 - [ ] Fee-free remarketing: email/SMS campaigns — core differentiator vs DoorDash/Toast.
-      (Only transactional mail exists today — no campaign/broadcast/newsletter infrastructure.)
+      **SPEC'D 2026-08-19**: full plan in `docs/campaigns_plan.md`. Decided: email first
+      (SMS a later, demand-pulled phase behind TCPA consent + 10DLC), strict opt-in only,
+      shared dedicated marketing domain, and **consent capture pulled forward into the
+      Customers-page Phase 1** (the opted-in list only accrues from the day the checkout
+      checkbox exists). ~5 sessions for email campaigns; sequenced ~60–90 days after
+      lighthouse launch, before DoorDash-Storefront-segment outreach.
 
 ## 5. Public savings calculator (prospect-facing; needs pricing locked, §1)
 - [x] **Public marketing-site calculator — DONE (2026-08-14).** Live at `/savings` (root domain,
