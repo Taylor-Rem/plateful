@@ -1,7 +1,7 @@
 ---
 title: "DoorDash Storefront looks like your own online ordering. Read the fine print."
 date: '2026-08-17'
-excerpt: "It's commission-free, it lives on your website, and 39 Wasatch Front independents use it as their only ordering channel. But whose channel is it? I read the merchant terms so you don't have to."
+excerpt: "It's commission-free, it looks like the restaurant's own ordering, and 160 Wasatch Front independents run on it — four times what their websites reveal. But whose channel is it? I read the merchant terms so you don't have to."
 author: 'Taylor Remund, founder of Plateful'
 tags: [explainer, data]
 published: false
@@ -17,16 +17,21 @@ DRAFT NOTES — verify before publishing:
    can get one from an owner.
 2. The addendum quotes below are from the current US Storefront Product
    Addendum (help.doordash.com, retrieved 2026-08-17). Re-check before publish.
-3. Confirm the 39 dataset restaurants are all order.online-hosted (that was the
-   detection method, but say it only if it's true of all 39).
+3. Storefront counts updated 2026-08-19 from the platform-verification pass:
+   39 were visible from websites alone; 160 independents total have an
+   order.online store page (channel_class='storefront' in wasatch.db).
 -->
 
 When I catalogued the Wasatch Front's independent restaurants for
 [the ordering-gap piece](/stories/the-online-ordering-gap), one category kept
-making me look twice. Thirty-nine restaurants — about 5% — had ordering that
-*looked* first-party: an "Order Online" button on their own website, their own
-menu, their own branding. But the button went to a page DoorDash runs, on a
-domain DoorDash owns.
+making me look twice: restaurants whose ordering *looked* first-party — an
+"Order Online" button on their own website, their own menu, their own
+branding — but whose button went to a page DoorDash runs, on a domain DoorDash
+owns. Checking websites alone, I found 39 of them. Then I verified every
+restaurant against the platforms directly, and the real number is **160 —
+nearly one in five of the corridor's independents**, four times what the
+websites reveal. It is quietly the second-largest "own ordering" arrangement
+in Utah, ahead of everything except Toast.
 
 That's DoorDash Storefront — these days marketed as "Online Ordering by
 DoorDash" — and it's the most interesting product in this whole space, because
@@ -120,5 +125,6 @@ together.
 *Sources: DoorDash merchant pricing page and the US Storefront Product
 Addendum (DoorDash Help Center), both retrieved August 2026; processing rates
 as reported in current third-party fee guides. Storefront usage counts from my
-July 2026 catalogue of 855 Wasatch Front independents. If DoorDash's terms
+verified catalogue of 852 Wasatch Front independents (websites checked July
+2026, platforms verified August 2026). If DoorDash's terms
 change or I've misread a clause, email me and I'll correct it.*

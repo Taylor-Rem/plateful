@@ -82,15 +82,18 @@
             <div>
                 <h2 class="text-2xl font-bold tracking-tight text-stone-900">Citable data: Utah's ordering gap</h2>
                 <p class="mt-4 leading-relaxed text-stone-600">
-                    In July 2026, Plateful catalogued 855 independent ($–$$) restaurants across 50
-                    Wasatch Front cities and checked every website by hand. Headline findings —
-                    quotable with attribution to "Plateful analysis":
+                    In July 2026, Plateful catalogued 852 independent ($–$$) restaurants across 50
+                    Wasatch Front cities and checked every website by hand — then, in August,
+                    verified every restaurant against the delivery platforms themselves (DoorDash,
+                    Uber Eats, Grubhub, and hosted-ordering pages). Headline findings — quotable
+                    with attribution to "Plateful analysis":
                 </p>
                 <ul class="mt-5 space-y-3 text-stone-600">
-                    <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600"></span><span><strong class="text-stone-900">53% (453 of 855)</strong> have no online-ordering channel of their own.</span></li>
-                    <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600"></span><span><strong class="text-stone-900">341</strong> have a website with no way to order on it; <strong class="text-stone-900">58</strong> have no website at all.</span></li>
-                    <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600"></span><span>The gap skews down-market: <strong class="text-stone-900">66% of budget ($) independents</strong> have no direct channel, versus 44% of mid-range ($$).</span></li>
-                    <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600"></span><span>These are established businesses: the no-channel group has a <strong class="text-stone-900">median of 846 Google reviews</strong> at a 4.4-star average.</span></li>
+                    <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600"></span><span><strong class="text-stone-900">57% (486 of 852)</strong> have no online-ordering channel of their own.</span></li>
+                    <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600"></span><span><strong class="text-stone-900">309</strong> sell online only through marketplace listings at 15–30% commission; <strong class="text-stone-900">160</strong> run "their own" ordering on DoorDash-hosted Storefront pages — four times what websites alone reveal.</span></li>
+                    <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600"></span><span>Only <strong class="text-stone-900">17 restaurants</strong> have no online ordering anywhere — the gap is about ownership, not demand.</span></li>
+                    <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600"></span><span>The gap skews down-market: <strong class="text-stone-900">72% of budget ($) independents</strong> have no channel of their own, versus 47% of mid-range ($$).</span></li>
+                    <li class="flex gap-3"><span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-600"></span><span>These are established businesses: the no-channel group has a <strong class="text-stone-900">median of 843 Google reviews</strong> at a 4.4-star average.</span></li>
                 </ul>
                 <p class="mt-4 text-sm text-stone-500">
                     Full findings, charts, and methodology:
