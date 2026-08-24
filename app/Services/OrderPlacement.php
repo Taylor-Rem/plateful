@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\DeliveryFeeStrategy;
 use App\Enums\DeliveryMode;
+use App\Enums\MarketingConsentSource;
 use App\Enums\OrderStatus;
 use App\Enums\OrderType;
 use App\Enums\PaymentState;
@@ -40,6 +41,7 @@ class OrderPlacement
         protected CartManager $carts,
         protected RevenueSplitResolver $revenueSplits,
         protected MonthlyCommissionCap $commissionCap,
+        protected MarketingConsentService $marketingConsent,
     ) {}
 
     /**
@@ -199,6 +201,12 @@ class OrderPlacement
             'total_cents' => $totalCents,
             'confirmation_token' => Str::random(64),
             'notes' => $data['notes'] ?? null,
+            // Marketing consent is captured here (with the requester's ip/agent
+            // for the audit event) but persisted at materialization, which may
+            // run in a webhook context where the request is Stripe's.
+            'marketing_opt_in' => $user !== null && ! empty($data['marketing_opt_in']),
+            'marketing_opt_in_ip' => request()?->ip(),
+            'marketing_opt_in_user_agent' => request()?->userAgent(),
             'items' => $items,
             // Carried so dispatch can replay this exact quote instead of
             // re-deriving one, and so the fee the customer paid is traceable
@@ -379,6 +387,16 @@ class OrderPlacement
 
             if ($user) {
                 $this->upsertRestaurantCustomer($user, $restaurant, $order);
+
+                if (! empty($snapshot['marketing_opt_in'])) {
+                    $this->marketingConsent->optInEmail(
+                        $user,
+                        $restaurant,
+                        MarketingConsentSource::Checkout,
+                        $snapshot['marketing_opt_in_ip'] ?? null,
+                        $snapshot['marketing_opt_in_user_agent'] ?? null,
+                    );
+                }
             }
 
             if ($user && ! empty($snapshot['save_address'])

@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/vue3';
 import {
     Banknote,
     BookOpen,
+    BookUser,
     ChefHat,
     ClipboardCheck,
     Clock,
@@ -29,6 +30,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes/admin/restaurant';
+import { index as customersIndex } from '@/routes/admin/restaurant/customers';
 import { show as deliveryShow } from '@/routes/admin/restaurant/delivery';
 import { edit as hoursEdit } from '@/routes/admin/restaurant/hours';
 import { index as kitchenIndex } from '@/routes/admin/restaurant/kitchen';
@@ -102,6 +104,11 @@ const groups = computed<NavGroup[]>(() => {
                 href: onboardingShow(restaurant),
                 icon: ClipboardCheck,
                 attention: !setupComplete.value,
+            },
+            {
+                title: 'Customers',
+                href: customersIndex(restaurant),
+                icon: BookUser,
             },
             {
                 title: 'Payouts',

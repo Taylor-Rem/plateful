@@ -5,6 +5,7 @@ use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use App\Http\Controllers\Storefront\Account\AddressesController;
 use App\Http\Controllers\Storefront\Account\LoyaltyController;
+use App\Http\Controllers\Storefront\Account\MarketingController as AccountMarketingController;
 use App\Http\Controllers\Storefront\Account\MyPlatefulController;
 use App\Http\Controllers\Storefront\Account\OrdersController as AccountOrdersController;
 use App\Http\Controllers\Storefront\Account\PasswordController as AccountPasswordController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Storefront\CartController;
 use App\Http\Controllers\Storefront\CheckoutController;
 use App\Http\Controllers\Storefront\DeliveryQuoteController;
 use App\Http\Controllers\Storefront\HomeController;
+use App\Http\Controllers\Storefront\MarketingUnsubscribeController;
 use App\Http\Controllers\Storefront\MenuController;
 use App\Http\Controllers\Storefront\OrderController;
 use App\Http\Controllers\Storefront\PreviewController;
@@ -39,6 +41,16 @@ Route::middleware('tenant')->group(function () {
     // establish the session that the rest of the preview relies on.
     Route::get('preview/enter', [PreviewController::class, 'enter'])
         ->name('storefront.preview.enter');
+
+    // Login-free unsubscribe from a restaurant's marketing emails. Signed
+    // (relative — storefronts answer on subdomains and custom domains), not
+    // 'auth': it must work from any mail client with one click.
+    Route::get('marketing/unsubscribe', [MarketingUnsubscribeController::class, 'show'])
+        ->middleware('signed:relative')
+        ->name('storefront.marketing.unsubscribe');
+    Route::post('marketing/resubscribe', [MarketingUnsubscribeController::class, 'resubscribe'])
+        ->middleware('signed:relative')
+        ->name('storefront.marketing.resubscribe');
 
     Route::post('cart/items/{menuItem}', [CartController::class, 'addItem'])
         ->name('storefront.cart.add');
@@ -127,6 +139,8 @@ Route::middleware('tenant')->group(function () {
 
             Route::get('/profile', [AccountProfileController::class, 'edit'])->name('profile.edit');
             Route::patch('/profile', [AccountProfileController::class, 'update'])->name('profile.update');
+
+            Route::patch('/marketing', [AccountMarketingController::class, 'update'])->name('marketing.update');
 
             Route::get('/password', [AccountPasswordController::class, 'edit'])->name('password.edit');
             Route::patch('/password', [AccountPasswordController::class, 'update'])->name('password.update');

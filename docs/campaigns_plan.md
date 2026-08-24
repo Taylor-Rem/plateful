@@ -2,7 +2,10 @@
 
 _Drafted 2026-08-19. Companion to `docs/customers_page_plan.md` (which owns Phases 1–2);
 this doc owns consent capture and Phases 3 (email campaigns) and 4 (SMS). Tracked as
-todo.md §4 "fee-free remarketing". Status: **planned, not started** — decisions below
+todo.md §4 "fee-free remarketing". Status: **consent capture (the Phase 1 amendment
+below) BUILT 2026-08-24** — pivot columns, `marketing_consent_events` audit table,
+checkout checkbox, account toggle, and the signed unsubscribe endpoint all shipped
+with the Customers page. Phases 3–4 remain planned, not started — decisions below
 marked ⚑ are Taylor's to confirm before the relevant build._
 
 ## Decisions already made (2026-08-19)

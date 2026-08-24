@@ -35,6 +35,7 @@ type CheckoutForm = {
         instructions: string;
     };
     save_address: boolean;
+    marketing_opt_in: boolean;
     tip_preset: string;
     tip_custom_cents: number | null;
     notes: string;
@@ -70,6 +71,8 @@ const form = useForm<CheckoutForm>({
         instructions: defaultAddress?.instructions ?? '',
     },
     save_address: true,
+    // Strict opt-in: unchecked by default, always.
+    marketing_opt_in: false,
     tip_preset: '0',
     tip_custom_cents: null,
     notes: '',
@@ -360,6 +363,7 @@ const submit = (): void => {
         tip_preset: form.tip_preset,
         tip_custom_cents: form.tip_custom_cents,
         save_address: form.save_address,
+        marketing_opt_in: form.marketing_opt_in,
     };
 
     if (form.type === 'delivery') {
@@ -518,6 +522,24 @@ const submit = (): void => {
                             >
                                 {{ form.errors.customer_phone }}
                             </p>
+                        </div>
+                        <!-- Logged-in only: guests have no account to attach
+                             consent to (campaigns plan — guest consent is a
+                             deliberately deferred decision). Label text is
+                             persisted verbatim as the consent snapshot; keep in
+                             sync with MarketingConsentService::optInText(). -->
+                        <div v-if="authUser" class="sm:col-span-2">
+                            <label
+                                class="inline-flex items-center gap-2 text-sm"
+                            >
+                                <input
+                                    v-model="form.marketing_opt_in"
+                                    type="checkbox"
+                                    class="rounded"
+                                />
+                                Email me offers and news from
+                                {{ restaurant.name }}.
+                            </label>
                         </div>
                     </div>
                 </section>

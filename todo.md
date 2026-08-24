@@ -481,10 +481,16 @@ never in the tenant admin. So this is a partial data foundation, not a blank sla
       redemption) and are the sharpest "own your customers" lever we have. The full state, the
       decided model, and the open questions live in **§10** — one section, so this doesn't drift
       into two conflicting accounts.
-- [ ] **Customers page + CSV export, then regulars stats — SPEC'D 2026-08-18, deliberately
-      deferred**: full plan in `docs/customers_page_plan.md`. Sequencing triggers: build the
-      Customers page (list + CSV export) in the lighthouse restaurant's first weeks; the
-      regulars-stats view before the ~60-day money story; both shipped before any
+- [x] **Customers page + CSV export — Phase 1 BUILT 2026-08-24** (ahead of the lighthouse
+      trigger, on purpose): `/{subdomain}/customers` (admin-role only) with search, 30/90-day
+      and opted-in filters, sortable columns, loyalty balances, and the streaming CSV export —
+      plus the full consent-capture amendment (pivot consent columns, append-only
+      `marketing_consent_events` audit table, unchecked-by-default checkout checkbox for
+      logged-in customers, per-restaurant `/account` profile toggle, and the signed-URL
+      login-free unsubscribe endpoint with undo). 25 new tests. Full plan + spec in
+      `docs/customers_page_plan.md`.
+- [ ] **Regulars stats view (customers plan Phase 2) — still deferred**: build before the
+      ~60-day lighthouse money story; both phases shipped before any
       DoorDash-Storefront-segment outreach (that pitch is purely the ownership pitch, and the
       CSV export button *is* the demo).
 - [ ] Fee-free remarketing: email/SMS campaigns — core differentiator vs DoorDash/Toast.
