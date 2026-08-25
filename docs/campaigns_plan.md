@@ -6,7 +6,9 @@ todo.md §4 "fee-free remarketing". Status: **consent capture (the Phase 1 amend
 below) BUILT 2026-08-24** — pivot columns, `marketing_consent_events` audit table,
 checkout checkbox, account toggle, and the signed unsubscribe endpoint all shipped
 with the Customers page. Phases 3–4 remain planned, not started — decisions below
-marked ⚑ are Taylor's to confirm before the relevant build._
+marked ⚑ are Taylor's to confirm before the relevant build. **Phase 3 build spec:
+`docs/campaigns_implementation_plan.md` (sessions 1–4, drafted 2026-08-25)** — build
+from that doc, not this one; this doc owns strategy and compliance rationale._
 
 ## Decisions already made (2026-08-19)
 
@@ -120,13 +122,31 @@ send path, not optional.
 
 ### Sending identity & infrastructure
 
-- ⚑ **Marketing domain**: recommend buying a dedicated domain (e.g.
-  `platefuloffers.com` — pick when registering) rather than a subdomain of the app
-  root. Gmail weighs reputation partly at the organizational-domain level; a separate
-  domain fully insulates `plateful.fyi` transactional + app mail from campaign
-  complaints. Cost is ~$12/yr. From: `{Restaurant Name} <{subdomain}@platefuloffers.com>`,
-  reply-to `restaurants.email`. Verify once in Resend (SPF/DKIM/DMARC), set up Google
-  Postmaster Tools on it.
+- **Marketing domain — DECIDED + PURCHASED 2026-08-25: `platefuloffers.fyi`**
+  (registered at Porkbun). A dedicated domain rather than a subdomain of the app
+  root: Gmail weighs reputation partly at the organizational-domain level, so a
+  separate domain fully insulates `plateful.fyi` transactional + app mail from
+  campaign complaints. From: `{Restaurant Name} <{subdomain}@platefuloffers.fyi>`,
+  reply-to `restaurants.email`. Verify once in Resend (SPF/DKIM/DMARC), set up
+  Google Postmaster Tools on it. Do the DNS early — reputation ages slowly.
+  **Setup done 2026-08-25**: domain added to Resend (region us-east-1, sending
+  only — receiving off, reply-to is the restaurant's inbox) and all DNS records
+  (DKIM TXT, send/rsend CNAMEs, `_dmarc` TXT `p=none`) live at Porkbun and
+  confirmed propagated; Resend verification was pending at time of writing and
+  completes automatically. Still todo from this list: Google Postmaster Tools,
+  and tightening DMARC from `p=none` once sending is established.
+- **Per-restaurant custom sending domain (DECIDED 2026-08-25, build after shared
+  sending works)**: the shared domain is the default, but a restaurant may configure
+  its own sending domain. Captured in the onboarding wizard in the same step that
+  asks about their site domain ("what email do you want offers to come from?").
+  Reality check baked into the UX: you can only send as a domain you can prove —
+  the restaurant's domain gets added to Resend as its own verified domain and the
+  wizard shows the SPF/DKIM records to add (mirroring the existing custom-site-domain
+  request flow); sending falls back to the shared domain until verification passes.
+  Needs: `sending_domain` + `sending_from_local_part` + verification status on
+  `restaurants` (or a small table), a Resend domain per opted-in restaurant, and the
+  send path picking the verified identity per restaurant. Their domain, their
+  reputation — which is also the sales upside ("your emails come from you").
 - **Resend, plain send API — not Broadcasts.** Broadcasts/Audiences prices per contact
   ($40/mo at 5k contacts) and its segmentation can't express "lapsed 60+ days" — our
   audiences are queries over the pivot, so consent, segmentation, and unsubscribe all
@@ -308,11 +328,12 @@ until Phase 4 is real.
 
 | # | Decision | Leaning | Needed by |
 |---|---|---|---|
-| 1 | Marketing domain name (separate purchased domain) | dedicated new domain | Phase 3 start (buy early) |
+| 1 | Marketing domain name (separate purchased domain) | **DECIDED: `platefuloffers.fyi`, purchased 2026-08-25** | done — DNS/Resend setup next |
+| 1b | Per-restaurant custom sending domain (opt-in, wizard-captured, shared domain default) | **DECIDED 2026-08-25: yes** | after shared-domain sending works |
 | 2 | Guest consent capture | defer | revisit post-lighthouse |
 | 3 | Opt-in checkbox on Register.vue too | skip, checkout only | Phase 1 build |
-| 4 | Structured template vs free-form email body | structured template | Phase 3 build |
-| 5 | First-campaign super-admin review queue | yes while small | Phase 3 build |
+| 4 | Structured template vs free-form email body | **DECIDED 2026-08-25: structured template** | done |
+| 5 | First-campaign super-admin review queue | **DECIDED 2026-08-25: yes** | done |
 | 6 | Open tracking | skip v1 | Phase 3 build |
 | 7 | SMS shared 10DLC campaign vs per-restaurant | shared | Phase 4 registration |
 | 8 | SMS provider (Twilio vs Telnyx) | Twilio | Phase 4 build |
