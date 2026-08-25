@@ -29,7 +29,12 @@ class SendCampaign implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public int $campaignId) {}
+    /**
+     * $expectedScheduledAt is stamped on delayed (scheduled) dispatches: the
+     * job only fires if the campaign is still scheduled for that exact moment,
+     * so a reschedule's stale earlier dispatch aborts instead of sending early.
+     */
+    public function __construct(public int $campaignId, public ?string $expectedScheduledAt = null) {}
 
     public function handle(CampaignAudience $audience): void
     {
@@ -40,6 +45,11 @@ class SendCampaign implements ShouldQueue
         // A cancelled (or deleted, or already-sent) campaign's delayed job
         // must abort silently.
         if (! $campaign || ! in_array($campaign->status, [CampaignStatus::Scheduled, CampaignStatus::Sending], true)) {
+            return;
+        }
+
+        if ($this->expectedScheduledAt !== null
+            && $campaign->scheduled_at?->toIso8601String() !== $this->expectedScheduledAt) {
             return;
         }
 

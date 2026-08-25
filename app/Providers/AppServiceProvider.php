@@ -6,6 +6,7 @@ use App\Enums\DeliveryProviderName;
 use App\Enums\PosProviderName;
 use App\Listeners\MergeGuestCartOnLogin;
 use App\Listeners\PurgeUserSessionsOnLogout;
+use App\Models\Campaign;
 use App\Models\ItemTemplate;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
@@ -117,6 +118,22 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return $category;
+        });
+
+        Route::bind('campaign', function ($value) {
+            $restaurant = request()->route('restaurant');
+            $restaurantId = $restaurant instanceof Restaurant ? $restaurant->id : null;
+
+            $campaign = Campaign::withoutTenantScope()
+                ->when($restaurantId, fn ($q) => $q->where('restaurant_id', $restaurantId))
+                ->where('id', $value)
+                ->first();
+
+            if (! $campaign || ($restaurantId && $campaign->restaurant_id !== $restaurantId)) {
+                throw new NotFoundHttpException;
+            }
+
+            return $campaign;
         });
 
         Route::bind('template', function ($value) {

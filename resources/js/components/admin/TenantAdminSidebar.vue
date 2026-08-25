@@ -10,6 +10,7 @@ import {
     ExternalLink,
     LayoutGrid,
     LayoutTemplate,
+    Megaphone,
     Plug,
     Settings,
     ShoppingBag,
@@ -30,6 +31,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes/admin/restaurant';
+import { index as campaignsIndex } from '@/routes/admin/restaurant/campaigns';
 import { index as customersIndex } from '@/routes/admin/restaurant/customers';
 import { show as deliveryShow } from '@/routes/admin/restaurant/delivery';
 import { edit as hoursEdit } from '@/routes/admin/restaurant/hours';
@@ -109,6 +111,11 @@ const groups = computed<NavGroup[]>(() => {
                 title: 'Customers',
                 href: customersIndex(restaurant),
                 icon: BookUser,
+            },
+            {
+                title: 'Campaigns',
+                href: campaignsIndex(restaurant),
+                icon: Megaphone,
             },
             {
                 title: 'Payouts',

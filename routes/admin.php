@@ -93,6 +93,21 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::get('/customers', [TenantAdmin\CustomersController::class, 'index'])->name('customers.index');
                 Route::get('/customers/export', [TenantAdmin\CustomersController::class, 'export'])->name('customers.export');
 
+                // Email campaigns to opted-in customers. Static paths are
+                // registered before the {campaign} wildcard so /create,
+                // /recipient-count, /preview and /test are never captured
+                // as a campaign id.
+                Route::get('/campaigns', [TenantAdmin\CampaignsController::class, 'index'])->name('campaigns.index');
+                Route::get('/campaigns/create', [TenantAdmin\CampaignsController::class, 'create'])->name('campaigns.create');
+                Route::get('/campaigns/recipient-count', [TenantAdmin\CampaignsController::class, 'count'])->name('campaigns.count');
+                Route::post('/campaigns/preview', [TenantAdmin\CampaignsController::class, 'preview'])->name('campaigns.preview');
+                Route::post('/campaigns/test', [TenantAdmin\CampaignsController::class, 'test'])->name('campaigns.test');
+                Route::post('/campaigns', [TenantAdmin\CampaignsController::class, 'store'])->name('campaigns.store');
+                Route::get('/campaigns/{campaign}', [TenantAdmin\CampaignsController::class, 'show'])->name('campaigns.show');
+                Route::post('/campaigns/{campaign}/send', [TenantAdmin\CampaignsController::class, 'send'])->name('campaigns.send');
+                Route::post('/campaigns/{campaign}/schedule', [TenantAdmin\CampaignsController::class, 'schedule'])->name('campaigns.schedule');
+                Route::post('/campaigns/{campaign}/cancel', [TenantAdmin\CampaignsController::class, 'cancel'])->name('campaigns.cancel');
+
                 Route::get('/settings/pos', [TenantAdmin\PosIntegrationsController::class, 'show'])->name('pos.show');
                 Route::post('/settings/pos/square/connect', [TenantAdmin\SquareConnectController::class, 'connect'])->name('pos.square.connect');
                 Route::post('/settings/pos/square/disconnect', [TenantAdmin\SquareConnectController::class, 'disconnect'])->name('pos.square.disconnect');
