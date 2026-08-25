@@ -147,6 +147,22 @@ return [
         'points_per_dollar' => 1,
     ],
 
+    /*
+    |---------------------------------------------------------------------------
+    | Email Campaign Caps
+    |---------------------------------------------------------------------------
+    |
+    | Platform-wide abuse guards on restaurant email campaigns, enforced in
+    | the SendCampaign job (and again in the compose controller). max_per_week
+    | counts campaigns sent or mid-send in the trailing 7 days; a send whose
+    | audience exceeds max_recipients_per_send is aborted back to draft.
+    |
+    */
+    'campaigns' => [
+        'max_per_week' => (int) env('CAMPAIGNS_MAX_PER_WEEK', 2),
+        'max_recipients_per_send' => (int) env('CAMPAIGNS_MAX_RECIPIENTS_PER_SEND', 2000),
+    ],
+
     'delivery' => [
         /*
          * How long a courier-network delivery may sit authorized-but-uncaptured

@@ -12,10 +12,12 @@ use App\Models\MenuItem;
 use App\Models\Restaurant;
 use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
+use App\Services\Campaigns\CampaignMailer;
 use App\Services\Delivery\DeliveryDispatcher;
 use App\Services\Delivery\DoorDash\DoorDashProvider;
 use App\Services\Delivery\SelfDeliveryProvider;
 use App\Services\Delivery\UberDirect\UberDirectProvider;
+use App\Services\MarketingConsentService;
 use App\Services\Pos\Clover\CloverPosProvider;
 use App\Services\Pos\PosDispatcher;
 use App\Services\Pos\Square\SquarePosProvider;
@@ -23,9 +25,11 @@ use App\Tenancy\CurrentTenant;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -53,6 +57,15 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
+        $this->app->singleton(CampaignMailer::class, function ($app): CampaignMailer {
+            // Keyless (local dev, tests) the mailer logs batches instead of
+            // sending — the campaign pipeline stays runnable without Resend.
+            return new CampaignMailer(
+                $app->make(MarketingConsentService::class),
+                config('services.resend.key'),
+            );
+        });
+
         $this->app->singleton(PosDispatcher::class, function ($app): PosDispatcher {
             // Adapters register here as they are built (Square first, then Clover),
             // keyed by PosProviderName value.
@@ -69,6 +82,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Resend's default API rate limit; applied to SendCampaignBatch jobs
+        // (each job is one batch API call) whenever a real key is configured.
+        RateLimiter::for('campaign-batches', fn (): Limit => Limit::perSecond(2));
 
         Restaurant::observe(RestaurantObserver::class);
         MenuItem::observe(MenuItemObserver::class);
