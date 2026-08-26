@@ -13,6 +13,7 @@ use App\Models\MenuItem;
 use App\Models\Restaurant;
 use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
+use App\Services\Campaigns\CampaignContentReviewer;
 use App\Services\Campaigns\CampaignMailer;
 use App\Services\Delivery\DeliveryDispatcher;
 use App\Services\Delivery\DoorDash\DoorDashProvider;
@@ -56,6 +57,12 @@ class AppServiceProvider extends ServiceProvider
                 DeliveryProviderName::DoorDash->value => $app->make(DoorDashProvider::class),
                 DeliveryProviderName::Uber->value => $app->make(UberDirectProvider::class),
             ]);
+        });
+
+        $this->app->singleton(CampaignContentReviewer::class, function (): CampaignContentReviewer {
+            // Keyless (local dev, tests) the reviewer returns no verdict and
+            // held campaigns fall through to the human super-admin console.
+            return new CampaignContentReviewer(config('services.anthropic.api_key'));
         });
 
         $this->app->singleton(CampaignMailer::class, function ($app): CampaignMailer {

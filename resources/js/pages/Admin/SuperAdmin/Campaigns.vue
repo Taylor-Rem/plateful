@@ -17,6 +17,8 @@ type ReviewRow = {
     restaurantName: string;
     restaurantSubdomain: string;
     restaurantPaused: boolean;
+    reviewVerdict: string | null;
+    reviewNotes: string | null;
     previewHtml?: string;
 };
 
@@ -138,6 +140,24 @@ defineOptions({ layout: SuperAdminLayout });
                                 </dd>
                             </div>
                         </dl>
+                        <div
+                            v-if="row.reviewNotes"
+                            class="rounded-md border px-3 py-2 text-sm"
+                            :class="
+                                row.reviewVerdict === 'flagged'
+                                    ? 'border-red-200 bg-red-50 text-red-900 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300'
+                                    : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+                            "
+                        >
+                            <span class="font-medium">
+                                {{
+                                    row.reviewVerdict === 'flagged'
+                                        ? 'Claude flagged this campaign:'
+                                        : 'Automated review:'
+                                }}
+                            </span>
+                            {{ row.reviewNotes }}
+                        </div>
                         <div class="flex flex-wrap items-center gap-3">
                             <Button type="button" @click="approve(row)">
                                 <CheckCircle2 class="size-4" />

@@ -214,6 +214,12 @@ audience resolver, test-send creates no recipient rows, empty-state count correc
   (`routes/super-admin.php` conventions) listing pending campaigns with preview + approve/reject;
   email ping to the platform on submission. After one clean send (delivered, no pause), the
   restaurant is auto-approved and skips the queue.
+  - **Amended 2026-08-26: review is automated via the Claude API** (`CampaignContentReviewer`,
+    schema-constrained verdict; model/spot-check rate in `platform.campaigns.review.*`). A held
+    campaign is reviewed by the `ReviewCampaign` job: approve → dispatches automatically (~1 min);
+    flag / refusal / API failure / no key → stays `pending_review` for the human console (fail
+    closed) + the email ping, with Claude's reasoning shown on the super page. Scope: every first
+    campaign, plus a spot-check chance (default 10%) on each post-graduation submission.
 - Caps re-enforced in the job layer; sending gate (approved/active/Stripe-ready) re-checked in
   `SendCampaign`.
 - **Tests:** webhook → suppression + opt-out + counters, signature rejection, auto-pause halts

@@ -114,6 +114,8 @@ class CampaignReviewController extends Controller
             'restaurantName' => $campaign->restaurant->name,
             'restaurantSubdomain' => $campaign->restaurant->subdomain,
             'restaurantPaused' => $campaign->restaurant->campaignsPaused(),
+            'reviewVerdict' => $campaign->review_verdict,
+            'reviewNotes' => $campaign->review_notes,
         ];
     }
 }

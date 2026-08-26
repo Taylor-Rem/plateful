@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; color: #111827; max-width: 600px; margin: 0 auto; padding: 24px;">
-    <h1 style="margin: 0 0 8px;">First campaign waiting for review</h1>
+    <h1 style="margin: 0 0 8px;">Campaign needs a human review</h1>
     <p style="color: #4b5563;">
-        <strong>{{ $restaurant->name }}</strong> ({{ $restaurant->subdomain }}) submitted their first
-        email campaign. It is held until a super admin approves it.
+        A campaign from <strong>{{ $restaurant->name }}</strong> ({{ $restaurant->subdomain }}) was
+        held for review and could not be auto-approved. It waits until a super admin approves it.
     </p>
 
     <p style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px;">
@@ -16,6 +16,12 @@
             Requested: send immediately on approval
         @endif
     </p>
+
+    @if ($campaign->review_notes)
+        <p style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px;">
+            Automated review: {{ $campaign->review_notes }}
+        </p>
+    @endif
 
     <p style="margin: 24px 0;">
         <a href="{{ $reviewUrl }}" style="background: #111827; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; display: inline-block; font-weight: bold;">Review campaigns</a>

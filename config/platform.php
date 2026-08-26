@@ -171,6 +171,18 @@ return [
          */
         'complaint_pause_rate' => (float) env('CAMPAIGNS_COMPLAINT_PAUSE_RATE', 0.003),
         'complaint_pause_min' => (int) env('CAMPAIGNS_COMPLAINT_PAUSE_MIN', 2),
+
+        /*
+         * Automated content review (Claude). Every first campaign is
+         * reviewed; after a restaurant graduates, each submission still has
+         * a spot_check_rate chance (0-1) of being reviewed. Approve →
+         * dispatches automatically; flag / API failure / no key → held for
+         * a human in the super-admin console (fail closed).
+         */
+        'review' => [
+            'model' => env('CAMPAIGNS_REVIEW_MODEL', 'claude-opus-5'),
+            'spot_check_rate' => (float) env('CAMPAIGNS_REVIEW_SPOT_CHECK_RATE', 0.10),
+        ],
     ],
 
     'delivery' => [

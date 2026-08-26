@@ -49,6 +49,11 @@
         <!-- Keyless on purpose: CampaignMailer logs batches instead of calling
              Resend, so campaign pipeline tests can never send real email. -->
         <env name="RESEND_API_KEY" value="" force="true"/>
+        <!-- Keyless on purpose: a developer .env carries a real Anthropic key,
+             and the campaign review job resolves CampaignContentReviewer inside
+             ordinary feature tests — keyless it returns "no verdict" instead of
+             calling the real API. (MenuExtractionService is always mocked.) -->
+        <env name="CLAUDE_API_KEY" value="" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <!-- Fake DoorDash platform credentials. DoorDashJwtService::mint() throws

@@ -131,8 +131,8 @@ defineOptions({ layout: TenantAdminLayout });
             class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
         >
             <span>
-                Your first campaign gets a quick review by Plateful before it
-                goes out — usually same day. Nothing more to do.
+                This campaign is getting a quick review before it goes out —
+                usually about a minute. Nothing more to do.
             </span>
             <Button type="button" variant="outline" @click="cancelCampaign">
                 Withdraw

@@ -8,8 +8,8 @@ use App\Enums\CampaignStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\TenantAdmin\CampaignFieldsRequest;
 use App\Http\Requests\Admin\TenantAdmin\StoreCampaignRequest;
+use App\Jobs\ReviewCampaign;
 use App\Jobs\SendCampaign;
-use App\Mail\CampaignReviewSubmittedMail;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Models\Restaurant;
@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Lottery;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -191,7 +191,7 @@ class CampaignsController extends Controller
             return $this->backToShow($restaurant, $campaign);
         }
 
-        if ($restaurant->needsFirstCampaignReview()) {
+        if ($restaurant->needsFirstCampaignReview() || $this->wonSpotCheck()) {
             return $this->holdForReview($restaurant, $campaign, scheduledAt: null);
         }
 
@@ -222,7 +222,7 @@ class CampaignsController extends Controller
             return $this->backToShow($restaurant, $campaign);
         }
 
-        if ($restaurant->needsFirstCampaignReview()) {
+        if ($restaurant->needsFirstCampaignReview() || $this->wonSpotCheck()) {
             return $this->holdForReview($restaurant, $campaign, $scheduledAt);
         }
 
@@ -237,9 +237,11 @@ class CampaignsController extends Controller
     }
 
     /**
-     * First-campaign review queue (Session 3): the campaign is held as
-     * pending_review instead of dispatching, and the platform is pinged. A
-     * super admin approving it performs the actual dispatch.
+     * Review hold (Session 3): the campaign is held as pending_review and the
+     * automated reviewer takes it from there — approve dispatches within
+     * about a minute; a flag (or reviewer failure) escalates to the human
+     * super-admin console. Every first campaign is held; graduated
+     * restaurants are held on a random spot check.
      */
     protected function holdForReview(Restaurant $restaurant, Campaign $campaign, ?CarbonImmutable $scheduledAt): RedirectResponse
     {
@@ -248,15 +250,29 @@ class CampaignsController extends Controller
             'scheduled_at' => $scheduledAt,
         ])->save();
 
-        $campaign->setRelation('restaurant', $restaurant);
-        Mail::to(config('mail.senders.support'))->queue(new CampaignReviewSubmittedMail($campaign));
+        ReviewCampaign::dispatch($campaign->id);
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'First campaigns get a quick review by Plateful before sending — usually same day. We\'ll take it from here.',
+            'message' => 'This campaign is getting a quick automated review before it goes out — usually about a minute. We\'ll take it from here.',
         ]);
 
         return $this->backToShow($restaurant, $campaign);
+    }
+
+    /**
+     * Post-graduation spot check: each submission has a configured chance of
+     * still going through automated review.
+     */
+    protected function wonSpotCheck(): bool
+    {
+        $rate = (float) config('platform.campaigns.review.spot_check_rate');
+
+        if ($rate <= 0) {
+            return false;
+        }
+
+        return Lottery::odds((int) round($rate * 10000), 10000)->choose();
     }
 
     /**
