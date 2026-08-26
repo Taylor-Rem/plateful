@@ -1,8 +1,10 @@
 # Email Campaigns — Implementation Plan (Phase 3)
 
-**Status:** not started · **Decisions locked 2026-08-25** · Strategy + compliance rationale live in
-`docs/campaigns_plan.md` (this doc is the build spec; that doc is the why). Consent capture
-(Phase 1) is **already built** — see "What already exists" below before writing anything.
+**Status: LIVE IN PRODUCTION 2026-08-26** (Sessions 1–3 + automated review; Session 4 not
+started) · **Decisions locked 2026-08-25** (review-queue decision amended 2026-08-26 — see
+Session 3) · Strategy + compliance rationale live in `docs/campaigns_plan.md` (this doc is the
+build spec; that doc is the why). Consent capture (Phase 1) is **already built** — see "What
+already exists" below before writing anything.
 
 Each session is independently implementable by a fresh session with no prior context beyond this
 doc. **Execution order: 1 → 2 → 3 → 4.** Session 2 ends at the demo milestone: *log in as a
@@ -15,8 +17,32 @@ required before any real (non-test) restaurant can send. Session 4 is deliberate
 |---|---|---|
 | **1** | Send pipeline (data model, audience query, template, Resend batch sender, jobs) | ✅ 2026-08-25 |
 | **2** | Owner UI (compose, audience picker, preview, test-send, send/schedule) — **demo milestone** | ✅ 2026-08-25 |
-| **3** | Safety rails (Resend webhooks → suppression, auto-pause, caps, first-campaign review queue) | ✅ 2026-08-25 (code; prod webhook registration pending) |
+| **3** | Safety rails (Resend webhooks → suppression, auto-pause, caps, first-campaign review queue) | ✅ 2026-08-25; webhook registered in Resend + secret in prod 2026-08-26 |
+| **3b** | Automated campaign review via Claude (amends the human-only queue — see Session 3) | ✅ 2026-08-26 (deployed; not yet exercised by a live campaign) |
 | **4** | Per-restaurant custom sending domain (wizard-captured, shared domain default) | ⬜ |
+
+### Production state (as of 2026-08-26)
+
+- Sessions 1–3 + automated review are **deployed and proven live**: first real campaign from the
+  testaurant went end-to-end — held for first-campaign review → approved in the super console
+  (this campaign predated the automated reviewer, so the human path is what got exercised) →
+  sent via Resend → delivered to a real Gmail inbox.
+- Verified from the delivered .eml: SPF pass (aligned via `rsend.platefuloffers.fyi` custom
+  return-path), DKIM pass (`d=platefuloffers.fyi`), DMARC pass, one-click List-Unsubscribe
+  headers, plain-text alternative, compliance footer. **The send pipeline needs no fixes.**
+- **Deliverability:** that first send landed in Gmail's spam folder — expected cold start for a
+  days-old domain (worsened by deliberately spammy test copy). Not a pipeline defect. Remedy is
+  warm-up: small consistent sends to genuinely opted-in customers, recipients marking Not spam.
+  Weekly cap + recipient ceiling already prevent the burst-from-cold-domain failure mode.
+- The automated Claude reviewer is deployed with `CLAUDE_API_KEY` live in prod but has not yet
+  ruled on a real campaign. To exercise it: send from a non-graduated restaurant, or set
+  `CAMPAIGNS_REVIEW_SPOT_CHECK_RATE=1.0` temporarily; verdict lands in
+  `campaigns.review_verdict/review_notes/reviewed_at` and flagged campaigns show the reasoning
+  in `/super/campaigns`.
+- **Remaining ops:** add `platefuloffers.fyi` to Google Postmaster Tools (signup returned
+  "adding domain unsuccessful" repeatedly on 2026-08-26 — likely multi-account/Workspace issue;
+  retry later with the Plateful Google account; monitoring only, does not affect delivery), and
+  tighten DMARC from `p=none` after a few weeks of established sending.
 
 ---
 
