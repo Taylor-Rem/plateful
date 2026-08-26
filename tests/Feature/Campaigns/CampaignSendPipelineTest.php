@@ -19,7 +19,7 @@ beforeEach(function () {
 });
 
 test('a scheduled campaign sends to every eligible customer and completes', function () {
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     optedInCustomer($r, 'Alice Apple', 'alice@example.test');
     optedInCustomer($r, 'Bob Banana', 'bob@example.test');
     customerPivot($r, customerUser('Norman Never', 'norman@example.test'));
@@ -42,7 +42,7 @@ test('a scheduled campaign sends to every eligible customer and completes', func
 });
 
 test('an opt-out between scheduling and execution is honored', function () {
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     $alice = optedInCustomer($r, 'Alice Apple', 'alice@example.test');
     optedInCustomer($r, 'Bob Banana', 'bob@example.test');
 
@@ -58,7 +58,7 @@ test('an opt-out between scheduling and execution is honored', function () {
 });
 
 test('a cancelled campaign aborts silently when its delayed job runs', function () {
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     optedInCustomer($r, 'Alice Apple', 'alice@example.test');
 
     $c = campaign($r, ['status' => CampaignStatus::Cancelled, 'scheduled_at' => now()->subMinute()]);
@@ -72,7 +72,7 @@ test('a cancelled campaign aborts silently when its delayed job runs', function 
 });
 
 test('an empty audience completes immediately as sent with zero recipients', function () {
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
 
     $c = campaign($r);
 
@@ -86,7 +86,7 @@ test('an empty audience completes immediately as sent with zero recipients', fun
 test('the weekly cap reverts an over-cap send to draft', function () {
     config(['platform.campaigns.max_per_week' => 2]);
 
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     optedInCustomer($r, 'Alice Apple', 'alice@example.test');
 
     campaign($r, ['status' => CampaignStatus::Sent, 'sent_at' => now()->subDays(2)]);
@@ -103,7 +103,7 @@ test('the weekly cap reverts an over-cap send to draft', function () {
 test('campaigns sent more than a week ago do not count toward the cap', function () {
     config(['platform.campaigns.max_per_week' => 2]);
 
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     optedInCustomer($r, 'Alice Apple', 'alice@example.test');
 
     campaign($r, ['status' => CampaignStatus::Sent, 'sent_at' => now()->subDays(10)]);
@@ -118,7 +118,7 @@ test('campaigns sent more than a week ago do not count toward the cap', function
 test('an audience over the recipient ceiling reverts to draft rather than mailing a subset', function () {
     config(['platform.campaigns.max_recipients_per_send' => 1]);
 
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     optedInCustomer($r, 'Alice Apple', 'alice@example.test');
     optedInCustomer($r, 'Bob Banana', 'bob@example.test');
 
@@ -131,7 +131,7 @@ test('an audience over the recipient ceiling reverts to draft rather than mailin
 });
 
 test('a retried batch job never re-sends rows already marked sent', function () {
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     $alice = optedInCustomer($r, 'Alice Apple', 'alice@example.test');
     $bob = optedInCustomer($r, 'Bob Banana', 'bob@example.test');
 
@@ -160,7 +160,7 @@ test('a retried batch job never re-sends rows already marked sent', function () 
 });
 
 test('a batch re-checks suppression and fails the row instead of sending', function () {
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     $alice = optedInCustomer($r, 'Alice Apple', 'alice@example.test');
 
     $c = campaign($r, ['status' => CampaignStatus::Sending]);
@@ -182,7 +182,7 @@ test('a batch re-checks suppression and fails the row instead of sending', funct
 });
 
 test('a batch aborts without sending once the campaign is no longer sending', function () {
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     $alice = optedInCustomer($r, 'Alice Apple', 'alice@example.test');
 
     $c = campaign($r, ['status' => CampaignStatus::PausedByPlatform]);
@@ -200,7 +200,7 @@ test('a batch aborts without sending once the campaign is no longer sending', fu
 });
 
 test('a re-run SendCampaign does not duplicate recipient snapshots', function () {
-    $r = adminOrderRestaurant('marcos');
+    $r = liveRestaurant('marcos');
     optedInCustomer($r, 'Alice Apple', 'alice@example.test');
 
     $c = campaign($r);

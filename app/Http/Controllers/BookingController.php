@@ -14,8 +14,9 @@ class BookingController extends Controller
      * point at (one-pagers, Instagram bio, the savings calculator CTA).
      *
      * Three shapes, by configuration:
-     * - no booking URL configured → redirect to the for-restaurants page, so
-     *   a printed /book link never 404s before scheduling exists;
+     * - no booking URL configured → 301 to the for-restaurants page, so a
+     *   printed /book link never 404s before scheduling exists and search
+     *   engines consolidate on /for-restaurants rather than /book;
      * - a cal.com URL → render the page with the calendar embedded inline,
      *   keeping the prospect on plateful.fyi;
      * - any other scheduling provider → redirect straight to it.
@@ -25,7 +26,7 @@ class BookingController extends Controller
         $bookingUrl = config('platform.booking_url');
 
         if (! $bookingUrl) {
-            return redirect()->route('owner-signup.landing');
+            return redirect()->route('owner-signup.landing', status: 301);
         }
 
         $calLink = $this->calLink($bookingUrl);

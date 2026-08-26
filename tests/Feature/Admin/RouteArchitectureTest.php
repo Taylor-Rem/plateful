@@ -11,6 +11,7 @@ test('webhook URLs stay pinned to their externally registered paths', function (
     'stripe' => ['stripe.webhook', 'http://admin.plateful.test/stripe/webhook'],
     'uber' => ['webhooks.uber', 'http://admin.plateful.test/webhooks/uber'],
     'doordash' => ['webhooks.doordash', 'http://admin.plateful.test/webhooks/doordash'],
+    'resend' => ['webhooks.resend', 'http://admin.plateful.test/webhooks/resend'],
 ]);
 
 test('tenant admin routes resolve on the admin host', function () {

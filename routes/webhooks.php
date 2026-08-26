@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DoorDashWebhookController;
+use App\Http\Controllers\ResendWebhookController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\UberDirectWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -26,4 +27,9 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
     // DoorDash is centrally billed, so a single platform-level secret verifies
     // the signature and the delivery is resolved by external_delivery_id.
     Route::post('/webhooks/doordash', DoorDashWebhookController::class)->name('webhooks.doordash');
+
+    // Resend email-event webhooks (campaign delivered/bounced/complained).
+    // One endpoint for the whole Resend account; events are matched to
+    // campaign recipients by message id, so transactional mail is ignored.
+    Route::post('/webhooks/resend', ResendWebhookController::class)->name('webhooks.resend');
 });

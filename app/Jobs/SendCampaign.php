@@ -53,6 +53,17 @@ class SendCampaign implements ShouldQueue
             return;
         }
 
+        // Sending-gate backstop (Session 3): the controller checked this at
+        // schedule time, but a suspension, Stripe restriction, or complaint
+        // pause can land before a delayed send fires.
+        $restaurant = $campaign->restaurant;
+
+        if (! $restaurant || ! $restaurant->isLive() || ! $restaurant->isStripeReady() || $restaurant->campaignsPaused()) {
+            $this->revertToDraft($campaign, 'restaurant is not eligible to send (gate re-check)');
+
+            return;
+        }
+
         if ($this->exceedsWeeklyCap($campaign)) {
             $this->revertToDraft($campaign, 'weekly campaign cap reached');
 

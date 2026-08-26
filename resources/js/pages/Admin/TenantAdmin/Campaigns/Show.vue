@@ -77,7 +77,12 @@ function schedule(): void {
 }
 
 function cancelCampaign(): void {
-    if (!window.confirm('Cancel this scheduled campaign?')) {
+    const what =
+        props.campaign.status === 'pending_review'
+            ? 'Withdraw this campaign from review?'
+            : 'Cancel this scheduled campaign?';
+
+    if (!window.confirm(what)) {
         return;
     }
 
@@ -119,6 +124,19 @@ defineOptions({ layout: TenantAdminLayout });
             class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
         >
             {{ sendBlocker }}
+        </div>
+
+        <div
+            v-if="campaign.status === 'pending_review'"
+            class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
+        >
+            <span>
+                Your first campaign gets a quick review by Plateful before it
+                goes out — usually same day. Nothing more to do.
+            </span>
+            <Button type="button" variant="outline" @click="cancelCampaign">
+                Withdraw
+            </Button>
         </div>
 
         <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

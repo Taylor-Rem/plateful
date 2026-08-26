@@ -20,6 +20,7 @@ class CampaignRecipient extends Model
         return [
             'status' => CampaignRecipientStatus::class,
             'sent_at' => 'datetime',
+            'delivered_at' => 'datetime',
         ];
     }
 

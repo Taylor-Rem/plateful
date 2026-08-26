@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\TenantAdmin\CampaignFieldsRequest;
 use App\Http\Requests\Admin\TenantAdmin\StoreCampaignRequest;
 use App\Jobs\SendCampaign;
+use App\Mail\CampaignReviewSubmittedMail;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Models\Restaurant;
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -99,7 +101,7 @@ class CampaignsController extends Controller
         return Inertia::render('Admin/TenantAdmin/Campaigns/Show', [
             'restaurant' => RestaurantData::fromModel($restaurant),
             'campaign' => CampaignData::fromModel($campaign),
-            'previewHtml' => $mailer->buildMessage($campaign, $this->sampleRecipient(request()->user()))['html'],
+            'previewHtml' => $mailer->previewHtml($campaign, request()->user()),
             'sendBlocker' => $this->sendGateBlocker($restaurant),
         ]);
     }
@@ -133,7 +135,7 @@ class CampaignsController extends Controller
         $campaign = $this->ephemeralCampaign($request, $restaurant);
 
         return response()->json([
-            'html' => $mailer->buildMessage($campaign, $this->sampleRecipient($request->user()))['html'],
+            'html' => $mailer->previewHtml($campaign, $request->user()),
         ]);
     }
 
@@ -168,8 +170,8 @@ class CampaignsController extends Controller
 
     public function cancel(Restaurant $restaurant, Campaign $campaign): RedirectResponse
     {
-        if ($campaign->status !== CampaignStatus::Scheduled) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'Only a scheduled campaign can be cancelled.']);
+        if (! in_array($campaign->status, [CampaignStatus::Scheduled, CampaignStatus::PendingReview], true)) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Only a scheduled or in-review campaign can be cancelled.']);
 
             return back();
         }
@@ -187,6 +189,10 @@ class CampaignsController extends Controller
             Inertia::flash('toast', ['type' => 'error', 'message' => $blocker]);
 
             return $this->backToShow($restaurant, $campaign);
+        }
+
+        if ($restaurant->needsFirstCampaignReview()) {
+            return $this->holdForReview($restaurant, $campaign, scheduledAt: null);
         }
 
         $campaign->forceFill(['status' => CampaignStatus::Scheduled, 'scheduled_at' => null])->save();
@@ -216,12 +222,39 @@ class CampaignsController extends Controller
             return $this->backToShow($restaurant, $campaign);
         }
 
+        if ($restaurant->needsFirstCampaignReview()) {
+            return $this->holdForReview($restaurant, $campaign, $scheduledAt);
+        }
+
         $campaign->forceFill(['status' => CampaignStatus::Scheduled, 'scheduled_at' => $scheduledAt])->save();
 
         SendCampaign::dispatch($campaign->id, $campaign->scheduled_at->toIso8601String())
             ->delay($scheduledAt);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Campaign scheduled.']);
+
+        return $this->backToShow($restaurant, $campaign);
+    }
+
+    /**
+     * First-campaign review queue (Session 3): the campaign is held as
+     * pending_review instead of dispatching, and the platform is pinged. A
+     * super admin approving it performs the actual dispatch.
+     */
+    protected function holdForReview(Restaurant $restaurant, Campaign $campaign, ?CarbonImmutable $scheduledAt): RedirectResponse
+    {
+        $campaign->forceFill([
+            'status' => CampaignStatus::PendingReview,
+            'scheduled_at' => $scheduledAt,
+        ])->save();
+
+        $campaign->setRelation('restaurant', $restaurant);
+        Mail::to(config('mail.senders.support'))->queue(new CampaignReviewSubmittedMail($campaign));
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'First campaigns get a quick review by Plateful before sending — usually same day. We\'ll take it from here.',
+        ]);
 
         return $this->backToShow($restaurant, $campaign);
     }
@@ -269,6 +302,10 @@ class CampaignsController extends Controller
      */
     protected function sendGateBlocker(Restaurant $restaurant): ?string
     {
+        if ($restaurant->campaignsPaused()) {
+            return 'Campaign sending is paused pending a review by Plateful. Contact support if you have questions.';
+        }
+
         if (! $restaurant->isLive() || ! $restaurant->isStripeReady()) {
             return 'Your restaurant must be live and payments-ready before sending campaigns.';
         }

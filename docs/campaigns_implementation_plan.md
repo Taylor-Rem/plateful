@@ -15,7 +15,7 @@ required before any real (non-test) restaurant can send. Session 4 is deliberate
 |---|---|---|
 | **1** | Send pipeline (data model, audience query, template, Resend batch sender, jobs) | ✅ 2026-08-25 |
 | **2** | Owner UI (compose, audience picker, preview, test-send, send/schedule) — **demo milestone** | ✅ 2026-08-25 |
-| **3** | Safety rails (Resend webhooks → suppression, auto-pause, caps, first-campaign review queue) | ⬜ |
+| **3** | Safety rails (Resend webhooks → suppression, auto-pause, caps, first-campaign review queue) | ✅ 2026-08-25 (code; prod webhook registration pending) |
 | **4** | Per-restaurant custom sending domain (wizard-captured, shared domain default) | ⬜ |
 
 ---

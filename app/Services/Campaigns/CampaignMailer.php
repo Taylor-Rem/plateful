@@ -5,6 +5,7 @@ namespace App\Services\Campaigns;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Models\Restaurant;
+use App\Models\User;
 use App\Services\MarketingConsentService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
@@ -101,6 +102,19 @@ class CampaignMailer
                 'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
             ],
         ];
+    }
+
+    /**
+     * The rendered email as a given viewer would receive it — used by the
+     * owner compose preview and the super-admin review queue. The viewer
+     * stands in as the recipient, so the unsubscribe URL is real.
+     */
+    public function previewHtml(Campaign $campaign, User $viewer): string
+    {
+        $recipient = new CampaignRecipient(['email' => $viewer->email]);
+        $recipient->setRelation('user', $viewer);
+
+        return $this->buildMessage($campaign, $recipient)['html'];
     }
 
     /**

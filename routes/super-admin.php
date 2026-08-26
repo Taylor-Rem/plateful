@@ -31,6 +31,13 @@ Route::domain('admin.'.config('platform.primary_domain'))
         Route::post('/restaurants/{subdomain}/restore', [SuperAdmin\RestaurantLifecycleController::class, 'restore'])->name('restaurants.restore');
         Route::delete('/restaurants/{subdomain}/force', [SuperAdmin\RestaurantLifecycleController::class, 'forceDelete'])->name('restaurants.forceDelete');
 
+        // Campaign safety console: first-campaign review queue + complaint
+        // auto-pauses. Approval is what dispatches a held campaign.
+        Route::get('/campaigns', [SuperAdmin\CampaignReviewController::class, 'index'])->name('campaigns.index');
+        Route::post('/campaigns/{campaign}/approve', [SuperAdmin\CampaignReviewController::class, 'approve'])->name('campaigns.approve');
+        Route::post('/campaigns/{campaign}/reject', [SuperAdmin\CampaignReviewController::class, 'reject'])->name('campaigns.reject');
+        Route::post('/campaigns/paused/{restaurant:subdomain}/resume', [SuperAdmin\CampaignReviewController::class, 'unpause'])->name('campaigns.unpause');
+
         Route::get('/stories', [SuperAdmin\StoriesController::class, 'index'])->name('stories.index');
         Route::put('/stories/{slug}', [SuperAdmin\StoriesController::class, 'update'])
             ->where('slug', '[a-z0-9-]+')

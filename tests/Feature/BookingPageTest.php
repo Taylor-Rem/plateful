@@ -1,10 +1,11 @@
 <?php
 
-it('redirects to the for-restaurants page when no booking link is configured', function () {
+it('permanently redirects to the for-restaurants page when no booking link is configured', function () {
     config()->set('platform.booking_url', null);
 
     $this->get('http://plateful.test/book')
-        ->assertRedirect(route('owner-signup.landing'));
+        ->assertRedirect(route('owner-signup.landing'))
+        ->assertStatus(301);
 });
 
 it('renders the embedded booking page for a cal.com link', function () {

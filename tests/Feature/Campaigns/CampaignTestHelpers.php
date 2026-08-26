@@ -1,11 +1,32 @@
 <?php
 
+use App\Enums\RestaurantStatus;
 use App\Models\Campaign;
 use App\Models\Restaurant;
 use App\Models\User;
 
 require_once __DIR__.'/../Admin/AdminOrderTestHelpers.php';
 require_once __DIR__.'/../Admin/CustomerTestHelpers.php';
+
+if (! function_exists('liveRestaurant')) {
+    /**
+     * A restaurant that passes the campaign sending gate. Established
+     * (campaigns-approved) by default; pass false to model a restaurant
+     * still subject to the first-campaign review queue.
+     */
+    function liveRestaurant(string $sub = 'marcos', bool $campaignsApproved = true): Restaurant
+    {
+        $r = adminOrderRestaurant($sub);
+        $r->forceFill([
+            'status' => RestaurantStatus::Active,
+            'is_active' => true,
+            'stripe_account_status' => Restaurant::STRIPE_ENABLED,
+            'campaigns_approved_at' => $campaignsApproved ? now() : null,
+        ])->save();
+
+        return $r;
+    }
+}
 
 if (! function_exists('campaign')) {
     /**

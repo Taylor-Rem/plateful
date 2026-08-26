@@ -1,11 +1,9 @@
 <?php
 
 use App\Enums\CampaignStatus;
-use App\Enums\RestaurantStatus;
 use App\Jobs\SendCampaign;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
-use App\Models\Restaurant;
 use App\Services\Campaigns\CampaignAudience;
 use Illuminate\Support\Facades\Queue;
 
@@ -15,18 +13,6 @@ beforeEach(function () {
     config(['platform.primary_domain' => 'plateful.test']);
     config(['services.resend.key' => null]);
 });
-
-function liveRestaurant(string $sub = 'marcos'): Restaurant
-{
-    $r = adminOrderRestaurant($sub);
-    $r->forceFill([
-        'status' => RestaurantStatus::Active,
-        'is_active' => true,
-        'stripe_account_status' => Restaurant::STRIPE_ENABLED,
-    ])->save();
-
-    return $r;
-}
 
 /**
  * @return array<string, mixed>
