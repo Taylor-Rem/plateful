@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import AccountTabs from '@/pages/Storefront/Account/AccountTabs.vue';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     profile: { name: string; email: string; phone: string | null };
+    marketing: { optedIn: boolean };
 }>();
 
 const form = useForm({
@@ -15,6 +17,26 @@ const form = useForm({
 
 const submit = (): void => {
     form.patch('/account/profile', { preserveScroll: true });
+};
+
+const marketingOptedIn = ref<boolean>(props.marketing.optedIn);
+const marketingSaving = ref<boolean>(false);
+
+const toggleMarketing = (): void => {
+    marketingSaving.value = true;
+    router.patch(
+        '/account/marketing',
+        { opted_in: marketingOptedIn.value },
+        {
+            preserveScroll: true,
+            onError: () => {
+                marketingOptedIn.value = props.marketing.optedIn;
+            },
+            onFinish: () => {
+                marketingSaving.value = false;
+            },
+        },
+    );
 };
 </script>
 
@@ -110,6 +132,26 @@ const submit = (): void => {
                     {{ form.processing ? 'Saving…' : 'Save changes' }}
                 </button>
             </form>
+
+            <section class="mt-6 rounded-lg border border-border bg-card p-5">
+                <h2 class="mb-1 text-base font-semibold">Marketing emails</h2>
+                <p class="mb-4 text-sm text-muted-foreground">
+                    Only {{ restaurant.name }} can email you — subscribing here
+                    never subscribes you anywhere else.
+                </p>
+                <!-- Label text is persisted verbatim as the consent snapshot;
+                     keep in sync with MarketingConsentService::optInText(). -->
+                <label class="inline-flex items-center gap-2 text-sm">
+                    <input
+                        v-model="marketingOptedIn"
+                        type="checkbox"
+                        class="rounded"
+                        :disabled="marketingSaving"
+                        @change="toggleMarketing"
+                    />
+                    Email me offers and news from {{ restaurant.name }}.
+                </label>
+            </section>
         </main>
     </div>
 </template>

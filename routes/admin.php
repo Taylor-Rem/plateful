@@ -88,6 +88,11 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
 
                 Route::get('/payouts', [TenantAdmin\PayoutsController::class, 'index'])->name('payouts.index');
 
+                // Customer list + export are owner-level data (contact info for
+                // the whole list), so they sit with Settings/Payouts, not staff.
+                Route::get('/customers', [TenantAdmin\CustomersController::class, 'index'])->name('customers.index');
+                Route::get('/customers/export', [TenantAdmin\CustomersController::class, 'export'])->name('customers.export');
+
                 Route::get('/settings/pos', [TenantAdmin\PosIntegrationsController::class, 'show'])->name('pos.show');
                 Route::post('/settings/pos/square/connect', [TenantAdmin\SquareConnectController::class, 'connect'])->name('pos.square.connect');
                 Route::post('/settings/pos/square/disconnect', [TenantAdmin\SquareConnectController::class, 'disconnect'])->name('pos.square.disconnect');

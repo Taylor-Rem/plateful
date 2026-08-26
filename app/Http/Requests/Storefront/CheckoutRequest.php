@@ -71,6 +71,10 @@ class CheckoutRequest extends FormRequest
                 Rule::exists('addresses', 'id')->where(fn ($q) => $userId ? $q->where('user_id', $userId) : $q->whereRaw('1 = 0')),
             ],
             'save_address' => ['nullable', 'boolean'],
+            // Marketing consent (strict opt-in, unchecked by default). Only
+            // meaningful for logged-in customers — persisted at order
+            // materialization alongside the restaurant_customer pivot.
+            'marketing_opt_in' => ['nullable', 'boolean'],
             'tip_preset' => ['nullable', Rule::in(['0', '15', '18', '20', 'custom', 0, 15, 18, 20])],
             'tip_custom_cents' => ['nullable', 'integer', 'min:0', 'max:50000'],
             'tip_cents' => ['nullable', 'integer', 'min:0'],

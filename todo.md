@@ -481,10 +481,25 @@ never in the tenant admin. So this is a partial data foundation, not a blank sla
       redemption) and are the sharpest "own your customers" lever we have. The full state, the
       decided model, and the open questions live in **§10** — one section, so this doesn't drift
       into two conflicting accounts.
-- [ ] Surface a per-restaurant customer contact list (join `restaurant_customer` → `User` for
-      email/phone) in the tenant admin; add CSV export. No admin customer page exists today.
+- [x] **Customers page + CSV export — Phase 1 BUILT 2026-08-24** (ahead of the lighthouse
+      trigger, on purpose): `/{subdomain}/customers` (admin-role only) with search, 30/90-day
+      and opted-in filters, sortable columns, loyalty balances, and the streaming CSV export —
+      plus the full consent-capture amendment (pivot consent columns, append-only
+      `marketing_consent_events` audit table, unchecked-by-default checkout checkbox for
+      logged-in customers, per-restaurant `/account` profile toggle, and the signed-URL
+      login-free unsubscribe endpoint with undo). 25 new tests. Full plan + spec in
+      `docs/customers_page_plan.md`.
+- [ ] **Regulars stats view (customers plan Phase 2) — still deferred**: build before the
+      ~60-day lighthouse money story; both phases shipped before any
+      DoorDash-Storefront-segment outreach (that pitch is purely the ownership pitch, and the
+      CSV export button *is* the demo).
 - [ ] Fee-free remarketing: email/SMS campaigns — core differentiator vs DoorDash/Toast.
-      (Only transactional mail exists today — no campaign/broadcast/newsletter infrastructure.)
+      **SPEC'D 2026-08-19**: full plan in `docs/campaigns_plan.md`. Decided: email first
+      (SMS a later, demand-pulled phase behind TCPA consent + 10DLC), strict opt-in only,
+      shared dedicated marketing domain, and **consent capture pulled forward into the
+      Customers-page Phase 1** (the opted-in list only accrues from the day the checkout
+      checkbox exists). ~5 sessions for email campaigns; sequenced ~60–90 days after
+      lighthouse launch, before DoorDash-Storefront-segment outreach.
 
 ## 5. Public savings calculator (prospect-facing; needs pricing locked, §1)
 - [x] **Public marketing-site calculator — DONE (2026-08-14).** Live at `/savings` (root domain,
@@ -783,6 +798,46 @@ shipped and logged in §8 (checkout throttle, dispute webhook, cloud-check cover
       via `PendingCheckout` consumption, but there's no dedup on Stripe `evt_` ids and no handlers
       for `charge.refunded` / `payment_intent.*` reconciliation. Fine for launch; revisit with the
       §7 refund work.
+
+---
+
+## 12. Multi-location (chain) restaurants — build-on-demand
+_Added 2026-08-18 after the DoorDash-Storefront competitive pass surfaced small local chains
+(e.g. Rancherito's) as plausible eventual clients. Full plan in
+`docs/chain_restaurant_plan.md` — **nothing here gets built before a real multi-location
+prospect exists.** Today's honest sell: "each location gets its own storefront; you manage
+them all from one login" (the users↔restaurants pivot already handles this)._
+
+- [ ] Umbrella storefront / location-picker page (each location is its own tenant today).
+- [ ] Menu sync across locations — v1 is copy-menu-to-location (one-shot clone); true
+      shared-master sync only on real client demand.
+- [ ] Cross-location loyalty (points are keyed user+restaurant today) — design together with
+      the §10 redemption decision, not before.
+- [ ] Owner-level roll-up reporting across their locations.
+- [ ] **Pricing decision before the first multi-location conversation:** the $399/mo cap is
+      per location (5 locations = $1,995/mo) — keep, or offer a negotiated group cap.
+
+---
+
+## 13. Marketplace menu browsing — browse menus on plateful.fyi, order on the storefront
+_Added 2026-08-18. Full plan in `docs/marketplace_menu_browsing_plan.md`. The pitch it unlocks:
+**marketplace-sourced customers are still the restaurant's customers, at the same 4%** — DoorDash
+charges 15–30% for exactly this demand generation. Diners browse any restaurant's menu without
+leaving plateful.fyi; only the "order" click hands them to the storefront (`publicUrl()`,
+custom-domain aware). Growth surface, not launch surface — build after §0, once a handful of real
+menus exist for the SEO to compound on._
+
+- [ ] **Phase 1 — crawlable menu page per restaurant** at `/restaurants/{subdomain}` on the root
+      domain: reuse the `Storefront\MenuController` category query (extracted so the two can't
+      drift), read-only render, "Order from {name}" CTA, JSON-LD Restaurant+Menu markup, sitemap
+      entries. No cart, no admin `editor` payload.
+- [ ] **Phase 2 — homepage quick preview**: lazy-loaded menu drawer on each `Welcome.vue` card,
+      same serialized data, links out to the Phase 1 page and the storefront.
+- [ ] **Phase 3 — city/cuisine browse pages** (on traffic evidence). Blocker: no cuisine column
+      exists — the homepage search placeholder already over-promises "cuisine"
+      (`Welcome.vue:39-46` matches name/city/state/description only).
+- [ ] Marketing: the no-extra-commission promise on /for-restaurants when Phase 1 ships — same
+      pricing-promise class as the public $399 cap (§1): once said, it's a commitment.
 
 ---
 

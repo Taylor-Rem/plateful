@@ -1,7 +1,7 @@
 ---
 title: "The ordering gap in Orem"
 date: '2026-08-17'
-excerpt: "Orem has the worst direct-ordering rate of any major Wasatch Front city: 55% of its independents can't take an online order — and they're the most-reviewed invisible restaurants in the corridor."
+excerpt: "44 of Orem's 67 independent restaurants — 66%, two of every three — have no ordering channel of their own, and they average over 1,400 Google reviews each. The city-level verified data."
 author: 'Taylor Remund, founder of Plateful'
 tags: [data]
 published: false
@@ -9,65 +9,69 @@ hero: '/images/stories/gap-orem-hero.png'
 ---
 
 <!--
-DRAFT NOTES: stats computed 2026-08-17 from wasatch.db (July 2026 scan),
-same chain-exclusion as the corridor piece. No restaurants named on
-purpose — add trusted local examples before publishing. The "most-reviewed"
-claim compares the six largest cities' no-channel group averages (Orem
-~1,532 vs SLC ~1,270, Sandy ~1,462, etc.) — keep that scope if you edit.
+DRAFT NOTES: stats recomputed 2026-08-19 from wasatch.db v2 (website scan +
+platform verification). Superlative shuffle: Orem is now second-worst rate
+(behind WVC's 69%) and second-most-reviewed gap group (behind Sandy's
+~1,467 vs Orem's ~1,410) — the draft claims neither superlative. Two of
+hand verification cleared Orem of zero-online restaurants entirely. No
+restaurants named on purpose — add trusted local examples before
+publishing.
 -->
 
-Every city on the Wasatch Front has an ordering gap. Orem's is the worst of
-the big ones — and, strangely, its invisible restaurants are the most
-popular.
+Every city on the Wasatch Front has an ordering gap. Orem's is among the
+deepest — and its invisible restaurants are some of the busiest anywhere in
+the corridor.
 
-In [my July catalogue](/stories/the-online-ordering-gap), Orem counts 67
-independent restaurants. **37 of them — 55% — have no direct online-ordering
-channel**, the highest rate among the corridor's six largest restaurant
-cities and worse than the corridor-wide 53%. In a city built on University
-Parkway traffic and some of the state's busiest retail corridors, more than
-half the independent kitchens can't take an order that arrives any way but
-by phone or in person.
+In [my verified catalogue](/stories/the-online-ordering-gap), Orem counts 67
+independent restaurants. **44 of them — 66%, two of every three — have no
+ordering channel of their own**, far above the corridor-wide 56% and behind
+only West Valley City among the Front's six largest restaurant cities. In a
+city built on University Parkway traffic and some of the state's busiest
+retail corridors, the overwhelming majority of independent kitchens can only
+be ordered from online through someone else's platform — 17 of the 44 through
+[DoorDash-hosted Storefront pages](/stories/doordash-storefront), and the
+rest through marketplace listings at 15–30% commission. (After hand
+verification, not one Orem independent is truly offline — the demand is all
+there; the ownership isn't.)
 
-## The most-reviewed invisible restaurants on the Front
+## Busy doesn't mean reachable
 
-Here's Orem's signature stat. All 37 of those restaurants — every single
-one — have more than a hundred Google reviews, and as a group they average
-about **1,532 reviews** at 4.4 stars. That's the highest average of any
-major city's gap group in the corridor: higher than Salt Lake's, higher
-than Provo's. Orem's problem is emphatically not restaurants nobody wants.
-It's beloved, high-traffic kitchens — led, as everywhere on the Front, by
-its 13 independent Mexican restaurants — with no direct way to capture the
-demand they've already earned.
+Here's Orem's stat to sit with. Forty-three of those 44 restaurants have more
+than a hundred Google reviews, and as a group they average about **1,410
+reviews** at 4.4 stars — among the most-reviewed gap groups in the corridor.
+Orem's problem is emphatically not restaurants nobody wants. It's beloved,
+high-traffic kitchens — led, as everywhere on the Front, by its independent
+Mexican restaurants — with no owned way to capture the demand they've
+already earned.
 
 ## The thin other side
 
-Only 19 Orem independents run their own ordering — and the mix is odd:
+Only 23 Orem independents run their own ordering — and the mix is odd:
 [Toast, the corridor's dominant vendor](/stories/what-utah-independents-actually-use),
-has just 3 installs here, behind Olo's 6. Another 5 restaurants use DoorDash
-Storefront as their only channel, an arrangement
-[with fine print worth reading](/stories/doordash-storefront). Orem is the
-city where first-party ordering tech has penetrated least — which makes it
-the city where the most demand is being either missed entirely or served
-at [marketplace rates](/stories/what-a-25-dollar-order-costs).
+has just 4 installs here, behind Olo's 6. Orem is the city where first-party
+ordering tech has penetrated least deeply relative to its size — and where
+DoorDash's hosted arrangement has penetrated most: a quarter of the city's
+independents run on Storefront. Orem's online ordering, to an unusual
+degree, belongs to the platforms.
 
-## What 55% costs
+## What 66% costs
 
 A single Orem restaurant doing $4,000 a month through the apps at 25% pays
-$12,000 a year in commissions. Multiply across 37 mostly-busy, heavily
+$12,000 a year in commissions. Multiply across 44 mostly-busy, heavily
 reviewed kitchens and Orem's annual commission outflow plausibly clears
 half a million dollars — much of it on
 [regulars](/stories/your-regulars-are-the-expensive-part) who'd happily
 order direct if direct existed.
 
-If yours is one of the 37: the [savings calculator](/savings) takes a
+If yours is one of the 44: the [savings calculator](/savings) takes a
 minute, or [grab 15 minutes with me](/book) — I'm along the Front
 regularly, and I build the storefront and menu for you.
 
 ---
 
-*Methodology: subset of the July 2026 Wasatch Front catalogue (855
-independents, chains excluded); full methodology in
-[the corridor piece](/stories/the-online-ordering-gap). Review counts and
-ratings from Google Places. The dollar scenario is illustrative with
-assumptions stated inline. Think your restaurant is misclassified? Email me
-and I'll correct it.*
+*Methodology: subset of the verified Wasatch Front catalogue (851
+independents; July 2026 website scan + August 2026 platform verification);
+full methodology in [the corridor piece](/stories/the-online-ordering-gap).
+Review counts and ratings from Google Places. The dollar scenario is
+illustrative with assumptions stated inline. Think your restaurant is
+misclassified? Email me and I'll correct it.*

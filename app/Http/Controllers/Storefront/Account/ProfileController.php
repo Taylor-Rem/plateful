@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Storefront\Account;
 use App\Data\RestaurantData;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\Account\UpdateProfileRequest;
+use App\Models\RestaurantCustomer;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,13 +17,22 @@ class ProfileController extends Controller
     public function edit(Request $request, CurrentTenant $tenant): Response
     {
         $user = $request->user();
+        $restaurant = $tenant->get();
+
+        $pivot = RestaurantCustomer::query()
+            ->where('user_id', $user->id)
+            ->where('restaurant_id', $restaurant->id)
+            ->first();
 
         return Inertia::render('Storefront/Account/Profile', [
-            'restaurant' => RestaurantData::fromModel($tenant->get()),
+            'restaurant' => RestaurantData::fromModel($restaurant),
             'profile' => [
                 'name' => (string) $user->name,
                 'email' => (string) $user->email,
                 'phone' => $user->phone,
+            ],
+            'marketing' => [
+                'optedIn' => $pivot?->isEmailOptedIn() ?? false,
             ],
         ]);
     }

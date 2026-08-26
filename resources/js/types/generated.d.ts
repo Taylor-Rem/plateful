@@ -48,6 +48,19 @@ selectionNames: string[],
 notes: string | null,
 isAvailable: boolean,
 };
+export type CustomerData = {
+id: number,
+name: string,
+email: string,
+phone: string | null,
+totalOrders: number,
+totalSpentCents: number,
+firstOrderedAt: string | null,
+lastOrderedAt: string | null,
+loyaltyPoints: number,
+marketingOptedIn: boolean,
+marketingOptedInAt: string | null,
+};
 export type DashboardStatsData = {
 ordersToday: number,
 revenueTodayCents: number,
@@ -262,6 +275,9 @@ export type DeliveryMode = 'self' | 'third_party';
 export type DeliveryProviderName = 'self' | 'doordash' | 'uber';
 export type DeliveryStatus = 'pending' | 'driver_assigned' | 'picked_up' | 'delivered' | 'cancelled' | 'failed';
 export type MailSender = 'orders' | 'service' | 'support';
+export type MarketingChannel = 'email';
+export type MarketingConsentAction = 'opted_in' | 'opted_out';
+export type MarketingConsentSource = 'checkout' | 'account' | 'unsubscribe_link' | 'admin';
 export type MenuImportStatus = 'queued' | 'processing' | 'needs_review' | 'completed' | 'failed';
 export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type OrderType = 'delivery' | 'pickup';
