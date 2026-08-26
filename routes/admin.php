@@ -92,6 +92,7 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 // the whole list), so they sit with Settings/Payouts, not staff.
                 Route::get('/customers', [TenantAdmin\CustomersController::class, 'index'])->name('customers.index');
                 Route::get('/customers/export', [TenantAdmin\CustomersController::class, 'export'])->name('customers.export');
+                Route::get('/customers/stats', [TenantAdmin\CustomersController::class, 'stats'])->name('customers.stats');
 
                 // Email campaigns to opted-in customers. Static paths are
                 // registered before the {campaign} wildcard so /create,

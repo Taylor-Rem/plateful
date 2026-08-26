@@ -2,10 +2,9 @@
 
 _Drafted 2026-08-18, from the DoorDash Storefront competitive analysis. Status:
 **Phase 1 BUILT 2026-08-24** (including the consent-capture amendment) — built
-ahead of the lighthouse trigger by explicit decision. Phase 2 (regulars stats)
-remains deferred to the original sequencing: before the ~60-day lighthouse
-money story, and definitely before selling into the DoorDash-Storefront
-segment._
+ahead of the lighthouse trigger by explicit decision. **Phase 2 (regulars
+stats) BUILT 2026-08-26** as a Stats tab on the Customers page — demo-testing
+before DoorDash-Storefront-segment outreach still applies._
 
 ## Why this exists (the strategic frame)
 
@@ -77,8 +76,8 @@ Notes:
 
 ## Phase 2 — the regulars stats view (the editorial thesis as a product screen)
 
-_Build spec: `docs/customers_stats_implementation_plan.md` (drafted 2026-08-26; placement
-decided: a Stats tab on the Customers page). Build from that doc._
+_BUILT 2026-08-26 from the build spec `docs/customers_stats_implementation_plan.md`
+(placement decided: a Stats tab on the Customers page)._
 
 The Stories publication argues "≈60% of restaurant revenue is repeat guests"
 (Olo) and "your regulars are the expensive part." This screen shows the owner

@@ -1,6 +1,6 @@
 # Customers Stats (Regulars View) — Implementation Plan (Customers Phase 2)
 
-**Status:** not started · **Decisions locked 2026-08-26** · One session. Strategy/rationale:
+**Status:** BUILT 2026-08-26 (tests green, not yet demo-tested) · **Decisions locked 2026-08-26** · One session. Strategy/rationale:
 `docs/customers_page_plan.md` Phase 2 (the "≈60% of revenue is repeat guests" editorial thesis as
 a product screen). This doc is the build spec — self-contained, no prior context needed.
 

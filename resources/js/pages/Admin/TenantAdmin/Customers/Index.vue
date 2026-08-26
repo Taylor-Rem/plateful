@@ -10,6 +10,7 @@ import {
     exportMethod as customersExport,
     index as customersIndex,
 } from '@/routes/admin/restaurant/customers';
+import CustomersTabs from './CustomersTabs.vue';
 
 type OrderedFilter = 30 | 90 | null;
 type SortKey =
@@ -206,6 +207,8 @@ defineOptions({ layout: TenantAdminLayout });
                 </a>
             </template>
         </PageHeader>
+
+        <CustomersTabs :subdomain="restaurant.subdomain" active="list" />
 
         <div class="mt-4 flex flex-wrap items-center gap-4 text-sm">
             <span class="text-muted-foreground">
