@@ -2,8 +2,8 @@
 import { Head, router } from '@inertiajs/vue3';
 import PageHeader from '@/components/admin/PageHeader.vue';
 import { Button } from '@/components/ui/button';
-import { update as storiesUpdate } from '@/routes/admin/super/stories';
 import SuperAdminLayout from '@/layouts/admin/SuperAdminLayout.vue';
+import { update as storiesUpdate } from '@/routes/admin/super/stories';
 
 type StoryRow = {
     slug: string;
@@ -150,10 +150,10 @@ function effectivePublished(story: StoryRow): boolean {
 
             <p class="text-xs text-muted-foreground">
                 Publishing here makes an already-deployed story visible
-                immediately (future-dated stories stay hidden until their
-                date). It does not edit the markdown file — sync the
-                <code>published:</code> front matter in git when convenient,
-                and the override clears itself once they agree.
+                immediately (future-dated stories stay hidden until their date).
+                It does not edit the markdown file — sync the
+                <code>published:</code> front matter in git when convenient, and
+                the override clears itself once they agree.
             </p>
         </div>
     </div>

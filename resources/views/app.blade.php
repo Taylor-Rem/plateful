@@ -85,6 +85,11 @@
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
         <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
+        {{-- Self-referencing canonical (current URL, never the query string) so
+             Google consolidates duplicate URLs onto the page itself instead of
+             guessing (it once picked /book as canonical for /for-restaurants). --}}
+        <link rel="canonical" href="{{ url()->current() }}">
+
         @fonts
 
         @vite(['resources/css/app.css', 'resources/js/app.ts', "resources/js/pages/{$page['component']}.vue"])

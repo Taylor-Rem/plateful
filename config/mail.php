@@ -133,4 +133,18 @@ return [
         'support' => env('MAIL_FROM_SUPPORT_ADDRESS', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Marketing Sending Domain
+    |--------------------------------------------------------------------------
+    |
+    | Campaign email sends from a domain SEPARATE from transactional mail so
+    | promotional reputation can never hurt receipt deliverability. Restaurants
+    | share it: "{Restaurant Name} <{subdomain}@{this domain}>", reply-to
+    | their real inbox. Verified in Resend alongside the transactional domain.
+    |
+    */
+
+    'marketing_domain' => env('MARKETING_MAIL_DOMAIN', 'platefuloffers.fyi'),
+
 ];

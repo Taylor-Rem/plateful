@@ -46,6 +46,9 @@
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- Keyless on purpose: CampaignMailer logs batches instead of calling
+             Resend, so campaign pipeline tests can never send real email. -->
+        <env name="RESEND_API_KEY" value="" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <!-- Fake DoorDash platform credentials. DoorDashJwtService::mint() throws

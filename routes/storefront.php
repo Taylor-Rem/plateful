@@ -24,7 +24,28 @@ use App\Http\Controllers\Storefront\MarketingUnsubscribeController;
 use App\Http\Controllers\Storefront\MenuController;
 use App\Http\Controllers\Storefront\OrderController;
 use App\Http\Controllers\Storefront\PreviewController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+/*
+|---------------------------------------------------------------------------
+| www → apex
+|---------------------------------------------------------------------------
+|
+| "www" is a reserved subdomain that never resolves to a tenant, so requests
+| to it used to 404 (and Search Console flagged both www roots as Not Found).
+| Registered before the tenant routes so the host-agnostic storefront routes
+| below can never capture the www host. Path and query string are preserved.
+|
+*/
+Route::domain('www.'.config('platform.primary_domain'))->group(function () {
+    Route::get('/{path?}', function (Request $request) {
+        return redirect()->to(
+            $request->getScheme().'://'.config('platform.primary_domain').$request->getRequestUri(),
+            301,
+        );
+    })->where('path', '.*');
+});
 
 Route::middleware('tenant')->group(function () {
     Route::get('/', HomeController::class)->name('storefront.home');

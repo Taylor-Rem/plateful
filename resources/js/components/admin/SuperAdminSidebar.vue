@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import {
     ChartNoAxesColumn,
     Home,
+    Megaphone,
     Newspaper,
     ShieldCheck,
     Store,
@@ -21,6 +22,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { index as adminsIndex } from '@/routes/admin/super/admins';
+import { index as campaignsIndex } from '@/routes/admin/super/campaigns';
 import { index as earningsIndex } from '@/routes/admin/super/earnings';
 import { index as restaurantsIndex } from '@/routes/admin/super/restaurants';
 import { index as storiesIndex } from '@/routes/admin/super/stories';
@@ -39,6 +41,7 @@ const groups: NavGroup[] = [
             },
             { title: 'Admins', href: adminsIndex(), icon: ShieldCheck },
             { title: 'Users', href: usersIndex(), icon: Users },
+            { title: 'Campaigns', href: campaignsIndex(), icon: Megaphone },
             { title: 'Stories', href: storiesIndex(), icon: Newspaper },
         ],
     },

@@ -26,6 +26,31 @@ id: number,
 name: string,
 email: string,
 };
+export type CampaignData = {
+id: number,
+subject: string,
+preheader: string | null,
+headline: string,
+body: string,
+offerCallout: string | null,
+ctaLabel: string | null,
+ctaUrl: string | null,
+audienceFilter: {
+type: string,
+days?: number,
+min_orders?: number,
+},
+audienceLabel: string,
+status: App.Enums.CampaignStatus,
+scheduledAt: string | null,
+sentAt: string | null,
+recipientsCount: number,
+deliveredCount: number,
+bouncedCount: number,
+complainedCount: number,
+unsubscribedCount: number,
+createdAt: string | null,
+};
 export type CartData = {
 id: number,
 itemCount: number,
@@ -268,12 +293,15 @@ imageThumbUrl: string | null,
 }
 namespace Enums {
 export type AutoCancelRefundMode = 'auto' | 'manual';
+export type CampaignRecipientStatus = 'queued' | 'sent' | 'failed' | 'bounced' | 'complained' | 'unsubscribed';
+export type CampaignStatus = 'draft' | 'pending_review' | 'scheduled' | 'sending' | 'sent' | 'cancelled' | 'paused_by_platform';
 export type DeliveryFallbackAction = 'try_next_provider' | 'hold_for_owner' | 'auto_cancel_refund';
 export type DeliveryFeeStrategy = 'pass_through' | 'absorb';
 export type DeliveryIntegrationStatus = 'connected' | 'disconnected' | 'error';
 export type DeliveryMode = 'self' | 'third_party';
 export type DeliveryProviderName = 'self' | 'doordash' | 'uber';
 export type DeliveryStatus = 'pending' | 'driver_assigned' | 'picked_up' | 'delivered' | 'cancelled' | 'failed';
+export type EmailSuppressionReason = 'hard_bounce' | 'complaint' | 'manual';
 export type MailSender = 'orders' | 'service' | 'support';
 export type MarketingChannel = 'email';
 export type MarketingConsentAction = 'opted_in' | 'opted_out';

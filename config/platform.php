@@ -147,6 +147,32 @@ return [
         'points_per_dollar' => 1,
     ],
 
+    /*
+    |---------------------------------------------------------------------------
+    | Email Campaign Caps
+    |---------------------------------------------------------------------------
+    |
+    | Platform-wide abuse guards on restaurant email campaigns, enforced in
+    | the SendCampaign job (and again in the compose controller). max_per_week
+    | counts campaigns sent or mid-send in the trailing 7 days; a send whose
+    | audience exceeds max_recipients_per_send is aborted back to draft.
+    |
+    */
+    'campaigns' => [
+        'max_per_week' => (int) env('CAMPAIGNS_MAX_PER_WEEK', 2),
+        'max_recipients_per_send' => (int) env('CAMPAIGNS_MAX_RECIPIENTS_PER_SEND', 2000),
+
+        /*
+         * Complaint auto-pause: a campaign is halted (and its restaurant's
+         * sending paused) once complaints reach BOTH the minimum count and
+         * a rate above this fraction of recipients. The minimum stops one
+         * angry click from pausing a tiny list; the rate keeps big lists
+         * honest (Gmail/Yahoo bulk-sender guidance treats 0.3% as the line).
+         */
+        'complaint_pause_rate' => (float) env('CAMPAIGNS_COMPLAINT_PAUSE_RATE', 0.003),
+        'complaint_pause_min' => (int) env('CAMPAIGNS_COMPLAINT_PAUSE_MIN', 2),
+    ],
+
     'delivery' => [
         /*
          * How long a courier-network delivery may sit authorized-but-uncaptured

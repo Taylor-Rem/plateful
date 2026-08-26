@@ -125,6 +125,8 @@ class Restaurant extends Model
             'restricted_items_attested_at' => 'datetime',
             'auto_cancel_refund_mode' => AutoCancelRefundMode::class,
             'social_links' => 'array',
+            'campaigns_approved_at' => 'datetime',
+            'campaigns_paused_at' => 'datetime',
         ];
     }
 
@@ -155,6 +157,26 @@ class Restaurant extends Model
     public function isStripeReady(): bool
     {
         return $this->stripe_account_status === self::STRIPE_ENABLED;
+    }
+
+    /**
+     * First-campaign review queue (campaigns plan, Session 3): until the
+     * restaurant is campaigns-approved, every send/schedule is held as
+     * pending_review for a super admin. Approval is stamped automatically on
+     * the first clean delivery.
+     */
+    public function needsFirstCampaignReview(): bool
+    {
+        return $this->campaigns_approved_at === null;
+    }
+
+    /**
+     * Set by complaint auto-pause; blocks all campaign sending until a super
+     * admin clears it.
+     */
+    public function campaignsPaused(): bool
+    {
+        return $this->campaigns_paused_at !== null;
     }
 
     /**

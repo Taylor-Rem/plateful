@@ -32,7 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
 
-        $middleware->validateCsrfTokens(except: ['stripe/webhook', 'webhooks/uber', 'webhooks/doordash']);
+        $middleware->validateCsrfTokens(except: ['stripe/webhook', 'webhooks/uber', 'webhooks/doordash', 'webhooks/resend']);
 
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
