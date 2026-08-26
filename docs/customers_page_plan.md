@@ -77,6 +77,9 @@ Notes:
 
 ## Phase 2 — the regulars stats view (the editorial thesis as a product screen)
 
+_Build spec: `docs/customers_stats_implementation_plan.md` (drafted 2026-08-26; placement
+decided: a Stats tab on the Customers page). Build from that doc._
+
 The Stories publication argues "≈60% of restaurant revenue is repeat guests"
 (Olo) and "your regulars are the expensive part." This screen shows the owner
 *their own* number:

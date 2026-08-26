@@ -489,8 +489,10 @@ never in the tenant admin. So this is a partial data foundation, not a blank sla
       logged-in customers, per-restaurant `/account` profile toggle, and the signed-URL
       login-free unsubscribe endpoint with undo). 25 new tests. Full plan + spec in
       `docs/customers_page_plan.md`.
-- [ ] **Regulars stats view (customers plan Phase 2) — still deferred**: build before the
-      ~60-day lighthouse money story; both phases shipped before any
+- [ ] **Regulars stats view (customers plan Phase 2) — SPEC'D 2026-08-26, ready to build**:
+      build spec in `docs/customers_stats_implementation_plan.md` (Stats tab on the Customers
+      page; repeat rate, new/returning/guest revenue by month, top customers, median gap).
+      Needed before the ~60-day lighthouse money story; both phases shipped before any
       DoorDash-Storefront-segment outreach (that pitch is purely the ownership pitch, and the
       CSV export button *is* the demo).
 - [ ] Fee-free remarketing: email/SMS campaigns — core differentiator vs DoorDash/Toast.
