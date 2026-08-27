@@ -47,6 +47,21 @@ vars went into Cloud and auth + the organizations scope were verified by minting
 tokens (no delivery created) — **Uber Direct is the interim delivery provider until DoorDash prod
 access lands.** Details + what's still open in the §3 umbrella update.
 
+**Position update 2026-08-26.** Since 08-12 the work has been marketing surfaces + customer
+ownership, all shipped: fee cap raised **$249 → $399 and made public** (2026-08-14, §1); the
+public **savings calculator (`/savings`) + Cal.com booking (`/book`) are LIVE in production**
+(booking env vars confirmed in Cloud); the press page (`/press`) and Stories publication shipped,
+with the founder story and the ordering-gap data story **published** (hand-audited v2.1 data —
+56% own-channel gap, see `plateful-sales/DATA_STORY_STATS.md`); **Customers Phase 1** (list +
+CSV + full consent capture, 2026-08-24) and **Phase 2 regulars stats** (2026-08-26 — on `dev`,
+not yet merged/deployed) are built; and **email campaigns Sessions 1–3 + automated Claude review
+are LIVE in production 2026-08-26** on `platefuloffers.fyi` (first real campaign delivered
+end-to-end; Session 4 custom domains open; deliverability in cold-start warm-up — see
+`docs/campaigns_implementation_plan.md`). **Unchanged and now 26+ days old: the DoorDash
+prod-access request is STILL unfiled (§3 Session 0/6) — it remains the single critical-path
+item.** The sales funnel also remains unstarted (all 965 leads at `status='Open'` — see
+`plateful-sales/VISION_AND_NEXT_STEPS.md` for the sequenced plan).
+
 ---
 
 ## 0. Launch blockers — clear before selling to anyone
@@ -497,15 +512,17 @@ never in the tenant admin. So this is a partial data foundation, not a blank sla
       in `docs/customers_stats_implementation_plan.md`. Still open before
       DoorDash-Storefront-segment outreach: demo-test both phases (the screenshot of this
       page is the planned ~60-day lighthouse money-story exhibit).
-- [ ] Fee-free remarketing: email/SMS campaigns — core differentiator vs DoorDash/Toast.
-      **Strategy in `docs/campaigns_plan.md`; BUILD SPEC in
-      `docs/campaigns_implementation_plan.md` (sessions 1–4, drafted 2026-08-25 — build from
-      there).** Decided: email first (SMS demand-pulled behind TCPA consent + 10DLC), strict
-      opt-in only, structured template, first-campaign review queue, shared marketing domain
-      **`platefuloffers.fyi` (purchased, in Resend, DNS live 2026-08-25)** with opt-in
-      per-restaurant sending domains later (session 4). Consent capture already shipped with
-      Customers Phase 1. Sessions 1–2 reach the demo milestone (admin composes + sends to test
-      customers); session 3 required before any real restaurant sends.
+- [x] Fee-free remarketing: email campaigns — **Sessions 1–3 + automated Claude review LIVE
+      IN PRODUCTION 2026-08-26** (strategy `docs/campaigns_plan.md`; build record
+      `docs/campaigns_implementation_plan.md`). Email-first (SMS demand-pulled behind TCPA
+      consent + 10DLC), strict opt-in, structured template, first-campaign review queue
+      (automated via Claude, flags fail closed to the super console), shared marketing domain
+      **`platefuloffers.fyi`** (in Resend, DNS live 2026-08-25; SPF/DKIM/DMARC verified on the
+      first real delivered campaign). Still open: **Session 4** (per-restaurant custom sending
+      domains), deliverability **cold-start warm-up** (first send landed in Gmail spam —
+      expected for a days-old domain; warm up with small real sends), Google Postmaster Tools
+      signup (failed 2026-08-26, retry with the Plateful account), and tightening DMARC from
+      `p=none` after a few weeks.
 
 ## 5. Public savings calculator (prospect-facing; needs pricing locked, §1)
 - [x] **Public marketing-site calculator — DONE (2026-08-14).** Live at `/savings` (root domain,

@@ -39,10 +39,11 @@ required before any real (non-test) restaurant can send. Session 4 is deliberate
   `CAMPAIGNS_REVIEW_SPOT_CHECK_RATE=1.0` temporarily; verdict lands in
   `campaigns.review_verdict/review_notes/reviewed_at` and flagged campaigns show the reasoning
   in `/super/campaigns`.
-- **Remaining ops:** add `platefuloffers.fyi` to Google Postmaster Tools (signup returned
-  "adding domain unsuccessful" repeatedly on 2026-08-26 — likely multi-account/Workspace issue;
-  retry later with the Plateful Google account; monitoring only, does not affect delivery), and
-  tighten DMARC from `p=none` after a few weeks of established sending.
+- **Remaining ops:** ~~add `platefuloffers.fyi` to Google Postmaster Tools~~ — **DONE
+  2026-08-27**: registered and DNS-verified under the new taylor@tryplateful.fyi Workspace
+  account (the 08-26 failures were the wrong-account issue; a root TXT verification record was
+  added at Porkbun). Still open: tighten DMARC from `p=none` after a few weeks of established
+  sending.
 
 ---
 

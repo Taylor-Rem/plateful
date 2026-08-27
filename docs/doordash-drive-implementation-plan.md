@@ -2,7 +2,10 @@
 
 **Status:** in progress · **Decision locked 2026-07-18** · Supersedes the Uber-first launch plan.
 
-> **⚠ Historical framing (noted 2026-08-12).** This plan's "Uber Direct = dormant /
+> **⚠ Historical framing (noted 2026-08-12; cap note added 2026-08-26).** The $249/mo
+> commission cap this plan was built against was raised to **$399** and made public 2026-08-14
+> (`config/platform.php`); the $249 figures below are the as-built historical record.
+> This plan's "Uber Direct = dormant /
 > per-restaurant" contrasts (the §0 comparison table and later prose) describe Uber as it was when
 > the plan was written. Uber Direct has since been converted to the same **umbrella /
 > central-billing model** as DoorDash and is **live in production** as the **interim delivery

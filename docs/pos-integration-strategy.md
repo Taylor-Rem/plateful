@@ -9,7 +9,7 @@ _Status: revised draft · Last updated: 2026-07-09_
 > credentials *at the time — since converted, see the 2026-08-12 line below*, quote-before-payment,
 > webhooks, auth/capture), and — as of 2026-07-17 —
 > **DoorDash Drive as the launch delivery provider** (umbrella/central-billing model, full money
-> model incl. the $249/mo commission cap, provisioning, webhooks, refunds; the Uber adapter was
+> model incl. the commission cap ($249 at build time; raised to $399 + made public 2026-08-14), provisioning, webhooks, refunds; the Uber adapter was
 > kept dormant *at the time*; see
 > [doordash-drive-implementation-plan.md](doordash-drive-implementation-plan.md)) have
 > all shipped. The "first sellable milestone" (§9) — Square injection + pickup, then delivery — is
