@@ -24,7 +24,7 @@ Nothing here is a redesign. It is one DTO, one migration, two payload fields, an
 | G4 | No restricted-items safeguard | **Blocker** | Compliance | ✅ Closed 2026-07-31 (attestation + guard) |
 | G5 | No `pickup_time` on the quote | High | API logs / required fields | ✅ Closed 2026-07-31 |
 | G6 | No `items` / `order_value` on the quote | High | API logs / recommended fields | ✅ Closed 2026-07-31 |
-| G7 | Webhook signature scheme assumed | Medium | Webhook ingestion | ⏳ Needs portal access |
+| G7 | Webhook auth scheme assumed (and `event_name` unmapped) | Medium | Webhook ingestion | ✅ Closed 2026-09-02 (Basic Auth + `event_name` map) |
 | G8 | Cancel-response fee field assumed | Medium | Cancellation workflow | ⏳ Needs portal access |
 | G9 | Quote-failure copy unrehearsed | Low | Error handling | ✅ Verified 2026-07-31 (copy was already a human sentence) |
 
@@ -151,12 +151,28 @@ Neither is in `quotePayload()`. We have both to hand — the order lines and the
 **Fix:** map order lines to `items` (name, quantity, external id) and send `order_value` = food
 subtotal in cents. Cheap, and it makes the API-log review boring, which is what you want.
 
-## G7 — Webhook signature scheme assumed · MEDIUM
+## G7 — Webhook auth scheme assumed · MEDIUM · ✅ closed 2026-09-02
 
-`DoorDashWebhookController::signatureIsValid()` guesses the header name and base64-vs-hex encoding.
-Already tracked in the plan's "still open" list. Confirm in the DoorDash portal at webhook setup —
-before the demo if the portal exposes it, since webhook ingestion across the lifecycle is on the
-validation checklist.
+`DoorDashWebhookController::signatureIsValid()` guessed an HMAC header (`x-doordash-signature`,
+base64-or-hex). Checked against DoorDash's own docs 2026-09-02 (no portal access needed — the
+["Get delivery updates: webhooks"](https://developer.doordash.com/en-US/docs/drive/how_to/webhooks/)
+guide and the [webhook reference](https://developer.doordash.com/en-US/docs/drive/reference/webhooks/)):
+
+1. **DoorDash does not sign webhooks.** The portal subscription offers **Basic Auth** ("enter the
+   contents that you'd like DoorDash to send in the HTTP `Authorization` header") or OAuth. Every
+   real event would have been rejected with 400 — fail-closed, as designed, but fatal for demo step 7.
+2. **Webhook payloads carry `event_name`, not `delivery_status`** (`DASHER_CONFIRMED`,
+   `DASHER_PICKED_UP`, `DASHER_DROPPED_OFF`, `DELIVERY_CANCELLED`, …). The controller read
+   `delivery_status`, so even an accepted event would have mapped to Pending and never captured the
+   hold.
+
+**Fixed 2026-09-02:** `authorizationIsValid()` compares the `Authorization` header against
+`DOORDASH_WEBHOOK_SECRET` verbatim (or `Basic base64(user:password)` when the env holds a bare
+`user:password`); `DoorDashStatusMap::deliveryStatusForEvent()` translates `event_name` into the
+same `delivery_status` vocabulary the polling path uses, so `provider_status` stays one vocabulary
+and `DELIVERY_BATCHED` keeps the current status instead of regressing. `DoorDashWebhookTest`
+rewritten against the documented payload shape. Portal setup is now one step: register the URL,
+choose Basic Auth, paste the same header string into the env.
 
 ## G8 — Cancel-response fee field assumed · MEDIUM
 
@@ -192,10 +208,11 @@ depends on `hasCourier()`.
 3. **G2** — migration + two lines in the provider. Unblocks G3.
 4. **G1 + G3** — one `DeliveryAssignmentData` DTO serving both surfaces. The bulk of the work.
 5. **G9** — rehearse the copy.
-6. **G7 + G8** — confirm at portal setup; they cannot be closed before you have portal access.
+6. **G8** — confirm at portal setup; it cannot be closed before you have portal access. (G7 closed
+   2026-09-02 from the public docs — see above.)
 
-G7 and G8 are the only items that *require* production access to resolve. Everything else can be
-done and demoed in sandbox now.
+G8 is the only item that *requires* production access to resolve. Everything else can be done and
+demoed in sandbox now.
 
 ---
 

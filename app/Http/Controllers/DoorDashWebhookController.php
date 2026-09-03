@@ -30,13 +30,20 @@ use Illuminate\Support\Facades\Log;
 class DoorDashWebhookController extends Controller
 {
     /**
-     * DoorDash signs the raw body with the shared webhook secret and sends the
-     * result in this header. The exact scheme (HMAC-SHA256; base64 vs hex) is
-     * confirmed against the DoorDash portal — {@see signatureIsValid()} accepts
-     * both encodings so a portal setting can't silently drop every event, and it
-     * is the single place to adjust if the scheme differs.
+     * DoorDash does not sign webhook bodies. The Developer Portal's webhook
+     * subscription offers "Basic Auth", where you type the exact contents you
+     * want DoorDash to send in the HTTP `Authorization` header on every event
+     * (or OAuth, which we do not use). `DOORDASH_WEBHOOK_SECRET` therefore holds
+     * that header value verbatim — e.g. `Basic cGxhdGVmdWw6…` — and an event is
+     * genuine when the header matches it byte-for-byte. As a convenience the
+     * env value may also be a bare `user:password`, which is compared against
+     * the standard `Basic base64(user:password)` encoding of it.
+     *
+     * Confirmed against DoorDash's "Get delivery updates: webhooks" guide
+     * (2026-09-02); {@see authorizationIsValid()} is the single place to adjust
+     * if the portal ever grows a signature scheme.
      */
-    private const SIGNATURE_HEADER = 'x-doordash-signature';
+    private const AUTHORIZATION_HEADER = 'Authorization';
 
     public function __invoke(Request $request): Response
     {
@@ -44,8 +51,8 @@ class DoorDashWebhookController extends Controller
 
         // Fail closed: with no secret we can vouch for nothing. 400 rather than
         // 200 so DoorDash retries once the secret is configured.
-        if ($secret === '' || ! $this->signatureIsValid($request, $secret)) {
-            return response('Invalid signature.', 400);
+        if ($secret === '' || ! $this->authorizationIsValid($request, $secret)) {
+            return response('Unauthorized webhook.', 400);
         }
 
         $payload = (array) $request->json()->all();
@@ -85,11 +92,21 @@ class DoorDashWebhookController extends Controller
         }
 
         $previous = $assignment->status;
-        $status = DoorDashStatusMap::toDeliveryStatus($this->stringOrNull($payload['delivery_status'] ?? null));
+
+        // Webhooks name the trigger (`event_name`) rather than the delivery's
+        // status; translate it into the polling vocabulary so one status map
+        // serves both. `delivery_status` wins if a payload ever carries it. An
+        // event with no lifecycle meaning (DELIVERY_BATCHED) keeps the status
+        // we already have rather than regressing to Pending.
+        $providerStatus = $this->stringOrNull($payload['delivery_status'] ?? null)
+            ?? DoorDashStatusMap::deliveryStatusForEvent($this->stringOrNull($payload['event_name'] ?? null));
+        $status = $providerStatus === null
+            ? $previous
+            : DoorDashStatusMap::toDeliveryStatus($providerStatus);
 
         $assignment->forceFill(array_filter([
             'status' => $status,
-            'provider_status' => $this->stringOrNull($payload['delivery_status'] ?? null) ?? $assignment->provider_status,
+            'provider_status' => $providerStatus ?? $assignment->provider_status,
             'support_reference' => $this->stringOrNull($payload['support_reference'] ?? null) ?? $assignment->support_reference,
             'last_event_at' => $eventAt ?? now(),
             'tracking_url' => $this->stringOrNull($payload['tracking_url'] ?? null) ?? $assignment->tracking_url,
@@ -168,19 +185,17 @@ class DoorDashWebhookController extends Controller
             ->first();
     }
 
-    private function signatureIsValid(Request $request, string $secret): bool
+    private function authorizationIsValid(Request $request, string $secret): bool
     {
-        $provided = (string) $request->header(self::SIGNATURE_HEADER, '');
+        $provided = (string) $request->header(self::AUTHORIZATION_HEADER, '');
 
         if ($provided === '') {
             return false;
         }
 
-        $raw = hash_hmac('sha256', $request->getContent(), $secret, true);
-
-        // Accept both common encodings; hash_equals keeps each check
-        // constant-time.
-        foreach ([base64_encode($raw), bin2hex($raw)] as $expected) {
+        // The configured value is either the full header DoorDash sends or a
+        // bare user:password; hash_equals keeps each check constant-time.
+        foreach ([$secret, 'Basic '.base64_encode($secret)] as $expected) {
             if (hash_equals($expected, $provided)) {
                 return true;
             }

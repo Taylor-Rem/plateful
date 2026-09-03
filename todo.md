@@ -447,8 +447,10 @@ historical — superseded by this conversion.
       `payment_state = 'authorized'` older than an hour (once Sentry is set, §0).
 - [ ] **DoorDash go-live env** (launch provider): set production `DOORDASH_DEVELOPER_ID` / `KEY_ID` /
       `SIGNING_SECRET` / `WEBHOOK_SECRET` once prod access is granted; register the webhook URL
-      (`/webhooks/doordash`) in the DoorDash portal and **confirm the signature scheme** matches
-      `DoorDashWebhookController::signatureIsValid()` (header + base64-vs-hex, currently assumed).
+      (`/webhooks/doordash`) in the DoorDash portal with **Basic Auth**, and set
+      `DOORDASH_WEBHOOK_SECRET` to the same `Authorization` header string. *(2026-09-02: the
+      HMAC-signature assumption was wrong — DoorDash sends Basic Auth and `event_name` payloads;
+      `DoorDashWebhookController` + `DoorDashStatusMap` fixed, readiness G7 closed.)*
 - [x] **Uber go-live env — DONE (2026-08-12; interim live provider, umbrella — §3 update).** The
       four `UBER_DIRECT_*` vars (`CLIENT_ID`/`CLIENT_SECRET`/`CUSTOMER_ID`/`WEBHOOK_SECRET`) are
       set in Cloud for the production root Direct account, with the **one** root-account webhook

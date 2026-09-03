@@ -164,7 +164,7 @@ error handling, cancellation, compliance, and launch strategy.
 
 ### Questions to ask them (get these answered while you have a human)
 
-- The exact **webhook signature scheme** — header name and base64 vs hex (closes G7).
+- ~~The exact **webhook signature scheme** — header name and base64 vs hex (closes G7).~~ Closed 2026-09-02 from the public docs: Basic Auth header, `event_name` payloads (readiness G7).
 - The exact **cancellation-response field** for a retained vs waived courier fee (closes G8).
 - Whether `pickup_time` is honoured as a prep-time hint or treated as a hard scheduled dispatch.
 - What triggers a re-certification later — do UI changes or new endpoints require another review?
