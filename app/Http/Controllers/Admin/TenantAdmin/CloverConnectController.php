@@ -14,15 +14,22 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Drives the Clover "Connect your POS" OAuth handshake. `connect` and
- * `disconnect` are restaurant-scoped; `callback` is not — Clover posts back to a
- * single registered redirect URI, so the restaurant travels in the `state` we
- * stash in the session and verify on return. Unlike Square, Clover returns the
- * merchant id (its order-scoping "location") directly in the callback query, so
- * there is no separate location lookup.
+ * `disconnect` are restaurant-scoped; `callback` and `launch` are not — Clover
+ * posts back to a single registered redirect URI, so the restaurant travels in
+ * the `state` we stash in the session and verify on return. Unlike Square,
+ * Clover returns the merchant id (its order-scoping "location") directly in the
+ * callback query, so there is no separate location lookup.
+ *
+ * `launch` is the app's alternate launch path on Clover (its Site URL root
+ * forwards here too): where a merchant lands when they install Plateful from
+ * the Clover App Market or open it from their Merchant Dashboard. Clover arrives with only a merchant id (no code), so we route the
+ * owner to the normal connect flow for the right restaurant rather than
+ * bouncing them to an error.
  */
 class CloverConnectController extends Controller
 {
@@ -38,6 +45,65 @@ class CloverConnectController extends Controller
      */
     public function connect(Request $request, Restaurant $restaurant): Response
     {
+        return Inertia::location($this->beginAuthorization($request, $restaurant));
+    }
+
+    /**
+     * Entry point from the Clover App Market / Merchant Dashboard (the app's
+     * Site URL). Guests are sent to log in and return here. Then: a restaurant
+     * already connected to this merchant goes to its POS page; a single
+     * restaurant starts the connect flow directly; several show a picker.
+     */
+    public function launch(Request $request): InertiaResponse|RedirectResponse
+    {
+        $merchantId = (string) ($request->query('merchant_id') ?? $request->query('merchantId') ?? '');
+        // Non-empty: the `admin` middleware already forbids users with no
+        // restaurant membership (and supers see every restaurant).
+        $restaurants = $request->user()->accessibleRestaurants();
+
+        if ($merchantId !== '') {
+            $connected = PosIntegration::withoutTenantScope()
+                ->where('provider', PosProviderName::Clover->value)
+                ->where('external_merchant_id', $merchantId)
+                ->whereIn('restaurant_id', $restaurants->pluck('id'))
+                ->first();
+
+            if ($connected !== null) {
+                $restaurant = $restaurants->firstWhere('id', $connected->restaurant_id);
+
+                return redirect()->route('admin.restaurant.pos.show', ['restaurant' => $restaurant->subdomain])
+                    ->with('success', 'This Clover account is already connected to '.$restaurant->name.'.');
+            }
+        }
+
+        if ($restaurants->count() === 1) {
+            $restaurant = $restaurants->first();
+            $this->authorize('manage', $restaurant);
+
+            return redirect()->away($this->beginAuthorization($request, $restaurant));
+        }
+
+        return Inertia::render('Admin/CloverLaunch', [
+            'merchantId' => $merchantId !== '' ? $merchantId : null,
+            'restaurants' => $restaurants
+                ->filter(fn (Restaurant $restaurant): bool => $request->user()->can('manage', $restaurant))
+                ->values()
+                ->map(fn (Restaurant $restaurant): array => [
+                    'id' => $restaurant->id,
+                    'name' => $restaurant->name,
+                    'subdomain' => $restaurant->subdomain,
+                    'connectUrl' => route('admin.restaurant.pos.clover.connect', ['restaurant' => $restaurant->subdomain]),
+                ])
+                ->all(),
+        ]);
+    }
+
+    /**
+     * Mint a single-use state bound to the restaurant and return the Clover
+     * authorize URL to send the owner to.
+     */
+    private function beginAuthorization(Request $request, Restaurant $restaurant): string
+    {
         $state = Str::random(40);
 
         $request->session()->put(self::SESSION_KEY, [
@@ -46,7 +112,7 @@ class CloverConnectController extends Controller
             'expires_at' => now()->addMinutes(self::STATE_TTL_MINUTES)->timestamp,
         ]);
 
-        return Inertia::location($this->oauth->buildAuthorizeUrl($state));
+        return $this->oauth->buildAuthorizeUrl($state);
     }
 
     /**

@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Admin\TenantAdmin;
 
 use App\Data\CustomerData;
+use App\Data\CustomerStatsData;
+use App\Data\CustomerStatsMonthData;
 use App\Data\RestaurantData;
+use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Models\LoyaltyPoints;
+use App\Models\Order;
 use App\Models\Restaurant;
 use App\Models\RestaurantCustomer;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -76,6 +81,161 @@ class CustomersController extends Controller
                 'optedInCount' => (clone $base)->emailOptedIn()->count(),
             ],
         ]);
+    }
+
+    /**
+     * The regulars view (customers page plan, Phase 2): how much of this
+     * restaurant's online revenue comes from repeat guests. Online orders
+     * only; repeat metrics cover signed-in customers, guest checkout is its
+     * own slice so chart totals reconcile with what the owner knows they sold.
+     */
+    public function stats(Restaurant $restaurant): Response
+    {
+        $topCustomers = $this->customersQuery($restaurant, ['search' => '', 'ordered' => null, 'marketing' => null])
+            ->orderByDesc('restaurant_customer.total_spent_cents')
+            ->orderBy('restaurant_customer.id')
+            ->limit(10)
+            ->get()
+            ->map(fn (RestaurantCustomer $pivot) => CustomerData::fromModel($pivot))
+            ->all();
+
+        return Inertia::render('Admin/TenantAdmin/Customers/Stats', [
+            'restaurant' => RestaurantData::fromModel($restaurant),
+            'stats' => $this->customerStats($restaurant),
+            'topCustomers' => $topCustomers,
+        ]);
+    }
+
+    /**
+     * Everything order-derived is computed in one PHP pass over this
+     * restaurant's non-cancelled orders (restaurant order counts are small,
+     * and it keeps the month bucketing timezone-correct across DB engines).
+     * Only this restaurant's orders are fetched, so a user's history at
+     * another restaurant can never make their first order here look like a
+     * repeat.
+     */
+    private function customerStats(Restaurant $restaurant): CustomerStatsData
+    {
+        $timezone = $restaurant->timezone ?: 'America/New_York';
+
+        $orders = Order::query()
+            ->where('restaurant_id', $restaurant->id)
+            ->where('status', '!=', OrderStatus::Cancelled)
+            ->orderBy('placed_at')
+            ->orderBy('id')
+            ->get(['id', 'user_id', 'placed_at', 'total_cents']);
+
+        $seenUsers = [];
+        $placedAtByUser = [];
+        $identifiedOrders = 0;
+        $identifiedRevenueCents = 0;
+        $repeatOrders = 0;
+        $repeatRevenueCents = 0;
+        $isRepeatOrder = [];
+
+        foreach ($orders as $order) {
+            if ($order->user_id === null) {
+                continue;
+            }
+
+            $identifiedOrders++;
+            $identifiedRevenueCents += (int) $order->total_cents;
+
+            $isRepeat = isset($seenUsers[$order->user_id]);
+            $seenUsers[$order->user_id] = true;
+            $isRepeatOrder[$order->id] = $isRepeat;
+            $placedAtByUser[$order->user_id][] = $order->placed_at;
+
+            if ($isRepeat) {
+                $repeatOrders++;
+                $repeatRevenueCents += (int) $order->total_cents;
+            }
+        }
+
+        $firstMonth = CarbonImmutable::now($timezone)->startOfMonth()->subMonths(11);
+        $buckets = [];
+
+        for ($i = 0; $i < 12; $i++) {
+            $buckets[$firstMonth->addMonths($i)->format('Y-m')] = ['new' => 0, 'returning' => 0, 'guest' => 0];
+        }
+
+        foreach ($orders as $order) {
+            $month = $order->placed_at->copy()->setTimezone($timezone)->format('Y-m');
+
+            if (! isset($buckets[$month])) {
+                continue;
+            }
+
+            $series = $order->user_id === null
+                ? 'guest'
+                : ($isRepeatOrder[$order->id] ? 'returning' : 'new');
+
+            $buckets[$month][$series] += (int) $order->total_cents;
+        }
+
+        $gapsDays = [];
+
+        foreach ($placedAtByUser as $placedAts) {
+            for ($i = 1; $i < count($placedAts); $i++) {
+                $gapsDays[] = $placedAts[$i - 1]->diffInSeconds($placedAts[$i]) / 86400;
+            }
+        }
+
+        $pivotAggregates = RestaurantCustomer::query()
+            ->where('restaurant_id', $restaurant->id)
+            ->whereHas('user')
+            ->selectRaw('COUNT(*) as customers_count')
+            ->selectRaw('COUNT(CASE WHEN total_orders >= 1 THEN 1 END) as ordered_customers_count')
+            ->selectRaw('COALESCE(SUM(CASE WHEN total_orders >= 1 THEN total_orders END), 0) as ordered_orders_sum')
+            ->first();
+
+        $orderedCustomers = (int) $pivotAggregates->ordered_customers_count;
+
+        return new CustomerStatsData(
+            repeatOrderPct: $identifiedOrders > 0
+                ? round($repeatOrders / $identifiedOrders * 100, 1)
+                : null,
+            repeatRevenuePct: $identifiedRevenueCents > 0
+                ? round($repeatRevenueCents / $identifiedRevenueCents * 100, 1)
+                : null,
+            avgOrdersPerCustomer: $orderedCustomers > 0
+                ? round(((int) $pivotAggregates->ordered_orders_sum) / $orderedCustomers, 1)
+                : null,
+            medianDaysBetweenOrders: $this->median($gapsDays),
+            identifiedCustomers: (int) $pivotAggregates->customers_count,
+            identifiedOrders: $identifiedOrders,
+            monthly: collect($buckets)
+                ->map(fn (array $cents, string $month) => new CustomerStatsMonthData(
+                    month: $month,
+                    newCents: $cents['new'],
+                    returningCents: $cents['returning'],
+                    guestCents: $cents['guest'],
+                ))
+                ->values()
+                ->all(),
+        );
+    }
+
+    /**
+     * Median of the gaps, one decimal; null under two pairs (per the Phase 2
+     * spec, a single gap is not enough signal for a "typical" cadence).
+     *
+     * @param  array<int, float>  $gapsDays
+     */
+    private function median(array $gapsDays): ?float
+    {
+        if (count($gapsDays) < 2) {
+            return null;
+        }
+
+        sort($gapsDays);
+        $mid = intdiv(count($gapsDays), 2);
+
+        $median = count($gapsDays) % 2 === 1
+            ? $gapsDays[$mid]
+            : ($gapsDays[$mid - 1] + $gapsDays[$mid]) / 2;
+
+        return round($median, 1);
     }
 
     /**

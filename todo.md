@@ -47,6 +47,21 @@ vars went into Cloud and auth + the organizations scope were verified by minting
 tokens (no delivery created) — **Uber Direct is the interim delivery provider until DoorDash prod
 access lands.** Details + what's still open in the §3 umbrella update.
 
+**Position update 2026-08-26.** Since 08-12 the work has been marketing surfaces + customer
+ownership, all shipped: fee cap raised **$249 → $399 and made public** (2026-08-14, §1); the
+public **savings calculator (`/savings`) + Cal.com booking (`/book`) are LIVE in production**
+(booking env vars confirmed in Cloud); the press page (`/press`) and Stories publication shipped,
+with the founder story and the ordering-gap data story **published** (hand-audited v2.1 data —
+56% own-channel gap, see `plateful-sales/DATA_STORY_STATS.md`); **Customers Phase 1** (list +
+CSV + full consent capture, 2026-08-24) and **Phase 2 regulars stats** (2026-08-26 — on `dev`,
+not yet merged/deployed) are built; and **email campaigns Sessions 1–3 + automated Claude review
+are LIVE in production 2026-08-26** on `platefuloffers.fyi` (first real campaign delivered
+end-to-end; Session 4 custom domains open; deliverability in cold-start warm-up — see
+`docs/campaigns_implementation_plan.md`). **Unchanged and now 26+ days old: the DoorDash
+prod-access request is STILL unfiled (§3 Session 0/6) — it remains the single critical-path
+item.** The sales funnel also remains unstarted (all 965 leads at `status='Open'` — see
+`plateful-sales/VISION_AND_NEXT_STEPS.md` for the sequenced plan).
+
 ---
 
 ## 0. Launch blockers — clear before selling to anyone
@@ -489,19 +504,25 @@ never in the tenant admin. So this is a partial data foundation, not a blank sla
       logged-in customers, per-restaurant `/account` profile toggle, and the signed-URL
       login-free unsubscribe endpoint with undo). 25 new tests. Full plan + spec in
       `docs/customers_page_plan.md`.
-- [ ] **Regulars stats view (customers plan Phase 2) — still deferred**: build before the
-      ~60-day lighthouse money story; both phases shipped before any
-      DoorDash-Storefront-segment outreach (that pitch is purely the ownership pitch, and the
-      CSV export button *is* the demo).
-- [ ] Fee-free remarketing: email/SMS campaigns — core differentiator vs DoorDash/Toast.
-      **Strategy in `docs/campaigns_plan.md`; BUILD SPEC in
-      `docs/campaigns_implementation_plan.md` (sessions 1–4, drafted 2026-08-25 — build from
-      there).** Decided: email first (SMS demand-pulled behind TCPA consent + 10DLC), strict
-      opt-in only, structured template, first-campaign review queue, shared marketing domain
-      **`platefuloffers.fyi` (purchased, in Resend, DNS live 2026-08-25)** with opt-in
-      per-restaurant sending domains later (session 4). Consent capture already shipped with
-      Customers Phase 1. Sessions 1–2 reach the demo milestone (admin composes + sends to test
-      customers); session 3 required before any real restaurant sends.
+- [x] **Regulars stats view (customers plan Phase 2) — BUILT 2026-08-26**: Stats tab on the
+      Customers page (`/{subdomain}/customers/stats`, admin-role only) — repeat order/revenue
+      %, new/returning/guest revenue by month (hand-rolled stacked bars, 12 months,
+      restaurant timezone), top-10 customers, avg orders/customer, median days between
+      orders. 8 new tests incl. the cross-restaurant leak test. Build spec (now the record)
+      in `docs/customers_stats_implementation_plan.md`. Still open before
+      DoorDash-Storefront-segment outreach: demo-test both phases (the screenshot of this
+      page is the planned ~60-day lighthouse money-story exhibit).
+- [x] Fee-free remarketing: email campaigns — **Sessions 1–3 + automated Claude review LIVE
+      IN PRODUCTION 2026-08-26** (strategy `docs/campaigns_plan.md`; build record
+      `docs/campaigns_implementation_plan.md`). Email-first (SMS demand-pulled behind TCPA
+      consent + 10DLC), strict opt-in, structured template, first-campaign review queue
+      (automated via Claude, flags fail closed to the super console), shared marketing domain
+      **`platefuloffers.fyi`** (in Resend, DNS live 2026-08-25; SPF/DKIM/DMARC verified on the
+      first real delivered campaign). Still open: **Session 4** (per-restaurant custom sending
+      domains), deliverability **cold-start warm-up** (first send landed in Gmail spam —
+      expected for a days-old domain; warm up with small real sends), Google Postmaster Tools
+      signup (failed 2026-08-26, retry with the Plateful account), and tightening DMARC from
+      `p=none` after a few weeks.
 
 ## 5. Public savings calculator (prospect-facing; needs pricing locked, §1)
 - [x] **Public marketing-site calculator — DONE (2026-08-14).** Live at `/savings` (root domain,
@@ -840,6 +861,44 @@ menus exist for the SEO to compound on._
       (`Welcome.vue:39-46` matches name/city/state/description only).
 - [ ] Marketing: the no-extra-commission promise on /for-restaurants when Phase 1 ships — same
       pricing-promise class as the public $399 cap (§1): once said, it's a commitment.
+
+---
+
+## 14. Plateful app — consumer marketplace app + public API
+_Added 2026-09-09. Full plan in `docs/plateful_app_plan.md`. Locked at drafting: **one Plateful
+app, not per-restaurant apps** — every storefront lives inside it, so it's a marketplace by
+necessity and the plan embraces that. The differentiator is underneath: app orders are direct
+charges on the restaurant's connected account at the **same 4% and cap**, write the same
+`restaurant_customer` / consent / loyalty rows, and hit the same POS + delivery pipeline. Amends
+§13's "never order on plateful.fyi" to "on the web" — the principle (restaurant's customer,
+restaurant's margin) is kept; the transaction UI moves. Growth surface, not launch surface._
+
+- [ ] **Phase 0 — API foundation** (~2 sessions): Sanctum (⚑ new dependency), `routes/api.php`
+      at `/api/v1`, `ResolveTenantFromRoute` setting `CurrentTenant` from a subdomain-bound
+      restaurant, token login + Google/**Apple** ID-token sign-in (Apple 4.8 requires it once
+      Google is offered), DTO-shape snapshot test — `app/Data` DTOs *are* the contract.
+- [ ] **Phase 1 — read API + discovery data** (~1–2): `latitude/longitude` (geocode via the
+      existing Places service + backfill), `cuisine_tags` (from menu extraction), `marketplace_listed`
+      (⚑ default on); restaurants near-me/open-now/cuisine list, detail, menu (shared query object
+      also unblocks §13 Phase 1).
+- [ ] **Phase 2 — ordering** (~3–4, payments are most of it): `CartManager` reads `X-Cart-Token`;
+      `createPaymentIntent()` on the connected account (application fee, manual capture for courier
+      delivery) + PaymentSheet + confirm endpoint + connected-account webhook branch into
+      `OrderPlacement::materialize()`; delivery quote/address endpoints.
+- [ ] **Phase 3 — retention + push** (~2–3): order history, **one-tap reorder**, addresses,
+      **rewards wallet** (aggregates §10's per-restaurant balances — ownership unchanged),
+      favorites, `device_tokens` + `OrderStatusChanged` push from `OrderTransition` / delivery
+      updates. Link for cross-merchant saved cards (platform-level card cloning later).
+- [ ] **Phase 4 — the app** (~4–6, parallel from Phase 1): ⚑ Expo (recommended) vs Capacitor+Vue;
+      not a webview wrapper (Apple 4.2). Screens: Discover · Restaurant · Cart · Checkout · Order
+      status · Orders · Account (incl. required in-app account deletion).
+- [ ] **Phase 5 — growth**: universal links + QR ("scan to order"), push campaigns as a §4
+      Campaigns extension (separate opt-in), **operator/kitchen app** on the same API, white-label
+      builds only under a client's own Apple account.
+- [ ] Marketing: "same 4% in the app" is a permanent promise once said — same class as §13's and
+      the $399 cap (⚑).
+- [ ] From v1 ship: `app/Data` changes are additive-only or go to `/v2` — the app can't be
+      redeployed with the payload the way the Vue pages are.
 
 ---
 

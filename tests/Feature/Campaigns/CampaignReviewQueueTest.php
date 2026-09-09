@@ -1,11 +1,13 @@
 <?php
 
 use App\Enums\CampaignStatus;
+use App\Jobs\ReviewCampaign;
 use App\Jobs\SendCampaign;
 use App\Mail\CampaignReviewSubmittedMail;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Models\User;
+use App\Services\Campaigns\CampaignContentReviewer;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
@@ -14,7 +16,19 @@ require_once __DIR__.'/CampaignTestHelpers.php';
 beforeEach(function () {
     config(['platform.primary_domain' => 'plateful.test']);
     config(['services.resend.key' => null]);
+    // Deterministic by default; spot-check tests opt in with rate 1.0.
+    config(['platform.campaigns.review.spot_check_rate' => 0]);
 });
+
+/**
+ * @param  array{approved: bool, reason: string}|null  $verdict
+ */
+function fakeReviewer(?array $verdict): void
+{
+    $reviewer = Mockery::mock(CampaignContentReviewer::class);
+    $reviewer->shouldReceive('review')->andReturn($verdict);
+    app()->instance(CampaignContentReviewer::class, $reviewer);
+}
 
 /**
  * @return array<string, mixed>
@@ -34,8 +48,52 @@ function reviewComposePayload(array $overrides = []): array
     ], $overrides);
 }
 
-test('a first campaign is held for review instead of sending, and the platform is pinged', function () {
+test('a first campaign with no reviewer key stays held and the platform is pinged', function () {
     Mail::fake();
+
+    $r = liveRestaurant('marcos', campaignsApproved: false);
+    $admin = adminForRestaurant($r);
+    optedInCustomer($r, 'Alice Apple', 'alice@example.test');
+
+    // Keyless (test env pins CLAUDE_API_KEY empty): the reviewer returns no
+    // verdict, so the sync-run ReviewCampaign job fails closed to a human.
+    $this->actingAs($admin)
+        ->post("http://admin.plateful.test/{$r->subdomain}/campaigns", reviewComposePayload())
+        ->assertRedirect();
+
+    $c = Campaign::withoutTenantScope()->firstOrFail();
+    expect($c->status)->toBe(CampaignStatus::PendingReview)
+        ->and($c->review_notes)->not->toBeNull()
+        ->and(CampaignRecipient::query()->count())->toBe(0);
+
+    Mail::assertQueued(CampaignReviewSubmittedMail::class, fn (CampaignReviewSubmittedMail $mail) => $mail->campaign->id === $c->id
+        && $mail->hasTo(config('mail.senders.support')));
+});
+
+test('a first campaign approved by the automated reviewer sends without a human', function () {
+    Mail::fake();
+    fakeReviewer(['approved' => true, 'reason' => 'Ordinary restaurant promotion.']);
+
+    $r = liveRestaurant('marcos', campaignsApproved: false);
+    $admin = adminForRestaurant($r);
+    optedInCustomer($r, 'Alice Apple', 'alice@example.test');
+
+    $this->actingAs($admin)
+        ->post("http://admin.plateful.test/{$r->subdomain}/campaigns", reviewComposePayload())
+        ->assertRedirect();
+
+    $c = Campaign::withoutTenantScope()->firstOrFail();
+    expect($c->status)->toBe(CampaignStatus::Sent)
+        ->and($c->review_verdict)->toBe('approved')
+        ->and($c->review_notes)->toBe('Ordinary restaurant promotion.')
+        ->and(CampaignRecipient::query()->where('campaign_id', $c->id)->count())->toBe(1);
+
+    Mail::assertNotQueued(CampaignReviewSubmittedMail::class);
+});
+
+test('a campaign flagged by the automated reviewer stays held with the reasoning', function () {
+    Mail::fake();
+    fakeReviewer(['approved' => false, 'reason' => 'The CTA link points at an unrelated domain.']);
 
     $r = liveRestaurant('marcos', campaignsApproved: false);
     $admin = adminForRestaurant($r);
@@ -47,10 +105,77 @@ test('a first campaign is held for review instead of sending, and the platform i
 
     $c = Campaign::withoutTenantScope()->firstOrFail();
     expect($c->status)->toBe(CampaignStatus::PendingReview)
+        ->and($c->review_verdict)->toBe('flagged')
+        ->and($c->review_notes)->toBe('The CTA link points at an unrelated domain.')
         ->and(CampaignRecipient::query()->count())->toBe(0);
 
-    Mail::assertQueued(CampaignReviewSubmittedMail::class, fn (CampaignReviewSubmittedMail $mail) => $mail->campaign->id === $c->id
-        && $mail->hasTo(config('mail.senders.support')));
+    Mail::assertQueued(CampaignReviewSubmittedMail::class);
+});
+
+test('a graduated restaurant is spot-checked at the configured rate', function () {
+    config(['platform.campaigns.review.spot_check_rate' => 1.0]);
+    Mail::fake();
+    fakeReviewer(['approved' => false, 'reason' => 'Spot check: needs a look.']);
+
+    $r = liveRestaurant('marcos');
+    $admin = adminForRestaurant($r);
+    optedInCustomer($r, 'Alice Apple', 'alice@example.test');
+
+    $this->actingAs($admin)
+        ->post("http://admin.plateful.test/{$r->subdomain}/campaigns", reviewComposePayload())
+        ->assertRedirect();
+
+    expect(Campaign::withoutTenantScope()->firstOrFail()->status)->toBe(CampaignStatus::PendingReview);
+});
+
+test('a spot-check approval sends straight through', function () {
+    config(['platform.campaigns.review.spot_check_rate' => 1.0]);
+    fakeReviewer(['approved' => true, 'reason' => 'Fine.']);
+
+    $r = liveRestaurant('marcos');
+    $admin = adminForRestaurant($r);
+    optedInCustomer($r, 'Alice Apple', 'alice@example.test');
+
+    $this->actingAs($admin)
+        ->post("http://admin.plateful.test/{$r->subdomain}/campaigns", reviewComposePayload())
+        ->assertRedirect();
+
+    expect(Campaign::withoutTenantScope()->firstOrFail()->status)->toBe(CampaignStatus::Sent);
+});
+
+test('an approved review of a scheduled campaign keeps its send time', function () {
+    $r = liveRestaurant('marcos', campaignsApproved: false);
+    $c = campaign($r, [
+        'status' => CampaignStatus::PendingReview,
+        'scheduled_at' => now()->addDays(2),
+    ]);
+
+    Queue::fake();
+
+    $reviewer = Mockery::mock(CampaignContentReviewer::class);
+    $reviewer->shouldReceive('review')->andReturn(['approved' => true, 'reason' => 'Fine.']);
+
+    (new ReviewCampaign($c->id))->handle($reviewer);
+
+    $c->refresh();
+    expect($c->status)->toBe(CampaignStatus::Scheduled)
+        ->and($c->review_verdict)->toBe('approved');
+
+    Queue::assertPushed(SendCampaign::class, fn (SendCampaign $job) => $job->campaignId === $c->id
+        && $job->expectedScheduledAt === $c->scheduled_at->toIso8601String()
+        && $job->delay !== null);
+});
+
+test('the review job aborts if the campaign was withdrawn while queued', function () {
+    $r = liveRestaurant('marcos', campaignsApproved: false);
+    $c = campaign($r, ['status' => CampaignStatus::Cancelled]);
+
+    $reviewer = Mockery::mock(CampaignContentReviewer::class);
+    $reviewer->shouldNotReceive('review');
+
+    (new ReviewCampaign($c->id))->handle($reviewer);
+
+    expect($c->refresh()->status)->toBe(CampaignStatus::Cancelled);
 });
 
 test('a scheduled first campaign is held with its requested send time', function () {
@@ -71,7 +196,8 @@ test('a scheduled first campaign is held with its requested send time', function
     expect($c->status)->toBe(CampaignStatus::PendingReview)
         ->and($c->scheduled_at)->not->toBeNull();
 
-    Queue::assertNothingPushed();
+    Queue::assertPushed(ReviewCampaign::class, fn (ReviewCampaign $job) => $job->campaignId === $c->id);
+    Queue::assertNotPushed(SendCampaign::class);
 });
 
 test('a restaurant already campaigns-approved skips the queue', function () {

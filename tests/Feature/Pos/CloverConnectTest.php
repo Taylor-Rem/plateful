@@ -86,6 +86,103 @@ it('forbids non-admin staff from connecting Clover', function () {
         ->assertForbidden();
 });
 
+// --- launch (Site URL: App Market / Merchant Dashboard entry) --------------
+
+it('forwards the Site URL root to the launch route with the merchant id', function () {
+    [$owner] = cloverOwnerAndRestaurant();
+
+    $this->actingAs($owner)
+        ->get(CLOVER_ADMIN.'/pos/clover?merchant_id=MID_9')
+        ->assertRedirect(CLOVER_ADMIN.'/pos/clover/launch?merchant_id=MID_9');
+});
+
+it('sends a guest arriving from Clover to log in and back again', function () {
+    $this->get(CLOVER_ADMIN.'/pos/clover/launch?merchant_id=MID_9')
+        ->assertRedirect(CLOVER_ADMIN.'/login');
+
+    expect(session('url.intended'))->toBe(CLOVER_ADMIN.'/pos/clover/launch?merchant_id=MID_9');
+});
+
+it('starts the connect flow directly for an owner with a single restaurant', function () {
+    [$owner, $restaurant] = cloverOwnerAndRestaurant();
+
+    $response = $this->actingAs($owner)
+        ->get(CLOVER_ADMIN.'/pos/clover/launch?merchant_id=MID_9');
+
+    $response->assertStatus(302);
+    expect($response->headers->get('Location'))
+        ->toStartWith('https://sandbox.dev.clover.com/oauth/v2/authorize?');
+    expect(session('pos.clover.oauth')['restaurant_id'])->toBe($restaurant->id);
+});
+
+it('accepts the camel-cased merchantId Clover sometimes sends', function () {
+    [$owner] = cloverOwnerAndRestaurant();
+
+    $this->actingAs($owner)
+        ->get(CLOVER_ADMIN.'/pos/clover/launch?merchantId=MID_9')
+        ->assertStatus(302)
+        ->assertRedirectContains('sandbox.dev.clover.com/oauth/v2/authorize');
+});
+
+it('goes straight to the POS page when that merchant is already connected', function () {
+    [$owner, $restaurant] = cloverOwnerAndRestaurant();
+    PosIntegration::factory()->clover()->create([
+        'restaurant_id' => $restaurant->id,
+        'external_merchant_id' => 'MID_9',
+    ]);
+
+    $this->actingAs($owner)
+        ->get(CLOVER_ADMIN.'/pos/clover/launch?merchant_id=MID_9')
+        ->assertRedirect(CLOVER_ADMIN."/{$restaurant->subdomain}/settings/pos")
+        ->assertSessionHas('success');
+
+    expect(session('pos.clover.oauth'))->toBeNull();
+});
+
+it('shows a restaurant picker to an owner with several restaurants', function () {
+    [$owner, $first] = cloverOwnerAndRestaurant('burgerbarn');
+    // The picker lists restaurants by name, so pin the names.
+    $first->update(['name' => 'Burger Barn']);
+    $second = Restaurant::factory()->approved()->create(['name' => 'Taco Town', 'subdomain' => 'tacotown', 'is_active' => true]);
+    $second->members()->attach($owner->id, ['role' => RestaurantRole::Admin->value]);
+
+    $this->actingAs($owner)
+        ->get(CLOVER_ADMIN.'/pos/clover/launch?merchant_id=MID_9')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('Admin/CloverLaunch')
+            ->where('merchantId', 'MID_9')
+            ->has('restaurants', 2)
+            ->where('restaurants.0.subdomain', $first->subdomain)
+            ->where('restaurants.0.connectUrl', fn ($url) => str_contains((string) $url, "/{$first->subdomain}/settings/pos/clover/connect"))
+            ->where('restaurants.1.subdomain', 'tacotown')
+        );
+});
+
+it('omits restaurants where the user is only staff from the picker', function () {
+    [$owner, $first] = cloverOwnerAndRestaurant('burgerbarn');
+    $second = Restaurant::factory()->approved()->create(['subdomain' => 'tacotown', 'is_active' => true]);
+    $second->members()->attach($owner->id, ['role' => RestaurantRole::Staff->value]);
+
+    $this->actingAs($owner)
+        ->get(CLOVER_ADMIN.'/pos/clover/launch')
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('Admin/CloverLaunch')
+            ->where('merchantId', null)
+            ->has('restaurants', 1)
+            ->where('restaurants.0.subdomain', $first->subdomain)
+        );
+});
+
+it('forbids a signed-in user with no restaurant membership', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(CLOVER_ADMIN.'/pos/clover/launch?merchant_id=MID_9')
+        ->assertForbidden();
+});
+
 // --- callback --------------------------------------------------------------
 
 it('persists a connected integration using the merchant id from the callback', function () {

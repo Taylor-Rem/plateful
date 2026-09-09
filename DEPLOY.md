@@ -160,6 +160,7 @@ pending**: Clover's production developer-account + app approvals haven't been gr
 | `CLOVER_ENVIRONMENT` | `production` |
 | `CLOVER_APP_ID` / `CLOVER_APP_SECRET` | from the Clover developer dashboard |
 | `CLOVER_REDIRECT_URI` | `https://admin.<primary>/pos/clover/callback` (must match the Clover app registration) |
+| _(on the Clover app, not an env var)_ | Site URL = `https://admin.<primary>/pos/clover` and Alternate Launch Path = `/pos/clover/launch`. Clover rejects any redirect URI that is not a subpath of the Site URL, so the Site URL must be the parent of `/pos/clover/callback` |
 
 ### Delivery & address lookup
 

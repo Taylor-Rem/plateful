@@ -108,7 +108,7 @@ They ask for this and they weight it. The honest version:
 > ordering channel of its own that currently takes all its online volume through the delivery
 > marketplaces at 15–40%. We are not trying to replace their register — we integrate with Square and
 > Clover — and we are not a marketplace, so we bring no new demand. We are the restaurant's own
-> direct channel at 4% flat, capped at $249/month.
+> direct channel at 4% flat, capped at $399/month.
 >
 > Drive is how those direct orders actually get delivered. It is complementary to DoorDash's
 > marketplace rather than competitive with it: the orders we dispatch are the restaurant's existing
@@ -150,9 +150,9 @@ error handling, cancellation, compliance, and launch strategy.
    components, `pickup_time`, `items`, `order_value`, UTC timestamps.
 4. **Simulator** — advance to Dasher confirmed. Show the capture firing on courier confirmation.
 5. **Customer view** — the tracking card: tracking URL, live delivery status, dropoff time, order ID,
-   restaurant phone. _(This screen does not exist yet. G1.)_
+   restaurant phone. _(Built 2026-07-31 — see doordash-certification-readiness.md G1.)_
 6. **Merchant view** — the admin delivery panel: `support_reference`, `external_delivery_id`, pickup
-   and dropoff times, items. _(Does not exist yet. G2, G3.)_
+   and dropoff times, items. _(Built 2026-07-31 — see doordash-certification-readiness.md G2, G3.)_
 7. **Webhooks** — advance through picked-up and delivered; show both UIs updating.
 8. **Error path** — an out-of-range address; show delivery quietly not being offered with
    human-readable copy.

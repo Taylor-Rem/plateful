@@ -7,8 +7,8 @@ operations (menu, orders, kitchen, payouts, integrations) from an admin console.
 **Pricing model:** 4% flat per order — 4% of the post-redemption food subtotal, i.e. what
 the customer actually pays for food. Tax, tip, and the delivery fee are excluded, always.
 Charged via a Stripe Connect application fee on top of the restaurant's own Stripe
-processing. No subscriptions, no tiers — but the commission is **capped at $249 per
-restaurant per calendar month** (`config/platform.php`, per-restaurant override), and super
+processing. No subscriptions, no tiers — but the commission is **capped at $399 per
+restaurant per calendar month (raised from $249 and made public 2026-08-14)** (`config/platform.php`, per-restaurant override), and super
 admins can override the 4% rate per restaurant. The restaurant is the merchant of record.
 (Loyalty redemption isn't built yet, so today the post-redemption subtotal is simply the
 food subtotal.)
@@ -25,6 +25,9 @@ food subtotal.)
 | AI menu import | `app/Services/MenuExtractionService.php` | Claude extracts a structured menu (incl. option sets) from a PDF/photo; re-import anytime from the admin Menu page |
 | Auth | Fortify + Socialite | Email/password + Google OAuth; TOTP two-factor (required for super admins) |
 | Revenue split | `app/Services/RevenueSplitResolver.php` | Founder/operator/recruiter attribution ledger + monthly earnings |
+| Customers + consent | `/{subdomain}/customers` | Tenant-admin customer list, CSV export, regulars stats tab; marketing-consent capture with audit trail (2026-08-24/26) |
+| Email campaigns | `/{subdomain}/campaigns` | Owner-composed campaigns via Resend on `platefuloffers.fyi`; first-campaign review (automated via Claude) — live in production 2026-08-26 |
+| Marketing site | `/savings`, `/book`, `/press`, `/stories` | Savings calculator, inline Cal.com booking, press kit, and the markdown-driven Stories publication (all live) |
 
 Deeper design docs live in `docs/` (POS strategy, DoorDash Drive plan, the original Uber
 Direct plan, admin overhaul, user management). Deployment to Laravel Cloud is covered in

@@ -86,6 +86,21 @@ loyaltyPoints: number,
 marketingOptedIn: boolean,
 marketingOptedInAt: string | null,
 };
+export type CustomerStatsData = {
+repeatOrderPct: number | null,
+repeatRevenuePct: number | null,
+avgOrdersPerCustomer: number | null,
+medianDaysBetweenOrders: number | null,
+identifiedCustomers: number,
+identifiedOrders: number,
+monthly: App.Data.CustomerStatsMonthData[],
+};
+export type CustomerStatsMonthData = {
+month: string,
+newCents: number,
+returningCents: number,
+guestCents: number,
+};
 export type DashboardStatsData = {
 ordersToday: number,
 revenueTodayCents: number,

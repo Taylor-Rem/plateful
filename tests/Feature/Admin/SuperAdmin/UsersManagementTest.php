@@ -14,10 +14,11 @@ beforeEach(function () {
 function usersActingSuper(): User
 {
     // A second super admin so the acting user is never "the last one" and the
-    // guard under test is the one the case actually targets.
-    User::factory()->superAdmin()->create(['name' => 'Backup Super']);
+    // guard under test is the one the case actually targets. Emails are pinned:
+    // a random faker email can collide with the search test's terms ("ada").
+    User::factory()->superAdmin()->create(['name' => 'Backup Super', 'email' => 'backup.super@plateful.test']);
 
-    return User::factory()->superAdmin()->create(['name' => 'Acting Super']);
+    return User::factory()->superAdmin()->create(['name' => 'Acting Super', 'email' => 'acting.super@plateful.test']);
 }
 
 test('the roster lists every kind of account, including orphans', function () {

@@ -20,6 +20,7 @@ beforeEach(fn () => Http::preventStrayRequests(false));
  *   CLOVER_ENVIRONMENT=sandbox
  *   CLOVER_SANDBOX_ACCESS_TOKEN=...   # an API token from the sandbox merchant
  *                                     # (Setup -> API Tokens on the test merchant)
+ *                                     # with Orders R/W, Payments W, Merchant R
  *   CLOVER_SANDBOX_MERCHANT_ID=...    # that sandbox merchant's id
  *
  * Run just this file:
@@ -56,7 +57,8 @@ it('creates a real order in the Clover sandbox and can read it back', function (
     config()->set('services.clover.environment', 'sandbox');
 
     $restaurant = adminOrderRestaurant('cloverlive');
-    $order = makeOrder($restaurant);
+    $order = makeOrder($restaurant, ['notes' => 'Live sandbox test — ignore']);
+    $order->items()->update(['notes' => 'Extra napkins']);
 
     $integration = PosIntegration::withoutTenantScope()->create([
         'restaurant_id' => $restaurant->id,
@@ -76,13 +78,21 @@ it('creates a real order in the Clover sandbox and can read it back', function (
     expect($result->success)->toBeTrue();
     expect($result->ticketId)->toBeString()->not->toBeEmpty();
 
-    // Read it back from Clover to prove it actually landed.
+    // Read it back from Clover to prove it actually landed. The Stripe payment
+    // recorded against it is NOT observable here: Clover only computes
+    // `paymentState` when the `payments` expansion is requested, and that
+    // expansion needs Payments READ, which the app deliberately does not ask
+    // for. Verified 2026-09-09 instead via the sandbox Merchant Dashboard,
+    // where pushed tickets list as "Paid" with an "External Payment" line.
     $readBack = app(CloverClient::class)
         ->authed($liveToken)
-        ->get("/v3/merchants/{$liveMerchant}/orders/{$result->ticketId}");
+        ->get("/v3/merchants/{$liveMerchant}/orders/{$result->ticketId}", ['expand' => 'lineItems']);
 
     expect($readBack->successful())->toBeTrue();
     expect($readBack->json('id'))->toBe($result->ticketId);
+    expect($readBack->json('note'))->toBe('Plateful #'.$order->number.' · Alice Customer · Pickup — Live sandbox test — ignore');
+    expect($readBack->json('lineItems.elements'))->toHaveCount(1);
+    expect($readBack->json('lineItems.elements.0.note'))->toBe('Extra napkins');
 })->skip(
     cloverSandboxMissing(...),
     'Set CLOVER_SANDBOX_ACCESS_TOKEN and CLOVER_SANDBOX_MERCHANT_ID to run the live Clover sandbox test.'

@@ -12,6 +12,8 @@ require_once __DIR__.'/CampaignTestHelpers.php';
 beforeEach(function () {
     config(['platform.primary_domain' => 'plateful.test']);
     config(['services.resend.key' => null]);
+    // Deterministic sends: no random spot-check holds in these tests.
+    config(['platform.campaigns.review.spot_check_rate' => 0]);
 });
 
 /**

@@ -3,12 +3,13 @@
 _Drafted 2026-08-19. Companion to `docs/customers_page_plan.md` (which owns Phases 1–2);
 this doc owns consent capture and Phases 3 (email campaigns) and 4 (SMS). Tracked as
 todo.md §4 "fee-free remarketing". Status: **consent capture (the Phase 1 amendment
-below) BUILT 2026-08-24** — pivot columns, `marketing_consent_events` audit table,
-checkout checkbox, account toggle, and the signed unsubscribe endpoint all shipped
-with the Customers page. Phases 3–4 remain planned, not started — decisions below
-marked ⚑ are Taylor's to confirm before the relevant build. **Phase 3 build spec:
-`docs/campaigns_implementation_plan.md` (sessions 1–4, drafted 2026-08-25)** — build
-from that doc, not this one; this doc owns strategy and compliance rationale._
+below) BUILT 2026-08-24**; **Phase 3 email campaigns BUILT and LIVE IN PRODUCTION
+2026-08-26** (sessions 1–3 of the build spec plus Claude-automated campaign review;
+first real campaign sent end-to-end; per-restaurant custom domains — session 4 —
+still open). Phase 4 (SMS) remains planned, not started — decisions below marked ⚑
+are Taylor's to confirm before the relevant build. **Phase 3 build spec and current
+production state: `docs/campaigns_implementation_plan.md`** — build from that doc,
+not this one; this doc owns strategy and compliance rationale._
 
 ## Decisions already made (2026-08-19)
 
@@ -206,10 +207,12 @@ completion callback flips campaign status to `sent` and finalizes counters.
 - Only `approved` + active restaurants with completed Stripe onboarding can send.
 - **Platform caps** (config, per restaurant): max campaigns/week (default 2) and a
   send-volume ceiling; enforced in the controller *and* the job.
-- ⚑ **First-campaign review**: recommend the first campaign from each restaurant
-  lands in a super-admin approval queue (a status + one admin-host page + email ping);
-  after one clean send the restaurant is auto-approved. Cheap while restaurant count
-  is single-digit; drop or automate later.
+- **First-campaign review** (decided 2026-08-25: yes; **automated 2026-08-26**): held
+  campaigns are reviewed by Claude (`CampaignContentReviewer`) — approve auto-dispatches
+  in ~a minute; a flag, refusal, or API failure fails closed to the super-admin console
+  with the model's reasoning, plus the email ping. Every first campaign is reviewed;
+  graduated restaurants get a configurable spot-check (default 10%) per submission.
+  Graduation is still earned by the first clean delivered send.
 - **Automatic pause**: complaint rate > 0.3% on a campaign, or 2+ complaints while
   small-N, → campaign halts mid-send and the restaurant's sending is
   `paused_by_platform` pending review.
@@ -333,7 +336,7 @@ until Phase 4 is real.
 | 2 | Guest consent capture | defer | revisit post-lighthouse |
 | 3 | Opt-in checkbox on Register.vue too | skip, checkout only | Phase 1 build |
 | 4 | Structured template vs free-form email body | **DECIDED 2026-08-25: structured template** | done |
-| 5 | First-campaign super-admin review queue | **DECIDED 2026-08-25: yes** | done |
+| 5 | First-campaign super-admin review queue | **DECIDED 2026-08-25: yes; AMENDED 2026-08-26: review automated via Claude, humans handle flags/failures + post-graduation spot checks** | done |
 | 6 | Open tracking | skip v1 | Phase 3 build |
 | 7 | SMS shared 10DLC campaign vs per-restaurant | shared | Phase 4 registration |
 | 8 | SMS provider (Twilio vs Telnyx) | Twilio | Phase 4 build |

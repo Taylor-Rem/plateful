@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminInvitationController;
 use App\Http\Controllers\Admin\AdminLoginHandoffController;
 use App\Http\Controllers\Admin\AdminSecurityController;
 use App\Http\Controllers\Admin\TenantAdmin;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -44,6 +45,15 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
             ->name('admin.pos.square.callback');
         Route::get('/pos/clover/callback', [TenantAdmin\CloverConnectController::class, 'callback'])
             ->name('admin.pos.clover.callback');
+        // The Clover app's Site URL is /pos/clover: Clover requires the OAuth
+        // redirect (…/callback) to be a subpath of it, and the Merchant
+        // Dashboard's alternate launch path (…/launch) lives under it too. An
+        // App Market install lands on the Site URL itself with merchant_id, so
+        // forward that straight to the launch handler, query string intact.
+        Route::get('/pos/clover', fn (Request $request) => redirect()->route('admin.pos.clover.launch', $request->query()))
+            ->name('admin.pos.clover.site');
+        Route::get('/pos/clover/launch', [TenantAdmin\CloverConnectController::class, 'launch'])
+            ->name('admin.pos.clover.launch');
 
         // The :subdomain field keeps Wayfinder's generated helpers (and
         // route() model interpolation) building subdomain URLs; runtime
@@ -92,6 +102,7 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 // the whole list), so they sit with Settings/Payouts, not staff.
                 Route::get('/customers', [TenantAdmin\CustomersController::class, 'index'])->name('customers.index');
                 Route::get('/customers/export', [TenantAdmin\CustomersController::class, 'export'])->name('customers.export');
+                Route::get('/customers/stats', [TenantAdmin\CustomersController::class, 'stats'])->name('customers.stats');
 
                 // Email campaigns to opted-in customers. Static paths are
                 // registered before the {campaign} wildcard so /create,
