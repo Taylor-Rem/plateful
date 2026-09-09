@@ -57,7 +57,8 @@ it('creates a real order in the Clover sandbox and can read it back', function (
     config()->set('services.clover.environment', 'sandbox');
 
     $restaurant = adminOrderRestaurant('cloverlive');
-    $order = makeOrder($restaurant);
+    $order = makeOrder($restaurant, ['notes' => 'Live sandbox test — ignore']);
+    $order->items()->update(['notes' => 'Extra napkins']);
 
     $integration = PosIntegration::withoutTenantScope()->create([
         'restaurant_id' => $restaurant->id,
@@ -89,8 +90,9 @@ it('creates a real order in the Clover sandbox and can read it back', function (
 
     expect($readBack->successful())->toBeTrue();
     expect($readBack->json('id'))->toBe($result->ticketId);
-    expect($readBack->json('note'))->toBe('Plateful #'.$order->number);
+    expect($readBack->json('note'))->toBe('Plateful #'.$order->number.' · Alice Customer · Pickup — Live sandbox test — ignore');
     expect($readBack->json('lineItems.elements'))->toHaveCount(1);
+    expect($readBack->json('lineItems.elements.0.note'))->toBe('Extra napkins');
 })->skip(
     cloverSandboxMissing(...),
     'Set CLOVER_SANDBOX_ACCESS_TOKEN and CLOVER_SANDBOX_MERCHANT_ID to run the live Clover sandbox test.'

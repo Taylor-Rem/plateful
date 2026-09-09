@@ -87,7 +87,7 @@ it('pushes a paid order all the way to the Clover atomic-order API and stores th
 
         return $request->url() === 'https://apisandbox.dev.clover.com/v3/merchants/MID_42/atomic_order/orders'
             && $request->hasHeader('Authorization', 'Bearer access-live')
-            && $body['orderCart']['note'] === 'Plateful #'.$order->number
+            && $body['orderCart']['note'] === 'Plateful #'.$order->number.' · Alice Customer · Pickup'
             && $body['orderCart']['lineItems'][0]['name'] === 'Sample item'
             && $body['orderCart']['lineItems'][0]['price'] === 1000;
     });
@@ -96,6 +96,49 @@ it('pushes a paid order all the way to the Clover atomic-order API and stores th
     expect($order->pos_ticket_id)->toBe('CL_ORDER_42');
     expect($order->pos_provider)->toBe(PosProviderName::Clover);
     expect($order->pos_pushed_at)->not->toBeNull();
+});
+
+it('puts per-line special instructions and order-level kitchen notes on the ticket', function () {
+    $restaurant = adminOrderRestaurant('clovershop');
+    $order = makeOrder($restaurant, ['notes' => 'Ring the back bell', 'customer_name' => 'Bob Buyer']);
+    $order->items()->update(['notes' => 'Extra pepperoncini please']);
+    connectedCloverIntegration($restaurant->id, 'MID_1');
+
+    fakeCloverOrderCreate('MID_1');
+
+    (new PushOrderToPos($order->id))->handle(app(PosDispatcher::class));
+
+    Http::assertSent(function ($request) use ($order) {
+        if (! str_contains($request->url(), '/atomic_order/orders')) {
+            return false;
+        }
+
+        $cart = $request->data()['orderCart'];
+
+        return $cart['note'] === 'Plateful #'.$order->number.' · Bob Buyer · Pickup — Ring the back bell'
+            && $cart['lineItems'][0]['note'] === 'Extra pepperoncini please';
+    });
+});
+
+it('joins options and special instructions on one line note', function () {
+    $restaurant = adminOrderRestaurant('clovershop');
+    $order = makeOrder($restaurant);
+    $order->items()->update([
+        'notes' => 'No mayo',
+        'modifiers' => [
+            'groups' => [
+                ['group_id' => 1, 'group_name' => 'Size', 'selections' => [['option_id' => 1, 'option_name' => '12"', 'price_delta_cents' => 475]]],
+            ],
+        ],
+    ]);
+    connectedCloverIntegration($restaurant->id, 'MID_1');
+
+    fakeCloverOrderCreate('MID_1');
+
+    (new PushOrderToPos($order->id))->handle(app(PosDispatcher::class));
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/atomic_order/orders')
+        && $request->data()['orderCart']['lineItems'][0]['note'] === '12" — No mayo');
 });
 
 // --- external payment record -----------------------------------------------

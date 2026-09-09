@@ -226,7 +226,7 @@ class CloverPosProvider implements PosProvider
     private function buildOrderCart(Order $order): array
     {
         return [
-            'note' => 'Plateful #'.$order->number,
+            'note' => $this->orderNote($order),
             'lineItems' => $order->items
                 ->flatMap(fn (OrderItem $item): array => $this->buildLineItems($item))
                 ->all(),
@@ -234,9 +234,35 @@ class CloverPosProvider implements PosProvider
     }
 
     /**
+     * The ticket header the kitchen and counter read: order number, who is
+     * picking up, pickup vs delivery, and any order-level kitchen notes.
+     */
+    private function orderNote(Order $order): string
+    {
+        $parts = ['Plateful #'.$order->number];
+
+        if (filled($order->customer_name)) {
+            $parts[] = trim((string) $order->customer_name);
+        }
+
+        if ($order->type !== null) {
+            $parts[] = ucfirst($order->type->value);
+        }
+
+        $note = implode(' · ', $parts);
+
+        if (filled($order->notes)) {
+            $note .= ' — '.trim((string) $order->notes);
+        }
+
+        return substr($note, 0, self::NOTE_LIMIT);
+    }
+
+    /**
      * Expand one order line into N identical Clover line items (Clover groups
      * and counts them on the register), each priced at the unit price with the
-     * selected options folded into a note.
+     * selected options and the customer's special instructions folded into a
+     * note.
      *
      * @return list<array<string, mixed>>
      */
@@ -247,7 +273,7 @@ class CloverPosProvider implements PosProvider
             'price' => (int) $item->unit_price_cents,
         ];
 
-        $note = $this->modifierNote($item);
+        $note = $this->lineNote($item);
 
         if ($note !== null) {
             $line['note'] = $note;
@@ -257,31 +283,35 @@ class CloverPosProvider implements PosProvider
     }
 
     /**
-     * Fold the selected options into a comma-separated text note — the v1
-     * text-fallback for modifiers, capped at Clover's note limit.
+     * Selected options as a comma-separated list (the v1 text-fallback for
+     * modifiers), followed by the customer's per-line instructions, capped at
+     * Clover's note limit.
      */
-    private function modifierNote(OrderItem $item): ?string
+    private function lineNote(OrderItem $item): ?string
     {
-        $modifiers = $item->modifiers;
-
-        if (! is_array($modifiers) || empty($modifiers['groups'])) {
-            return null;
-        }
-
         $parts = [];
 
-        foreach ($modifiers['groups'] as $group) {
-            foreach ($group['selections'] ?? [] as $selection) {
-                if (isset($selection['option_name'])) {
-                    $parts[] = (string) $selection['option_name'];
+        $modifiers = $item->modifiers;
+
+        if (is_array($modifiers)) {
+            foreach ($modifiers['groups'] ?? [] as $group) {
+                foreach ($group['selections'] ?? [] as $selection) {
+                    if (isset($selection['option_name'])) {
+                        $parts[] = (string) $selection['option_name'];
+                    }
                 }
             }
         }
 
-        if ($parts === []) {
+        $options = $parts === [] ? null : implode(', ', $parts);
+        $instructions = filled($item->notes) ? trim((string) $item->notes) : null;
+
+        $note = implode(' — ', array_filter([$options, $instructions]));
+
+        if ($note === '') {
             return null;
         }
 
-        return substr(implode(', ', $parts), 0, self::NOTE_LIMIT);
+        return substr($note, 0, self::NOTE_LIMIT);
     }
 }
