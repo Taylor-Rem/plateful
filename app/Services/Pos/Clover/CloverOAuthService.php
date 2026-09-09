@@ -11,7 +11,8 @@ use App\Exceptions\PosProviderException;
  *
  * Two Clover-specific notes vs. Square:
  * - Clover has no `scope` parameter; the app's permissions (Orders read/write,
- *   Inventory read) are configured in the Clover developer dashboard instead.
+ *   Payments write, Merchant read) are configured in the Clover developer
+ *   dashboard instead.
  * - The refresh token is single-use: every refresh rotates BOTH tokens, so the
  *   caller must persist the new pair (see CloverPosProvider::freshAccessToken).
  */
@@ -24,13 +25,22 @@ class CloverOAuthService
      * URL — they must be enabled on the app in the developer dashboard — but we
      * store them on the integration for later reference, mirroring Square.
      *
+     * Keep this list to what the code actually calls: Clover's app review makes
+     * us justify every permission, and an unused one is a rejection risk.
+     * - ORDERS_WRITE: create the ticket (atomic order).
+     * - ORDERS_READ: read the ticket back (live verification).
+     * - PAYMENTS_WRITE: record the Stripe payment on the ticket so the register
+     *   shows it as paid instead of open.
+     * - MERCHANTS_READ: look up the merchant's "External payment" tender id.
+     * Inventory read is deliberately absent until the catalog matcher exists.
+     *
      * @var list<string>
      */
     private const PERMISSIONS = [
         'ORDERS_WRITE',
         'ORDERS_READ',
+        'PAYMENTS_WRITE',
         'MERCHANTS_READ',
-        'INVENTORY_READ',
     ];
 
     /**

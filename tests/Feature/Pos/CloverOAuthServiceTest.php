@@ -86,3 +86,8 @@ it('refreshes tokens against the refresh endpoint with only the client id', func
             && ! isset($request['client_secret']);
     });
 });
+
+it('requests only the permissions the adapter actually uses', function () {
+    expect(app(CloverOAuthService::class)->requestedScopes())
+        ->toBe(['ORDERS_WRITE', 'ORDERS_READ', 'PAYMENTS_WRITE', 'MERCHANTS_READ']);
+});
