@@ -250,11 +250,26 @@ is removed for suggestions, because suggestions are labeled and gated.
   Original scope: schema/prompt/sanitizer changes, the review wizard step,
   confirm → `MenuBuilder`, "Split from description" and "Suggest
   customizations" on manual items, re-import carry-over (below).
-- **Phase 4 — rollout + polish** (~1): re-import The Rose PDF on testaurant
-  **dev**, walk the wizard, then the same on **live** (order history keeps
-  snapshots; carts cascade); kitchen/confirmation/email copy; §2b note that
-  POS catalog matching now has per-item modifier lists to map (the impedance
-  mismatch shrinks, it doesn't vanish).
+- **Phase 4 — rollout + polish** — **dev half DONE 2026-09-10**, live open.
+  The Rose PDF was re-extracted on testaurant dev three times with the real
+  model (≈ $0.25 and ~90 s each) to tune the prompt on real output: the first
+  read produced 2 proposals across 40 items (the "never invent" rules were
+  winning), the second 31/40 with sensible extras/removes but milk swaps
+  listing only alternatives, the third the same coverage with every swap
+  starting from the default ("Whole milk / Oat milk / Almond milk",
+  "Regular / Decaf", "English muffin / Sourdough"). Ingredients read
+  cleanly from the printed descriptions (0 for espresso drinks, 4–9 for
+  plates). Import #6 sits in `needs_review` for the owner to walk the wizard
+  — that walk is the remaining dev step; the live steps are: merge, deploy
+  (Cloud runs the two migrations), re-import from the live admin, walk the
+  wizard. Kitchen, confirmation, and email already render deviations (Phase
+  1); the §2b note is in the todo. Gotcha for dev: `ExtractMenuJob` was run
+  synchronously because the shared dev queue worker may execute stale code.
+  Original scope: re-import The Rose PDF on testaurant **dev**, walk the
+  wizard, then the same on **live** (order history keeps snapshots; carts
+  cascade); kitchen/confirmation/email copy; §2b note that POS catalog
+  matching now has per-item modifier lists to map (the impedance mismatch
+  shrinks, it doesn't vanish).
 
 ## Open questions (⚑ = decide before the phase that needs it)
 

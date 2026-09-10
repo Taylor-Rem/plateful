@@ -38,9 +38,10 @@ class MenuExtractionService
 
         Ingredients and suggestions:
         - ingredients lists what the item is made of, taken from the printed description — the words on the menu, split into single ingredients ("Cotto salami, mortadella, provolone" → three entries). Do not repeat sizes, sides, or the option_set choices here. Empty when the menu prints no ingredients for the item.
-        - suggested_customizations are PROPOSALS the restaurant owner will review and switch on or off — they are never shown to customers until the owner accepts them. Because of that, they may go beyond what is printed: suggest what is normal for this kind of dish and cuisine (extra cheese, sauce or protein swaps, crust choice on a pizza, dressing on a salad, spice level where the cuisine has one). Keep them plausible for this specific item; skip anything the owner would find odd.
-        - kind is "extra" for adding more of something or an add-on, "swap" for choosing an alternative (fill swap_options with the alternatives, the printed ingredient first), "remove" for an ingredient customers commonly leave out that is not in the printed list.
-        - Never attach prices to suggestions — the owner sets those. At most 8 suggestions per item; 0 is fine for drinks, sides, and anything with nothing sensible to customize.
+        - suggested_customizations are PROPOSALS the restaurant owner will review and switch on or off — they are never shown to customers until the owner accepts them. The "never invent" rule above does NOT apply here: this is the one place you should go beyond what is printed and think like the owner setting up online ordering. For every food item, propose the customizations a regular would ask for at the counter: extra of a headline ingredient (extra egg, extra bacon, extra cheese, extra avocado), a protein or cheese or bread swap where the dish has an obvious alternative (halloumi for bacon, sourdough for English muffin, oat milk), and the ingredient people most often leave out that is not in the printed list (raw onions, cilantro, hot sauce). Most food items should get 2–5 proposals; espresso drinks usually 1–3 (extra shot, milk alternative, decaf); plain sides and bottled drinks 0.
+        - kind is "extra" for adding more of something or an add-on, "swap" for choosing an alternative, "remove" for an ingredient customers commonly leave out that is not in the printed list. Do not repeat a choice that is already an option_set on the item.
+        - For a "swap", swap_options MUST start with what the item comes with as printed or by default, then the alternatives: ["Whole milk", "Oat milk", "Almond milk"], ["Regular", "Decaf"], ["Bacon", "Fried halloumi"]. Never list only the alternatives — the first entry is what a customer gets without choosing.
+        - Never attach prices to suggestions — the owner sets those. At most 8 suggestions per item.
         PROMPT;
 
     /**
@@ -173,7 +174,7 @@ class MenuExtractionService
         You help a restaurant owner set up online-ordering customizations for one menu item.
 
         - ingredients: what the item is made of, one per entry, taken from the printed description when there is one. If there is no description, list the ingredients this dish is normally made of (short, plain names), at most 12.
-        - suggested_customizations: PROPOSALS the owner will switch on or off; customers never see them until accepted, so they may go beyond what is printed. Suggest what is normal for this kind of dish: extras (kind "extra"), alternatives (kind "swap", with swap_options listing the alternatives, the usual choice first), and ingredients people commonly leave out that are not in the printed list (kind "remove"). Never include prices. At most 8; 0 is fine when nothing is sensible.
+        - suggested_customizations: PROPOSALS the owner will switch on or off; customers never see them until accepted, so they may go beyond what is printed. Suggest what a regular would ask for: extras (kind "extra"), alternatives (kind "swap" — swap_options MUST start with what the item comes with by default, then the alternatives, e.g. ["Whole milk", "Oat milk"]), and ingredients people commonly leave out that are not in the printed list (kind "remove"). Never include prices. Most food items deserve 2–5; at most 8; 0 is fine when nothing is sensible.
         PROMPT;
 
     /**
