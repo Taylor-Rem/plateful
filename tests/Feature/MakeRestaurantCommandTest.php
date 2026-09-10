@@ -67,7 +67,7 @@ it('builds the configurable pizza template for the italian preset', function () 
         ->first();
 
     expect($pizza)->not->toBeNull()
-        ->and($pizza->item_template_id)->toBe($template->id)
+        ->and($pizza->templates()->pluck('item_templates.id')->all())->toBe([$template->id])
         ->and($pizza->defaultSelections()->count())->toBeGreaterThan(0);
 });
 

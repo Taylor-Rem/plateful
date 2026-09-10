@@ -394,7 +394,7 @@ const onConfiguratorSubmit = (payload: ConfiguratorSubmitPayload): void => {
                                     {{ item.description }}
                                 </p>
                                 <p
-                                    v-if="item.template"
+                                    v-if="item.groups.length > 0"
                                     class="mt-2 text-xs tracking-wide text-muted-foreground uppercase"
                                 >
                                     Customize

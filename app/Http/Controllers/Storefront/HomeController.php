@@ -27,7 +27,7 @@ class HomeController extends Controller
             ->where('is_featured', true)
             ->where('is_available', true)
             ->whereHas('category', fn ($q) => $q->where('is_active', true))
-            ->with(['template.groups.options', 'defaultSelections'])
+            ->with(['templates.groups.options', 'ownGroups.options', 'ingredients', 'defaultSelections'])
             ->orderBy('position')
             ->limit(6)
             ->get()

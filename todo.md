@@ -905,12 +905,13 @@ and the admin; pricing is **per ingredient with bulk shortcuts**. Surfaced by th
 walkthrough: "no mortadella" / "extra provolone" has no home except special instructions, and the
 one-template-per-item limit already duplicated "Add salad/soup" into four templates._
 
-- [ ] **Phase 1 — model + runtime** (~2 sessions): `menu_item_ingredients`, item-owned groups
+- [x] **Phase 1 — model + runtime** — DONE 2026-09-10 (one session, 1268 green): `menu_item_ingredients`, item-owned groups
       (`kind` = included/extras/swap, options upserted by ingredient so ids stay stable),
       `menu_item_templates` pivot (many templates per item; swap sets = single-group templates),
       `IngredientGroupCompiler`, snapshot v2 (`is_default` + `removed`) and **deviation-only**
       rendering in cart/kitchen/confirmation/email/both POS notes, `MenuItem::optionGroups()`,
-      configurator sections. Existing template/cart/integrity tests green.
+      configurator sections. Existing template/cart/integrity tests green. Dev DB migrated;
+      testaurant's Classic Italian hand-seeded (7 ingredients, 2 extras) as the Phase 2 reference.
 - [ ] **Phase 2 — authoring** (~2): one Ingredients panel component (leave out / extra $ / swap
       with) in the storefront item drawer and on the admin Menu page; "Split from description";
       "Suggest customizations" per item; inline swap-set create; bulk "apply to category" + price

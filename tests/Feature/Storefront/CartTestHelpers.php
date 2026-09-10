@@ -77,13 +77,14 @@ if (! function_exists('cartFixture')) {
         $bacon = ItemTemplateOption::create(['item_template_group_id' => $tp->id, 'name' => 'Bacon', 'price_delta_cents' => 300, 'is_available' => true, 'position' => 1]);
 
         $item = MenuItem::create([
-            'restaurant_id' => $r->id, 'menu_category_id' => $cat->id, 'item_template_id' => $tpl->id,
+            'restaurant_id' => $r->id, 'menu_category_id' => $cat->id,
             'name' => 'Pep', 'slug' => 'pep', 'price_cents' => 1400, 'is_available' => true, 'position' => 0,
         ]);
+        $item->templates()->attach($tpl->id, ['position' => 0]);
         $item->defaultSelections()->sync([$medium->id, $pepperoni->id]);
 
         $simple = MenuItem::create([
-            'restaurant_id' => $r->id, 'menu_category_id' => $cat->id, 'item_template_id' => null,
+            'restaurant_id' => $r->id, 'menu_category_id' => $cat->id,
             'name' => 'Soda', 'slug' => 'soda', 'price_cents' => 299, 'is_available' => true, 'position' => 1,
         ]);
 

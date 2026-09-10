@@ -104,14 +104,19 @@ and let an item carry both.
      `swap`), default = the ingredient; `is_removable` makes that group
      min 0 (the configurator already renders a "None" radio for optional
      single-select).
-6. **Snapshot v2 — record deviations, not just selections.**
-   `buildModifiersSnapshot()` adds `is_default` to each selection and a
-   `removed: [{option_id, option_name}]` list per group (defaults the customer
-   deselected, including "None" on a swap). Every renderer — cart summary,
-   order summary, kitchen, confirmation, emails, both POS notes — switches
-   to **deviations only**: `12" · No mortadella · Extra provolone`. A
-   ticket that lists all seven default ingredients on every sandwich is
-   worse than today. Legacy snapshots (no flags) render as they do now.
+6. **Snapshot v2 — record deviations, not just selections.** _(Built
+   2026-09-10.)_ `buildModifiersSnapshot()` adds `is_default` to each
+   selection, `single_select` per group, and a `removed: [{option_id,
+   option_name}]` list per group (defaults the customer deselected,
+   including "None" on a swap). Every renderer — cart summary, order
+   summary, kitchen, confirmation, emails, both POS notes — goes through
+   `Support/Menus/ModifierSummary` with one rule set: default selections in
+   an **included** group are hidden (they are the item as printed); every
+   other group lists its picks; a turned-off default renders as **"No X"**,
+   except in a pick-one group that already has a pick ("Large", never
+   "No Medium · Large"). Result: `12" · No mortadella · Extra provolone`,
+   and a swapped topping reads `Bacon · No Pepperoni`, which the kitchen
+   needs. Legacy snapshots (no flags) render exactly as before.
 7. **Everything else stays.** Signature, price calc, integrity check, and
    validation keep operating on option ids; they just read groups from
    `MenuItem::optionGroups()` (all attached templates' groups + item-owned
@@ -181,7 +186,14 @@ is removed for suggestions, because suggestions are labeled and gated.
 
 ## Phases
 
-- **Phase 1 — model + runtime** (~2 sessions): migrations (1–4), compiler
+- **Phase 1 — model + runtime** — **DONE 2026-09-10** (one session; the
+  storefront item drawer also moved to multi-template checkboxes so nothing
+  owner-facing regressed; `is_locked` dropped as redundant with
+  `is_removable`; `menu_item_templates.menu_item_ingredient_id` records
+  which swap sets an ingredient attached). Verified on testaurant dev: Classic
+  Italian seeded by hand, cart line reads `12" · No Mortadella · Extra
+  Provolone cheese` at $16.25, edit-in-place pre-fills the compiled groups.
+  Original scope: migrations (1–4), compiler
   (5) + unit tests, snapshot v2 + deviation rendering everywhere (6),
   `optionGroups()` and the DTO change (7), configurator renders the three
   kinds with proper headings ("Leave anything out?", "Add extras",

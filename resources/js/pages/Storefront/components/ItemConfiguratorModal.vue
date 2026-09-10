@@ -65,13 +65,29 @@ watch(
     },
 );
 
-const template = computed(() => props.item.template);
+const groups = computed<App.Data.ItemTemplateGroupData[]>(
+    () => props.item.groups,
+);
+
+// Compiled ingredient groups get plain-language headings; hand-built
+// choices keep their own names.
+const groupTitle = (group: App.Data.ItemTemplateGroupData): string => {
+    if (group.kind === 'included') {
+        return 'Leave anything out?';
+    }
+
+    if (group.kind === 'extras') {
+        return 'Add extras';
+    }
+
+    return group.name;
+};
 
 const isSelected = (optionId: number): boolean =>
     selectedIds.value.includes(optionId);
 
 const groupOptionIds = (groupId: number): number[] => {
-    const g = template.value?.groups.find((gg) => gg.id === groupId);
+    const g = groups.value.find((gg) => gg.id === groupId);
 
     return g ? g.options.map((o) => o.id) : [];
 };
@@ -96,13 +112,9 @@ const groupSatisfied = (group: App.Data.ItemTemplateGroupData): boolean => {
     return true;
 };
 
-const allSatisfied = computed<boolean>(() => {
-    if (!template.value) {
-        return true;
-    }
-
-    return template.value.groups.every((g) => groupSatisfied(g));
-});
+const allSatisfied = computed<boolean>(() =>
+    groups.value.every((g) => groupSatisfied(g)),
+);
 
 const toggleSingle = (groupId: number, optionId: number | null): void => {
     const ids = groupOptionIds(groupId);
@@ -115,7 +127,7 @@ const toggleSingle = (groupId: number, optionId: number | null): void => {
 
 const toggleMulti = (groupId: number, optionId: number): void => {
     const ids = groupOptionIds(groupId);
-    const group = template.value?.groups.find((g) => g.id === groupId);
+    const group = groups.value.find((g) => g.id === groupId);
 
     if (isSelected(optionId)) {
         selectedIds.value = selectedIds.value.filter((id) => id !== optionId);
@@ -139,11 +151,7 @@ const toggleMulti = (groupId: number, optionId: number): void => {
 const findOption = (
     optionId: number,
 ): App.Data.ItemTemplateOptionData | null => {
-    if (!template.value) {
-        return null;
-    }
-
-    for (const g of template.value.groups) {
+    for (const g of groups.value) {
         const o = g.options.find((opt) => opt.id === optionId);
 
         if (o) {
@@ -155,7 +163,7 @@ const findOption = (
 };
 
 const unitPriceCents = computed<number>(() => {
-    if (!template.value) {
+    if (groups.value.length === 0) {
         return props.item.priceCents;
     }
 
@@ -221,7 +229,7 @@ const onSubmit = (): void => {
         return;
     }
 
-    const selections = (template.value?.groups ?? []).map((g) => ({
+    const selections = groups.value.map((g) => ({
         groupId: g.id,
         optionIds: selectedIds.value.filter((id) =>
             g.options.some((o) => o.id === id),
@@ -260,15 +268,15 @@ const onSubmit = (): void => {
                 {{ item.description }}
             </p>
 
-            <div v-if="template" class="space-y-4">
+            <div v-if="groups.length > 0" class="space-y-4">
                 <div
-                    v-for="group in template.groups"
+                    v-for="group in groups"
                     :key="group.id"
                     class="rounded-md border border-border bg-muted/20 p-3"
                 >
                     <div class="flex items-baseline justify-between gap-2">
                         <h4 class="text-sm font-semibold text-foreground">
-                            {{ group.name }}
+                            {{ groupTitle(group) }}
                             <span
                                 v-if="group.isRequired"
                                 class="text-destructive"
@@ -276,7 +284,10 @@ const onSubmit = (): void => {
                             >
                         </h4>
                         <span class="text-xs text-muted-foreground">
-                            <template v-if="group.isSingleSelect"
+                            <template v-if="group.kind === 'included'"
+                                >Uncheck to leave out</template
+                            >
+                            <template v-else-if="group.isSingleSelect"
                                 >Pick exactly 1</template
                             >
                             <template

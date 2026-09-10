@@ -34,7 +34,7 @@ function placementCart(Restaurant $r): Cart
         'restaurant_id' => $r->id, 'name' => 'C', 'slug' => 'c', 'position' => 0, 'is_active' => true,
     ]);
     $item = MenuItem::create([
-        'restaurant_id' => $r->id, 'menu_category_id' => $cat->id, 'item_template_id' => null,
+        'restaurant_id' => $r->id, 'menu_category_id' => $cat->id,
         'name' => 'Soda', 'slug' => 'soda', 'price_cents' => 1000, 'is_available' => true, 'position' => 0,
     ]);
 
@@ -50,7 +50,7 @@ function placementCart(Restaurant $r): Cart
         'modifiers' => null,
     ]);
 
-    return $cart->fresh()->load('items.menuItem.template.groups.options');
+    return $cart->fresh()->load(['items.menuItem.templates.groups.options', 'items.menuItem.ownGroups.options', 'items.menuItem.defaultSelections']);
 }
 
 function placeWith(Restaurant $r, OrderType $type, ?string $quoteToken = null)

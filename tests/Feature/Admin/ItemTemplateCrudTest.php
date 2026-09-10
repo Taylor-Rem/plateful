@@ -169,13 +169,12 @@ test('cannot delete a template that has menu items', function () {
     MenuItem::withoutTenantScope()->create([
         'restaurant_id' => $r->id,
         'menu_category_id' => $cat->id,
-        'item_template_id' => $tpl->id,
         'name' => 'Pep',
         'slug' => 'pep',
         'price_cents' => 1000,
         'is_available' => true,
         'position' => 0,
-    ]);
+    ])->templates()->attach($tpl->id, ['position' => 0]);
 
     $this->actingAs($admin)
         ->delete(TPL_ADMIN_BASE."/marcos/menu/templates/{$tpl->id}", [], ['Accept' => 'application/json'])

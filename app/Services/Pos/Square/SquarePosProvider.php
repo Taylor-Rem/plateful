@@ -11,6 +11,7 @@ use App\Models\OrderItem;
 use App\Models\PosIntegration;
 use App\Models\Restaurant;
 use App\Services\Pos\PosPushResult;
+use App\Support\Menus\ModifierSummary;
 
 /**
  * Injects a paid Plateful order into the restaurant's Square account as a
@@ -137,26 +138,13 @@ class SquarePosProvider implements PosProvider
     }
 
     /**
-     * Fold the selected options into a comma-separated text note — the v1
+     * Fold the modifier deviations (size, extras, swaps, "No X") into a
+     * comma-separated text note — the v1
      * text-fallback for modifiers, capped at Square's 500-char note limit.
      */
     private function modifierNote(OrderItem $item): ?string
     {
-        $modifiers = $item->modifiers;
-
-        if (! is_array($modifiers) || empty($modifiers['groups'])) {
-            return null;
-        }
-
-        $parts = [];
-
-        foreach ($modifiers['groups'] as $group) {
-            foreach ($group['selections'] ?? [] as $selection) {
-                if (isset($selection['option_name'])) {
-                    $parts[] = (string) $selection['option_name'];
-                }
-            }
-        }
+        $parts = ModifierSummary::parts($item->modifiers);
 
         if ($parts === []) {
             return null;

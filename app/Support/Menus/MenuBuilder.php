@@ -69,7 +69,6 @@ class MenuBuilder
                     $menuItem = MenuItem::create([
                         'restaurant_id' => $restaurant->id,
                         'menu_category_id' => $menuCategory->id,
-                        'item_template_id' => $template['id'] ?? null,
                         'name' => $item['name'],
                         'slug' => $this->uniqueSlug($item['name'], $usedItemSlugs),
                         'description' => $item['description'] ?? null,
@@ -79,8 +78,12 @@ class MenuBuilder
                         'position' => $itemPos,
                     ]);
 
-                    if ($template !== null && $template['default_option_ids'] !== []) {
-                        $menuItem->defaultSelections()->sync($template['default_option_ids']);
+                    if ($template !== null) {
+                        $menuItem->templates()->attach($template['id'], ['position' => 0]);
+
+                        if ($template['default_option_ids'] !== []) {
+                            $menuItem->defaultSelections()->sync($template['default_option_ids']);
+                        }
                     }
 
                     $created++;
@@ -209,7 +212,6 @@ class MenuBuilder
                 MenuItem::create([
                     'restaurant_id' => $restaurant->id,
                     'menu_category_id' => $category->id,
-                    'item_template_id' => null,
                     'name' => $name,
                     'slug' => Str::slug($name),
                     'description' => $desc,
@@ -372,7 +374,6 @@ class MenuBuilder
             $item = MenuItem::create([
                 'restaurant_id' => $restaurant->id,
                 'menu_category_id' => $pizzasCat->id,
-                'item_template_id' => $pizzaTemplate->id,
                 'name' => $name,
                 'slug' => Str::slug($name),
                 'description' => $desc,
@@ -381,6 +382,8 @@ class MenuBuilder
                 'is_featured' => in_array($name, ['Margherita Pizza', 'Pepperoni Pizza', 'Meat Lovers Pizza'], true),
                 'position' => $itemIdx,
             ]);
+
+            $item->templates()->attach($pizzaTemplate->id, ['position' => 0]);
 
             $optionIds = [];
             foreach ($defaults as [$gName, $oName]) {
@@ -405,7 +408,6 @@ class MenuBuilder
                 MenuItem::create([
                     'restaurant_id' => $restaurant->id,
                     'menu_category_id' => $category->id,
-                    'item_template_id' => null,
                     'name' => $name,
                     'slug' => Str::slug($name),
                     'description' => $desc,

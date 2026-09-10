@@ -27,7 +27,7 @@ function sftRestaurant(): Restaurant
     ]);
 }
 
-test('storefront response includes template and defaultSelectionIds for configurable items', function () {
+test('storefront response includes option groups and defaultSelectionIds for configurable items', function () {
     $r = sftRestaurant();
 
     $cat = MenuCategory::withoutTenantScope()->create([
@@ -54,25 +54,27 @@ test('storefront response includes template and defaultSelectionIds for configur
     $item = MenuItem::withoutTenantScope()->create([
         'restaurant_id' => $r->id,
         'menu_category_id' => $cat->id,
-        'item_template_id' => $tpl->id,
         'name' => 'Margherita',
         'slug' => 'margherita',
         'price_cents' => 1200,
         'is_available' => true,
         'position' => 0,
     ]);
+    $item->templates()->attach($tpl->id, ['position' => 0]);
     $item->defaultSelections()->sync([$medium->id]);
 
     $this->get('http://marcos.plateful.test/menu')
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('categories.0.items.0.name', 'Margherita')
-            ->where('categories.0.items.0.template.name', 'Pizza')
+            ->where('categories.0.items.0.templateIds', [$tpl->id])
+            ->where('categories.0.items.0.groups.0.name', 'Size')
+            ->where('categories.0.items.0.groups.0.kind', 'choice')
             ->where('categories.0.items.0.defaultSelectionIds.0', $medium->id),
         );
 });
 
-test('items with no template have template null', function () {
+test('items with no template have no groups', function () {
     $r = sftRestaurant();
 
     $cat = MenuCategory::withoutTenantScope()->create([
@@ -86,7 +88,6 @@ test('items with no template have template null', function () {
     MenuItem::withoutTenantScope()->create([
         'restaurant_id' => $r->id,
         'menu_category_id' => $cat->id,
-        'item_template_id' => null,
         'name' => 'Soda',
         'slug' => 'soda',
         'price_cents' => 299,
@@ -97,7 +98,8 @@ test('items with no template have template null', function () {
     $this->get('http://marcos.plateful.test/menu')
         ->assertInertia(fn ($page) => $page
             ->where('categories.0.items.0.name', 'Soda')
-            ->where('categories.0.items.0.template', null)
+            ->where('categories.0.items.0.templateIds', [])
+            ->where('categories.0.items.0.groups', [])
             ->where('categories.0.items.0.defaultSelectionIds', []),
         );
 });

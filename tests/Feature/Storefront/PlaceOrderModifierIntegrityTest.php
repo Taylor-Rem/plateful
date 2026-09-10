@@ -43,7 +43,7 @@ test('checkout rejects line when its item template was removed after cart-add', 
     $cookie = modAddPep($this, $f);
 
     // Strip the template from the item between cart-add and checkout.
-    MenuItem::withoutTenantScope()->find($f['item']->id)->update(['item_template_id' => null]);
+    MenuItem::withoutTenantScope()->find($f['item']->id)->templates()->detach();
 
     $resp = modPlace($this, $f, $cookie);
 

@@ -36,7 +36,6 @@ class MenuItemController extends Controller
             $item = MenuItem::create([
                 'restaurant_id' => $restaurant->id,
                 'menu_category_id' => $validated['menu_category_id'],
-                'item_template_id' => $validated['item_template_id'] ?? null,
                 'name' => $validated['name'],
                 'slug' => $slug,
                 'description' => $validated['description'] ?? null,
@@ -46,6 +45,7 @@ class MenuItemController extends Controller
                 'position' => $position,
             ]);
 
+            $this->syncTemplates($item, $validated['template_ids'] ?? []);
             $this->syncDefaultSelections($item, $validated['default_selection_ids'] ?? []);
 
             if ($request->hasFile('image')) {
@@ -67,12 +67,8 @@ class MenuItemController extends Controller
         $validated = $request->validated();
 
         DB::transaction(function () use ($menuItem, $validated, $request, $images): void {
-            $previousTemplateId = $menuItem->item_template_id;
-            $newTemplateId = $validated['item_template_id'] ?? null;
-
             $menuItem->update([
                 'menu_category_id' => $validated['menu_category_id'],
-                'item_template_id' => $newTemplateId,
                 'name' => $validated['name'],
                 'slug' => $validated['slug'] ?? $menuItem->slug,
                 'description' => $validated['description'] ?? null,
@@ -81,10 +77,7 @@ class MenuItemController extends Controller
                 'is_featured' => (bool) ($validated['is_featured'] ?? false),
             ]);
 
-            if ($newTemplateId !== $previousTemplateId) {
-                $menuItem->defaultSelections()->detach();
-            }
-
+            $this->syncTemplates($menuItem, $validated['template_ids'] ?? []);
             $this->syncDefaultSelections($menuItem, $validated['default_selection_ids'] ?? []);
 
             if ($request->boolean('remove_image') && $menuItem->image_path) {
@@ -113,17 +106,86 @@ class MenuItemController extends Controller
     }
 
     /**
+     * Replace the hand-attached templates, keeping their order. Templates a
+     * swap-set ingredient attached are managed by the ingredient compiler
+     * and are left alone.
+     *
+     * @param  array<int, int>  $templateIds
+     */
+    protected function syncTemplates(MenuItem $item, array $templateIds): void
+    {
+        $ingredientAttached = DB::table('menu_item_templates')
+            ->where('menu_item_id', $item->id)
+            ->whereNotNull('menu_item_ingredient_id')
+            ->pluck('item_template_id')
+            ->map(fn ($id) => (int) $id);
+
+        $wanted = collect($templateIds)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->reject(fn (int $id) => $ingredientAttached->contains($id))
+            ->values();
+
+        $sync = [];
+        foreach ($wanted as $position => $id) {
+            $sync[$id] = ['position' => $position, 'menu_item_ingredient_id' => null];
+        }
+
+        DB::table('menu_item_templates')
+            ->where('menu_item_id', $item->id)
+            ->whereNull('menu_item_ingredient_id')
+            ->whereNotIn('item_template_id', $wanted->all() ?: [0])
+            ->delete();
+
+        foreach ($sync as $id => $pivot) {
+            $item->templates()->syncWithoutDetaching([$id => $pivot]);
+        }
+
+        $item->unsetRelation('templates');
+    }
+
+    /**
+     * Defaults on hand-attached templates come from the form; defaults on
+     * the item's own compiled groups (ingredients) are owned by the
+     * compiler and preserved here.
+     *
      * @param  array<int, int>  $optionIds
      */
     protected function syncDefaultSelections(MenuItem $item, array $optionIds): void
     {
-        if ($item->item_template_id === null) {
-            $item->defaultSelections()->detach();
+        $item->unsetRelation('ownGroups');
+        $item->unsetRelation('templates');
 
-            return;
-        }
+        $ingredientAttached = DB::table('menu_item_templates')
+            ->where('menu_item_id', $item->id)
+            ->whereNotNull('menu_item_ingredient_id')
+            ->pluck('item_template_id')
+            ->map(fn ($id) => (int) $id);
 
-        $item->defaultSelections()->sync(array_values(array_unique(array_map('intval', $optionIds))));
+        $optionIdsOf = fn ($templates) => $templates
+            ->flatMap(fn ($t) => $t->groups->flatMap(fn ($g) => $g->options->pluck('id')))
+            ->map(fn ($id) => (int) $id);
+
+        $templates = $item->templates()->with('groups.options')->get();
+
+        // Owned by the compiler: the item's own groups and any swap set an
+        // ingredient attached.
+        $compilerOptionIds = $item->ownGroups()->with('options')->get()
+            ->flatMap(fn ($g) => $g->options->pluck('id'))
+            ->map(fn ($id) => (int) $id)
+            ->merge($optionIdsOf($templates->filter(fn ($t) => $ingredientAttached->contains((int) $t->id))));
+
+        $handAttachedOptionIds = $optionIdsOf($templates->reject(fn ($t) => $ingredientAttached->contains((int) $t->id)));
+
+        $kept = $item->defaultSelections()->pluck('item_template_options.id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $compilerOptionIds->contains($id));
+
+        $fromForm = collect($optionIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $handAttachedOptionIds->contains($id));
+
+        $item->defaultSelections()->sync($kept->merge($fromForm)->unique()->values()->all());
     }
 
     protected function ensureUniqueSlug(int $restaurantId, string $base): string

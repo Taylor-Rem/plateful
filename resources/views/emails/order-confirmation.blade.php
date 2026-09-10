@@ -33,16 +33,7 @@
             <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
                     <strong>{{ $line->quantity }}× {{ $line->name }}</strong>
-                    @php
-                        $sels = [];
-                        if (is_array($line->modifiers) && isset($line->modifiers['groups'])) {
-                            foreach ($line->modifiers['groups'] as $g) {
-                                foreach ($g['selections'] ?? [] as $s) {
-                                    $sels[] = $s['option_name'] ?? '';
-                                }
-                            }
-                        }
-                    @endphp
+                    @php $sels = \App\Support\Menus\ModifierSummary::parts($line->modifiers); @endphp
                     @if ($sels)
                         <div style="color: #6b7280; font-size: 13px;">{{ implode(' · ', $sels) }}</div>
                     @endif

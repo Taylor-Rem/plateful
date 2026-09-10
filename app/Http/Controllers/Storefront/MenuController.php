@@ -32,7 +32,9 @@ class MenuController extends Controller
                     }
                     $q->orderBy('position');
                 },
-                'items.template.groups.options',
+                'items.templates.groups.options',
+                'items.ownGroups.options',
+                'items.ingredients',
                 'items.defaultSelections',
             ])
             ->get()
