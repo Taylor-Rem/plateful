@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { router, usePage } from '@inertiajs/vue3';
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-vue-next';
+import { ArrowDown, ArrowUp, Plus, Sparkles, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
-import { splitIngredients } from '@/components/menu/splitIngredients';
+import {
+    acceptSimpleSuggestion,
+    findRowByName,
+    rowForSwapSuggestion,
+    splitIngredients,
+} from '@/components/menu/splitIngredients';
+import type { CustomizationSuggestion } from '@/components/menu/splitIngredients';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -37,7 +43,13 @@ const props = withDefaults(
         /** Templates already filtered to swap-set shape. */
         swapSets: App.Data.ItemTemplateData[];
         categoryName: string;
-        urls: { save: string; swapSet: string; applyToCategory: string };
+        urls: {
+            save: string;
+            swapSet: string;
+            applyToCategory: string;
+            /** POST that asks Claude for ingredients + proposals for this item. */
+            suggest: string;
+        };
         /** Seed rows from the description when the item has none yet. */
         autoSplit?: boolean;
     }>(),
@@ -50,7 +62,16 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage<{
-    flash?: { success?: string | null; createdSwapSetId?: number | null };
+    flash?: {
+        success?: string | null;
+        error?: string | null;
+        createdSwapSetId?: number | null;
+        itemSuggestions?: {
+            menuItemId: number;
+            ingredients: string[];
+            suggestions: CustomizationSuggestion[];
+        } | null;
+    };
 }>();
 
 let nextKey = 1;
@@ -284,6 +305,102 @@ watch(
     },
 );
 
+// ----- Suggestions (Claude, per item, ~cents) -----
+const suggesting = ref(false);
+const suggestions = ref<CustomizationSuggestion[]>([]);
+const suggestedIngredients = ref<string[]>([]);
+
+const requestSuggestions = (): void => {
+    suggesting.value = true;
+
+    router.post(
+        props.urls.suggest,
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => toast.error('Could not get suggestions right now.'),
+            onFinish: () => {
+                suggesting.value = false;
+
+                if (page.props.flash?.error) {
+                    toast.error(page.props.flash.error);
+                }
+            },
+        },
+    );
+};
+
+watch(
+    () => page.props.flash?.itemSuggestions,
+    (flash) => {
+        if (!flash || flash.menuItemId !== props.item.id) {
+            return;
+        }
+
+        suggestions.value = flash.suggestions;
+        suggestedIngredients.value = flash.ingredients.filter(
+            (name) => !findRowByName(rows.value, name),
+        );
+
+        if (
+            flash.suggestions.length === 0 &&
+            suggestedIngredients.value.length === 0
+        ) {
+            toast.success('Nothing to suggest — this item looks complete.');
+        }
+    },
+);
+
+const dismissSuggestion = (index: number): void => {
+    suggestions.value.splice(index, 1);
+};
+
+const acceptSuggestion = (index: number): void => {
+    const suggestion = suggestions.value[index];
+
+    if (suggestion.kind === 'swap') {
+        // A swap needs a swap set; open the inline form pre-filled with the
+        // proposed alternatives so the owner only has to price them.
+        const row = rowForSwapSuggestion(rows.value, suggestion, blankRow);
+
+        swapSetForRowKey.value = row.key;
+        swapSetErrors.value = {};
+        swapSetForm.value = {
+            name: suggestion.name,
+            allow_none: false,
+            options: suggestion.swap_options.map((name) => ({
+                name,
+                price_delta: '',
+            })),
+        };
+        swapSetFormOpen.value = true;
+    } else {
+        const row = acceptSimpleSuggestion(rows.value, suggestion, blankRow);
+
+        if (suggestion.kind === 'extra' && row.extra_price === '') {
+            toast.success(`Set a price for "Extra ${row.name}".`);
+        }
+    }
+
+    markDirty();
+    suggestions.value.splice(index, 1);
+};
+
+const addSuggestedIngredients = (): void => {
+    for (const name of suggestedIngredients.value) {
+        if (!findRowByName(rows.value, name)) {
+            rows.value.push(blankRow(name));
+        }
+    }
+
+    suggestedIngredients.value = [];
+    markDirty();
+};
+
+const kindLabel = (kind: CustomizationSuggestion['kind']): string =>
+    kind === 'extra' ? 'Extra' : kind === 'swap' ? 'Swap' : 'Leave out';
+
 // ----- Apply to category -----
 const applyOpen = ref(false);
 const applySelected = ref<Set<number>>(new Set());
@@ -382,7 +499,94 @@ const canApply = computed(
                 >
                     <Plus class="size-3.5" /> Add ingredient
                 </Button>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    :disabled="suggesting"
+                    title="Ask Plateful what customers usually change on this kind of item"
+                    @click="requestSuggestions"
+                >
+                    <Sparkles class="size-3.5" />
+                    {{ suggesting ? 'Thinking…' : 'Suggest customizations' }}
+                </Button>
             </div>
+        </div>
+
+        <div
+            v-if="suggestions.length > 0 || suggestedIngredients.length > 0"
+            class="space-y-2 rounded-md border border-dashed border-border bg-muted/20 p-3"
+            data-test="suggestions"
+        >
+            <p class="text-xs font-medium text-foreground">
+                Suggested by Plateful — off until you accept them
+            </p>
+            <div
+                v-if="suggestedIngredients.length > 0"
+                class="flex flex-wrap items-center gap-1.5 text-xs"
+            >
+                <span class="text-muted-foreground"
+                    >Ingredients not listed yet:</span
+                >
+                <span
+                    v-for="name in suggestedIngredients"
+                    :key="name"
+                    class="rounded bg-background px-1.5 py-0.5 text-foreground"
+                    >{{ name }}</span
+                >
+                <button
+                    type="button"
+                    class="underline hover:text-foreground"
+                    @click="addSuggestedIngredients"
+                >
+                    Add them
+                </button>
+            </div>
+            <ul class="space-y-1">
+                <li
+                    v-for="(suggestion, index) in suggestions"
+                    :key="`${suggestion.kind}-${suggestion.name}`"
+                    class="flex flex-wrap items-center justify-between gap-2 text-sm"
+                >
+                    <span class="min-w-0">
+                        <span
+                            class="mr-1.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-primary uppercase"
+                            >{{ kindLabel(suggestion.kind) }}</span
+                        >
+                        <span class="font-medium text-foreground">{{
+                            suggestion.name
+                        }}</span>
+                        <span
+                            v-if="suggestion.kind === 'swap'"
+                            class="text-muted-foreground"
+                        >
+                            — {{ suggestion.swap_options.join(' / ') }}</span
+                        >
+                        <span
+                            v-if="suggestion.reason"
+                            class="block text-xs text-muted-foreground"
+                            >{{ suggestion.reason }}</span
+                        >
+                    </span>
+                    <span class="flex shrink-0 items-center gap-1">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            @click="acceptSuggestion(index)"
+                            >Accept</Button
+                        >
+                        <button
+                            type="button"
+                            class="rounded p-1 text-muted-foreground hover:text-foreground"
+                            :aria-label="`Dismiss ${suggestion.name}`"
+                            @click="dismissSuggestion(index)"
+                        >
+                            <Trash2 class="size-3.5" />
+                        </button>
+                    </span>
+                </li>
+            </ul>
         </div>
 
         <p

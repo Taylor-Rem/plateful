@@ -52,3 +52,76 @@ export function splitIngredients(description: string | null): string[] {
 export function isSwapSet(template: App.Data.ItemTemplateData): boolean {
     return template.groups.length === 1 && template.groups[0].isSingleSelect;
 }
+
+/** A customization proposal from the analyzer — never priced, off until accepted. */
+export type CustomizationSuggestion = {
+    name: string;
+    kind: 'extra' | 'swap' | 'remove';
+    swap_options: string[];
+    reason: string;
+};
+
+/** The row shape both editors (Ingredients panel, import wizard) share. */
+export type IngredientRowLike = {
+    name: string;
+    is_removable: boolean;
+    extra_price: string;
+};
+
+export function findRowByName<T extends IngredientRowLike>(
+    rows: T[],
+    name: string,
+): T | undefined {
+    const key = name.trim().toLowerCase();
+
+    return rows.find((r) => r.name.trim().toLowerCase() === key);
+}
+
+/**
+ * Apply an accepted "extra" or "remove" suggestion to a row list, adding the
+ * row when the ingredient isn't listed yet. Returns the row it touched.
+ * "swap" suggestions are the caller's job — they create a swap set, which
+ * the two editors do differently.
+ */
+export function acceptSimpleSuggestion<T extends IngredientRowLike>(
+    rows: T[],
+    suggestion: CustomizationSuggestion,
+    makeRow: (name: string) => T,
+): T {
+    let row = findRowByName(rows, suggestion.name);
+
+    if (!row) {
+        row = makeRow(suggestion.name);
+        // An extra on something not in the item ("Add avocado") is offered
+        // but never "left out" — it isn't included to begin with.
+        row.is_removable = suggestion.kind === 'remove';
+        rows.push(row);
+    }
+
+    if (suggestion.kind === 'remove') {
+        row.is_removable = true;
+    }
+
+    return row;
+}
+
+/**
+ * The row a "swap" proposal attaches to: the first swap option is the
+ * printed ingredient ("Provolone"), while the proposal's own name is the
+ * set ("Cheese"). Adds the row when the ingredient isn't listed yet.
+ */
+export function rowForSwapSuggestion<T extends IngredientRowLike>(
+    rows: T[],
+    suggestion: CustomizationSuggestion,
+    makeRow: (name: string) => T,
+): T {
+    const ingredientName = suggestion.swap_options[0] ?? suggestion.name;
+    let row = findRowByName(rows, ingredientName);
+
+    if (!row) {
+        row = makeRow(ingredientName);
+        rows.push(row);
+    }
+
+    return row;
+}

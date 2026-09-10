@@ -29,5 +29,7 @@ return [
     'max_option_sets' => 20,
     'max_groups_per_set' => 6,
     'max_options_per_group' => 20,
+    'max_ingredients_per_item' => 25,
+    'max_suggestions_per_item' => 8,
 
 ];

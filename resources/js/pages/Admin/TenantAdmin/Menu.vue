@@ -38,6 +38,7 @@ import {
     update as categoriesUpdate,
 } from '@/routes/admin/restaurant/categories';
 import { update as ingredientsUpdate } from '@/routes/admin/restaurant/items/ingredients';
+import { store as suggestionsStore } from '@/routes/admin/restaurant/items/suggestions';
 import { store as swapSetsStore } from '@/routes/admin/restaurant/swapSets';
 import { index as templatesIndex } from '@/routes/admin/restaurant/templates';
 
@@ -198,6 +199,12 @@ const ingredientUrls = computed(() => ({
         categoriesIngredientRules.url({
             restaurant: props.restaurant.subdomain,
             category: ingredientsItem.value?.menuCategoryId ?? 0,
+        }),
+    ),
+    suggest: relativeUrl(
+        suggestionsStore.url({
+            restaurant: props.restaurant.subdomain,
+            menuItem: ingredientsItem.value?.id ?? 0,
         }),
     ),
 }));

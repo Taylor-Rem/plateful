@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Admin\TenantAdmin;
 
+use App\Data\ItemTemplateData;
 use App\Data\RestaurantData;
 use App\Enums\MenuImportStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\MenuImportConfirmRequest;
 use App\Jobs\ExtractMenuJob;
+use App\Models\ItemTemplate;
 use App\Models\MenuImport;
 use App\Models\Restaurant;
 use App\Services\PhotoConversionService;
@@ -110,6 +112,18 @@ class MenuImportController extends Controller
             // Confirming replaces any existing menu — the review screen warns
             // with the current size so the owner knows what they're trading.
             'existingItemCount' => $restaurant->menuItems()->count(),
+            // Ingredient rules already set on current items, keyed by item
+            // name, so a re-import keeps an hour of wizard work instead of
+            // erasing it. The wizard pre-fills matching items from here.
+            'existingCustomizations' => $this->existingCustomizations($restaurant),
+            'swapSets' => ItemTemplate::query()
+                ->where('restaurant_id', $restaurant->id)
+                ->with('groups.options')
+                ->get()
+                ->filter(fn (ItemTemplate $t) => $t->isSwapSet())
+                ->map(fn (ItemTemplate $t) => ItemTemplateData::fromModel($t))
+                ->values()
+                ->all(),
             'menuImport' => [
                 'id' => $menuImport->id,
                 'categories' => $menuImport->result['categories'] ?? [],
@@ -167,6 +181,34 @@ class MenuImportController extends Controller
         return redirect()
             ->to($this->doneUrl($restaurant))
             ->with('success', "{$summary} are ready. You can fine-tune them in the menu builder anytime.");
+    }
+
+    /**
+     * Current items that carry ingredient rules, keyed by lowercased name.
+     *
+     * @return array<string, array{name: string, ingredients: array<int, array{name: string, is_removable: bool, extra_price_cents: int|null, swap_template_id: int|null}>}>
+     */
+    private function existingCustomizations(Restaurant $restaurant): array
+    {
+        $out = [];
+
+        $restaurant->menuItems()
+            ->with('ingredients')
+            ->get()
+            ->filter(fn ($item) => $item->ingredients->isNotEmpty())
+            ->each(function ($item) use (&$out): void {
+                $out[mb_strtolower(trim($item->name))] = [
+                    'name' => $item->name,
+                    'ingredients' => $item->ingredients->map(fn ($i) => [
+                        'name' => $i->name,
+                        'is_removable' => (bool) $i->is_removable,
+                        'extra_price_cents' => $i->extra_price_cents,
+                        'swap_template_id' => $i->swap_template_id,
+                    ])->values()->all(),
+                ];
+            });
+
+        return $out;
     }
 
     /**

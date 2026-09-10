@@ -7,6 +7,7 @@ use App\Models\ItemTemplateGroup;
 use App\Models\ItemTemplateOption;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemIngredient;
 use App\Models\Restaurant;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Support\Str;
@@ -18,7 +19,10 @@ use Illuminate\Support\Str;
  */
 class MenuBuilder
 {
-    public function __construct(private CurrentTenant $tenant) {}
+    public function __construct(
+        private CurrentTenant $tenant,
+        private IngredientGroupCompiler $compiler,
+    ) {}
 
     /**
      * Create the menu for a cuisine. Runs with the restaurant set as the
@@ -42,13 +46,14 @@ class MenuBuilder
      * names across categories. Option sets become reusable item templates;
      * items reference them by name. Returns the number of items created.
      *
-     * @param  array<int, array{name: string, items: array<int, array{name: string, description?: ?string, price_cents: int, option_set?: ?string}>}>  $categories
+     * @param  array<int, array{name: string, items: array<int, array{name: string, description?: ?string, price_cents: int, option_set?: ?string, ingredients?: array<int, array<string, mixed>>}>}>  $categories
      * @param  array<int, array{name: string, groups: array<int, array{name: string, min_selections: int, max_selections: ?int, options: array<int, array{name: string, price_delta_cents: int, is_default: bool}>}>}>  $optionSets
      */
     public function buildFromImport(Restaurant $restaurant, array $categories, array $optionSets = []): int
     {
         return $this->withTenant($restaurant, function () use ($restaurant, $categories, $optionSets): int {
             $templates = $this->createImportedTemplates($restaurant, $optionSets);
+            $swapSets = [];
 
             $usedCategorySlugs = [];
             $usedItemSlugs = [];
@@ -86,12 +91,91 @@ class MenuBuilder
                         }
                     }
 
+                    $this->createImportedIngredients($restaurant, $menuItem, $item['ingredients'] ?? [], $swapSets);
+
                     $created++;
                 }
             }
 
             return $created;
         });
+    }
+
+    /**
+     * Write the wizard's ingredient rows for one item and compile its
+     * groups. Inline swap sets are created once per import, keyed by name,
+     * so "Cheeses" defined on the first sandwich is reused by the rest.
+     *
+     * @param  array<int, array{name: string, is_removable?: bool, extra_price_cents?: int|null, swap_template_id?: int|null, swap_set?: array{name: string, options: array<int, array{name: string, price_delta_cents?: int|null}>}|null}>  $rows
+     * @param  array<string, int>  $swapSets  name (lowercased) → template id, shared across the import
+     */
+    private function createImportedIngredients(Restaurant $restaurant, MenuItem $menuItem, array $rows, array &$swapSets): void
+    {
+        if ($rows === []) {
+            return;
+        }
+
+        foreach (array_values($rows) as $position => $row) {
+            $swapTemplateId = isset($row['swap_template_id']) ? (int) $row['swap_template_id'] : null;
+
+            if ($swapTemplateId === null && is_array($row['swap_set'] ?? null)) {
+                $swapTemplateId = $this->swapSetTemplate($restaurant, $row['swap_set'], $swapSets);
+            }
+
+            MenuItemIngredient::create([
+                'menu_item_id' => $menuItem->id,
+                'name' => $row['name'],
+                'position' => $position,
+                'is_removable' => (bool) ($row['is_removable'] ?? true),
+                'extra_price_cents' => isset($row['extra_price_cents']) ? (int) $row['extra_price_cents'] : null,
+                'swap_template_id' => $swapTemplateId,
+            ]);
+        }
+
+        $this->compiler->compile($menuItem->fresh());
+    }
+
+    /**
+     * @param  array{name: string, options: array<int, array{name: string, price_delta_cents?: int|null}>}  $set
+     * @param  array<string, int>  $swapSets
+     */
+    private function swapSetTemplate(Restaurant $restaurant, array $set, array &$swapSets): int
+    {
+        $key = mb_strtolower(trim((string) $set['name']));
+
+        if (isset($swapSets[$key])) {
+            return $swapSets[$key];
+        }
+
+        $template = ItemTemplate::create([
+            'restaurant_id' => $restaurant->id,
+            'name' => $set['name'],
+            'description' => null,
+            'is_active' => true,
+            'position' => 0,
+        ]);
+
+        $group = ItemTemplateGroup::create([
+            'item_template_id' => $template->id,
+            'name' => $set['name'],
+            'kind' => ItemTemplateGroup::KIND_SWAP,
+            'min_selections' => 1,
+            'max_selections' => 1,
+            'position' => 0,
+        ]);
+
+        foreach (array_values($set['options']) as $index => $option) {
+            ItemTemplateOption::create([
+                'item_template_group_id' => $group->id,
+                'kind' => ItemTemplateOption::KIND_CHOICE,
+                'name' => $option['name'],
+                'price_delta_cents' => (int) ($option['price_delta_cents'] ?? 0),
+                'is_available' => true,
+                'position' => $index,
+            ]);
+        }
+
+        return $swapSets[$key] = $template->id;
     }
 
     /**

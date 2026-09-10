@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\ItemTemplate;
+use App\Tenancy\CurrentTenant;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
@@ -23,6 +26,7 @@ class MenuImportConfirmRequest extends FormRequest
     public function rules(): array
     {
         $maxPrice = config('menu_import.max_price_cents');
+        $tenantId = app(CurrentTenant::class)->id();
 
         return [
             'categories' => ['required', 'array', 'min:1', 'max:'.config('menu_import.max_categories')],
@@ -32,6 +36,24 @@ class MenuImportConfirmRequest extends FormRequest
             'categories.*.items.*.description' => ['nullable', 'string', 'max:500'],
             'categories.*.items.*.price_cents' => ['required', 'integer', 'min:1', 'max:'.$maxPrice],
             'categories.*.items.*.option_set' => ['nullable', 'string', 'max:80'],
+            // Customizations from the wizard step: one row per ingredient
+            // with the owner's rules. A swap either reuses an existing swap
+            // set (swap_template_id) or defines a new one inline (swap_set),
+            // shared across the import by name.
+            'categories.*.items.*.ingredients' => ['nullable', 'array', 'max:40'],
+            'categories.*.items.*.ingredients.*.name' => ['required', 'string', 'max:120'],
+            'categories.*.items.*.ingredients.*.is_removable' => ['boolean'],
+            'categories.*.items.*.ingredients.*.extra_price_cents' => ['nullable', 'integer', 'min:0', 'max:'.$maxPrice],
+            'categories.*.items.*.ingredients.*.swap_template_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('item_templates', 'id')->where(fn ($q) => $q->where('restaurant_id', $tenantId)),
+            ],
+            'categories.*.items.*.ingredients.*.swap_set' => ['nullable', 'array'],
+            'categories.*.items.*.ingredients.*.swap_set.name' => ['required_with:categories.*.items.*.ingredients.*.swap_set', 'string', 'max:80'],
+            'categories.*.items.*.ingredients.*.swap_set.options' => ['required_with:categories.*.items.*.ingredients.*.swap_set', 'array', 'min:1', 'max:30'],
+            'categories.*.items.*.ingredients.*.swap_set.options.*.name' => ['required', 'string', 'max:120'],
+            'categories.*.items.*.ingredients.*.swap_set.options.*.price_delta_cents' => ['nullable', 'integer', 'min:-'.$maxPrice, 'max:'.$maxPrice],
             'option_sets' => ['nullable', 'array', 'max:'.config('menu_import.max_option_sets')],
             'option_sets.*.name' => ['required', 'string', 'max:80', 'distinct'],
             'option_sets.*.groups' => ['required', 'array', 'min:1', 'max:'.config('menu_import.max_groups_per_set')],
@@ -79,6 +101,22 @@ class MenuImportConfirmRequest extends FormRequest
                             "\"{$ref}\" doesn't match any option set.",
                         );
                     }
+                }
+            }
+
+            // Existing swap sets referenced from carried-over customizations
+            // must still be swap-set shaped.
+            $swapIds = collect((array) $this->input('categories', []))
+                ->flatMap(fn ($c) => collect((array) ($c['items'] ?? []))->flatMap(fn ($i) => collect((array) ($i['ingredients'] ?? []))->pluck('swap_template_id')))
+                ->filter(fn ($id) => is_numeric($id))
+                ->map(fn ($id) => (int) $id)
+                ->unique();
+            if ($swapIds->isNotEmpty()) {
+                $notSwapSets = ItemTemplate::query()->with('groups')->findMany($swapIds)
+                    ->reject(fn (ItemTemplate $t) => $t->isSwapSet())
+                    ->pluck('name');
+                if ($notSwapSets->isNotEmpty()) {
+                    $v->errors()->add('categories', '"'.$notSwapSets->first().'" is not a swap set — it needs exactly one pick-one group.');
                 }
             }
 

@@ -49,6 +49,7 @@ const ingredientUrls = computed(() => ({
     save: `/admin/menu/items/${props.item?.id}/ingredients`,
     swapSet: '/admin/menu/swap-sets',
     applyToCategory: `/admin/menu/categories/${props.item?.menuCategoryId}/ingredient-rules`,
+    suggest: `/admin/menu/items/${props.item?.id}/suggestions`,
 }));
 
 const isEdit = computed(() => props.item !== null);

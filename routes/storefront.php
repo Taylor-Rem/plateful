@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\TenantAdmin\MenuItemIngredientController;
+use App\Http\Controllers\Admin\TenantAdmin\MenuItemSuggestionController;
 use App\Http\Controllers\Admin\TenantAdmin\SwapSetController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Settings\ProfileController;
@@ -124,6 +125,7 @@ Route::middleware('tenant')->group(function () {
         Route::delete('items/{menuItem}', [AdminMenuItemController::class, 'destroy'])->name('items.destroy');
         Route::put('items/{menuItem}/ingredients', [MenuItemIngredientController::class, 'update'])->name('items.ingredients.update');
         Route::post('swap-sets', [SwapSetController::class, 'store'])->name('swapSets.store');
+        Route::post('items/{menuItem}/suggestions', [MenuItemSuggestionController::class, 'store'])->name('items.suggestions.store');
 
         Route::post('categories', [AdminMenuCategoryController::class, 'store'])->name('categories.store');
         Route::post('categories/reorder', [AdminMenuCategoryController::class, 'reorder'])->name('categories.reorder');

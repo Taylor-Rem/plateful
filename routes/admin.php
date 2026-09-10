@@ -145,6 +145,7 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::post('/menu/categories/{category}/ingredient-rules', [TenantAdmin\MenuItemIngredientController::class, 'applyToCategoryInConsole'])->name('categories.ingredientRules');
                 Route::put('/menu/items/{menuItem}/ingredients', [TenantAdmin\MenuItemIngredientController::class, 'updateInConsole'])->name('items.ingredients.update');
                 Route::post('/menu/swap-sets', [TenantAdmin\SwapSetController::class, 'storeInConsole'])->name('swapSets.store');
+                Route::post('/menu/items/{menuItem}/suggestions', [TenantAdmin\MenuItemSuggestionController::class, 'storeInConsole'])->name('items.suggestions.store');
 
                 Route::get('/menu/templates', [TenantAdmin\ItemTemplateController::class, 'index'])->name('templates.index');
                 Route::get('/menu/templates/create', [TenantAdmin\ItemTemplateController::class, 'create'])->name('templates.create');

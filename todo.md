@@ -919,10 +919,13 @@ one-template-per-item limit already duplicated "Add salad/soup" into four templa
       new items reopen on the Ingredients step. "Suggest customizations" (Claude, per item) moved
       to Phase 3 with the analyzer work. `lib/relativeUrl.ts` strips Wayfinder's baked admin
       domain so Inertia submits stay same-origin (needed by the in-process browser-test server).
-- [ ] **Phase 3 — analyzer + wizard** (~2): `items[].ingredients` (facts) +
-      `items[].suggested_customizations` (proposals, never priced) in the extraction schema,
-      sanitizer caps, the review wizard step ("which of these can customers change?", skippable per
-      category), confirm → `MenuBuilder`, re-import carry-over by item name (⚑).
+- [x] **Phase 3 — analyzer + wizard** — DONE 2026-09-10 (one session; 1282 + 5 browser tests
+      green): `items[].ingredients` + `items[].suggested_customizations` in the extraction schema and
+      prompt, sanitizer caps, two-step review (step 2 = per-item rows + accept/dismiss proposals +
+      inline swap sets + apply-to-category + skip per category), confirm → `MenuBuilder` rows +
+      compile, re-import carry-over by item name with a lost-rules banner, "Suggest customizations"
+      per item on the Ingredients panel (one Claude call, flashed back). The new prompt has NOT run
+      against a real menu yet — Phase 4's testaurant re-import is the first real read of it.
 - [ ] **Phase 4 — rollout** (~1): re-import The Rose PDF on testaurant dev, walk the wizard, repeat
       on live; note in §2b that item-owned modifier lists are what the catalog matcher maps.
 - [ ] Interim no-code path for testaurant (documented at the end of the plan): per-sandwich
