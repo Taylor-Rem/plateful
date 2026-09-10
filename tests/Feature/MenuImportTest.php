@@ -333,9 +333,9 @@ it('imports option sets as item templates with defaults synced onto items', func
     $biscotti = $restaurant->menuItems()->where('name', 'Biscotti')->sole();
     $wholeMilk = $template->groups[0]->options->firstWhere('name', 'Whole milk');
 
-    expect($latte->item_template_id)->toBe($template->id)
+    expect($latte->templates()->pluck('item_templates.id')->all())->toBe([$template->id])
         ->and($latte->defaultSelections()->pluck('item_template_options.id')->all())->toBe([$wholeMilk->id])
-        ->and($biscotti->item_template_id)->toBeNull();
+        ->and($biscotti->templates()->count())->toBe(0);
 });
 
 it('replaces the existing menu on confirm, keeping order history and templates', function () {

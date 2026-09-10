@@ -864,41 +864,66 @@ menus exist for the SEO to compound on._
 
 ---
 
-## 14. Plateful app — consumer marketplace app + public API
-_Added 2026-09-09. Full plan in `docs/plateful_app_plan.md`. Locked at drafting: **one Plateful
-app, not per-restaurant apps** — every storefront lives inside it, so it's a marketplace by
-necessity and the plan embraces that. The differentiator is underneath: app orders are direct
-charges on the restaurant's connected account at the **same 4% and cap**, write the same
-`restaurant_customer` / consent / loyalty rows, and hit the same POS + delivery pipeline. Amends
-§13's "never order on plateful.fyi" to "on the web" — the principle (restaurant's customer,
-restaurant's margin) is kept; the transaction UI moves. Growth surface, not launch surface._
+## 14. Plateful app — public API (server side)
+_Added 2026-09-09. Server-side plan in `docs/plateful_app_plan.md`; the app itself is planned and
+built in the separate `~/Projects/plateful-app` repo. Locked: **one Plateful app, not
+per-restaurant apps** — a marketplace by necessity. App orders are direct charges on the
+restaurant's connected account at the **same 4% and cap**, write the same `restaurant_customer` /
+consent / loyalty rows, and hit the same POS + delivery pipeline. Amends §13's "never order on
+plateful.fyi" to "on the web." Growth surface, not launch surface._
 
 - [ ] **Phase 0 — API foundation** (~2 sessions): Sanctum (⚑ new dependency), `routes/api.php`
       at `/api/v1`, `ResolveTenantFromRoute` setting `CurrentTenant` from a subdomain-bound
-      restaurant, token login + Google/**Apple** ID-token sign-in (Apple 4.8 requires it once
-      Google is offered), DTO-shape snapshot test — `app/Data` DTOs *are* the contract.
-- [ ] **Phase 1 — read API + discovery data** (~1–2): `latitude/longitude` (geocode via the
-      existing Places service + backfill), `cuisine_tags` (from menu extraction), `marketplace_listed`
-      (⚑ default on); restaurants near-me/open-now/cuisine list, detail, menu (shared query object
-      also unblocks §13 Phase 1).
+      restaurant, token login + Google/**Apple** ID-token sign-in (Apple 4.8), `GET/DELETE /me`,
+      DTO-shape snapshot test — the Spatie `app/Data` DTOs and their generated
+      `resources/js/types/generated.d.ts` *are* the contract the app repo consumes.
+- [ ] **Phase 1 — read API + discovery data** (~1–2): `latitude/longitude` (Places geocode +
+      backfill), `cuisine_tags` (from menu extraction), `marketplace_listed` (⚑ default on);
+      restaurants near-me/open-now/cuisine list, detail, menu (shared query object also unblocks
+      §13 Phase 1). App work starts here.
 - [ ] **Phase 2 — ordering** (~3–4, payments are most of it): `CartManager` reads `X-Cart-Token`;
       `createPaymentIntent()` on the connected account (application fee, manual capture for courier
-      delivery) + PaymentSheet + confirm endpoint + connected-account webhook branch into
+      delivery) + confirm endpoint + connected-account webhook branch into
       `OrderPlacement::materialize()`; delivery quote/address endpoints.
-- [ ] **Phase 3 — retention + push** (~2–3): order history, **one-tap reorder**, addresses,
-      **rewards wallet** (aggregates §10's per-restaurant balances — ownership unchanged),
-      favorites, `device_tokens` + `OrderStatusChanged` push from `OrderTransition` / delivery
-      updates. Link for cross-merchant saved cards (platform-level card cloning later).
-- [ ] **Phase 4 — the app** (~4–6, parallel from Phase 1): ⚑ Expo (recommended) vs Capacitor+Vue;
-      not a webview wrapper (Apple 4.2). Screens: Discover · Restaurant · Cart · Checkout · Order
-      status · Orders · Account (incl. required in-app account deletion).
-- [ ] **Phase 5 — growth**: universal links + QR ("scan to order"), push campaigns as a §4
-      Campaigns extension (separate opt-in), **operator/kitchen app** on the same API, white-label
-      builds only under a client's own Apple account.
-- [ ] Marketing: "same 4% in the app" is a permanent promise once said — same class as §13's and
-      the $399 cap (⚑).
-- [ ] From v1 ship: `app/Data` changes are additive-only or go to `/v2` — the app can't be
-      redeployed with the payload the way the Vue pages are.
+- [ ] **Phase 3 — retention + push** (~2–3): order history, reorder endpoint, addresses, rewards
+      wallet aggregate (§10 ownership unchanged), favorites, `device_tokens` + `OrderStatusChanged`
+      push (⚑ Expo Push) from `OrderTransition` / delivery updates.
+- [ ] **Later**: universal-link association files, push campaigns as a §4 Campaigns extension
+      (separate opt-in), `operator` token ability + kitchen endpoints for an operator app.
+- [ ] Marketing: "same 4% in the app" is a permanent promise once said (⚑) — same class as §13
+      and the $399 cap.
+- [ ] From v1 ship: `app/Data` changes are additive-only or go to `/v2`; regenerate
+      `generated.d.ts` on every change.
+
+---
+
+## 15. Menu customization — ingredients, swaps, extras, and the owner wizard
+_Added 2026-09-10. Plan in `docs/menu_customization_plan.md`. Locked: the analyzer **may suggest
+unprinted customizations**, labeled and off until the owner opts in (the "never invent" rule stays
+for items, prices, and printed choices); ingredient authoring lives in **both** storefront edit mode
+and the admin; pricing is **per ingredient with bulk shortcuts**. Surfaced by the testaurant
+walkthrough: "no mortadella" / "extra provolone" has no home except special instructions, and the
+one-template-per-item limit already duplicated "Add salad/soup" into four templates._
+
+- [x] **Phase 1 — model + runtime** — DONE 2026-09-10 (one session, 1268 green): `menu_item_ingredients`, item-owned groups
+      (`kind` = included/extras/swap, options upserted by ingredient so ids stay stable),
+      `menu_item_templates` pivot (many templates per item; swap sets = single-group templates),
+      `IngredientGroupCompiler`, snapshot v2 (`is_default` + `removed`) and **deviation-only**
+      rendering in cart/kitchen/confirmation/email/both POS notes, `MenuItem::optionGroups()`,
+      configurator sections. Existing template/cart/integrity tests green. Dev DB migrated;
+      testaurant's Classic Italian hand-seeded (7 ingredients, 2 extras) as the Phase 2 reference.
+- [ ] **Phase 2 — authoring** (~2): one Ingredients panel component (leave out / extra $ / swap
+      with) in the storefront item drawer and on the admin Menu page; "Split from description";
+      "Suggest customizations" per item; inline swap-set create; bulk "apply to category" + price
+      shortcuts; configurator preview.
+- [ ] **Phase 3 — analyzer + wizard** (~2): `items[].ingredients` (facts) +
+      `items[].suggested_customizations` (proposals, never priced) in the extraction schema,
+      sanitizer caps, the review wizard step ("which of these can customers change?", skippable per
+      category), confirm → `MenuBuilder`, re-import carry-over by item name (⚑).
+- [ ] **Phase 4 — rollout** (~1): re-import The Rose PDF on testaurant dev, walk the wizard, repeat
+      on live; note in §2b that item-owned modifier lists are what the catalog matcher maps.
+- [ ] Interim no-code path for testaurant (documented at the end of the plan): per-sandwich
+      templates with a "Leave out" group of "No X" options — works today, is the tedium §15 removes.
 
 ---
 

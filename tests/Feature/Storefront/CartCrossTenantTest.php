@@ -42,3 +42,14 @@ test('updating a cart item from another tenant returns 404', function () {
     $this->patch("http://bobs.plateful.test/cart/items/{$line->id}", ['quantity' => 5])
         ->assertNotFound();
 });
+
+test('replacing a cart item from another tenant returns 404', function () {
+    $a = cartFixture('marcos');
+    cartFixture('bobs');
+
+    $this->post("http://marcos.plateful.test/cart/items/{$a['simple']->id}", ['option_ids' => []]);
+    $line = CartItem::first();
+
+    $this->put("http://bobs.plateful.test/cart/items/{$line->id}", ['quantity' => 2, 'option_ids' => []])
+        ->assertNotFound();
+});

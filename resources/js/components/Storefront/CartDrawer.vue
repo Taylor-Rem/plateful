@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { Minus, Plus, Trash2 } from 'lucide-vue-next';
+import { Minus, Pencil, Plus, Trash2 } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +10,7 @@ import {
     SheetTitle,
     SheetFooter,
 } from '@/components/ui/sheet';
+import { useStorefrontCart } from '@/composables/useStorefrontCart';
 
 type PageProps = {
     restaurant?: App.Data.RestaurantData;
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage<PageProps>();
+const storefrontCart = useStorefrontCart();
 const cart = computed(() => page.props.cart ?? null);
 const restaurant = computed(() => page.props.restaurant);
 const items = computed(() => cart.value?.items ?? []);
@@ -37,6 +39,19 @@ const canCheckout = computed(
 const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 const close = (): void => emit('update:open', false);
+
+const canEditLines = computed(() => storefrontCart?.lineEditor.value !== null);
+
+const editLine = (item: App.Data.CartItemData): void => {
+    const editor = storefrontCart?.lineEditor.value;
+
+    if (!editor) {
+        return;
+    }
+
+    close();
+    editor(item);
+};
 
 const updateQty = (item: App.Data.CartItemData, qty: number): void => {
     const next = Math.max(0, Math.min(50, qty));
@@ -132,14 +147,25 @@ const clearCart = (): void => {
                                         No longer available
                                     </span>
                                 </div>
-                                <button
-                                    type="button"
-                                    class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    :aria-label="`Remove ${item.menuItemName}`"
-                                    @click="removeLine(item)"
-                                >
-                                    <Trash2 class="size-4" />
-                                </button>
+                                <div class="flex shrink-0 items-center">
+                                    <button
+                                        v-if="canEditLines && item.isAvailable"
+                                        type="button"
+                                        class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        :aria-label="`Edit ${item.menuItemName}`"
+                                        @click="editLine(item)"
+                                    >
+                                        <Pencil class="size-4" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                        :aria-label="`Remove ${item.menuItemName}`"
+                                        @click="removeLine(item)"
+                                    >
+                                        <Trash2 class="size-4" />
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="mt-2 flex items-center justify-between">

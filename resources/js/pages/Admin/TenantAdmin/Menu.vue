@@ -289,9 +289,9 @@ defineOptions({ layout: TenantAdminLayout });
                                 item.name
                             }}</span>
                             <span
-                                v-if="item.template"
+                                v-if="item.groups.length > 0"
                                 class="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary"
-                                :title="`Template: ${item.template.name}`"
+                                :title="`${item.groups.length} option group(s)`"
                                 >Configurable</span
                             >
                             <span

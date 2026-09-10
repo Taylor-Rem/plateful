@@ -3,6 +3,7 @@
 namespace App\Data;
 
 use App\Models\OrderItem;
+use App\Support\Menus\ModifierSummary;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
@@ -23,30 +24,7 @@ class OrderItemData extends Data
 
     public static function fromModel(OrderItem $item): self
     {
-        $groups = [];
-        $summaryParts = [];
-
         $modifiers = $item->modifiers;
-        if (is_array($modifiers) && isset($modifiers['groups']) && is_array($modifiers['groups'])) {
-            foreach ($modifiers['groups'] as $g) {
-                if (! is_array($g) || ! isset($g['selections']) || ! is_array($g['selections'])) {
-                    continue;
-                }
-                $names = [];
-                foreach ($g['selections'] as $sel) {
-                    if (isset($sel['option_name'])) {
-                        $names[] = (string) $sel['option_name'];
-                    }
-                }
-                $groups[] = [
-                    'groupName' => (string) ($g['group_name'] ?? ''),
-                    'selectionNames' => $names,
-                ];
-                foreach ($names as $n) {
-                    $summaryParts[] = $n;
-                }
-            }
-        }
 
         return new self(
             id: $item->id,
@@ -54,8 +32,8 @@ class OrderItemData extends Data
             quantity: (int) $item->quantity,
             unitPriceCents: (int) $item->unit_price_cents,
             subtotalCents: (int) $item->subtotal_cents,
-            modifierSummary: implode(' · ', $summaryParts),
-            modifierGroups: $groups,
+            modifierSummary: ModifierSummary::summary($modifiers),
+            modifierGroups: ModifierSummary::groups($modifiers),
             notes: $item->notes,
         );
     }

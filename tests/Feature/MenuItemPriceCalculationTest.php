@@ -44,10 +44,10 @@ function pricingFixture(): array
     $item = MenuItem::withoutTenantScope()->create([
         'restaurant_id' => $r->id,
         'menu_category_id' => $cat->id,
-        'item_template_id' => $tpl->id,
         'name' => 'Pep', 'slug' => 'pep',
         'price_cents' => 1400, 'is_available' => true, 'position' => 0,
     ]);
+    $item->templates()->attach($tpl->id, ['position' => 0]);
     $item->defaultSelections()->sync([$medium->id, $pepperoni->id]);
 
     return compact('item', 'small', 'medium', 'large', 'pepperoni', 'bacon');

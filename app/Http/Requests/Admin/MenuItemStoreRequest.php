@@ -32,8 +32,12 @@ class MenuItemStoreRequest extends FormRequest
             ));
         }
 
-        if ($this->input('item_template_id') === '' || $this->input('item_template_id') === 'null') {
-            $data['item_template_id'] = null;
+        $templateIds = $this->input('template_ids');
+        if (is_array($templateIds)) {
+            $data['template_ids'] = array_values(array_map(
+                fn ($v) => (int) $v,
+                array_filter($templateIds, fn ($v) => $v !== null && $v !== ''),
+            ));
         }
 
         if ($data !== []) {
@@ -67,9 +71,10 @@ class MenuItemStoreRequest extends FormRequest
             'is_featured' => ['boolean'],
             'image' => ['nullable', 'file', PhotoConversionService::acceptedPhotoMimes(), 'max:5120'],
             'remove_image' => ['nullable', 'boolean'],
-            'item_template_id' => [
-                'nullable',
+            'template_ids' => ['nullable', 'array', 'max:10'],
+            'template_ids.*' => [
                 'integer',
+                'distinct',
                 Rule::exists('item_templates', 'id')->where(fn ($q) => $q->where('restaurant_id', $tenantId)),
             ],
             'default_selection_ids' => ['nullable', 'array'],
@@ -80,13 +85,17 @@ class MenuItemStoreRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v): void {
-            $templateId = $this->input('item_template_id');
+            $templateIds = collect((array) $this->input('template_ids', []))
+                ->filter(fn ($id) => is_numeric($id))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
             $rawSelections = $this->input('default_selection_ids', []);
             $selections = is_array($rawSelections)
                 ? array_values(array_filter(array_map('intval', $rawSelections)))
                 : [];
 
-            if ($templateId === null || $templateId === '') {
+            if ($templateIds->isEmpty()) {
                 if (! empty($selections)) {
                     $v->errors()->add('default_selection_ids', 'Default selections require a template.');
                 }
@@ -94,31 +103,33 @@ class MenuItemStoreRequest extends FormRequest
                 return;
             }
 
-            $template = ItemTemplate::with('groups.options')->find($templateId);
-            if (! $template) {
+            $templates = ItemTemplate::with('groups.options')->findMany($templateIds);
+            if ($templates->count() !== $templateIds->count()) {
                 return;
             }
 
+            $groups = $templates->flatMap(fn (ItemTemplate $t) => $t->groups);
+
             $allOwnedOptionIds = [];
-            foreach ($template->groups as $group) {
+            foreach ($groups as $group) {
                 foreach ($group->options as $opt) {
                     $allOwnedOptionIds[$opt->id] = $group->id;
                 }
             }
 
-            // Any selected option must belong to this template.
+            // Any selected option must belong to one of the chosen templates.
             foreach ($selections as $optId) {
                 if (! array_key_exists($optId, $allOwnedOptionIds)) {
                     $v->errors()->add(
                         'default_selection_ids',
-                        'Default selections include an option that does not belong to the chosen template.',
+                        'Default selections include an option that does not belong to the chosen templates.',
                     );
 
                     return;
                 }
             }
 
-            foreach ($template->groups as $group) {
+            foreach ($groups as $group) {
                 $countInGroup = collect($selections)
                     ->filter(fn ($id) => ($allOwnedOptionIds[$id] ?? null) === $group->id)
                     ->count();

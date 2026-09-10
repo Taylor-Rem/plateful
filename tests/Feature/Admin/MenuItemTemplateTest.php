@@ -88,14 +88,14 @@ test('creating an item with valid default selections works', function () {
             'menu_category_id' => $cat->id,
             'price' => '14.00',
             'is_available' => true,
-            'item_template_id' => $bundle['template']->id,
+            'template_ids' => [$bundle['template']->id],
             'default_selection_ids' => [$bundle['medium']->id, $bundle['pepperoni']->id],
         ])
         ->assertRedirect();
 
     $item = MenuItem::withoutTenantScope()->where('restaurant_id', $r->id)->first();
     expect($item)->not->toBeNull()
-        ->and($item->item_template_id)->toBe($bundle['template']->id)
+        ->and($item->templates()->pluck('item_templates.id')->all())->toBe([$bundle['template']->id])
         ->and($item->defaultSelections()->pluck('item_template_options.id')->sort()->values()->all())
         ->toEqual(collect([$bundle['medium']->id, $bundle['pepperoni']->id])->sort()->values()->all());
 });
@@ -113,7 +113,7 @@ test('defaults violating min_selections fail with group-named message', function
             'menu_category_id' => $cat->id,
             'price' => '10.00',
             'is_available' => true,
-            'item_template_id' => $bundle['template']->id,
+            'template_ids' => [$bundle['template']->id],
             'default_selection_ids' => [],
         ]);
 
@@ -135,7 +135,7 @@ test('defaults exceeding max_selections fail', function () {
             'menu_category_id' => $cat->id,
             'price' => '14.00',
             'is_available' => true,
-            'item_template_id' => $bundle['template']->id,
+            'template_ids' => [$bundle['template']->id],
             'default_selection_ids' => [$bundle['small']->id, $bundle['medium']->id],
         ])
         ->assertSessionHasErrors('default_selection_ids');
@@ -175,7 +175,7 @@ test('defaults referencing options from another template fail', function () {
             'menu_category_id' => $cat->id,
             'price' => '14.00',
             'is_available' => true,
-            'item_template_id' => $bundle['template']->id,
+            'template_ids' => [$bundle['template']->id],
             'default_selection_ids' => [$bundle['medium']->id, $strangerOption->id],
         ])
         ->assertSessionHasErrors('default_selection_ids');
@@ -190,13 +190,13 @@ test('switching an item to a different template clears old default selections', 
     $item = MenuItem::withoutTenantScope()->create([
         'restaurant_id' => $r->id,
         'menu_category_id' => $cat->id,
-        'item_template_id' => $bundle['template']->id,
         'name' => 'Pep',
         'slug' => 'pep',
         'price_cents' => 1400,
         'is_available' => true,
         'position' => 0,
     ]);
+    $item->templates()->attach($bundle['template']->id, ['position' => 0]);
     $item->defaultSelections()->sync([$bundle['medium']->id, $bundle['pepperoni']->id]);
 
     // Build the salad template with one required group.
@@ -227,12 +227,12 @@ test('switching an item to a different template clears old default selections', 
             'menu_category_id' => $cat->id,
             'price' => '9.00',
             'is_available' => true,
-            'item_template_id' => $salad->id,
+            'template_ids' => [$salad->id],
             'default_selection_ids' => [$ranch->id],
         ])
         ->assertRedirect();
 
     $item->refresh();
-    expect($item->item_template_id)->toBe($salad->id)
+    expect($item->templates()->pluck('item_templates.id')->all())->toBe([$salad->id])
         ->and($item->defaultSelections()->pluck('item_template_options.id')->all())->toEqual([$ranch->id]);
 });

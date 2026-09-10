@@ -37,7 +37,7 @@ const buildInitial = () => ({
     description: props.item?.description ?? '',
     menu_category_id:
         props.item?.menuCategoryId ?? props.categories[0]?.id ?? null,
-    item_template_id: props.item?.itemTemplateId ?? null,
+    template_ids: [...(props.item?.templateIds ?? [])] as number[],
     price: props.item ? (props.item.priceCents / 100).toFixed(2) : '',
     is_available: props.item ? props.item.isAvailable : true,
     is_featured: props.item ? props.item.isFeatured : false,
@@ -97,23 +97,49 @@ const undoRemoveImage = (): void => {
     form.remove_image = false;
 };
 
-const selectedTemplate = computed<App.Data.ItemTemplateData | null>(() => {
-    if (form.item_template_id === null) {
-        return null;
+// Templates a swap-set ingredient attached are managed by the ingredient
+// compiler; they show as locked here so the owner can't detach them by hand.
+const ingredientTemplateIds = computed<number[]>(() =>
+    (props.item?.ingredients ?? [])
+        .map((i) => i.swapTemplateId)
+        .filter((id): id is number => id !== null),
+);
+
+const isTemplateChecked = (templateId: number): boolean =>
+    form.template_ids.includes(templateId);
+
+const toggleTemplate = (templateId: number): void => {
+    if (ingredientTemplateIds.value.includes(templateId)) {
+        return;
     }
 
-    return props.templates.find((t) => t.id === form.item_template_id) ?? null;
-});
+    form.template_ids = isTemplateChecked(templateId)
+        ? form.template_ids.filter((id) => id !== templateId)
+        : [...form.template_ids, templateId];
+};
 
-// Reset default selections when template changes after first load.
-let initialTemplateId: number | null = form.item_template_id;
+const selectedTemplates = computed<App.Data.ItemTemplateData[]>(() =>
+    form.template_ids
+        .map((id) => props.templates.find((t) => t.id === id) ?? null)
+        .filter((t): t is App.Data.ItemTemplateData => t !== null),
+);
+
+// Every group the owner can set defaults on: the chosen templates' groups,
+// in template order. Compiled ingredient groups are not editable here.
+const selectedGroups = computed<App.Data.ItemTemplateGroupData[]>(() =>
+    selectedTemplates.value.flatMap((t) => t.groups),
+);
+
+// When a template is dropped, forget the defaults that lived in it.
 watch(
-    () => form.item_template_id,
-    (val) => {
-        if (val !== initialTemplateId) {
-            form.default_selection_ids = [];
-            initialTemplateId = val;
-        }
+    () => [...form.template_ids],
+    () => {
+        const validOptionIds = new Set(
+            selectedGroups.value.flatMap((g) => g.options.map((o) => o.id)),
+        );
+        form.default_selection_ids = form.default_selection_ids.filter((id) =>
+            validOptionIds.has(id),
+        );
     },
 );
 
@@ -121,7 +147,7 @@ const isSelected = (optionId: number): boolean =>
     form.default_selection_ids.includes(optionId);
 
 const toggleSingle = (groupId: number, optionId: number | null): void => {
-    const group = selectedTemplate.value?.groups.find((g) => g.id === groupId);
+    const group = selectedGroups.value.find((g) => g.id === groupId);
 
     if (!group) {
         return;
@@ -239,26 +265,49 @@ const submit = (): void => {
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="se-item-template">Template</Label>
-                    <select
-                        id="se-item-template"
-                        v-model="form.item_template_id"
-                        class="rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
+                    <Label>Templates</Label>
+                    <p
+                        v-if="templates.length === 0"
+                        class="text-sm text-muted-foreground"
                     >
-                        <option :value="null">None (no configurator)</option>
-                        <option
+                        No templates yet. Build one under Menu › Templates.
+                    </p>
+                    <div v-else class="grid gap-1 sm:grid-cols-2">
+                        <label
                             v-for="t in templates"
                             :key="t.id"
-                            :value="t.id"
+                            class="flex items-center gap-2 text-sm text-foreground"
+                            :class="{
+                                'opacity-60': ingredientTemplateIds.includes(
+                                    t.id,
+                                ),
+                            }"
                         >
-                            {{ t.name }}
-                        </option>
-                    </select>
-                    <InputError :message="form.errors.item_template_id" />
+                            <input
+                                type="checkbox"
+                                :checked="isTemplateChecked(t.id)"
+                                :disabled="ingredientTemplateIds.includes(t.id)"
+                                @change="toggleTemplate(t.id)"
+                            />
+                            <span class="flex-1">{{ t.name }}</span>
+                            <span
+                                v-if="ingredientTemplateIds.includes(t.id)"
+                                class="text-xs text-muted-foreground"
+                                >via ingredient</span
+                            >
+                        </label>
+                    </div>
+                    <InputError
+                        :message="
+                            (form.errors as Record<string, string>)[
+                                'template_ids'
+                            ]
+                        "
+                    />
                 </div>
 
                 <div
-                    v-if="selectedTemplate"
+                    v-if="selectedGroups.length > 0"
                     class="rounded-md border border-border bg-muted/20 p-3"
                 >
                     <h4 class="text-sm font-medium text-foreground">
@@ -273,10 +322,7 @@ const submit = (): void => {
                         "
                     />
                     <div class="mt-3 space-y-3">
-                        <div
-                            v-for="group in selectedTemplate.groups"
-                            :key="group.id"
-                        >
+                        <div v-for="group in selectedGroups" :key="group.id">
                             <p class="text-xs font-medium text-foreground">
                                 {{ group.name }}
                             </p>

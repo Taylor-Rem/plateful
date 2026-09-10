@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Exceptions\InvalidCartSelectionException;
 use App\Models\Cart;
 use App\Models\CartItem;
-use App\Models\ItemTemplate;
+use App\Models\ItemTemplateGroup;
 use App\Models\MenuItem;
 use App\Models\User;
+use App\Support\Menus\ModifierSummary;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Cookie\CookieJar;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -109,71 +111,13 @@ class CartManager
      */
     public function addItem(MenuItem $item, int $quantity, array $optionIds, ?string $notes = null): CartItem
     {
-        if ($quantity < 1) {
-            $quantity = 1;
-        }
-        if ($quantity > 50) {
-            $quantity = 50;
-        }
-
-        $optionIds = collect($optionIds)
-            ->filter(fn ($v) => is_numeric($v))
-            ->map(fn ($v) => (int) $v)
-            ->unique()
-            ->values()
-            ->all();
-
-        $template = null;
-        if ($item->item_template_id) {
-            $template = $item->relationLoaded('template') && $item->template
-                ? $item->template
-                : $item->template()->with('groups.options')->first();
-        }
-
-        $errors = [];
-
-        if ($template) {
-            $validIds = [];
-            foreach ($template->groups as $group) {
-                foreach ($group->options as $opt) {
-                    $validIds[$opt->id] = $group;
-                }
-            }
-
-            foreach ($optionIds as $oid) {
-                if (! isset($validIds[$oid])) {
-                    $errors['option_ids'][] = "Selection {$oid} is not valid for this item.";
-                }
-            }
-
-            foreach ($template->groups as $group) {
-                $countInGroup = collect($optionIds)->filter(
-                    fn ($oid) => isset($validIds[$oid]) && $validIds[$oid]->id === $group->id
-                )->count();
-
-                $min = (int) ($group->min_selections ?? 0);
-                $max = $group->max_selections === null ? null : (int) $group->max_selections;
-
-                if ($countInGroup < $min) {
-                    $errors['option_ids'][] = "{$group->name}: pick at least {$min}.";
-                }
-                if ($max !== null && $countInGroup > $max) {
-                    $errors['option_ids'][] = "{$group->name}: pick at most {$max}.";
-                }
-            }
-        } else {
-            if ($optionIds !== []) {
-                $errors['option_ids'][] = 'This item does not accept selections.';
-            }
-        }
-
-        if ($errors !== []) {
-            throw InvalidCartSelectionException::withErrors($errors);
-        }
+        $quantity = $this->clampQuantity($quantity);
+        $optionIds = $this->normalizeOptionIds($optionIds);
+        $groups = $this->validatedGroupsFor($item, $optionIds);
 
         $unitPriceCents = $item->priceForSelectionsCents($optionIds);
         $signature = $this->signatureFor($item->id, $optionIds, $notes);
-        $modifiers = $this->buildModifiersSnapshot($template, $optionIds);
+        $modifiers = $this->buildModifiersSnapshot($item, $groups, $optionIds);
 
         return DB::transaction(function () use ($item, $quantity, $unitPriceCents, $signature, $modifiers, $notes) {
             $cart = $this->currentOrCreate();
@@ -203,6 +147,136 @@ class CartManager
 
             return $line;
         });
+    }
+
+    /**
+     * Re-configure an existing line in place: new selections, notes, and
+     * quantity, re-priced from the current menu. If the new configuration
+     * matches another line already in the cart, the two merge (quantities
+     * added, capped) and the edited line is removed — the same stacking rule
+     * addItem applies. Returns the line that survived.
+     *
+     * @param  array<int, int>  $optionIds
+     */
+    public function replaceItem(CartItem $line, int $quantity, array $optionIds, ?string $notes = null): CartItem
+    {
+        $item = $line->menuItem;
+
+        if (! $item instanceof MenuItem) {
+            throw InvalidCartSelectionException::withErrors([
+                'menu_item' => ['This item is no longer on the menu.'],
+            ]);
+        }
+
+        $quantity = $this->clampQuantity($quantity);
+        $optionIds = $this->normalizeOptionIds($optionIds);
+        $groups = $this->validatedGroupsFor($item, $optionIds);
+
+        $unitPriceCents = $item->priceForSelectionsCents($optionIds);
+        $signature = $this->signatureFor($item->id, $optionIds, $notes);
+        $modifiers = $this->buildModifiersSnapshot($item, $groups, $optionIds);
+
+        return DB::transaction(function () use ($line, $item, $quantity, $unitPriceCents, $signature, $modifiers, $notes) {
+            $twin = CartItem::query()
+                ->where('cart_id', $line->cart_id)
+                ->where('menu_item_id', $item->id)
+                ->where('selection_signature', $signature)
+                ->whereKeyNot($line->id)
+                ->first();
+
+            if ($twin) {
+                $twin->quantity = min(50, $twin->quantity + $quantity);
+                $twin->save();
+                $line->delete();
+
+                return $twin;
+            }
+
+            $line->quantity = $quantity;
+            $line->unit_price_cents = $unitPriceCents;
+            $line->modifiers = $modifiers;
+            $line->selection_signature = $signature;
+            $line->notes = $notes;
+            $line->save();
+
+            return $line;
+        });
+    }
+
+    protected function clampQuantity(int $quantity): int
+    {
+        return max(1, min(50, $quantity));
+    }
+
+    /**
+     * @param  array<int, mixed>  $optionIds
+     * @return array<int, int>
+     */
+    protected function normalizeOptionIds(array $optionIds): array
+    {
+        return collect($optionIds)
+            ->filter(fn ($v) => is_numeric($v))
+            ->map(fn ($v) => (int) $v)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Loads every option group on the item (attached templates + compiled
+     * ingredient groups) and checks the selections against them: every id
+     * must belong to the item and each group's min/max must be honored.
+     * Throws a 422-shaped exception otherwise.
+     *
+     * @param  array<int, int>  $optionIds
+     * @return Collection<int, ItemTemplateGroup>
+     */
+    protected function validatedGroupsFor(MenuItem $item, array $optionIds): Collection
+    {
+        $groups = $item->optionGroups();
+
+        $errors = [];
+
+        if ($groups->isNotEmpty()) {
+            $validIds = [];
+            foreach ($groups as $group) {
+                foreach ($group->options as $opt) {
+                    $validIds[$opt->id] = $group;
+                }
+            }
+
+            foreach ($optionIds as $oid) {
+                if (! isset($validIds[$oid])) {
+                    $errors['option_ids'][] = "Selection {$oid} is not valid for this item.";
+                }
+            }
+
+            foreach ($groups as $group) {
+                $countInGroup = collect($optionIds)->filter(
+                    fn ($oid) => isset($validIds[$oid]) && $validIds[$oid]->id === $group->id
+                )->count();
+
+                $min = (int) ($group->min_selections ?? 0);
+                $max = $group->max_selections === null ? null : (int) $group->max_selections;
+
+                if ($countInGroup < $min) {
+                    $errors['option_ids'][] = "{$group->name}: pick at least {$min}.";
+                }
+                if ($max !== null && $countInGroup > $max) {
+                    $errors['option_ids'][] = "{$group->name}: pick at most {$max}.";
+                }
+            }
+        } else {
+            if ($optionIds !== []) {
+                $errors['option_ids'][] = 'This item does not accept selections.';
+            }
+        }
+
+        if ($errors !== []) {
+            throw InvalidCartSelectionException::withErrors($errors);
+        }
+
+        return $groups;
     }
 
     public function updateQuantity(CartItem $item, int $quantity): void
@@ -296,42 +370,65 @@ class CartManager
     }
 
     /**
+     * Snapshot v2. Every group the item has, with what was selected and —
+     * for defaults the customer turned off — what was removed. `is_default`
+     * on a selection and `removed` per group are what let tickets show
+     * deviations only ({@see ModifierSummary}).
+     *
+     * @param  Collection<int, ItemTemplateGroup>  $groups
      * @param  array<int, int>  $optionIds
      * @return array<string, mixed>|null
      */
-    protected function buildModifiersSnapshot(?ItemTemplate $template, array $optionIds): ?array
+    protected function buildModifiersSnapshot(MenuItem $item, Collection $groups, array $optionIds): ?array
     {
-        if (! $template) {
+        if ($groups->isEmpty()) {
             return null;
         }
 
         $selectedSet = collect($optionIds)->mapWithKeys(fn ($id) => [(int) $id => true]);
 
-        $groups = [];
-        foreach ($template->groups->sortBy('position')->values() as $group) {
+        $defaultIds = ($item->relationLoaded('defaultSelections')
+            ? $item->defaultSelections->pluck('id')
+            : $item->defaultSelections()->pluck('item_template_options.id'))
+            ->map(fn ($id) => (int) $id);
+        $defaultSet = $defaultIds->mapWithKeys(fn ($id) => [$id => true]);
+
+        $snapshotGroups = [];
+        foreach ($groups as $group) {
             $selections = [];
+            $removed = [];
             foreach ($group->options->sortBy('position')->values() as $opt) {
+                $isDefault = $defaultSet->has((int) $opt->id);
+
                 if ($selectedSet->has((int) $opt->id)) {
                     $selections[] = [
                         'option_id' => (int) $opt->id,
                         'option_name' => (string) $opt->name,
                         'price_delta_cents' => (int) $opt->price_delta_cents,
+                        'is_default' => $isDefault,
+                    ];
+                } elseif ($isDefault) {
+                    $removed[] = [
+                        'option_id' => (int) $opt->id,
+                        'option_name' => (string) $opt->name,
                     ];
                 }
             }
-            if ($selections !== []) {
-                $groups[] = [
+            if ($selections !== [] || $removed !== []) {
+                $snapshotGroups[] = [
                     'group_id' => (int) $group->id,
                     'group_name' => (string) $group->name,
+                    'kind' => (string) ($group->kind ?? ItemTemplateGroup::KIND_CHOICE),
+                    'single_select' => $group->isSingleSelect(),
                     'selections' => $selections,
+                    'removed' => $removed,
                 ];
             }
         }
 
         return [
-            'template_id' => (int) $template->id,
-            'template_name' => (string) $template->name,
-            'groups' => $groups,
+            'version' => 2,
+            'groups' => $snapshotGroups,
         ];
     }
 }

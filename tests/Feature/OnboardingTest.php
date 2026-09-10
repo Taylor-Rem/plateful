@@ -57,7 +57,6 @@ function addMenuItem(Restaurant $r): MenuItem
     return MenuItem::create([
         'restaurant_id' => $r->id,
         'menu_category_id' => $cat->id,
-        'item_template_id' => null,
         'name' => 'Plain',
         'slug' => 'plain',
         'price_cents' => 1000,

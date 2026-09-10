@@ -29,6 +29,7 @@ use App\Models\RestaurantCustomer;
 use App\Models\User;
 use App\Services\Delivery\DeliveryMarkup;
 use App\Services\Pos\PosDispatcher;
+use App\Support\Menus\ModifierSummary;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -54,7 +55,7 @@ class OrderPlacement
      */
     public function prepare(Cart $cart, Restaurant $restaurant, array $data, ?User $user): array
     {
-        $cart->loadMissing(['items.menuItem.template.groups.options']);
+        $cart->loadMissing(['items.menuItem.templates.groups.options', 'items.menuItem.ownGroups.options', 'items.menuItem.defaultSelections']);
 
         if (! $restaurant->isOpenAt()) {
             $label = $restaurant->formatNextOpenAt();
@@ -513,9 +514,11 @@ class OrderPlacement
             $modifiers = $line->modifiers;
             $hasModifiers = is_array($modifiers) && isset($modifiers['groups']);
 
-            // Modifiers were captured but the item no longer has a template —
-            // the configurator has been removed since cart-add. Stale data.
-            if ($hasModifiers && $menuItem->item_template_id === null) {
+            $groups = $menuItem->optionGroups();
+
+            // Modifiers were captured but the item no longer has any option
+            // groups — the configurator has been removed since cart-add.
+            if ($hasModifiers && $groups->isEmpty()) {
                 $errors["items.$idx"][] = '"'.$menuItem->name.'" no longer has the customization options you selected. Please re-add it.';
 
                 continue;
@@ -525,27 +528,14 @@ class OrderPlacement
                 continue;
             }
 
-            $optionIds = [];
-            foreach ($modifiers['groups'] as $g) {
-                foreach ($g['selections'] ?? [] as $sel) {
-                    if (isset($sel['option_id'])) {
-                        $optionIds[] = (int) $sel['option_id'];
-                    }
-                }
-            }
+            $optionIds = ModifierSummary::selectedOptionIds($modifiers);
 
-            if ($optionIds === []) {
-                continue;
-            }
+            $options = $optionIds === []
+                ? collect()
+                : ItemTemplateOption::query()->whereIn('id', $optionIds)->get()->keyBy('id');
 
-            $options = ItemTemplateOption::query()
-                ->whereIn('id', $optionIds)
-                ->get()
-                ->keyBy('id');
-
-            // Build the option-id → group-id map for the *current* template.
+            // Build the option-id → group map for the item's *current* groups.
             $optionToGroup = [];
-            $groups = $menuItem->template?->groups ?? collect();
             foreach ($groups as $group) {
                 foreach ($group->options as $opt) {
                     $optionToGroup[$opt->id] = $group;
@@ -590,8 +580,10 @@ class OrderPlacement
             }
 
             // Defence-in-depth: recompute the unit price from the current
-            // template + selections and reject if the cart's stored price has
-            // gone stale (option deltas changed after cart-add).
+            // groups + selections and reject if the cart's stored price has
+            // gone stale (option deltas changed after cart-add). Runs even
+            // with no selections — leaving out a priced default changes the
+            // price too.
             $expectedPriceCents = $menuItem->priceForSelectionsCents($optionIds);
             if ($expectedPriceCents !== (int) $line->unit_price_cents) {
                 $errors["items.$idx"][] = 'The price of "'.$menuItem->name.'" has changed since you added it. Please re-add it to checkout.';

@@ -2,8 +2,11 @@
 import { Link, usePage } from '@inertiajs/vue3';
 import { Menu as MenuIcon, ShoppingCart, User, X } from 'lucide-vue-next';
 import { computed, onMounted, provide, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 import CartDrawer from '@/components/Storefront/CartDrawer.vue';
 import { Toaster } from '@/components/ui/sonner';
+import { provideStorefrontCart } from '@/composables/useStorefrontCart';
+import type { CartLineEditor } from '@/composables/useStorefrontCart';
 import AdminBar from '@/pages/Storefront/components/AdminBar.vue';
 import Footer from '@/pages/Storefront/components/Footer.vue';
 import SectionLink from '@/pages/Storefront/components/SectionLink.vue';
@@ -60,6 +63,27 @@ provide('storefrontEditMode', editMode);
 const cartDrawerOpen = ref(false);
 const socialDrawerOpen = ref(false);
 const mobileNavOpen = ref(false);
+
+const cartLineEditor = ref<CartLineEditor | null>(null);
+
+provideStorefrontCart({
+    open: () => {
+        cartDrawerOpen.value = true;
+    },
+    close: () => {
+        cartDrawerOpen.value = false;
+    },
+    lineEditor: cartLineEditor,
+});
+
+// Toasts and the cart sheet share the bottom-right corner, so an "Added to
+// cart" toast would land on top of the Checkout button. Once the drawer is
+// open the cart itself is the confirmation.
+watch(cartDrawerOpen, (open) => {
+    if (open) {
+        toast.dismiss();
+    }
+});
 
 type NavLink =
     | { label: string; href: string; kind: 'link' }

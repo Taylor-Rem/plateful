@@ -11,6 +11,7 @@ use App\Models\OrderItem;
 use App\Models\PosIntegration;
 use App\Models\Restaurant;
 use App\Services\Pos\PosPushResult;
+use App\Support\Menus\ModifierSummary;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -283,25 +284,13 @@ class CloverPosProvider implements PosProvider
     }
 
     /**
-     * Selected options as a comma-separated list (the v1 text-fallback for
-     * modifiers), followed by the customer's per-line instructions, capped at
+     * Modifier deviations as a comma-separated list (the v1 text-fallback
+     * for modifiers — size, extras, swaps, and "No X" removals), followed by the customer's per-line instructions, capped at
      * Clover's note limit.
      */
     private function lineNote(OrderItem $item): ?string
     {
-        $parts = [];
-
-        $modifiers = $item->modifiers;
-
-        if (is_array($modifiers)) {
-            foreach ($modifiers['groups'] ?? [] as $group) {
-                foreach ($group['selections'] ?? [] as $selection) {
-                    if (isset($selection['option_name'])) {
-                        $parts[] = (string) $selection['option_name'];
-                    }
-                }
-            }
-        }
+        $parts = ModifierSummary::parts($item->modifiers);
 
         $options = $parts === [] ? null : implode(', ', $parts);
         $instructions = filled($item->notes) ? trim((string) $item->notes) : null;

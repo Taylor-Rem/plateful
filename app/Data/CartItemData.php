@@ -4,6 +4,7 @@ namespace App\Data;
 
 use App\Models\CartItem;
 use App\Models\ItemTemplateOption;
+use App\Support\Menus\ModifierSummary;
 use Spatie\LaravelData\Data;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
@@ -21,6 +22,8 @@ class CartItemData extends Data
         public string $selectionSummary,
         /** @var array<int, array{groupName: string, selectionNames: array<int, string>}> */
         public array $selectionGroups,
+        /** @var array<int, int> */
+        public array $selectedOptionIds,
         public ?string $notes,
         public bool $isAvailable,
     ) {}
@@ -30,44 +33,19 @@ class CartItemData extends Data
         $menuItem = $item->menuItem;
         $modifiers = $item->modifiers ?? null;
 
-        $groups = [];
-        $summaryParts = [];
+        $groups = ModifierSummary::groups($modifiers);
+        $optionIds = ModifierSummary::selectedOptionIds($modifiers);
+
         $allOptionsAvailable = true;
+        if ($optionIds !== []) {
+            $available = ItemTemplateOption::query()
+                ->whereIn('id', $optionIds)
+                ->pluck('is_available', 'id');
 
-        if (is_array($modifiers) && isset($modifiers['groups']) && is_array($modifiers['groups'])) {
-            $optionIds = [];
-            foreach ($modifiers['groups'] as $g) {
-                if (! is_array($g) || ! isset($g['selections']) || ! is_array($g['selections'])) {
-                    continue;
-                }
-                $names = [];
-                foreach ($g['selections'] as $sel) {
-                    if (isset($sel['option_name'])) {
-                        $names[] = (string) $sel['option_name'];
-                    }
-                    if (isset($sel['option_id'])) {
-                        $optionIds[] = (int) $sel['option_id'];
-                    }
-                }
-                $groups[] = [
-                    'groupName' => (string) ($g['group_name'] ?? ''),
-                    'selectionNames' => $names,
-                ];
-                foreach ($names as $n) {
-                    $summaryParts[] = $n;
-                }
-            }
-
-            if ($optionIds !== []) {
-                $available = ItemTemplateOption::query()
-                    ->whereIn('id', $optionIds)
-                    ->pluck('is_available', 'id');
-
-                foreach ($optionIds as $oid) {
-                    if (! ($available[$oid] ?? false)) {
-                        $allOptionsAvailable = false;
-                        break;
-                    }
+            foreach ($optionIds as $oid) {
+                if (! ($available[$oid] ?? false)) {
+                    $allOptionsAvailable = false;
+                    break;
                 }
             }
         }
@@ -84,8 +62,9 @@ class CartItemData extends Data
             quantity: (int) $item->quantity,
             unitPriceCents: (int) $item->unit_price_cents,
             lineTotalCents: (int) $item->unit_price_cents * (int) $item->quantity,
-            selectionSummary: implode(' · ', $summaryParts),
+            selectionSummary: ModifierSummary::summary($modifiers),
             selectionGroups: $groups,
+            selectedOptionIds: $optionIds,
             notes: $item->notes,
             isAvailable: $isAvailable,
         );

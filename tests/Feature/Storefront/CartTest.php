@@ -137,6 +137,113 @@ test('updating quantity persists', function () {
     expect($line->fresh()->quantity)->toBe(4);
 });
 
+test('replacing a line swaps its selections, notes, and quantity and re-prices it', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
+        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],
+    ]);
+    $cookie = cartCookieFrom($first);
+
+    $line = CartItem::first();
+    expect($line->unit_price_cents)->toBe(1400);
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->put("http://{$r->subdomain}.plateful.test/cart/items/{$line->id}", [
+            'quantity' => 3,
+            'option_ids' => [$f['size_small']->id, $f['top_bacon']->id],
+            'notes' => 'extra crispy',
+        ])->assertRedirect();
+
+    expect(CartItem::count())->toBe(1);
+
+    $line->refresh();
+    expect($line->quantity)->toBe(3)
+        ->and($line->unit_price_cents)->toBe(1400 - 200 - 200 + 300)
+        ->and($line->notes)->toBe('extra crispy')
+        ->and($line->selection_signature)->toBe(
+            app(CartManager::class)->signatureFor($f['item']->id, [$f['size_small']->id, $f['top_bacon']->id], 'extra crispy'),
+        );
+
+    $names = collect($line->modifiers['groups'])->flatMap(fn ($g) => collect($g['selections'])->pluck('option_name'))->all();
+    expect($names)->toBe(['Small', 'Bacon']);
+});
+
+test('replacing a line so it matches another line merges them', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+    $host = "http://{$r->subdomain}.plateful.test";
+
+    $first = $this->post("{$host}/cart/items/{$f['item']->id}", [
+        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],
+        'quantity' => 2,
+    ]);
+    $cookie = cartCookieFrom($first);
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->post("{$host}/cart/items/{$f['item']->id}", [
+            'option_ids' => [$f['size_small']->id],
+        ]);
+
+    expect(CartItem::count())->toBe(2);
+
+    $medium = CartItem::query()->where('quantity', 2)->firstOrFail();
+    $small = CartItem::query()->where('quantity', 1)->firstOrFail();
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->put("{$host}/cart/items/{$small->id}", [
+            'quantity' => 1,
+            'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],
+        ])->assertRedirect();
+
+    expect(CartItem::count())->toBe(1)
+        ->and(CartItem::sole()->id)->toBe($medium->id)
+        ->and(CartItem::sole()->quantity)->toBe(3);
+});
+
+test('replacing a line with invalid selections fails 422 and leaves the line untouched', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
+        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],
+    ]);
+    $cookie = cartCookieFrom($first);
+
+    $line = CartItem::first();
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->put("http://{$r->subdomain}.plateful.test/cart/items/{$line->id}", [
+            'quantity' => 1,
+            'option_ids' => [$f['top_pepperoni']->id],
+        ], ['Accept' => 'application/json'])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['option_ids']);
+
+    $line->refresh();
+    expect($line->unit_price_cents)->toBe(1400)
+        ->and($line->modifiers['groups'][0]['group_name'])->toBe('Size');
+});
+
+test('cart lines expose their selected option ids for editing', function () {
+    $f = cartFixture();
+    $r = $f['restaurant'];
+
+    $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
+        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id],
+    ]);
+    $cookie = cartCookieFrom($first);
+
+    $this->withCookie(CartManager::COOKIE_NAME, $cookie)
+        ->get("http://{$r->subdomain}.plateful.test/menu")
+        ->assertOk()
+        ->assertInertia(fn ($p) => $p->where(
+            'cart.items.0.selectedOptionIds',
+            [$f['size_medium']->id, $f['top_pepperoni']->id],
+        ));
+});
+
 test('updating quantity to 0 removes the line', function () {
     $f = cartFixture();
     $r = $f['restaurant'];

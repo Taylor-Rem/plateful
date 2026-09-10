@@ -18,7 +18,9 @@ class MenuController extends Controller
             ->orderBy('position')
             ->with([
                 'items' => fn ($q) => $q->orderBy('position'),
-                'items.template.groups.options',
+                'items.templates.groups.options',
+                'items.ownGroups.options',
+                'items.ingredients',
                 'items.defaultSelections',
             ])
             ->get()

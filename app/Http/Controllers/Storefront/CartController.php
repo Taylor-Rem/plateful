@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\AddCartItemRequest;
+use App\Http\Requests\Storefront\ReplaceCartItemRequest;
 use App\Http\Requests\Storefront\UpdateCartItemRequest;
 use App\Models\CartItem;
 use App\Models\MenuItem;
@@ -37,6 +38,23 @@ class CartController extends Controller
         $manager->updateQuantity($cartItem, (int) $request->integer('quantity'));
 
         return back(303);
+    }
+
+    public function replaceItem(
+        ReplaceCartItemRequest $request,
+        CartItem $cartItem,
+        CartManager $manager,
+    ): RedirectResponse {
+        $this->ensureBelongsToCurrentCart($cartItem, $manager);
+
+        $manager->replaceItem(
+            $cartItem,
+            $request->quantity(),
+            $request->optionIds(),
+            $request->notes(),
+        );
+
+        return back(303)->with('success', 'Cart updated.');
     }
 
     public function removeItem(CartItem $cartItem, CartManager $manager): RedirectResponse
