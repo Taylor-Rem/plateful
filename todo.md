@@ -897,6 +897,35 @@ plateful.fyi" to "on the web." Growth surface, not launch surface._
 
 ---
 
+## 15. Menu customization — ingredients, swaps, extras, and the owner wizard
+_Added 2026-09-10. Plan in `docs/menu_customization_plan.md`. Locked: the analyzer **may suggest
+unprinted customizations**, labeled and off until the owner opts in (the "never invent" rule stays
+for items, prices, and printed choices); ingredient authoring lives in **both** storefront edit mode
+and the admin; pricing is **per ingredient with bulk shortcuts**. Surfaced by the testaurant
+walkthrough: "no mortadella" / "extra provolone" has no home except special instructions, and the
+one-template-per-item limit already duplicated "Add salad/soup" into four templates._
+
+- [ ] **Phase 1 — model + runtime** (~2 sessions): `menu_item_ingredients`, item-owned groups
+      (`kind` = included/extras/swap, options upserted by ingredient so ids stay stable),
+      `menu_item_templates` pivot (many templates per item; swap sets = single-group templates),
+      `IngredientGroupCompiler`, snapshot v2 (`is_default` + `removed`) and **deviation-only**
+      rendering in cart/kitchen/confirmation/email/both POS notes, `MenuItem::optionGroups()`,
+      configurator sections. Existing template/cart/integrity tests green.
+- [ ] **Phase 2 — authoring** (~2): one Ingredients panel component (leave out / extra $ / swap
+      with) in the storefront item drawer and on the admin Menu page; "Split from description";
+      "Suggest customizations" per item; inline swap-set create; bulk "apply to category" + price
+      shortcuts; configurator preview.
+- [ ] **Phase 3 — analyzer + wizard** (~2): `items[].ingredients` (facts) +
+      `items[].suggested_customizations` (proposals, never priced) in the extraction schema,
+      sanitizer caps, the review wizard step ("which of these can customers change?", skippable per
+      category), confirm → `MenuBuilder`, re-import carry-over by item name (⚑).
+- [ ] **Phase 4 — rollout** (~1): re-import The Rose PDF on testaurant dev, walk the wizard, repeat
+      on live; note in §2b that item-owned modifier lists are what the catalog matcher maps.
+- [ ] Interim no-code path for testaurant (documented at the end of the plan): per-sandwich
+      templates with a "Leave out" group of "No X" options — works today, is the tedium §15 removes.
+
+---
+
 ## Suggested sequence
 1. **§0 launch blockers** + **§1 pricing** (parallel; both small, both gate revenue/story).
 2. ~~**§2a foundations**~~ — done.
