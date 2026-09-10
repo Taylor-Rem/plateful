@@ -70,6 +70,7 @@ selectionGroups: {
 groupName: string,
 selectionNames: string[],
 }[],
+selectedOptionIds: number[],
 notes: string | null,
 isAvailable: boolean,
 };

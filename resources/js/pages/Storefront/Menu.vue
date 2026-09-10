@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { ArrowDown, ArrowUp, Pencil, Plus } from 'lucide-vue-next';
-import { computed, inject, ref, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { Ref } from 'vue';
 import { toast } from 'vue-sonner';
+import { useStorefrontCart } from '@/composables/useStorefrontCart';
 import CategoryEditDialog from '@/pages/Storefront/components/CategoryEditDialog.vue';
 import ClosedBanner from '@/pages/Storefront/components/ClosedBanner.vue';
 import ItemConfiguratorModal from '@/pages/Storefront/components/ItemConfiguratorModal.vue';
+import type {
+    ConfiguratorInitialState,
+    ConfiguratorSubmitPayload,
+} from '@/pages/Storefront/components/ItemConfiguratorModal.vue';
 import MenuItemDeleteDialog from '@/pages/Storefront/components/MenuItemDeleteDialog.vue';
 import MenuItemEditDrawer from '@/pages/Storefront/components/MenuItemEditDrawer.vue';
 
@@ -34,6 +39,9 @@ const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 const configuratorOpen = ref(false);
 const activeItem = ref<App.Data.MenuItemData | null>(null);
+const configuratorMode = ref<'add' | 'edit'>('add');
+const editingLine = ref<App.Data.CartItemData | null>(null);
+const storefrontCart = useStorefrontCart();
 
 const drawerOpen = ref(false);
 const editingItem = ref<App.Data.MenuItemData | null>(null);
@@ -147,16 +155,68 @@ const onItemClick = (item: App.Data.MenuItemData): void => {
     }
 
     activeItem.value = item;
+    configuratorMode.value = 'add';
+    editingLine.value = null;
     configuratorOpen.value = true;
 };
 
-const onAddToCart = (payload: {
-    itemId: number;
-    selections: Array<{ groupId: number; optionIds: number[] }>;
-    unitPriceCents: number;
-    quantity: number;
-    notes: string;
-}): void => {
+const findMenuItem = (id: number): App.Data.MenuItemData | null =>
+    props.categories.flatMap((c) => c.items).find((i) => i.id === id) ?? null;
+
+// Registered with the layout so the cart drawer can offer "Edit" on a
+// line: the drawer closes, the configurator opens pre-filled, and the
+// drawer comes back when the configurator closes (saved or cancelled).
+const editCartLine = (line: App.Data.CartItemData): void => {
+    const item = findMenuItem(line.menuItemId);
+
+    if (!item) {
+        toast.error('That item is no longer on the menu.');
+
+        return;
+    }
+
+    activeItem.value = item;
+    configuratorMode.value = 'edit';
+    editingLine.value = line;
+    configuratorOpen.value = true;
+};
+
+const configuratorInitial = computed<ConfiguratorInitialState | null>(() =>
+    editingLine.value
+        ? {
+              selectedIds: editingLine.value.selectedOptionIds,
+              quantity: editingLine.value.quantity,
+              notes: editingLine.value.notes ?? '',
+          }
+        : null,
+);
+
+watch(configuratorOpen, (open) => {
+    if (!open && configuratorMode.value === 'edit') {
+        configuratorMode.value = 'add';
+        editingLine.value = null;
+        storefrontCart?.open();
+    }
+});
+
+onMounted(() => {
+    if (storefrontCart) {
+        storefrontCart.lineEditor.value = editCartLine;
+    }
+});
+
+onBeforeUnmount(() => {
+    if (storefrontCart?.lineEditor.value === editCartLine) {
+        storefrontCart.lineEditor.value = null;
+    }
+});
+
+const viewCartAction = () => ({
+    label: 'View cart',
+    onClick: (): void => storefrontCart?.open(),
+});
+
+const addToCart = (payload: ConfiguratorSubmitPayload): void => {
     const name = activeItem.value?.name ?? 'Item';
     const optionIds = payload.selections.flatMap((s) => s.optionIds);
     router.post(
@@ -169,10 +229,43 @@ const onAddToCart = (payload: {
         {
             preserveScroll: true,
             preserveState: true,
-            onSuccess: () => toast.success(`Added ${name} to cart`),
+            onSuccess: () =>
+                toast.success(`Added ${name} to cart`, {
+                    action: viewCartAction(),
+                }),
             onError: () => toast.error('Could not add to cart.'),
         },
     );
+};
+
+const updateCartLine = (
+    line: App.Data.CartItemData,
+    payload: ConfiguratorSubmitPayload,
+): void => {
+    const optionIds = payload.selections.flatMap((s) => s.optionIds);
+    router.put(
+        `/cart/items/${line.id}`,
+        {
+            quantity: payload.quantity,
+            option_ids: optionIds,
+            notes: payload.notes || null,
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => toast.error('Could not update cart.'),
+        },
+    );
+};
+
+const onConfiguratorSubmit = (payload: ConfiguratorSubmitPayload): void => {
+    if (configuratorMode.value === 'edit' && editingLine.value) {
+        updateCartLine(editingLine.value, payload);
+
+        return;
+    }
+
+    addToCart(payload);
 };
 </script>
 
@@ -343,7 +436,9 @@ const onAddToCart = (payload: {
             v-if="activeItem"
             v-model:open="configuratorOpen"
             :item="activeItem"
-            @add-to-cart="onAddToCart"
+            :mode="configuratorMode"
+            :initial="configuratorInitial"
+            @submit="onConfiguratorSubmit"
         />
 
         <template v-if="canEditMenu && editor">

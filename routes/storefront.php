@@ -77,6 +77,8 @@ Route::middleware('tenant')->group(function () {
         ->name('storefront.cart.add');
     Route::patch('cart/items/{cartItem}', [CartController::class, 'updateItem'])
         ->name('storefront.cart.update');
+    Route::put('cart/items/{cartItem}', [CartController::class, 'replaceItem'])
+        ->name('storefront.cart.replace');
     Route::delete('cart/items/{cartItem}', [CartController::class, 'removeItem'])
         ->name('storefront.cart.remove');
     Route::delete('cart', [CartController::class, 'clear'])

@@ -21,6 +21,8 @@ class CartItemData extends Data
         public string $selectionSummary,
         /** @var array<int, array{groupName: string, selectionNames: array<int, string>}> */
         public array $selectionGroups,
+        /** @var array<int, int> */
+        public array $selectedOptionIds,
         public ?string $notes,
         public bool $isAvailable,
     ) {}
@@ -32,10 +34,10 @@ class CartItemData extends Data
 
         $groups = [];
         $summaryParts = [];
+        $optionIds = [];
         $allOptionsAvailable = true;
 
         if (is_array($modifiers) && isset($modifiers['groups']) && is_array($modifiers['groups'])) {
-            $optionIds = [];
             foreach ($modifiers['groups'] as $g) {
                 if (! is_array($g) || ! isset($g['selections']) || ! is_array($g['selections'])) {
                     continue;
@@ -86,6 +88,7 @@ class CartItemData extends Data
             lineTotalCents: (int) $item->unit_price_cents * (int) $item->quantity,
             selectionSummary: implode(' · ', $summaryParts),
             selectionGroups: $groups,
+            selectedOptionIds: $optionIds,
             notes: $item->notes,
             isAvailable: $isAvailable,
         );

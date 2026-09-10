@@ -9,37 +9,58 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 
-const props = defineProps<{
-    item: App.Data.MenuItemData;
-    open: boolean;
-}>();
+export type ConfiguratorInitialState = {
+    selectedIds: number[];
+    quantity: number;
+    notes: string;
+};
+
+export type ConfiguratorSubmitPayload = {
+    itemId: number;
+    selections: Array<{ groupId: number; optionIds: number[] }>;
+    unitPriceCents: number;
+    quantity: number;
+    notes: string;
+};
+
+const props = withDefaults(
+    defineProps<{
+        item: App.Data.MenuItemData;
+        open: boolean;
+        /** "edit" re-opens an existing cart line; the button reads "Update cart". */
+        mode?: 'add' | 'edit';
+        /** Starting selections; defaults to the item's default selections. */
+        initial?: ConfiguratorInitialState | null;
+    }>(),
+    { mode: 'add', initial: null },
+);
 
 const emit = defineEmits<{
     (e: 'update:open', value: boolean): void;
-    (
-        e: 'addToCart',
-        payload: {
-            itemId: number;
-            selections: Array<{ groupId: number; optionIds: number[] }>;
-            unitPriceCents: number;
-            quantity: number;
-            notes: string;
-        },
-    ): void;
+    (e: 'submit', payload: ConfiguratorSubmitPayload): void;
 }>();
 
-const selectedIds = ref<number[]>([...props.item.defaultSelectionIds]);
-const quantity = ref(1);
-const notes = ref('');
+const startingState = (): ConfiguratorInitialState => ({
+    selectedIds: [
+        ...(props.initial?.selectedIds ?? props.item.defaultSelectionIds),
+    ],
+    quantity: props.initial?.quantity ?? 1,
+    notes: props.initial?.notes ?? '',
+});
+
+const selectedIds = ref<number[]>(startingState().selectedIds);
+const quantity = ref(startingState().quantity);
+const notes = ref(startingState().notes);
 
 // Reset when item changes or modal opens.
 watch(
     () => [props.item.id, props.open] as const,
     ([, isOpen]) => {
         if (isOpen) {
-            selectedIds.value = [...props.item.defaultSelectionIds];
-            quantity.value = 1;
-            notes.value = '';
+            const start = startingState();
+            selectedIds.value = start.selectedIds;
+            quantity.value = start.quantity;
+            notes.value = start.notes;
         }
     },
 );
@@ -206,7 +227,7 @@ const onSubmit = (): void => {
             g.options.some((o) => o.id === id),
         ),
     }));
-    emit('addToCart', {
+    emit('submit', {
         itemId: props.item.id,
         selections,
         unitPriceCents: unitPriceCents.value,
@@ -423,7 +444,7 @@ const onSubmit = (): void => {
                         :disabled="!allSatisfied"
                         @click="onSubmit"
                     >
-                        Add to cart
+                        {{ mode === 'edit' ? 'Update cart' : 'Add to cart' }}
                     </Button>
                 </div>
             </DialogFooter>

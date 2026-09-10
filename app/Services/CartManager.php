@@ -109,20 +109,126 @@ class CartManager
      */
     public function addItem(MenuItem $item, int $quantity, array $optionIds, ?string $notes = null): CartItem
     {
-        if ($quantity < 1) {
-            $quantity = 1;
-        }
-        if ($quantity > 50) {
-            $quantity = 50;
+        $quantity = $this->clampQuantity($quantity);
+        $optionIds = $this->normalizeOptionIds($optionIds);
+        $template = $this->validatedTemplateFor($item, $optionIds);
+
+        $unitPriceCents = $item->priceForSelectionsCents($optionIds);
+        $signature = $this->signatureFor($item->id, $optionIds, $notes);
+        $modifiers = $this->buildModifiersSnapshot($template, $optionIds);
+
+        return DB::transaction(function () use ($item, $quantity, $unitPriceCents, $signature, $modifiers, $notes) {
+            $cart = $this->currentOrCreate();
+
+            $existing = CartItem::query()
+                ->where('cart_id', $cart->id)
+                ->where('menu_item_id', $item->id)
+                ->where('selection_signature', $signature)
+                ->first();
+
+            if ($existing) {
+                $existing->quantity = min(50, $existing->quantity + $quantity);
+                $existing->save();
+
+                return $existing;
+            }
+
+            $line = new CartItem;
+            $line->cart_id = $cart->id;
+            $line->menu_item_id = $item->id;
+            $line->quantity = $quantity;
+            $line->unit_price_cents = $unitPriceCents;
+            $line->modifiers = $modifiers;
+            $line->selection_signature = $signature;
+            $line->notes = $notes;
+            $line->save();
+
+            return $line;
+        });
+    }
+
+    /**
+     * Re-configure an existing line in place: new selections, notes, and
+     * quantity, re-priced from the current menu. If the new configuration
+     * matches another line already in the cart, the two merge (quantities
+     * added, capped) and the edited line is removed — the same stacking rule
+     * addItem applies. Returns the line that survived.
+     *
+     * @param  array<int, int>  $optionIds
+     */
+    public function replaceItem(CartItem $line, int $quantity, array $optionIds, ?string $notes = null): CartItem
+    {
+        $item = $line->menuItem;
+
+        if (! $item instanceof MenuItem) {
+            throw InvalidCartSelectionException::withErrors([
+                'menu_item' => ['This item is no longer on the menu.'],
+            ]);
         }
 
-        $optionIds = collect($optionIds)
+        $quantity = $this->clampQuantity($quantity);
+        $optionIds = $this->normalizeOptionIds($optionIds);
+        $template = $this->validatedTemplateFor($item, $optionIds);
+
+        $unitPriceCents = $item->priceForSelectionsCents($optionIds);
+        $signature = $this->signatureFor($item->id, $optionIds, $notes);
+        $modifiers = $this->buildModifiersSnapshot($template, $optionIds);
+
+        return DB::transaction(function () use ($line, $item, $quantity, $unitPriceCents, $signature, $modifiers, $notes) {
+            $twin = CartItem::query()
+                ->where('cart_id', $line->cart_id)
+                ->where('menu_item_id', $item->id)
+                ->where('selection_signature', $signature)
+                ->whereKeyNot($line->id)
+                ->first();
+
+            if ($twin) {
+                $twin->quantity = min(50, $twin->quantity + $quantity);
+                $twin->save();
+                $line->delete();
+
+                return $twin;
+            }
+
+            $line->quantity = $quantity;
+            $line->unit_price_cents = $unitPriceCents;
+            $line->modifiers = $modifiers;
+            $line->selection_signature = $signature;
+            $line->notes = $notes;
+            $line->save();
+
+            return $line;
+        });
+    }
+
+    protected function clampQuantity(int $quantity): int
+    {
+        return max(1, min(50, $quantity));
+    }
+
+    /**
+     * @param  array<int, mixed>  $optionIds
+     * @return array<int, int>
+     */
+    protected function normalizeOptionIds(array $optionIds): array
+    {
+        return collect($optionIds)
             ->filter(fn ($v) => is_numeric($v))
             ->map(fn ($v) => (int) $v)
             ->unique()
             ->values()
             ->all();
+    }
 
+    /**
+     * Loads the item's template (if any) and checks the selections against
+     * its groups: every id must belong to the template and each group's
+     * min/max must be honored. Throws a 422-shaped exception otherwise.
+     *
+     * @param  array<int, int>  $optionIds
+     */
+    protected function validatedTemplateFor(MenuItem $item, array $optionIds): ?ItemTemplate
+    {
         $template = null;
         if ($item->item_template_id) {
             $template = $item->relationLoaded('template') && $item->template
@@ -171,38 +277,7 @@ class CartManager
             throw InvalidCartSelectionException::withErrors($errors);
         }
 
-        $unitPriceCents = $item->priceForSelectionsCents($optionIds);
-        $signature = $this->signatureFor($item->id, $optionIds, $notes);
-        $modifiers = $this->buildModifiersSnapshot($template, $optionIds);
-
-        return DB::transaction(function () use ($item, $quantity, $unitPriceCents, $signature, $modifiers, $notes) {
-            $cart = $this->currentOrCreate();
-
-            $existing = CartItem::query()
-                ->where('cart_id', $cart->id)
-                ->where('menu_item_id', $item->id)
-                ->where('selection_signature', $signature)
-                ->first();
-
-            if ($existing) {
-                $existing->quantity = min(50, $existing->quantity + $quantity);
-                $existing->save();
-
-                return $existing;
-            }
-
-            $line = new CartItem;
-            $line->cart_id = $cart->id;
-            $line->menu_item_id = $item->id;
-            $line->quantity = $quantity;
-            $line->unit_price_cents = $unitPriceCents;
-            $line->modifiers = $modifiers;
-            $line->selection_signature = $signature;
-            $line->notes = $notes;
-            $line->save();
-
-            return $line;
-        });
+        return $template;
     }
 
     public function updateQuantity(CartItem $item, int $quantity): void
