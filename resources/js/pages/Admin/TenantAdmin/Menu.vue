@@ -6,6 +6,8 @@ import {
     Trash2,
     Plus,
     ExternalLink,
+    Eye,
+    ListChecks,
 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
@@ -13,6 +15,8 @@ import EmptyState from '@/components/admin/EmptyState.vue';
 import MenuImportCard from '@/components/admin/MenuImportCard.vue';
 import PageHeader from '@/components/admin/PageHeader.vue';
 import InputError from '@/components/InputError.vue';
+import IngredientsPanel from '@/components/menu/IngredientsPanel.vue';
+import { isSwapSet } from '@/components/menu/splitIngredients';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -24,17 +28,23 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import TenantAdminLayout from '@/layouts/admin/TenantAdminLayout.vue';
+import { relativeUrl } from '@/lib/relativeUrl';
+import ItemConfiguratorModal from '@/pages/Storefront/components/ItemConfiguratorModal.vue';
 import {
     destroy as categoriesDestroy,
+    ingredientRules as categoriesIngredientRules,
     reorder as categoriesReorder,
     store as categoriesStore,
     update as categoriesUpdate,
 } from '@/routes/admin/restaurant/categories';
+import { update as ingredientsUpdate } from '@/routes/admin/restaurant/items/ingredients';
+import { store as swapSetsStore } from '@/routes/admin/restaurant/swapSets';
 import { index as templatesIndex } from '@/routes/admin/restaurant/templates';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
     categories: App.Data.MenuCategoryData[];
+    templates: App.Data.ItemTemplateData[];
     menuImport: {
         id: number;
         status: 'queued' | 'processing' | 'needs_review' | 'failed';
@@ -143,6 +153,72 @@ const deleteCategory = (category: App.Data.MenuCategoryData): void => {
             onSuccess: refreshLocal,
         },
     );
+};
+
+// ----- Ingredients + preview -----
+const swapSets = computed(() => props.templates.filter(isSwapSet));
+const ingredientsItemId = ref<number | null>(null);
+const showIngredientsModal = ref(false);
+
+// Always the freshest copy: props refresh after every save.
+const ingredientsItem = computed<App.Data.MenuItemData | null>(() => {
+    if (ingredientsItemId.value === null) {
+        return null;
+    }
+
+    for (const category of props.categories) {
+        const found = category.items.find(
+            (i) => i.id === ingredientsItemId.value,
+        );
+
+        if (found) {
+            return found;
+        }
+    }
+
+    return null;
+});
+
+const ingredientsCategoryName = computed(
+    () =>
+        props.categories.find(
+            (c) => c.id === ingredientsItem.value?.menuCategoryId,
+        )?.name ?? 'this category',
+);
+
+const ingredientUrls = computed(() => ({
+    save: relativeUrl(
+        ingredientsUpdate.url({
+            restaurant: props.restaurant.subdomain,
+            menuItem: ingredientsItem.value?.id ?? 0,
+        }),
+    ),
+    swapSet: relativeUrl(swapSetsStore.url(props.restaurant.subdomain)),
+    applyToCategory: relativeUrl(
+        categoriesIngredientRules.url({
+            restaurant: props.restaurant.subdomain,
+            category: ingredientsItem.value?.menuCategoryId ?? 0,
+        }),
+    ),
+}));
+
+const openIngredients = (item: App.Data.MenuItemData): void => {
+    ingredientsItemId.value = item.id;
+    showIngredientsModal.value = true;
+};
+
+const previewItem = ref<App.Data.MenuItemData | null>(null);
+const previewOpen = ref(false);
+
+const openPreview = (item: App.Data.MenuItemData): void => {
+    previewItem.value = item;
+    previewOpen.value = true;
+};
+
+const previewFromPanel = (): void => {
+    if (ingredientsItem.value) {
+        openPreview(ingredientsItem.value);
+    }
 };
 
 defineOptions({ layout: TenantAdminLayout });
@@ -300,13 +376,62 @@ defineOptions({ layout: TenantAdminLayout });
                                 >Unavailable</span
                             >
                         </div>
-                        <span class="text-foreground">{{
-                            formatPrice(item.priceCents)
-                        }}</span>
+                        <div class="flex shrink-0 items-center gap-1">
+                            <span class="mr-2 text-foreground">{{
+                                formatPrice(item.priceCents)
+                            }}</span>
+                            <button
+                                v-if="isAdmin"
+                                type="button"
+                                class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                :aria-label="`Ingredients for ${item.name}`"
+                                title="Ingredients — what customers can leave out, add, or swap"
+                                @click="openIngredients(item)"
+                            >
+                                <ListChecks class="size-4" />
+                            </button>
+                            <button
+                                v-if="item.groups.length > 0"
+                                type="button"
+                                class="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                :aria-label="`Preview ${item.name} as a customer`"
+                                title="Preview as customer"
+                                @click="openPreview(item)"
+                            >
+                                <Eye class="size-4" />
+                            </button>
+                        </div>
                     </li>
                 </ul>
             </section>
         </VueDraggable>
+
+        <Dialog v-model:open="showIngredientsModal">
+            <DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle
+                        >Ingredients — {{ ingredientsItem?.name }}</DialogTitle
+                    >
+                </DialogHeader>
+                <IngredientsPanel
+                    v-if="ingredientsItem"
+                    :key="ingredientsItem.id"
+                    :item="ingredientsItem"
+                    :swap-sets="swapSets"
+                    :category-name="ingredientsCategoryName"
+                    :urls="ingredientUrls"
+                    @saved="refreshLocal"
+                    @preview="previewFromPanel"
+                />
+            </DialogContent>
+        </Dialog>
+
+        <ItemConfiguratorModal
+            v-if="previewItem"
+            v-model:open="previewOpen"
+            :item="previewItem"
+            mode="preview"
+        />
 
         <Dialog v-model:open="showCategoryModal">
             <DialogContent>

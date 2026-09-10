@@ -52,6 +52,10 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                // Lets the menu editor reopen a just-created item on its
+                // Ingredients step, and auto-pick a just-created swap set.
+                'createdMenuItemId' => fn () => $request->session()->get('createdMenuItemId'),
+                'createdSwapSetId' => fn () => $request->session()->get('createdSwapSetId'),
             ],
             'cart' => fn () => $this->resolveCart(),
             'currentRestaurantRole' => fn () => $this->resolveCurrentRestaurantRole($request),

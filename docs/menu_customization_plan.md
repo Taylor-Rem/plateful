@@ -203,10 +203,26 @@ is removed for suggestions, because suggestions are labeled and gated.
   `CartTest`, `ItemTemplateCrudTest`, `MenuImportTest`). Nothing owner-facing
   yet; testaurant gets a hand-seeded Classic Italian to prove the ticket
   reads right end to end (cart → kitchen → Clover sandbox note).
-- **Phase 2 — authoring** (~2): the Ingredients panel component, swap-set
-  inline create, bulk + price shortcuts, storefront drawer + admin Menu
-  integration, configurator preview, form requests + policies, browser
-  tests.
+- **Phase 2 — authoring** — **DONE 2026-09-10** (one session). One
+  `components/menu/IngredientsPanel.vue` used by the storefront item drawer
+  and an Ingredients dialog on the admin Menu page; "Split from
+  description" (client-side, `splitIngredients.ts`); inline swap-set create
+  (`POST …/swap-sets`, flashes `createdSwapSetId` so the row auto-selects
+  it); "Apply to all in {category}" by ingredient name (`POST
+  …/categories/{category}/ingredient-rules`, rows carry the extra price so
+  this is the price shortcut too); "Preview as customer" opens the real
+  configurator in a no-cart `preview` mode on both hosts; a just-created
+  item reopens on its Ingredients step pre-split (`createdMenuItemId`
+  flash). Routes exist on both hosts through one controller
+  (`*InConsole` variants take the `{restaurant}` param positionally). Three
+  Playwright tests cover admin dialog, preview, and the storefront drawer;
+  those needed `lib/relativeUrl.ts` because Wayfinder bakes the admin
+  domain into absolute URLs. Not built: per-type shortcuts ("any extra
+  protein +$3") — there is no ingredient type yet; the category-wide
+  by-name apply covers the real case. Original scope: the Ingredients
+  panel component, swap-set inline create, bulk + price shortcuts,
+  storefront drawer + admin Menu integration, configurator preview, form
+  requests + policies, browser tests.
 - **Phase 3 — analyzer + wizard** (~2): schema/prompt/sanitizer changes,
   the review wizard step, confirm → `MenuBuilder`, "Split from description"
   and "Suggest customizations" on manual items, re-import carry-over (below).

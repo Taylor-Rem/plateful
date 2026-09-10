@@ -26,7 +26,10 @@ const props = defineProps<{
     editor: EditorPayload | null;
 }>();
 
-const page = usePage<{ auth?: { canEditMenu?: boolean } }>();
+const page = usePage<{
+    auth?: { canEditMenu?: boolean };
+    flash?: { createdMenuItemId?: number | null };
+}>();
 const canEditMenu = computed(
     () => Boolean(page.props.auth?.canEditMenu) && props.editor !== null,
 );
@@ -39,22 +42,25 @@ const formatPrice = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
 
 const configuratorOpen = ref(false);
 const activeItem = ref<App.Data.MenuItemData | null>(null);
-const configuratorMode = ref<'add' | 'edit'>('add');
+const configuratorMode = ref<'add' | 'edit' | 'preview'>('add');
 const editingLine = ref<App.Data.CartItemData | null>(null);
 const storefrontCart = useStorefrontCart();
 
 const drawerOpen = ref(false);
 const editingItem = ref<App.Data.MenuItemData | null>(null);
+const focusIngredients = ref(false);
 const deleteDialogOpen = ref(false);
 const deleteTarget = ref<App.Data.MenuItemData | null>(null);
 
 const openCreate = (): void => {
     editingItem.value = null;
+    focusIngredients.value = false;
     drawerOpen.value = true;
 };
 
 const openEdit = (item: App.Data.MenuItemData): void => {
     editingItem.value = item;
+    focusIngredients.value = false;
     drawerOpen.value = true;
 };
 
@@ -192,12 +198,46 @@ const configuratorInitial = computed<ConfiguratorInitialState | null>(() =>
 );
 
 watch(configuratorOpen, (open) => {
-    if (!open && configuratorMode.value === 'edit') {
+    if (open) {
+        return;
+    }
+
+    if (configuratorMode.value === 'edit') {
         configuratorMode.value = 'add';
         editingLine.value = null;
         storefrontCart?.open();
+    } else if (configuratorMode.value === 'preview') {
+        configuratorMode.value = 'add';
     }
 });
+
+// The owner asked to see an item as customers do (from the Ingredients
+// panel). Always the freshest copy from props — the panel just saved.
+const onPreview = (item: App.Data.MenuItemData): void => {
+    activeItem.value = findMenuItem(item.id) ?? item;
+    configuratorMode.value = 'preview';
+    editingLine.value = null;
+    configuratorOpen.value = true;
+};
+
+// A just-created item comes back in the flash; reopen it on its
+// Ingredients step, seeded from the description.
+watch(
+    () => page.props.flash?.createdMenuItemId,
+    (id) => {
+        if (!id) {
+            return;
+        }
+
+        const created = findMenuItem(id);
+
+        if (created) {
+            editingItem.value = created;
+            focusIngredients.value = true;
+            drawerOpen.value = true;
+        }
+    },
+);
 
 onMounted(() => {
     if (storefrontCart) {
@@ -259,6 +299,10 @@ const updateCartLine = (
 };
 
 const onConfiguratorSubmit = (payload: ConfiguratorSubmitPayload): void => {
+    if (configuratorMode.value === 'preview') {
+        return;
+    }
+
     if (configuratorMode.value === 'edit' && editingLine.value) {
         updateCartLine(editingLine.value, payload);
 
@@ -447,7 +491,9 @@ const onConfiguratorSubmit = (payload: ConfiguratorSubmitPayload): void => {
                 :item="editingItem"
                 :categories="editor.categories"
                 :templates="editor.templates"
+                :focus-ingredients="focusIngredients"
                 @delete-requested="onDeleteRequested"
+                @preview="onPreview"
             />
             <MenuItemDeleteDialog
                 v-model:open="deleteDialogOpen"

@@ -912,10 +912,13 @@ one-template-per-item limit already duplicated "Add salad/soup" into four templa
       rendering in cart/kitchen/confirmation/email/both POS notes, `MenuItem::optionGroups()`,
       configurator sections. Existing template/cart/integrity tests green. Dev DB migrated;
       testaurant's Classic Italian hand-seeded (7 ingredients, 2 extras) as the Phase 2 reference.
-- [ ] **Phase 2 — authoring** (~2): one Ingredients panel component (leave out / extra $ / swap
-      with) in the storefront item drawer and on the admin Menu page; "Split from description";
-      "Suggest customizations" per item; inline swap-set create; bulk "apply to category" + price
-      shortcuts; configurator preview.
+- [x] **Phase 2 — authoring** — DONE 2026-09-10 (one session, 1276 + 3 browser tests green): one
+      Ingredients panel (leave out / extra $ / swap with) in the storefront item drawer and an admin
+      Menu dialog; "Split from description"; inline swap-set create; "Apply to all in {category}"
+      by ingredient name (carries the extra price = the price shortcut); "Preview as customer";
+      new items reopen on the Ingredients step. "Suggest customizations" (Claude, per item) moved
+      to Phase 3 with the analyzer work. `lib/relativeUrl.ts` strips Wayfinder's baked admin
+      domain so Inertia submits stay same-origin (needed by the in-process browser-test server).
 - [ ] **Phase 3 — analyzer + wizard** (~2): `items[].ingredients` (facts) +
       `items[].suggested_customizations` (proposals, never priced) in the extraction schema,
       sanitizer caps, the review wizard step ("which of these can customers change?", skippable per
