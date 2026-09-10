@@ -14,10 +14,13 @@ class ItemTemplateGroup extends Model
     /** A decision the owner built by hand or the import produced (size, choice of side). */
     public const KIND_CHOICE = 'choice';
 
-    /** Generated: the item's removable ingredients, all default-on; unchecking leaves one out. */
+    /** Generated: one pick-one row per ingredient — None / Half / Regular / Double. */
+    public const KIND_INGREDIENT = 'ingredient';
+
+    /** Legacy (before 2026-09-10 levels): kept only so old snapshots still render. */
     public const KIND_INCLUDED = 'included';
 
-    /** Generated: "Extra {ingredient}" add-ons with their prices. */
+    /** Legacy (before 2026-09-10 levels): kept only so old snapshots still render. */
     public const KIND_EXTRAS = 'extras';
 
     /** A swap set attached through an ingredient (the group itself lives on the reusable template). */
@@ -51,6 +54,12 @@ class ItemTemplateGroup extends Model
     public function isItemOwned(): bool
     {
         return $this->menu_item_id !== null;
+    }
+
+    /** The ingredient an item-owned "ingredient" group was compiled from. */
+    public function ingredient(): BelongsTo
+    {
+        return $this->belongsTo(MenuItemIngredient::class, 'menu_item_ingredient_id');
     }
 
     public function options(): HasMany

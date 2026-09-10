@@ -106,7 +106,7 @@ class MenuBuilder
      * groups. Inline swap sets are created once per import, keyed by name,
      * so "Cheeses" defined on the first sandwich is reused by the rest.
      *
-     * @param  array<int, array{name: string, is_removable?: bool, extra_price_cents?: int|null, swap_template_id?: int|null, swap_set?: array{name: string, options: array<int, array{name: string, price_delta_cents?: int|null}>}|null}>  $rows
+     * @param  array<int, array{name: string, is_removable?: bool, allow_half?: bool, extra_price_cents?: int|null, swap_template_id?: int|null, swap_set?: array{name: string, options: array<int, array{name: string, price_delta_cents?: int|null}>}|null}>  $rows
      * @param  array<string, int>  $swapSets  name (lowercased) → template id, shared across the import
      */
     private function createImportedIngredients(Restaurant $restaurant, MenuItem $menuItem, array $rows, array &$swapSets): void
@@ -127,6 +127,7 @@ class MenuBuilder
                 'name' => $row['name'],
                 'position' => $position,
                 'is_removable' => (bool) ($row['is_removable'] ?? true),
+                'allow_half' => (bool) ($row['allow_half'] ?? true),
                 'extra_price_cents' => isset($row['extra_price_cents']) ? (int) $row['extra_price_cents'] : null,
                 'swap_template_id' => $swapTemplateId,
             ]);

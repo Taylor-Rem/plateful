@@ -3,15 +3,17 @@
 namespace App\Support\Menus;
 
 use App\Models\ItemTemplateGroup;
+use App\Models\ItemTemplateOption;
 
 /**
  * Renders a cart/order line's modifier snapshot as the parts a human needs:
- * what deviates from the item as printed. Selections in an "included" group
- * are the item's own ingredients, so listing them is noise — only the ones
- * left out matter, and they render as "No mortadella". Every other kind
- * (size, extras, swaps, choices) lists its selections, plus "No X" for a
- * default the customer turned off — except in a pick-one group where the
- * pick already says it ("Large", never "No Medium · Large").
+ * what deviates from the item as printed. An "ingredient" group is one
+ * ingredient's level row — Regular is silent, the others read "No X",
+ * "Half X", "Double X". Every other kind (size, swaps, choices) lists its
+ * selections, plus "No X" for a default the customer turned off — except in
+ * a pick-one group where the pick already says it ("Large", never
+ * "No Medium · Large"). Legacy "included" groups hide their default
+ * selections and show removals as "No X".
  *
  * Snapshots written before 2026-09-10 have no `kind`, `is_default`, or
  * `removed` keys; they render exactly as before (every selection).
@@ -107,10 +109,38 @@ final class ModifierSummary
      * @param  array<string, mixed>  $group
      * @return array<int, string>
      */
+    /**
+     * "Mortadella: None" → "No Mortadella"; Half / Double prefix the
+     * ingredient; Regular (the default) says nothing.
+     *
+     * @param  array<string, mixed>  $group
+     * @return array<int, string>
+     */
+    private static function levelDeviation(array $group): array
+    {
+        $ingredient = (string) ($group['group_name'] ?? '');
+        $selection = collect($group['selections'] ?? [])->first(fn ($s) => is_array($s) && isset($s['option_name']));
+
+        if ($selection === null || $ingredient === '') {
+            return [];
+        }
+
+        return match ((string) $selection['option_name']) {
+            ItemTemplateOption::LEVEL_NONE => ['No '.$ingredient],
+            ItemTemplateOption::LEVEL_HALF => ['Half '.$ingredient],
+            ItemTemplateOption::LEVEL_DOUBLE => ['Double '.$ingredient],
+            default => [],
+        };
+    }
+
     private static function deviationNames(array $group): array
     {
         $kind = (string) ($group['kind'] ?? ItemTemplateGroup::KIND_CHOICE);
         $names = [];
+
+        if ($kind === ItemTemplateGroup::KIND_INGREDIENT) {
+            return self::levelDeviation($group);
+        }
 
         foreach ($group['selections'] ?? [] as $selection) {
             if (! is_array($selection) || ! isset($selection['option_name'])) {

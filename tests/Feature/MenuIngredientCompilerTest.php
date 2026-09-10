@@ -66,7 +66,7 @@ function compilerFixture(): array
     return compact('item', 'size', 'small', 'large', 'cheeses', 'provolone', 'mozzarella') + ['restaurant' => $r];
 }
 
-test('compiles removable ingredients into an included group of default-on options and priced extras', function () {
+test('compiles each ingredient with a rule into a pick-one level row, Regular default, only Double priced', function () {
     $f = compilerFixture();
 
     app(IngredientGroupCompiler::class)->compile($f['item']);
@@ -74,39 +74,42 @@ test('compiles removable ingredients into an included group of default-on option
     $item = $f['item']->fresh();
     $groups = $item->optionGroups();
 
-    expect($groups->pluck('kind')->all())->toBe(['choice', 'included', 'extras']);
+    // Size template first, then one row per ingredient (all seven have at
+    // least Half, since allow_half defaults on).
+    expect($groups->pluck('kind')->all())->toBe(['choice', ...array_fill(0, 7, 'ingredient')])
+        ->and($groups->where('kind', 'ingredient')->pluck('name')->values()->all())
+        ->toBe(['Cotto salami', 'Mortadella', 'Provolone', 'Lettuce', 'Pepperoncini', 'Mayo', 'House Italian dressing']);
 
-    $included = $groups->firstWhere('kind', 'included');
-    expect($included->menu_item_id)->toBe($item->id)
-        ->and($included->item_template_id)->toBeNull()
-        ->and($included->min_selections)->toBe(0)
-        ->and($included->max_selections)->toBeNull()
-        // The non-removable dressing is not offered.
-        ->and($included->options->pluck('name')->all())->toBe(['Cotto salami', 'Mortadella', 'Provolone', 'Lettuce', 'Pepperoncini', 'Mayo'])
-        ->and($included->options->pluck('price_delta_cents')->unique()->all())->toBe([0]);
+    $mortadella = $groups->firstWhere('name', 'Mortadella');
+    expect($mortadella->menu_item_id)->toBe($item->id)
+        ->and($mortadella->item_template_id)->toBeNull()
+        ->and($mortadella->min_selections)->toBe(1)
+        ->and($mortadella->max_selections)->toBe(1)
+        ->and($mortadella->options->pluck('name')->all())->toBe(['None', 'Half', 'Regular', 'Double'])
+        ->and($mortadella->options->pluck('price_delta_cents')->all())->toBe([0, 0, 0, 150]);
 
-    $extras = $groups->firstWhere('kind', 'extras');
-    expect($extras->options->pluck('name')->all())->toBe(['Extra Mortadella', 'Extra Provolone'])
-        ->and($extras->options->pluck('price_delta_cents')->all())->toBe([150, 100]);
+    // Not removable, unpriced: Half and Regular only.
+    expect($groups->firstWhere('name', 'House Italian dressing')->options->pluck('name')->all())->toBe(['Half', 'Regular']);
 
-    // Every included option is a default; the hand-set size default survives.
+    // Regular is the default everywhere; the hand-set size default survives.
     $defaults = $item->defaultSelections()->pluck('item_template_options.id')->all();
     expect($defaults)->toContain($f['small']->id);
-    foreach ($included->options as $option) {
-        expect($defaults)->toContain($option->id);
-    }
-    foreach ($extras->options as $option) {
-        expect($defaults)->not->toContain($option->id);
+    foreach ($groups->where('kind', 'ingredient') as $row) {
+        expect($defaults)->toContain($row->options->firstWhere('name', 'Regular')->id);
+        foreach ($row->options->where('name', '!=', 'Regular') as $other) {
+            expect($defaults)->not->toContain($other->id);
+        }
     }
 });
 
-test('recompiling keeps generated option ids stable and drops options for removed ingredients', function () {
+test('recompiling keeps generated ids stable and drops rows for removed ingredients', function () {
     $f = compilerFixture();
     $compiler = app(IngredientGroupCompiler::class);
     $compiler->compile($f['item']);
 
-    $before = $f['item']->fresh()->optionGroups()->firstWhere('kind', 'included')->options->keyBy('name');
-    $mortadellaId = $before['Mortadella']->id;
+    $before = $f['item']->fresh()->optionGroups()->firstWhere('name', 'Mortadella');
+    $groupId = $before->id;
+    $regularId = $before->options->firstWhere('name', 'Regular')->id;
 
     MenuItemIngredient::where('menu_item_id', $f['item']->id)->where('name', 'Mortadella')->update(['extra_price_cents' => 200]);
     MenuItemIngredient::where('menu_item_id', $f['item']->id)->where('name', 'Mayo')->delete();
@@ -114,21 +117,32 @@ test('recompiling keeps generated option ids stable and drops options for remove
     $compiler->compile($f['item']->fresh());
 
     $after = $f['item']->fresh()->optionGroups();
-    $included = $after->firstWhere('kind', 'included');
-    expect($included->options->keyBy('name')['Mortadella']->id)->toBe($mortadellaId)
-        ->and($included->options->pluck('name')->all())->not->toContain('Mayo')
-        ->and($after->firstWhere('kind', 'extras')->options->firstWhere('name', 'Extra Mortadella')->price_delta_cents)->toBe(200)
-        ->and(ItemTemplateGroup::where('menu_item_id', $f['item']->id)->count())->toBe(2);
+    $mortadella = $after->firstWhere('name', 'Mortadella');
+    expect($mortadella->id)->toBe($groupId)
+        ->and($mortadella->options->firstWhere('name', 'Regular')->id)->toBe($regularId)
+        ->and($mortadella->options->firstWhere('name', 'Double')->price_delta_cents)->toBe(200)
+        ->and($after->firstWhere('name', 'Mayo'))->toBeNull()
+        ->and(ItemTemplateGroup::where('menu_item_id', $f['item']->id)->count())->toBe(6);
 });
 
-test('an item whose ingredients allow nothing gets no compiled groups', function () {
+test('an ingredient with no rules gets no row, and an item with none gets no compiled groups', function () {
     $f = compilerFixture();
-    MenuItemIngredient::where('menu_item_id', $f['item']->id)->update(['is_removable' => false, 'extra_price_cents' => null]);
+    MenuItemIngredient::where('menu_item_id', $f['item']->id)->update(['is_removable' => false, 'allow_half' => false, 'extra_price_cents' => null]);
 
     app(IngredientGroupCompiler::class)->compile($f['item']->fresh());
 
     expect(ItemTemplateGroup::where('menu_item_id', $f['item']->id)->count())->toBe(0)
         ->and($f['item']->fresh()->optionGroups()->pluck('kind')->all())->toBe(['choice']);
+});
+
+test('legacy included and extras groups are replaced on the first recompile', function () {
+    $f = compilerFixture();
+    ItemTemplateGroup::create(['menu_item_id' => $f['item']->id, 'name' => 'Included', 'kind' => 'included', 'min_selections' => 0, 'max_selections' => null, 'position' => 0]);
+    ItemTemplateGroup::create(['menu_item_id' => $f['item']->id, 'name' => 'Extras', 'kind' => 'extras', 'min_selections' => 0, 'max_selections' => null, 'position' => 1]);
+
+    app(IngredientGroupCompiler::class)->compile($f['item']->fresh());
+
+    expect(ItemTemplateGroup::where('menu_item_id', $f['item']->id)->pluck('kind')->unique()->all())->toBe(['ingredient']);
 });
 
 test('a swappable ingredient attaches its swap set and defaults to the printed ingredient', function () {
@@ -141,12 +155,14 @@ test('a swappable ingredient attaches its swap set and defaults to the printed i
     $item = $f['item']->fresh();
     $groups = $item->optionGroups();
 
+    $regulars = $groups->where('kind', 'ingredient')->map(fn ($g) => $g->options->firstWhere('name', 'Regular')->id)->values()->all();
+
     expect($item->templates()->pluck('item_templates.id')->all())->toBe([$f['size']->id, $f['cheeses']->id])
         ->and($groups->firstWhere('name', 'Cheese')->kind)->toBe('swap')
-        // Swapped ingredients leave the included checklist.
-        ->and($groups->firstWhere('kind', 'included')->options->pluck('name')->all())->not->toContain('Provolone')
+        // A swappable ingredient keeps its level row as well.
+        ->and($groups->firstWhere('name', 'Provolone')->kind)->toBe('ingredient')
         ->and($item->defaultSelections()->pluck('item_template_options.id')->all())->toContain($f['provolone']->id)
-        ->and($item->priceForSelectionsCents([$f['small']->id, $f['mozzarella']->id, ...$groups->firstWhere('kind', 'included')->options->pluck('id')->all()]))->toBe(1050 + 75);
+        ->and($item->priceForSelectionsCents([$f['small']->id, $f['mozzarella']->id, ...$regulars]))->toBe(1050 + 75);
 
     // The set is attached through the ingredient, so dropping the swap detaches it.
     MenuItemIngredient::where('menu_item_id', $item->id)->where('name', 'Provolone')->update(['swap_template_id' => null]);

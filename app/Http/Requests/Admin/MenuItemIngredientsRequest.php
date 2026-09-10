@@ -52,6 +52,7 @@ class MenuItemIngredientsRequest extends FormRequest
             'ingredients.*.id' => ['nullable', 'integer'],
             'ingredients.*.name' => ['required', 'string', 'max:120'],
             'ingredients.*.is_removable' => ['boolean'],
+            'ingredients.*.allow_half' => ['boolean'],
             'ingredients.*.extra_price' => ['nullable', 'numeric', 'min:0', 'max:999.99'],
             'ingredients.*.extra_price_cents' => ['nullable', 'integer', 'min:0'],
             'ingredients.*.swap_template_id' => [
@@ -95,7 +96,7 @@ class MenuItemIngredientsRequest extends FormRequest
     }
 
     /**
-     * @return array<int, array{id: int|null, name: string, is_removable: bool, extra_price_cents: int|null, swap_template_id: int|null}>
+     * @return array<int, array{id: int|null, name: string, is_removable: bool, allow_half: bool, extra_price_cents: int|null, swap_template_id: int|null}>
      */
     public function rows(): array
     {
@@ -103,6 +104,7 @@ class MenuItemIngredientsRequest extends FormRequest
             'id' => isset($row['id']) ? (int) $row['id'] : null,
             'name' => (string) $row['name'],
             'is_removable' => (bool) ($row['is_removable'] ?? true),
+            'allow_half' => (bool) ($row['allow_half'] ?? true),
             'extra_price_cents' => isset($row['extra_price_cents']) ? (int) $row['extra_price_cents'] : null,
             'swap_template_id' => isset($row['swap_template_id']) ? (int) $row['swap_template_id'] : null,
         ], $this->validated('ingredients', []));

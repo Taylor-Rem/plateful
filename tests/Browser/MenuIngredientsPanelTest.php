@@ -60,7 +60,7 @@ test('an admin splits ingredients from the description, prices an extra, and sav
         ->assertValue('[aria-label="Ingredient 5 name"]', 'Mayo')
         // "Hot by request." is a note, not an ingredient.
         ->assertDontSee('Hot by request')
-        ->fill('[aria-label="Extra Mortadella price"]', '1.50')
+        ->fill('[aria-label="Double Mortadella price"]', '1.50')
         ->click('Save ingredients')
         ->wait(1)
         ->assertNoJavaScriptErrors()
@@ -69,7 +69,8 @@ test('an admin splits ingredients from the description, prices an extra, and sav
     $item = $item->fresh();
     expect($item->ingredients->pluck('name')->all())->toBe(['Cotto salami', 'Mortadella', 'Provolone cheese', 'Lettuce', 'Mayo'])
         ->and($item->ingredients->firstWhere('name', 'Mortadella')->extra_price_cents)->toBe(150)
-        ->and($item->optionGroups()->pluck('kind')->all())->toBe(['included', 'extras']);
+        ->and($item->optionGroups()->pluck('kind')->unique()->all())->toBe(['ingredient'])
+        ->and($item->optionGroups()->firstWhere('name', 'Mortadella')->options->pluck('name')->all())->toBe(['None', 'Half', 'Regular', 'Double']);
 });
 
 test('the customer preview shows the compiled sections', function () {
@@ -82,8 +83,9 @@ test('the customer preview shows the compiled sections', function () {
         ->click('Save ingredients')
         ->wait(1)
         ->click('Preview as customer')
-        ->assertSee('Leave anything out?')
-        ->assertSee('Uncheck to leave out')
+        ->assertSee('Mortadella')
+        ->assertSee('Regular')
+        ->assertSee('Half')
         ->assertSee('Close preview')
         ->assertDontSee('Add to cart')
         ->assertNoJavaScriptErrors();
@@ -108,5 +110,5 @@ test('the storefront edit mode drawer carries the same panel', function () {
         ->assertNoJavaScriptErrors();
 
     expect($item->fresh()->ingredients)->toHaveCount(5)
-        ->and($item->fresh()->optionGroups()->pluck('kind')->all())->toBe(['included']);
+        ->and($item->fresh()->optionGroups()->pluck('kind')->unique()->all())->toBe(['ingredient']);
 });

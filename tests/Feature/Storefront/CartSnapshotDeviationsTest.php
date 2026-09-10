@@ -19,11 +19,11 @@ beforeEach(function () {
 });
 
 /**
- * The cart fixture's pizza plus three removable ingredients, one with an
- * extra price, compiled into groups. Returns the fixture plus the compiled
- * option ids by name.
+ * The cart fixture's pizza plus three removable ingredients (Basil priced
+ * for Double), compiled into level rows. Returns the fixture plus the
+ * level option ids: $levels['Basil']['Double'].
  *
- * @return array{f: array<string, mixed>, included: array<string, int>, extras: array<string, int>}
+ * @return array{f: array<string, mixed>, levels: array<string, array<string, int>>, regular: array<int, int>}
  */
 function deviationFixture(): array
 {
@@ -33,22 +33,25 @@ function deviationFixture(): array
     }
     app(IngredientGroupCompiler::class)->compile($f['item']->fresh());
 
-    $groups = $f['item']->fresh()->optionGroups();
+    $levels = [];
+    foreach ($f['item']->fresh()->optionGroups()->where('kind', 'ingredient') as $row) {
+        $levels[$row->name] = $row->options->pluck('id', 'name')->map(fn ($id) => (int) $id)->all();
+    }
 
     return [
         'f' => $f,
-        'included' => $groups->firstWhere('kind', 'included')->options->pluck('id', 'name')->map(fn ($id) => (int) $id)->all(),
-        'extras' => $groups->firstWhere('kind', 'extras')->options->pluck('id', 'name')->map(fn ($id) => (int) $id)->all(),
+        'levels' => $levels,
+        'regular' => array_values(array_map(fn ($row) => $row['Regular'], $levels)),
     ];
 }
 
-test('the cart snapshot records removed defaults and flags default selections', function () {
-    ['f' => $f, 'included' => $included, 'extras' => $extras] = deviationFixture();
+test('the cart snapshot records each level row with Regular flagged as the default', function () {
+    ['f' => $f, 'levels' => $levels] = deviationFixture();
     $r = $f['restaurant'];
 
-    // Medium + pepperoni (the defaults), keep mozzarella and sauce, leave out basil, add extra basil.
+    // Defaults for size and topping; Regular mozzarella and sauce; Double basil.
     $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
-        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id, $included['Mozzarella'], $included['Tomato sauce'], $extras['Extra Basil']],
+        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id, $levels['Mozzarella']['Regular'], $levels['Tomato sauce']['Regular'], $levels['Basil']['Double']],
     ])->assertRedirect();
 
     $line = CartItem::sole();
@@ -57,50 +60,47 @@ test('the cart snapshot records removed defaults and flags default selections', 
     expect($snapshot['version'])->toBe(2)
         ->and($line->unit_price_cents)->toBe(1400 + 150);
 
-    $byKind = collect($snapshot['groups'])->keyBy('kind');
-    expect($byKind->keys()->all())->toBe(['choice', 'included', 'extras']);
-
-    $includedGroup = $byKind['included'];
-    expect(collect($includedGroup['selections'])->pluck('option_name')->all())->toBe(['Mozzarella', 'Tomato sauce'])
-        ->and(collect($includedGroup['selections'])->pluck('is_default')->unique()->all())->toBe([true])
-        ->and(collect($includedGroup['removed'])->pluck('option_name')->all())->toBe(['Basil']);
-
-    expect(collect($byKind['extras']['selections'])->pluck('option_name')->all())->toBe(['Extra Basil'])
-        ->and($byKind['extras']['selections'][0]['is_default'])->toBeFalse()
-        ->and($byKind['extras']['removed'])->toBe([]);
+    $byName = collect($snapshot['groups'])->keyBy('group_name');
+    expect($byName->keys()->all())->toBe(['Size', 'Toppings', 'Mozzarella', 'Basil', 'Tomato sauce'])
+        ->and($byName['Basil']['kind'])->toBe('ingredient')
+        ->and($byName['Basil']['single_select'])->toBeTrue()
+        ->and(collect($byName['Basil']['selections'])->pluck('option_name')->all())->toBe(['Double'])
+        ->and($byName['Basil']['selections'][0]['is_default'])->toBeFalse()
+        ->and(collect($byName['Basil']['removed'])->pluck('option_name')->all())->toBe(['Regular'])
+        ->and($byName['Mozzarella']['selections'][0]['is_default'])->toBeTrue();
 });
 
-test('summaries show deviations only: picks, extras, and "No X" for defaults turned off, never the included ingredients', function () {
-    ['f' => $f, 'included' => $included, 'extras' => $extras] = deviationFixture();
+test('summaries read as deviations: picks, "No X" for a topping turned off, and No / Half / Double per ingredient', function () {
+    ['f' => $f, 'levels' => $levels] = deviationFixture();
     $r = $f['restaurant'];
 
-    // Small instead of the default medium (pick-one: no "No Medium"), bacon
-    // instead of the default pepperoni (multi: "No Pepperoni" matters to the
-    // kitchen), basil and sauce left out, extra basil added.
+    // Small instead of medium (pick-one: no "No Medium"), bacon instead of
+    // the default pepperoni (multi: "No Pepperoni" matters), no basil, half
+    // sauce, regular mozzarella.
     $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
-        'option_ids' => [$f['size_small']->id, $f['top_bacon']->id, $included['Mozzarella'], $extras['Extra Basil']],
+        'option_ids' => [$f['size_small']->id, $f['top_bacon']->id, $levels['Mozzarella']['Regular'], $levels['Basil']['None'], $levels['Tomato sauce']['Half']],
     ]);
 
     $line = CartItem::sole();
     $data = CartItemData::fromModel($line);
 
-    expect($data->selectionSummary)->toBe('Small · Bacon · No Pepperoni · No Basil · No Tomato sauce · Extra Basil')
-        ->and($data->selectedOptionIds)->toBe([$f['size_small']->id, $f['top_bacon']->id, $included['Mozzarella'], $extras['Extra Basil']])
-        ->and(collect($data->selectionGroups)->pluck('groupName')->all())->toBe(['Size', 'Toppings', 'Included', 'Extras'])
-        ->and(collect($data->selectionGroups)->firstWhere('groupName', 'Included')['selectionNames'])->toBe(['No Basil', 'No Tomato sauce']);
+    expect($data->selectionSummary)->toBe('Small · Bacon · No Pepperoni · No Basil · Half Tomato sauce')
+        ->and($data->selectedOptionIds)->toBe([$f['size_small']->id, $f['top_bacon']->id, $levels['Mozzarella']['Regular'], $levels['Basil']['None'], $levels['Tomato sauce']['Half']])
+        ->and(collect($data->selectionGroups)->pluck('groupName')->all())->toBe(['Size', 'Toppings', 'Basil', 'Tomato sauce'])
+        ->and(collect($data->selectionGroups)->firstWhere('groupName', 'Basil')['selectionNames'])->toBe(['No Basil']);
 
     // Order lines carry the same snapshot and render the same way.
     $orderItem = new OrderItem(['name' => 'Pep', 'quantity' => 1, 'unit_price_cents' => 1400, 'subtotal_cents' => 1400, 'modifiers' => $line->modifiers, 'notes' => null]);
     $orderItem->id = 1;
-    expect(OrderItemData::fromModel($orderItem)->modifierSummary)->toBe('Small · Bacon · No Pepperoni · No Basil · No Tomato sauce · Extra Basil');
+    expect(OrderItemData::fromModel($orderItem)->modifierSummary)->toBe('Small · Bacon · No Pepperoni · No Basil · Half Tomato sauce');
 });
 
-test('leaving every default on renders no included noise', function () {
-    ['f' => $f, 'included' => $included] = deviationFixture();
+test('leaving every ingredient at Regular renders no noise', function () {
+    ['f' => $f, 'regular' => $regular] = deviationFixture();
     $r = $f['restaurant'];
 
     $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
-        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id, ...array_values($included)],
+        'option_ids' => [$f['size_medium']->id, $f['top_pepperoni']->id, ...$regular],
     ]);
 
     expect(CartItemData::fromModel(CartItem::sole())->selectionSummary)->toBe('Medium · Pepperoni');
@@ -122,11 +122,11 @@ test('legacy snapshots without kinds render every selection as before', function
 });
 
 test('checkout re-prices a line that left out a priced default', function () {
-    ['f' => $f, 'included' => $included] = deviationFixture();
+    ['f' => $f, 'regular' => $regular] = deviationFixture();
     $r = $f['restaurant'];
 
     $first = $this->post("http://{$r->subdomain}.plateful.test/cart/items/{$f['item']->id}", [
-        'option_ids' => [$f['size_medium']->id, $included['Mozzarella'], $included['Basil'], $included['Tomato sauce']],
+        'option_ids' => [$f['size_medium']->id, ...$regular],
     ]);
     $cookie = cartCookieFrom($first);
 

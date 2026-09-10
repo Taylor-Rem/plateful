@@ -94,16 +94,25 @@ and let an item carry both.
    the item adds its own ingredient groups next to it. Fixes the duplication
    above for free.
 5. **The compiler** (`Support/Menus/IngredientGroupCompiler`, pure, unit
-   tested) turns an item's ingredient rows into its item-owned groups:
-   - every removable, non-swappable ingredient → an option in the item's
-     **`included`** group (min 0, no max, $0, **default-selected**; locked
-     ingredients are listed disabled). Unchecking = leave it out.
-   - every ingredient with `extra_price_cents` → "Extra {name} (+$x)" in the
-     **`extras`** group (min 0, no max).
+   tested) turns an item's ingredient rows into its item-owned groups.
+   _Revised 2026-09-10 after the first storefront read: the "Leave anything
+   out?" checklist + "Extras" group was confusing. Each ingredient is now one
+   pick-one **level row** — None / Half / Regular / Double — which is simpler
+   to read and strictly more flexible._
+   - every ingredient with at least one rule → an item-owned **`ingredient`**
+     group named after it (min 1, max 1, `menu_item_ingredient_id` set) whose
+     options are its levels: **None** if `is_removable`, **Half** if
+     `allow_half` (new column, default on), **Regular** always (the default),
+     **Double** if `extra_price_cents` is set — the only priced level. An
+     ingredient with no rules gets no row.
    - every ingredient with a swap set → the set's template attached (kind
-     `swap`), default = the ingredient; `is_removable` makes that group
-     min 0 (the configurator already renders a "None" radio for optional
-     single-select).
+     `swap`), default = the ingredient. The level row stays alongside it.
+   - The storefront renders the rows as a compact "Make it yours" block:
+     ingredient label, pill buttons, Regular highlighted, Double showing its
+     price. Tickets read "No X", "Half X", "Double X"; Regular is silent.
+   - Legacy `included` / `extras` kinds are gone from the compiler; the
+     migration recompiles every item with ingredients, and `ModifierSummary`
+     still renders old snapshots that carry those kinds.
 6. **Snapshot v2 — record deviations, not just selections.** _(Built
    2026-09-10.)_ `buildModifiersSnapshot()` adds `is_default` to each
    selection, `single_select` per group, and a `removed: [{option_id,
@@ -273,9 +282,9 @@ is removed for suggestions, because suggestions are labeled and gated.
 
 ## Open questions (⚑ = decide before the phase that needs it)
 
-- ⚑ P1 — **"Extra" quantity**: v1 is a single toggle (one "Extra provolone");
-  "double extra" would be a quantity on the option. Defer unless a real
-  restaurant asks.
+- ~~⚑ P1 — **"Extra" quantity**~~ — resolved by the level model: Double
+  *is* the extra, Half the light option. Triple/quantities deferred unless a
+  real restaurant asks.
 - ⚑ P1 — **Half/half** (pizza halves) is out of scope; note it in the
   configurator plan as a later `scope: half` on selections.
 - ~~⚑ P3 — **Re-import carry-over**~~ — done as planned (by name,

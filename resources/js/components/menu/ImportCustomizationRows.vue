@@ -22,6 +22,8 @@ export type DraftSwapSet = {
 export type DraftIngredientRow = {
     name: string;
     is_removable: boolean;
+    allow_half: boolean;
+    /** Price of the Double level; blank means Double isn't offered. */
     extra_price: string;
     /** An existing swap set (carried over from the current menu). */
     swap_template_id: number | null;
@@ -50,6 +52,7 @@ const emit = defineEmits<{
 const makeRow = (name: string): DraftIngredientRow => ({
     name,
     is_removable: true,
+    allow_half: true,
     extra_price: '',
     swap_template_id: null,
     swap_set: null,
@@ -153,10 +156,13 @@ const kindLabel = (kind: CustomizationSuggestion['kind']): string =>
                 <tr class="text-left text-xs text-muted-foreground">
                     <th class="pr-2 pb-1 font-medium">Ingredient</th>
                     <th class="pr-2 pb-1 font-medium whitespace-nowrap">
-                        Can leave out
+                        None
                     </th>
                     <th class="pr-2 pb-1 font-medium whitespace-nowrap">
-                        Extra ($)
+                        Half
+                    </th>
+                    <th class="pr-2 pb-1 font-medium whitespace-nowrap">
+                        Double ($)
                     </th>
                     <th class="pr-2 pb-1 font-medium whitespace-nowrap">
                         Swap with
@@ -193,6 +199,16 @@ const kindLabel = (kind: CustomizationSuggestion['kind']): string =>
                                 @change="emit('changed')"
                             />
                         </td>
+                        <td class="py-1 pr-2 text-center">
+                            <input
+                                v-model="row.allow_half"
+                                type="checkbox"
+                                class="mt-2"
+                                :disabled="disabled"
+                                :aria-label="`${row.name || 'Ingredient'} half portion`"
+                                @change="emit('changed')"
+                            />
+                        </td>
                         <td class="py-1 pr-2">
                             <input
                                 v-model="row.extra_price"
@@ -202,7 +218,7 @@ const kindLabel = (kind: CustomizationSuggestion['kind']): string =>
                                 placeholder="—"
                                 :disabled="disabled"
                                 class="w-20 rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground"
-                                :aria-label="`Extra ${row.name || 'ingredient'} price`"
+                                :aria-label="`Double ${row.name || 'ingredient'} price`"
                                 @input="emit('changed')"
                             />
                         </td>

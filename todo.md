@@ -930,6 +930,11 @@ one-template-per-item limit already duplicated "Add salad/soup" into four templa
       compile, re-import carry-over by item name with a lost-rules banner, "Suggest customizations"
       per item on the Ingredients panel (one Claude call, flashed back). The new prompt has NOT run
       against a real menu yet — Phase 4's testaurant re-import is the first real read of it.
+- [x] **Level rows (2026-09-10, after the first storefront read):** "Leave anything out?" +
+      "Extras" replaced by one None / Half / Regular / Double pick-one row per ingredient
+      (`allow_half` column, default on; only Double priced; Regular default and silent on tickets;
+      legacy kinds still render). Migration recompiles existing items — dev DB done, testaurant's
+      Classic Italian verified in the cart as `7" · Double Mortadella · No Provolone cheese`.
 - [~] **Phase 4 — rollout** — dev half done 2026-09-10: The Rose PDF (now at
       `~/Documents/Plateful/menus/Summer+Weeday+Menu26.pdf`) re-extracted on testaurant dev via a
       synchronous `ExtractMenuJob` (bypassing the shared dev queue worker — it may run stale code);

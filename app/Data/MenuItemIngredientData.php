@@ -14,6 +14,7 @@ class MenuItemIngredientData extends Data
         public string $name,
         public int $position,
         public bool $isRemovable,
+        public bool $allowHalf,
         public ?int $extraPriceCents,
         public ?int $swapTemplateId,
     ) {}
@@ -25,6 +26,7 @@ class MenuItemIngredientData extends Data
             name: $ingredient->name,
             position: $ingredient->position,
             isRemovable: $ingredient->is_removable,
+            allowHalf: $ingredient->allow_half,
             extraPriceCents: $ingredient->extra_price_cents,
             swapTemplateId: $ingredient->swap_template_id,
         );

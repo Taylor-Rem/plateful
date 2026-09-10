@@ -186,7 +186,7 @@ class MenuImportController extends Controller
     /**
      * Current items that carry ingredient rules, keyed by lowercased name.
      *
-     * @return array<string, array{name: string, ingredients: array<int, array{name: string, is_removable: bool, extra_price_cents: int|null, swap_template_id: int|null}>}>
+     * @return array<string, array{name: string, ingredients: array<int, array{name: string, is_removable: bool, allow_half: bool, extra_price_cents: int|null, swap_template_id: int|null}>}>
      */
     private function existingCustomizations(Restaurant $restaurant): array
     {
@@ -202,6 +202,7 @@ class MenuImportController extends Controller
                     'ingredients' => $item->ingredients->map(fn ($i) => [
                         'name' => $i->name,
                         'is_removable' => (bool) $i->is_removable,
+                        'allow_half' => (bool) $i->allow_half,
                         'extra_price_cents' => $i->extra_price_cents,
                         'swap_template_id' => $i->swap_template_id,
                     ])->values()->all(),

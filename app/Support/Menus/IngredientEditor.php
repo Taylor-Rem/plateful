@@ -21,7 +21,7 @@ class IngredientEditor
      * generated option ids survive); the rest are created; rows not
      * mentioned are deleted.
      *
-     * @param  array<int, array{id?: int|null, name: string, is_removable?: bool, extra_price_cents?: int|null, swap_template_id?: int|null}>  $rows
+     * @param  array<int, array{id?: int|null, name: string, is_removable?: bool, allow_half?: bool, extra_price_cents?: int|null, swap_template_id?: int|null}>  $rows
      */
     public function sync(MenuItem $item, array $rows): void
     {
@@ -35,6 +35,7 @@ class IngredientEditor
                     'name' => trim((string) $row['name']),
                     'position' => $position,
                     'is_removable' => (bool) ($row['is_removable'] ?? true),
+                    'allow_half' => (bool) ($row['allow_half'] ?? true),
                     'extra_price_cents' => isset($row['extra_price_cents']) ? (int) $row['extra_price_cents'] : null,
                     'swap_template_id' => isset($row['swap_template_id']) ? (int) $row['swap_template_id'] : null,
                 ];
@@ -63,7 +64,7 @@ class IngredientEditor
      * it appears). Items without the ingredient are untouched. Returns the
      * number of items changed.
      *
-     * @param  array<int, array{name: string, is_removable?: bool, extra_price_cents?: int|null, swap_template_id?: int|null}>  $rules
+     * @param  array<int, array{name: string, is_removable?: bool, allow_half?: bool, extra_price_cents?: int|null, swap_template_id?: int|null}>  $rules
      */
     public function applyRules(MenuCategory $category, array $rules): int
     {
@@ -95,6 +96,7 @@ class IngredientEditor
 
                     $ingredient->fill([
                         'is_removable' => (bool) ($rule['is_removable'] ?? $ingredient->is_removable),
+                        'allow_half' => (bool) ($rule['allow_half'] ?? $ingredient->allow_half),
                         'extra_price_cents' => array_key_exists('extra_price_cents', $rule) ? $rule['extra_price_cents'] : $ingredient->extra_price_cents,
                         'swap_template_id' => array_key_exists('swap_template_id', $rule) ? $rule['swap_template_id'] : $ingredient->swap_template_id,
                     ]);

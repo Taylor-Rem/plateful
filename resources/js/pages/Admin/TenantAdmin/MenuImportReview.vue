@@ -35,6 +35,7 @@ type ExistingCustomization = {
     ingredients: Array<{
         name: string;
         is_removable: boolean;
+        allow_half: boolean;
         extra_price_cents: number | null;
         swap_template_id: number | null;
     }>;
@@ -113,6 +114,7 @@ const seedIngredientRows = (
         return kept.ingredients.map((i) => ({
             name: i.name,
             is_removable: i.is_removable,
+            allow_half: i.allow_half,
             extra_price:
                 i.extra_price_cents === null
                     ? ''
@@ -126,6 +128,7 @@ const seedIngredientRows = (
     return printed.map((n) => ({
         name: n,
         is_removable: true,
+        allow_half: true,
         extra_price: '',
         swap_template_id: null,
         swap_set: null,
@@ -365,6 +368,7 @@ const applyToCategory = (category: DraftCategory, from: DraftItem): void => {
             }
 
             target.is_removable = rule.is_removable;
+            target.allow_half = rule.allow_half;
             target.extra_price = rule.extra_price;
             target.swap_template_id = rule.swap_template_id;
             target.swap_set = rule.swap_set
@@ -380,6 +384,7 @@ const applyToCategory = (category: DraftCategory, from: DraftItem): void => {
 type ConfirmIngredient = {
     name: string;
     is_removable: boolean;
+    allow_half: boolean;
     extra_price_cents: number | null;
     swap_template_id: number | null;
     swap_set: {
@@ -397,6 +402,7 @@ const confirmIngredients = (
         .map((r) => ({
             name: r.name.trim(),
             is_removable: skip ? false : r.is_removable,
+            allow_half: skip ? false : r.allow_half,
             extra_price_cents:
                 skip || r.extra_price === '' ? null : priceCents(r.extra_price),
             swap_template_id: skip ? null : r.swap_template_id,

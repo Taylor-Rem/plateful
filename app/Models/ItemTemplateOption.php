@@ -13,10 +13,20 @@ class ItemTemplateOption extends Model
 
     public const KIND_CHOICE = 'choice';
 
-    /** Generated from an ingredient: the ingredient itself in the "included" group. */
+    /** Generated from an ingredient: one of its levels (None / Half / Regular / Double). */
+    public const KIND_LEVEL = 'level';
+
+    public const LEVEL_NONE = 'None';
+
+    public const LEVEL_HALF = 'Half';
+
+    public const LEVEL_REGULAR = 'Regular';
+
+    public const LEVEL_DOUBLE = 'Double';
+
+    /** Legacy kinds (before 2026-09-10 levels): kept so old snapshots still render. */
     public const KIND_INCLUDED = 'included';
 
-    /** Generated from an ingredient: "Extra {ingredient}". */
     public const KIND_EXTRA = 'extra';
 
     protected $guarded = [];

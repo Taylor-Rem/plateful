@@ -99,14 +99,14 @@ it('imports ingredient rows and inline swap sets, sharing a swap set across item
     $classic = $restaurant->menuItems()->where('name', 'Classic Italian')->sole();
     $groups = $classic->optionGroups();
     expect($classic->ingredients->pluck('name')->all())->toBe(['Cotto salami', 'Mortadella', 'Provolone', 'Bun'])
-        ->and($groups->pluck('kind')->all())->toBe(['swap', 'included', 'extras'])
-        ->and($groups->firstWhere('kind', 'included')->options->pluck('name')->all())->toBe(['Cotto salami', 'Mortadella'])
-        ->and($groups->firstWhere('kind', 'extras')->options->pluck('name')->all())->toBe(['Extra Mortadella'])
+        ->and($groups->pluck('kind')->all())->toBe(['swap', 'ingredient', 'ingredient', 'ingredient', 'ingredient'])
+        ->and($groups->firstWhere('name', 'Mortadella')->options->pluck('name')->all())->toBe(['None', 'Half', 'Regular', 'Double'])
+        ->and($groups->firstWhere('name', 'Bun')->options->pluck('name')->all())->toBe(['Half', 'Regular'])
         ->and($classic->templates()->pluck('item_templates.id')->all())->toBe([$cheeses->first()->id]);
 
     $turkey = $restaurant->menuItems()->where('name', 'Turkey')->sole();
     expect($turkey->templates()->pluck('item_templates.id')->all())->toBe([$cheeses->first()->id])
-        ->and($turkey->optionGroups()->pluck('kind')->all())->toBe(['swap']);
+        ->and($turkey->optionGroups()->pluck('kind')->all())->toBe(['swap', 'ingredient', 'ingredient']);
 
     expect($restaurant->menuItems()->where('name', 'Coke')->sole()->optionGroups())->toHaveCount(0)
         ->and($import->fresh()->status)->toBe(MenuImportStatus::Completed);

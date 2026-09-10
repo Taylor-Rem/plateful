@@ -56,7 +56,7 @@ test('the import wizard step accepts a swap suggestion, prices an extra, and con
         ->assertSee('What can customers change?')
         ->assertSee('Suggested by Plateful')
         ->assertValue('[aria-label="Ingredient 2 name"]', 'Mortadella')
-        ->fill('[aria-label="Extra Mortadella price"]', '1.50')
+        ->fill('[aria-label="Double Mortadella price"]', '1.50')
         ->click('Accept')
         ->assertDontSee('common request')
         ->fill('[aria-label="Swap option 2 price difference"]', '0.75')
@@ -74,8 +74,8 @@ test('the import wizard step accepts a swap suggestion, prices an extra, and con
         ->and($item->ingredients->firstWhere('name', 'Provolone')->swap_template_id)->toBe($cheese->id)
         ->and($cheese->groups->first()->options->pluck('name')->all())->toBe(['Provolone', 'Mozzarella'])
         ->and($cheese->groups->first()->options->pluck('price_delta_cents')->all())->toBe([0, 75])
-        ->and($item->optionGroups()->firstWhere('kind', 'included')->options->pluck('name')->all())->toBe(['Cotto salami', 'Mortadella'])
-        ->and($item->optionGroups()->pluck('kind')->all())->toBe(['swap', 'included', 'extras']);
+        ->and($item->optionGroups()->firstWhere('name', 'Mortadella')->options->pluck('price_delta_cents')->all())->toBe([0, 0, 0, 150])
+        ->and($item->optionGroups()->pluck('kind')->all())->toBe(['swap', 'ingredient', 'ingredient', 'ingredient']);
 });
 
 test('the Ingredients panel shows Plateful suggestions and accepts one', function () {
@@ -106,7 +106,7 @@ test('the Ingredients panel shows Plateful suggestions and accepts one', functio
         ->assertSee('Provolone')
         ->click('Accept')
         ->assertValue('[aria-label="Ingredient 3 name"]', 'Avocado')
-        ->fill('[aria-label="Extra Avocado price"]', '2.00')
+        ->fill('[aria-label="Double Avocado price"]', '2.00')
         ->click('Save ingredients')
         ->wait(1)
         ->assertSee('Saved ingredients')
@@ -116,6 +116,7 @@ test('the Ingredients panel shows Plateful suggestions and accepts one', functio
     $avocado = $item->ingredients->firstWhere('name', 'Avocado');
     expect($avocado->is_removable)->toBeFalse()
         ->and($avocado->extra_price_cents)->toBe(200)
-        ->and($item->optionGroups()->firstWhere('kind', 'extras')->options->pluck('name')->all())->toBe(['Extra Avocado'])
-        ->and($item->optionGroups()->firstWhere('kind', 'included')->options->pluck('name')->all())->toBe(['Cotto salami', 'Mortadella']);
+        // An add-on that isn't part of the item: no None, Half or Double only around Regular.
+        ->and($item->optionGroups()->firstWhere('name', 'Avocado')->options->pluck('name')->all())->toBe(['Half', 'Regular', 'Double'])
+        ->and($item->optionGroups()->firstWhere('name', 'Mortadella')->options->pluck('name')->all())->toBe(['None', 'Half', 'Regular']);
 });
