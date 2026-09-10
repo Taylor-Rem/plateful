@@ -27,8 +27,11 @@ const props = withDefaults(
     defineProps<{
         item: App.Data.MenuItemData;
         open: boolean;
-        /** "edit" re-opens an existing cart line; the button reads "Update cart". */
-        mode?: 'add' | 'edit';
+        /**
+         * "edit" re-opens an existing cart line ("Update cart");
+         * "preview" is the owner looking at what customers see — no cart.
+         */
+        mode?: 'add' | 'edit' | 'preview';
         /** Starting selections; defaults to the item's default selections. */
         initial?: ConfiguratorInitialState | null;
     }>(),
@@ -447,16 +450,27 @@ const onSubmit = (): void => {
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <Button type="button" variant="outline" @click="close"
-                        >Cancel</Button
-                    >
                     <Button
+                        v-if="mode === 'preview'"
                         type="button"
-                        :disabled="!allSatisfied"
-                        @click="onSubmit"
+                        variant="outline"
+                        @click="close"
+                        >Close preview</Button
                     >
-                        {{ mode === 'edit' ? 'Update cart' : 'Add to cart' }}
-                    </Button>
+                    <template v-else>
+                        <Button type="button" variant="outline" @click="close"
+                            >Cancel</Button
+                        >
+                        <Button
+                            type="button"
+                            :disabled="!allSatisfied"
+                            @click="onSubmit"
+                        >
+                            {{
+                                mode === 'edit' ? 'Update cart' : 'Add to cart'
+                            }}
+                        </Button>
+                    </template>
                 </div>
             </DialogFooter>
         </DialogContent>

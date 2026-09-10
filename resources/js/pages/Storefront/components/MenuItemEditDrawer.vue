@@ -3,6 +3,8 @@ import { useForm } from '@inertiajs/vue3';
 import { Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
+import IngredientsPanel from '@/components/menu/IngredientsPanel.vue';
+import { isSwapSet } from '@/components/menu/splitIngredients';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -17,17 +19,38 @@ import {
 
 type CategoryOption = { id: number; name: string };
 
-const props = defineProps<{
-    open: boolean;
-    item: App.Data.MenuItemData | null;
-    categories: CategoryOption[];
-    templates: App.Data.ItemTemplateData[];
-}>();
+const props = withDefaults(
+    defineProps<{
+        open: boolean;
+        item: App.Data.MenuItemData | null;
+        categories: CategoryOption[];
+        templates: App.Data.ItemTemplateData[];
+        /** Just created: seed the Ingredients panel from the description. */
+        focusIngredients?: boolean;
+    }>(),
+    { focusIngredients: false },
+);
 
 const emit = defineEmits<{
     (e: 'update:open', value: boolean): void;
     (e: 'delete-requested', item: App.Data.MenuItemData): void;
+    (e: 'preview', item: App.Data.MenuItemData): void;
 }>();
+
+const swapSets = computed(() => props.templates.filter(isSwapSet));
+
+const categoryName = computed(
+    () =>
+        props.categories.find((c) => c.id === props.item?.menuCategoryId)
+            ?.name ?? 'this category',
+);
+
+const ingredientUrls = computed(() => ({
+    save: `/admin/menu/items/${props.item?.id}/ingredients`,
+    swapSet: '/admin/menu/swap-sets',
+    applyToCategory: `/admin/menu/categories/${props.item?.menuCategoryId}/ingredient-rules`,
+    suggest: `/admin/menu/items/${props.item?.id}/suggestions`,
+}));
 
 const isEdit = computed(() => props.item !== null);
 
@@ -388,6 +411,27 @@ const submit = (): void => {
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div class="rounded-md border border-border bg-muted/20 p-3">
+                    <h4 class="text-sm font-medium text-foreground">
+                        Ingredients
+                    </h4>
+                    <div v-if="isEdit && item" class="mt-2">
+                        <IngredientsPanel
+                            :key="item.id"
+                            :item="item"
+                            :swap-sets="swapSets"
+                            :category-name="categoryName"
+                            :urls="ingredientUrls"
+                            :auto-split="focusIngredients"
+                            @preview="emit('preview', item)"
+                        />
+                    </div>
+                    <p v-else class="mt-1 text-xs text-muted-foreground">
+                        Create the item first — the ingredient list opens right
+                        after, pre-filled from the description.
+                    </p>
                 </div>
 
                 <div class="grid gap-2">

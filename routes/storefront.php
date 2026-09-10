@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\TenantAdmin\MenuItemIngredientController;
+use App\Http\Controllers\Admin\TenantAdmin\MenuItemSuggestionController;
+use App\Http\Controllers\Admin\TenantAdmin\SwapSetController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
@@ -120,11 +123,15 @@ Route::middleware('tenant')->group(function () {
         Route::post('items', [AdminMenuItemController::class, 'store'])->name('items.store');
         Route::put('items/{menuItem}', [AdminMenuItemController::class, 'update'])->name('items.update');
         Route::delete('items/{menuItem}', [AdminMenuItemController::class, 'destroy'])->name('items.destroy');
+        Route::put('items/{menuItem}/ingredients', [MenuItemIngredientController::class, 'update'])->name('items.ingredients.update');
+        Route::post('swap-sets', [SwapSetController::class, 'store'])->name('swapSets.store');
+        Route::post('items/{menuItem}/suggestions', [MenuItemSuggestionController::class, 'store'])->name('items.suggestions.store');
 
         Route::post('categories', [AdminMenuCategoryController::class, 'store'])->name('categories.store');
         Route::post('categories/reorder', [AdminMenuCategoryController::class, 'reorder'])->name('categories.reorder');
         Route::put('categories/{category}', [AdminMenuCategoryController::class, 'update'])->name('categories.update');
         Route::delete('categories/{category}', [AdminMenuCategoryController::class, 'destroy'])->name('categories.destroy');
+        Route::post('categories/{category}/ingredient-rules', [MenuItemIngredientController::class, 'applyToCategory'])->name('categories.ingredientRules');
     });
 
     Route::middleware('auth')->prefix('admin/site')->name('storefront.admin.site.')->group(function () {

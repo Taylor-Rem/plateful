@@ -8,6 +8,7 @@ import {
     SidebarProvider,
     SidebarTrigger,
 } from '@/components/ui/sidebar';
+import { Toaster } from '@/components/ui/sonner';
 
 // Every tenant admin controller shares a `restaurant` page prop, so the
 // layout reads it from the page rather than requiring pages to plumb it
@@ -48,6 +49,7 @@ const restaurant = computed(() => page.props.restaurant);
             <main class="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
                 <slot />
             </main>
+            <Toaster />
         </SidebarInset>
     </SidebarProvider>
 </template>

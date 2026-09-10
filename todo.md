@@ -270,7 +270,11 @@ options folded into the line `note`). The guided catalog matcher below is the re
       matcher (fetch POS catalog via `ITEMS_READ`, auto-match by name, staff confirms), so tickets
       reference real Square catalog objects instead of text. (Plateful modifiers are shared
       templates; POS uses per-item modifier lists — impedance mismatch; v1 maps references, does not
-      two-way sync.)
+      two-way sync.) _2026-09-10 (§15): items now also carry item-owned groups compiled from their
+      ingredients ("Included", "Extras") plus attached swap sets — that is exactly the per-item
+      modifier-list shape POS catalogs want, so the matcher should map item-owned groups directly
+      and only the shared templates still need the reference-map treatment. Tickets already carry
+      deviations as text ("No mortadella · Extra provolone") via `ModifierSummary`._
 
 ### 2c. First adapters — Square + Clover code-complete (2026-07-13)
 _"Verified" here means built and covered by `Http::fake` tests — **neither has pushed to a real
@@ -912,16 +916,30 @@ one-template-per-item limit already duplicated "Add salad/soup" into four templa
       rendering in cart/kitchen/confirmation/email/both POS notes, `MenuItem::optionGroups()`,
       configurator sections. Existing template/cart/integrity tests green. Dev DB migrated;
       testaurant's Classic Italian hand-seeded (7 ingredients, 2 extras) as the Phase 2 reference.
-- [ ] **Phase 2 — authoring** (~2): one Ingredients panel component (leave out / extra $ / swap
-      with) in the storefront item drawer and on the admin Menu page; "Split from description";
-      "Suggest customizations" per item; inline swap-set create; bulk "apply to category" + price
-      shortcuts; configurator preview.
-- [ ] **Phase 3 — analyzer + wizard** (~2): `items[].ingredients` (facts) +
-      `items[].suggested_customizations` (proposals, never priced) in the extraction schema,
-      sanitizer caps, the review wizard step ("which of these can customers change?", skippable per
-      category), confirm → `MenuBuilder`, re-import carry-over by item name (⚑).
-- [ ] **Phase 4 — rollout** (~1): re-import The Rose PDF on testaurant dev, walk the wizard, repeat
-      on live; note in §2b that item-owned modifier lists are what the catalog matcher maps.
+- [x] **Phase 2 — authoring** — DONE 2026-09-10 (one session, 1276 + 3 browser tests green): one
+      Ingredients panel (leave out / extra $ / swap with) in the storefront item drawer and an admin
+      Menu dialog; "Split from description"; inline swap-set create; "Apply to all in {category}"
+      by ingredient name (carries the extra price = the price shortcut); "Preview as customer";
+      new items reopen on the Ingredients step. "Suggest customizations" (Claude, per item) moved
+      to Phase 3 with the analyzer work. `lib/relativeUrl.ts` strips Wayfinder's baked admin
+      domain so Inertia submits stay same-origin (needed by the in-process browser-test server).
+- [x] **Phase 3 — analyzer + wizard** — DONE 2026-09-10 (one session; 1282 + 5 browser tests
+      green): `items[].ingredients` + `items[].suggested_customizations` in the extraction schema and
+      prompt, sanitizer caps, two-step review (step 2 = per-item rows + accept/dismiss proposals +
+      inline swap sets + apply-to-category + skip per category), confirm → `MenuBuilder` rows +
+      compile, re-import carry-over by item name with a lost-rules banner, "Suggest customizations"
+      per item on the Ingredients panel (one Claude call, flashed back). The new prompt has NOT run
+      against a real menu yet — Phase 4's testaurant re-import is the first real read of it.
+- [~] **Phase 4 — rollout** — dev half done 2026-09-10: The Rose PDF (now at
+      `~/Documents/Plateful/menus/Summer+Weeday+Menu26.pdf`) re-extracted on testaurant dev via a
+      synchronous `ExtractMenuJob` (bypassing the shared dev queue worker — it may run stale code);
+      prompt tuned twice on real output (suggestions went from 2 to 31 of 40 items; swap options now
+      start with the default). **Import #6 is waiting in needs_review** — Taylor walks the wizard at
+      `admin.plateful.test/testaurant/menu-import/6/review` (Claude cannot log in). Each run ≈ $0.25.
+      §2b note added. **Live still open:** merge `dev` → `main`, Cloud deploy runs `migrate --force`
+      (two §15 migrations: ingredients + template pivot with backfill), then re-import from the live
+      admin Menu page and walk the same wizard. Judge suggestion noise there; curated per-cuisine
+      filter only if needed.
 - [ ] Interim no-code path for testaurant (documented at the end of the plan): per-sandwich
       templates with a "Leave out" group of "No X" options — works today, is the tedium §15 removes.
 

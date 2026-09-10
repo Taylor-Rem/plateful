@@ -32,7 +32,7 @@ class MenuItemController extends Controller
             ->where('menu_category_id', $validated['menu_category_id'])
             ->max('position') ?? -1) + 1;
 
-        DB::transaction(function () use ($restaurant, $validated, $slug, $position, $request, $images): void {
+        $item = DB::transaction(function () use ($restaurant, $validated, $slug, $position, $request, $images): MenuItem {
             $item = MenuItem::create([
                 'restaurant_id' => $restaurant->id,
                 'menu_category_id' => $validated['menu_category_id'],
@@ -52,9 +52,13 @@ class MenuItemController extends Controller
                 $item->image_path = $images->storeMenuItemImage($item, $request->file('image'));
                 $item->save();
             }
+
+            return $item;
         });
 
-        return back()->with('success', "Created \"{$validated['name']}\".");
+        return back()
+            ->with('success', "Created \"{$validated['name']}\".")
+            ->with('createdMenuItemId', $item->id);
     }
 
     public function update(

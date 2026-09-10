@@ -203,18 +203,73 @@ is removed for suggestions, because suggestions are labeled and gated.
   `CartTest`, `ItemTemplateCrudTest`, `MenuImportTest`). Nothing owner-facing
   yet; testaurant gets a hand-seeded Classic Italian to prove the ticket
   reads right end to end (cart → kitchen → Clover sandbox note).
-- **Phase 2 — authoring** (~2): the Ingredients panel component, swap-set
-  inline create, bulk + price shortcuts, storefront drawer + admin Menu
-  integration, configurator preview, form requests + policies, browser
-  tests.
-- **Phase 3 — analyzer + wizard** (~2): schema/prompt/sanitizer changes,
-  the review wizard step, confirm → `MenuBuilder`, "Split from description"
-  and "Suggest customizations" on manual items, re-import carry-over (below).
-- **Phase 4 — rollout + polish** (~1): re-import The Rose PDF on testaurant
-  **dev**, walk the wizard, then the same on **live** (order history keeps
-  snapshots; carts cascade); kitchen/confirmation/email copy; §2b note that
-  POS catalog matching now has per-item modifier lists to map (the impedance
-  mismatch shrinks, it doesn't vanish).
+- **Phase 2 — authoring** — **DONE 2026-09-10** (one session). One
+  `components/menu/IngredientsPanel.vue` used by the storefront item drawer
+  and an Ingredients dialog on the admin Menu page; "Split from
+  description" (client-side, `splitIngredients.ts`); inline swap-set create
+  (`POST …/swap-sets`, flashes `createdSwapSetId` so the row auto-selects
+  it); "Apply to all in {category}" by ingredient name (`POST
+  …/categories/{category}/ingredient-rules`, rows carry the extra price so
+  this is the price shortcut too); "Preview as customer" opens the real
+  configurator in a no-cart `preview` mode on both hosts; a just-created
+  item reopens on its Ingredients step pre-split (`createdMenuItemId`
+  flash). Routes exist on both hosts through one controller
+  (`*InConsole` variants take the `{restaurant}` param positionally). Three
+  Playwright tests cover admin dialog, preview, and the storefront drawer;
+  those needed `lib/relativeUrl.ts` because Wayfinder bakes the admin
+  domain into absolute URLs. Not built: per-type shortcuts ("any extra
+  protein +$3") — there is no ingredient type yet; the category-wide
+  by-name apply covers the real case. Original scope: the Ingredients
+  panel component, swap-set inline create, bulk + price shortcuts,
+  storefront drawer + admin Menu integration, configurator preview, form
+  requests + policies, browser tests.
+- **Phase 3 — analyzer + wizard** — **DONE 2026-09-10** (one session).
+  Extraction schema and prompt gain `items[].ingredients` (facts from the
+  printed description) and `items[].suggested_customizations` (extra / swap
+  / remove proposals, never priced); sanitizer caps them (25 / 8 per item,
+  60-char names, swap needs ≥2 options). The review page is now two steps:
+  step 2 "What can customers change?" lists each item's rows (printed
+  ingredients default to leave-out on; extras and swaps off), shows
+  proposals as accept/dismiss chips, defines swap sets inline (shared across
+  the import by name), applies one item's rules across its category, and can
+  be skipped per category (rows imported with every rule off). Confirm
+  carries `ingredients[]` per item; `MenuBuilder` writes rows, creates swap
+  sets, compiles. **Re-import carry-over** is by item name: the review page
+  exposes current items' rules, matching items pre-fill from them (marked
+  "kept"), a banner lists items whose rules won't carry over. "Suggest
+  customizations" on the Ingredients panel is one small Claude call per item
+  (`MenuExtractionService::suggestCustomizations`, flashed back as
+  `itemSuggestions`) with the same accept chips; a swap proposal attaches to
+  the printed ingredient it replaces (first swap option), not a new row.
+  Five Playwright tests (panel, preview, storefront drawer, wizard confirm,
+  panel suggestions with the service mocked). Two fixes worth knowing:
+  Vue casts `type="number"` inputs to numbers (the review page's cents
+  converters now accept both), and the review page submits through
+  `relativeUrl` like the admin Menu page. Not yet exercised: a real
+  extraction against the new prompt — Phase 4 does that on testaurant.
+  Original scope: schema/prompt/sanitizer changes, the review wizard step,
+  confirm → `MenuBuilder`, "Split from description" and "Suggest
+  customizations" on manual items, re-import carry-over (below).
+- **Phase 4 — rollout + polish** — **dev half DONE 2026-09-10**, live open.
+  The Rose PDF was re-extracted on testaurant dev three times with the real
+  model (≈ $0.25 and ~90 s each) to tune the prompt on real output: the first
+  read produced 2 proposals across 40 items (the "never invent" rules were
+  winning), the second 31/40 with sensible extras/removes but milk swaps
+  listing only alternatives, the third the same coverage with every swap
+  starting from the default ("Whole milk / Oat milk / Almond milk",
+  "Regular / Decaf", "English muffin / Sourdough"). Ingredients read
+  cleanly from the printed descriptions (0 for espresso drinks, 4–9 for
+  plates). Import #6 sits in `needs_review` for the owner to walk the wizard
+  — that walk is the remaining dev step; the live steps are: merge, deploy
+  (Cloud runs the two migrations), re-import from the live admin, walk the
+  wizard. Kitchen, confirmation, and email already render deviations (Phase
+  1); the §2b note is in the todo. Gotcha for dev: `ExtractMenuJob` was run
+  synchronously because the shared dev queue worker may execute stale code.
+  Original scope: re-import The Rose PDF on testaurant **dev**, walk the
+  wizard, then the same on **live** (order history keeps snapshots; carts
+  cascade); kitchen/confirmation/email copy; §2b note that POS catalog
+  matching now has per-item modifier lists to map (the impedance mismatch
+  shrinks, it doesn't vanish).
 
 ## Open questions (⚑ = decide before the phase that needs it)
 
@@ -223,13 +278,13 @@ is removed for suggestions, because suggestions are labeled and gated.
   restaurant asks.
 - ⚑ P1 — **Half/half** (pizza halves) is out of scope; note it in the
   configurator plan as a later `scope: half` on selections.
-- ⚑ P3 — **Re-import carry-over**: re-import replaces items today. Carry
-  ingredient settings over by item name (case-insensitive) so a re-import
-  doesn't erase an hour of wizard work; surface "3 items lost their
-  customizations" in the review when names don't match.
-- ⚑ P3 — **Suggestion source**: Claude per import (chosen) vs a curated
-  per-cuisine list. Start with Claude; if suggestions are noisy, add the
-  curated list as a filter, not a replacement.
+- ~~⚑ P3 — **Re-import carry-over**~~ — done as planned (by name,
+  case-insensitive, banner for non-matches). Rows from the current menu win
+  over the fresh extraction for a matching item.
+- ⚑ P3 — **Suggestion source**: Claude per import (built) vs a curated
+  per-cuisine list. Judge on the first real testaurant re-import (Phase 4);
+  if suggestions are noisy, add the curated list as a filter, not a
+  replacement.
 - P2 — **Locked ingredients**: shown disabled in the included list (chosen
   above) vs hidden. Shown, so the list doubles as "what's in it".
 - P4 — **POS**: text notes carry deviations fine; the guided catalog matcher

@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin\TenantAdmin;
 
+use App\Data\ItemTemplateData;
 use App\Data\MenuCategoryData;
 use App\Data\RestaurantData;
 use App\Http\Controllers\Controller;
+use App\Models\ItemTemplate;
 use App\Models\MenuImport;
 use App\Models\Restaurant;
 use Inertia\Inertia;
@@ -30,6 +32,16 @@ class MenuController extends Controller
         return Inertia::render('Admin/TenantAdmin/Menu', [
             'restaurant' => RestaurantData::fromModel($restaurant),
             'categories' => $categories,
+            // Swap sets for the Ingredients panel (it filters to single
+            // pick-one-group templates client-side).
+            'templates' => ItemTemplate::query()
+                ->where('restaurant_id', $restaurant->id)
+                ->where('is_active', true)
+                ->with('groups.options')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (ItemTemplate $t) => ItemTemplateData::fromModel($t))
+                ->all(),
             // The re-import card polls this while an extraction runs.
             'menuImport' => MenuImport::activeStateFor($restaurant),
             'menuImportLimits' => [

@@ -15,7 +15,7 @@ class ExtractedMenuSanitizer
      * @param  array<int, mixed>  $categories
      * @param  array<int, string>  $warnings
      * @param  array<int, mixed>  $optionSets
-     * @return array{categories: array<int, array{name: string, items: array<int, array{name: string, description: ?string, price_cents: int, price_note: ?string, option_set: ?string}>}>, option_sets: array<int, array{name: string, groups: array<int, array{name: string, min_selections: int, max_selections: ?int, options: array<int, array{name: string, price_delta_cents: int, is_default: bool}>}>}>, warnings: array<int, string>}
+     * @return array{categories: array<int, array{name: string, items: array<int, array{name: string, description: ?string, price_cents: int, price_note: ?string, option_set: ?string, ingredients: array<int, string>, suggested_customizations: array<int, array{name: string, kind: string, swap_options: array<int, string>, reason: string}>}>}>, option_sets: array<int, array{name: string, groups: array<int, array{name: string, min_selections: int, max_selections: ?int, options: array<int, array{name: string, price_delta_cents: int, is_default: bool}>}>}>, warnings: array<int, string>}
      */
     public static function sanitize(array $categories, array $warnings = [], array $optionSets = []): array
     {
@@ -73,6 +73,8 @@ class ExtractedMenuSanitizer
                     'price_cents' => $price,
                     'price_note' => $priceNote,
                     'option_set' => $optionSet,
+                    'ingredients' => self::sanitizeIngredientNames($item['ingredients'] ?? []),
+                    'suggested_customizations' => self::sanitizeSuggestions($item['suggested_customizations'] ?? []),
                 ];
                 $totalItems++;
             }
@@ -232,6 +234,99 @@ class ExtractedMenuSanitizer
         }
 
         return $group;
+    }
+
+    /**
+     * Printed ingredient names: capped, trimmed, deduplicated case-insensitively.
+     *
+     * @return array<int, string>
+     */
+    public static function sanitizeIngredientNames(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $max = (int) config('menu_import.max_ingredients_per_item');
+        $seen = [];
+        $clean = [];
+
+        foreach ($raw as $value) {
+            $name = self::cleanString($value, 60);
+            if ($name === null) {
+                continue;
+            }
+
+            $key = mb_strtolower($name);
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $clean[] = $name;
+
+            if (count($clean) >= $max) {
+                break;
+            }
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Customization proposals: capped, kinds restricted, never priced (there
+     * is no price field to carry one).
+     *
+     * @return array<int, array{name: string, kind: string, swap_options: array<int, string>, reason: string}>
+     */
+    public static function sanitizeSuggestions(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $max = (int) config('menu_import.max_suggestions_per_item');
+        $clean = [];
+        $seen = [];
+
+        foreach ($raw as $suggestion) {
+            if (! is_array($suggestion)) {
+                continue;
+            }
+
+            $name = self::cleanString($suggestion['name'] ?? null, 60);
+            $kind = $suggestion['kind'] ?? null;
+            if ($name === null || ! in_array($kind, ['extra', 'swap', 'remove'], true)) {
+                continue;
+            }
+
+            $key = $kind.':'.mb_strtolower($name);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            $swapOptions = $kind === 'swap'
+                ? array_slice(self::sanitizeIngredientNames($suggestion['swap_options'] ?? []), 0, 12)
+                : [];
+
+            if ($kind === 'swap' && count($swapOptions) < 2) {
+                continue;
+            }
+
+            $clean[] = [
+                'name' => $name,
+                'kind' => $kind,
+                'swap_options' => $swapOptions,
+                'reason' => self::cleanString($suggestion['reason'] ?? null, 160) ?? '',
+            ];
+
+            if (count($clean) >= $max) {
+                break;
+            }
+        }
+
+        return $clean;
     }
 
     private static function cleanString(mixed $value, int $max): ?string
