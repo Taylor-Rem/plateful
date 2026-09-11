@@ -33,6 +33,8 @@ type Row = {
     id: number | null;
     name: string;
     is_removable: boolean;
+    allow_half: boolean;
+    /** Price of the Double level; blank means Double isn't offered. */
     extra_price: string;
     swap_template_id: number | null;
 };
@@ -81,6 +83,7 @@ const rowFromIngredient = (i: App.Data.MenuItemIngredientData): Row => ({
     id: i.id,
     name: i.name,
     is_removable: i.isRemovable,
+    allow_half: i.allowHalf,
     extra_price:
         i.extraPriceCents === null ? '' : (i.extraPriceCents / 100).toFixed(2),
     swap_template_id: i.swapTemplateId,
@@ -91,6 +94,7 @@ const blankRow = (name = ''): Row => ({
     id: null,
     name,
     is_removable: true,
+    allow_half: true,
     extra_price: '',
     swap_template_id: null,
 });
@@ -177,6 +181,7 @@ const payload = (withIds: boolean) => ({
         ...(withIds ? { id: r.id } : {}),
         name: r.name.trim(),
         is_removable: r.is_removable,
+        allow_half: r.allow_half,
         extra_price: r.extra_price === '' ? null : r.extra_price,
         swap_template_id: r.swap_template_id,
     })),
@@ -379,7 +384,7 @@ const acceptSuggestion = (index: number): void => {
         const row = acceptSimpleSuggestion(rows.value, suggestion, blankRow);
 
         if (suggestion.kind === 'extra' && row.extra_price === '') {
-            toast.success(`Set a price for "Extra ${row.name}".`);
+            toast.success(`Set a price for "Double ${row.name}".`);
         }
     }
 
@@ -428,10 +433,14 @@ const swapSetName = (id: number | null): string =>
 
 const ruleSummary = (row: Row): string => {
     const parts: string[] = [];
-    parts.push(row.is_removable ? 'can leave out' : 'always included');
+    parts.push(row.is_removable ? 'none allowed' : 'always included');
+
+    if (row.allow_half) {
+        parts.push('half');
+    }
 
     if (row.extra_price !== '') {
-        parts.push(`extra +$${Number(row.extra_price).toFixed(2)}`);
+        parts.push(`double +$${Number(row.extra_price).toFixed(2)}`);
     }
 
     if (row.swap_template_id !== null) {
@@ -451,6 +460,7 @@ const submitApply = (): void => {
             ingredients: selected.map((r) => ({
                 name: r.name.trim(),
                 is_removable: r.is_removable,
+                allow_half: r.allow_half,
                 extra_price: r.extra_price === '' ? null : r.extra_price,
                 swap_template_id: r.swap_template_id,
             })),
@@ -480,7 +490,8 @@ const canApply = computed(
     <div class="space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <p class="text-xs text-muted-foreground">
-                What customers can leave out, add extra of, or swap.
+                Each ingredient becomes a None / Half / Regular / Double row.
+                Regular is always offered; tick what else customers may pick.
             </p>
             <div class="flex flex-wrap items-center gap-2">
                 <Button
@@ -602,10 +613,13 @@ const canApply = computed(
                     <tr class="text-left text-xs text-muted-foreground">
                         <th class="pr-2 pb-1 font-medium">Ingredient</th>
                         <th class="pr-2 pb-1 font-medium whitespace-nowrap">
-                            Can leave out
+                            None
                         </th>
                         <th class="pr-2 pb-1 font-medium whitespace-nowrap">
-                            Extra ($)
+                            Half
+                        </th>
+                        <th class="pr-2 pb-1 font-medium whitespace-nowrap">
+                            Double ($)
                         </th>
                         <th class="pr-2 pb-1 font-medium whitespace-nowrap">
                             Swap with
@@ -645,6 +659,15 @@ const canApply = computed(
                                 @change="markDirty"
                             />
                         </td>
+                        <td class="py-1 pr-2 text-center">
+                            <input
+                                v-model="row.allow_half"
+                                type="checkbox"
+                                class="mt-2"
+                                :aria-label="`${row.name || 'Ingredient'} half portion`"
+                                @change="markDirty"
+                            />
+                        </td>
                         <td class="py-1 pr-2">
                             <input
                                 v-model="row.extra_price"
@@ -654,7 +677,7 @@ const canApply = computed(
                                 max="999.99"
                                 placeholder="—"
                                 class="w-20 rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground"
-                                :aria-label="`Extra ${row.name || 'ingredient'} price`"
+                                :aria-label="`Double ${row.name || 'ingredient'} price`"
                                 @input="markDirty"
                             />
                             <p

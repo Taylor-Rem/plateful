@@ -16,72 +16,53 @@ use InvalidArgumentException;
  * cart, pricing, and order integrity check run on. Deterministic and
  * idempotent: run it after every ingredient save.
  *
- *  - Removable, non-swappable ingredients → one item-owned "included" group
- *    (min 0, no max), one $0 option per ingredient, all set as item
- *    defaults. Unchecking one means "leave it out".
- *  - Ingredients with an extra price → one item-owned "extras" group with
- *    "Extra {name}" options carrying that price.
+ *  - Every ingredient with at least one rule → one item-owned "ingredient"
+ *    group named after it: a pick-one of its levels (None if removable,
+ *    Half if allowed, Regular always, Double if priced), Regular default,
+ *    only Double carrying a price. An ingredient with no rules gets no row.
  *  - Ingredients with a swap set → the set's template is attached to the
  *    item through the ingredient and the option matching the ingredient
  *    becomes the item's default in that group (created at $0 if missing).
  *
- * Generated options are upserted by (ingredient, kind) so their ids survive
- * re-saves — an existing cart line keeps validating when the owner tweaks a
- * price.
+ * Groups and options are upserted by ingredient (and level) so their ids
+ * survive re-saves — an existing cart line keeps validating when the owner
+ * tweaks a price. Legacy "included" / "extras" groups from before levels
+ * are removed on the first recompile.
  */
 class IngredientGroupCompiler
 {
-    public const INCLUDED_GROUP_NAME = 'Included';
-
-    public const EXTRAS_GROUP_NAME = 'Extras';
-
     public function compile(MenuItem $item): void
     {
         DB::transaction(function () use ($item): void {
             $ingredients = $item->ingredients()->get();
 
-            $includedIngredients = $ingredients->filter(
-                fn (MenuItemIngredient $i) => $i->is_removable && ! $i->isSwappable(),
-            );
-            $extraIngredients = $ingredients->filter(
-                fn (MenuItemIngredient $i) => $i->offersExtra(),
-            );
-            $swapIngredients = $ingredients->filter(
-                fn (MenuItemIngredient $i) => $i->isSwappable(),
-            );
-
             $newDefaults = collect();
+            $keepGroupIds = [];
 
-            $included = $this->syncOwnGroup(
-                $item,
-                ItemTemplateGroup::KIND_INCLUDED,
-                self::INCLUDED_GROUP_NAME,
-                0,
-                $includedIngredients->map(fn (MenuItemIngredient $i) => [
-                    'ingredient' => $i,
-                    'kind' => ItemTemplateOption::KIND_INCLUDED,
-                    'name' => $i->name,
-                    'price_delta_cents' => 0,
-                ]),
-            );
-            if ($included) {
-                $newDefaults = $newDefaults->merge($included->options->pluck('id'));
+            foreach ($ingredients as $ingredient) {
+                $group = $this->syncLevelGroup($item, $ingredient);
+                if ($group === null) {
+                    continue;
+                }
+
+                $keepGroupIds[] = $group->id;
+                $regular = $group->options->firstWhere('name', ItemTemplateOption::LEVEL_REGULAR);
+                if ($regular) {
+                    $newDefaults->push($regular->id);
+                }
             }
 
-            $this->syncOwnGroup(
-                $item,
-                ItemTemplateGroup::KIND_EXTRAS,
-                self::EXTRAS_GROUP_NAME,
-                1,
-                $extraIngredients->map(fn (MenuItemIngredient $i) => [
-                    'ingredient' => $i,
-                    'kind' => ItemTemplateOption::KIND_EXTRA,
-                    'name' => 'Extra '.$i->name,
-                    'price_delta_cents' => (int) $i->extra_price_cents,
-                ]),
-            );
+            // Anything item-owned we did not just produce is stale: a level
+            // row for a deleted ingredient, or the pre-levels groups.
+            ItemTemplateGroup::query()
+                ->where('menu_item_id', $item->id)
+                ->whereNotIn('id', $keepGroupIds ?: [0])
+                ->delete();
 
-            $swapDefaults = $this->syncSwapSets($item, $swapIngredients);
+            $swapDefaults = $this->syncSwapSets(
+                $item,
+                $ingredients->filter(fn (MenuItemIngredient $i) => $i->isSwappable()),
+            );
             $newDefaults = $newDefaults->merge($swapDefaults->values());
 
             $this->syncDefaults($item, $newDefaults, $swapDefaults->keys());
@@ -93,19 +74,20 @@ class IngredientGroupCompiler
     }
 
     /**
-     * Upsert one item-owned group and its generated options; delete the
-     * group when it would be empty.
-     *
-     * @param  Collection<int, array{ingredient: MenuItemIngredient, kind: string, name: string, price_delta_cents: int}>  $specs
+     * Upsert the pick-one level row for one ingredient; null when the
+     * ingredient has no rules (only Regular) and therefore no row.
      */
-    private function syncOwnGroup(MenuItem $item, string $kind, string $name, int $position, Collection $specs): ?ItemTemplateGroup
+    private function syncLevelGroup(MenuItem $item, MenuItemIngredient $ingredient): ?ItemTemplateGroup
     {
+        $levels = $ingredient->levels();
+
         $group = ItemTemplateGroup::query()
             ->where('menu_item_id', $item->id)
-            ->where('kind', $kind)
+            ->where('menu_item_ingredient_id', $ingredient->id)
+            ->where('kind', ItemTemplateGroup::KIND_INGREDIENT)
             ->first();
 
-        if ($specs->isEmpty()) {
+        if ($levels === [ItemTemplateOption::LEVEL_REGULAR]) {
             $group?->delete();
 
             return null;
@@ -114,11 +96,12 @@ class IngredientGroupCompiler
         $attrs = [
             'item_template_id' => null,
             'menu_item_id' => $item->id,
-            'name' => $name,
-            'kind' => $kind,
-            'min_selections' => 0,
-            'max_selections' => null,
-            'position' => $position,
+            'menu_item_ingredient_id' => $ingredient->id,
+            'name' => $ingredient->name,
+            'kind' => ItemTemplateGroup::KIND_INGREDIENT,
+            'min_selections' => 1,
+            'max_selections' => 1,
+            'position' => (int) $ingredient->position,
         ];
 
         if ($group) {
@@ -128,19 +111,19 @@ class IngredientGroupCompiler
         }
 
         $keep = [];
-        foreach ($specs->values() as $index => $spec) {
+        foreach ($levels as $index => $level) {
             $option = ItemTemplateOption::query()
                 ->where('item_template_group_id', $group->id)
-                ->where('menu_item_ingredient_id', $spec['ingredient']->id)
-                ->where('kind', $spec['kind'])
+                ->where('kind', ItemTemplateOption::KIND_LEVEL)
+                ->where('name', $level)
                 ->first();
 
             $optionAttrs = [
                 'item_template_group_id' => $group->id,
-                'menu_item_ingredient_id' => $spec['ingredient']->id,
-                'kind' => $spec['kind'],
-                'name' => $spec['name'],
-                'price_delta_cents' => $spec['price_delta_cents'],
+                'menu_item_ingredient_id' => $ingredient->id,
+                'kind' => ItemTemplateOption::KIND_LEVEL,
+                'name' => $level,
+                'price_delta_cents' => $level === ItemTemplateOption::LEVEL_DOUBLE ? (int) $ingredient->extra_price_cents : 0,
                 'is_available' => true,
                 'position' => $index,
             ];
@@ -250,9 +233,8 @@ class IngredientGroupCompiler
 
     /**
      * Item defaults = what the owner set on hand-attached templates, plus
-     * every generated "included" option, plus one default per swap group.
-     * Defaults pointing at options that no longer belong to the item are
-     * dropped.
+     * Regular on every level row, plus one default per swap group. Defaults
+     * pointing at options that no longer belong to the item are dropped.
      *
      * @param  Collection<int, int>  $generatedDefaults
      * @param  Collection<int, int>  $swapGroupIds
@@ -264,7 +246,11 @@ class IngredientGroupCompiler
 
         $validOptionIds = collect();
         $optionToGroup = [];
+        $levelGroupIds = [];
         foreach ($item->optionGroups() as $group) {
+            if ($group->kind === ItemTemplateGroup::KIND_INGREDIENT) {
+                $levelGroupIds[] = $group->id;
+            }
             foreach ($group->options as $option) {
                 $validOptionIds->push($option->id);
                 $optionToGroup[$option->id] = $group->id;
@@ -275,9 +261,9 @@ class IngredientGroupCompiler
 
         $kept = $existing
             ->filter(fn (int $id) => $validOptionIds->contains($id))
-            // Swap groups get exactly the compiled default; drop any other
-            // default the owner had in those groups.
-            ->reject(fn (int $id) => $swapGroupIds->contains($optionToGroup[$id] ?? 0));
+            // Compiled groups get exactly the compiled default.
+            ->reject(fn (int $id) => $swapGroupIds->contains($optionToGroup[$id] ?? 0))
+            ->reject(fn (int $id) => in_array($optionToGroup[$id] ?? 0, $levelGroupIds, true));
 
         $final = $kept->merge($generatedDefaults)->map(fn ($id) => (int) $id)->unique()->values()->all();
 

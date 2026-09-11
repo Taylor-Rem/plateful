@@ -72,19 +72,17 @@ const groups = computed<App.Data.ItemTemplateGroupData[]>(
     () => props.item.groups,
 );
 
-// Compiled ingredient groups get plain-language headings; hand-built
-// choices keep their own names.
-const groupTitle = (group: App.Data.ItemTemplateGroupData): string => {
-    if (group.kind === 'included') {
-        return 'Leave anything out?';
-    }
+// One pick-one row per ingredient (None / Half / Regular / Double) renders
+// as a compact pill row; everything else keeps the list layout.
+const ingredientGroups = computed(() =>
+    groups.value.filter((g) => g.kind === 'ingredient'),
+);
+const otherGroups = computed(() =>
+    groups.value.filter((g) => g.kind !== 'ingredient'),
+);
 
-    if (group.kind === 'extras') {
-        return 'Add extras';
-    }
-
-    return group.name;
-};
+const selectedIn = (group: App.Data.ItemTemplateGroupData): number | null =>
+    group.options.find((o) => isSelected(o.id))?.id ?? null;
 
 const isSelected = (optionId: number): boolean =>
     selectedIds.value.includes(optionId);
@@ -273,13 +271,13 @@ const onSubmit = (): void => {
 
             <div v-if="groups.length > 0" class="space-y-4">
                 <div
-                    v-for="group in groups"
+                    v-for="group in otherGroups"
                     :key="group.id"
                     class="rounded-md border border-border bg-muted/20 p-3"
                 >
                     <div class="flex items-baseline justify-between gap-2">
                         <h4 class="text-sm font-semibold text-foreground">
-                            {{ groupTitle(group) }}
+                            {{ group.name }}
                             <span
                                 v-if="group.isRequired"
                                 class="text-destructive"
@@ -287,10 +285,7 @@ const onSubmit = (): void => {
                             >
                         </h4>
                         <span class="text-xs text-muted-foreground">
-                            <template v-if="group.kind === 'included'"
-                                >Uncheck to leave out</template
-                            >
-                            <template v-else-if="group.isSingleSelect"
+                            <template v-if="group.isSingleSelect"
                                 >Pick exactly 1</template
                             >
                             <template
@@ -382,6 +377,68 @@ const onSubmit = (): void => {
                                 formatDelta(opt.priceDeltaCents)
                             }}</span>
                         </label>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                v-if="ingredientGroups.length > 0"
+                class="rounded-md border border-border bg-muted/20 p-3"
+                data-test="ingredient-levels"
+            >
+                <div class="flex items-baseline justify-between gap-2">
+                    <h4 class="text-sm font-semibold text-foreground">
+                        Make it yours
+                    </h4>
+                    <span class="text-xs text-muted-foreground"
+                        >Regular is how it comes</span
+                    >
+                </div>
+                <div class="mt-2 space-y-2">
+                    <div
+                        v-for="group in ingredientGroups"
+                        :key="group.id"
+                        class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+                        role="radiogroup"
+                        :aria-label="group.name"
+                    >
+                        <span class="text-sm text-foreground">{{
+                            group.name
+                        }}</span>
+                        <div class="flex flex-wrap gap-1">
+                            <button
+                                v-for="opt in group.options"
+                                :key="opt.id"
+                                type="button"
+                                role="radio"
+                                :aria-checked="selectedIn(group) === opt.id"
+                                :aria-label="`${group.name}: ${opt.name}`"
+                                :disabled="!opt.isAvailable"
+                                class="rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-40"
+                                :class="
+                                    selectedIn(group) === opt.id
+                                        ? 'border-transparent'
+                                        : 'border-border bg-background text-foreground hover:bg-muted'
+                                "
+                                :style="
+                                    selectedIn(group) === opt.id
+                                        ? {
+                                              backgroundColor:
+                                                  'var(--brand-primary)',
+                                              color: 'var(--brand-primary-foreground)',
+                                          }
+                                        : undefined
+                                "
+                                @click="toggleSingle(group.id, opt.id)"
+                            >
+                                {{ opt.name
+                                }}{{
+                                    opt.priceDeltaCents !== 0
+                                        ? ' ' + formatDelta(opt.priceDeltaCents)
+                                        : ''
+                                }}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

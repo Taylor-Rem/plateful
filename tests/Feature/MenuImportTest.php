@@ -338,7 +338,7 @@ it('imports option sets as item templates with defaults synced onto items', func
         ->and($biscotti->templates()->count())->toBe(0);
 });
 
-it('replaces the existing menu on confirm, keeping order history and templates', function () {
+it('replaces the existing menu on confirm, keeping order history and removing templates nothing uses', function () {
     [$owner, $restaurant] = menuImportOwnerAndRestaurant();
     $import = MenuImport::factory()->needsReview()->create(['restaurant_id' => $restaurant->id]);
 
@@ -368,7 +368,38 @@ it('replaces the existing menu on confirm, keeping order history and templates',
         ->and(CartItem::count())->toBe(0)
         ->and($orderItem->fresh()->menu_item_id)->toBeNull()
         ->and($orderItem->fresh()->name)->toBe('Old Burger')
-        ->and(ItemTemplate::withoutTenantScope()->whereKey($handBuiltTemplate->id)->exists())->toBeTrue();
+        // The old menu is gone, so a template nothing points at is clutter.
+        ->and(ItemTemplate::withoutTenantScope()->whereKey($handBuiltTemplate->id)->exists())->toBeFalse();
+});
+
+it('re-importing reuses templates by name instead of stacking duplicates', function () {
+    [$owner, $restaurant] = menuImportOwnerAndRestaurant();
+    $payload = [
+        'categories' => [['name' => 'Coffee', 'items' => [['name' => 'Latte', 'description' => null, 'price_cents' => 450, 'option_set' => 'Espresso drink options']]]],
+        'option_sets' => [['name' => 'Espresso drink options', 'groups' => [['name' => 'Milk', 'min_selections' => 1, 'max_selections' => 1, 'options' => [
+            ['name' => 'Whole milk', 'price_delta_cents' => 0, 'is_default' => true],
+            ['name' => 'Oat milk', 'price_delta_cents' => 150, 'is_default' => false],
+        ]]]]],
+    ];
+
+    $first = MenuImport::factory()->needsReview()->create(['restaurant_id' => $restaurant->id]);
+    $this->actingAs($owner)->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import/{$first->id}/confirm", $payload)->assertSessionHasNoErrors();
+    $templateId = ItemTemplate::withoutTenantScope()->where('restaurant_id', $restaurant->id)->sole()->id;
+
+    // Second import: same set name, the oat milk price changed, one option gone.
+    $payload['option_sets'][0]['groups'][0]['options'] = [
+        ['name' => 'Whole milk', 'price_delta_cents' => 0, 'is_default' => true],
+        ['name' => 'Oat milk', 'price_delta_cents' => 100, 'is_default' => false],
+        ['name' => 'Almond milk', 'price_delta_cents' => 100, 'is_default' => false],
+    ];
+    $second = MenuImport::factory()->needsReview()->create(['restaurant_id' => $restaurant->id]);
+    $this->actingAs($owner)->post(MI_ADMIN_HOST."/{$restaurant->subdomain}/menu-import/{$second->id}/confirm", $payload)->assertSessionHasNoErrors();
+
+    $templates = ItemTemplate::withoutTenantScope()->where('restaurant_id', $restaurant->id)->get();
+    expect($templates)->toHaveCount(1)
+        ->and($templates->first()->id)->toBe($templateId)
+        ->and($templates->first()->groups->first()->options->pluck('name')->all())->toBe(['Whole milk', 'Oat milk', 'Almond milk'])
+        ->and($restaurant->menuItems()->sole()->templates()->pluck('item_templates.id')->all())->toBe([$templateId]);
 });
 
 it('redirects import flows to the menu page once onboarding is complete', function () {

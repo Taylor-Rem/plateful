@@ -43,6 +43,7 @@ class MenuImportConfirmRequest extends FormRequest
             'categories.*.items.*.ingredients' => ['nullable', 'array', 'max:40'],
             'categories.*.items.*.ingredients.*.name' => ['required', 'string', 'max:120'],
             'categories.*.items.*.ingredients.*.is_removable' => ['boolean'],
+            'categories.*.items.*.ingredients.*.allow_half' => ['boolean'],
             'categories.*.items.*.ingredients.*.extra_price_cents' => ['nullable', 'integer', 'min:0', 'max:'.$maxPrice],
             'categories.*.items.*.ingredients.*.swap_template_id' => [
                 'nullable',

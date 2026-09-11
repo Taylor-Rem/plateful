@@ -70,9 +70,11 @@ test('saving ingredients from the storefront editor writes rows in order and com
         ->and($item->ingredients->firstWhere('name', 'Mayo')->is_removable)->toBeFalse();
 
     $groups = $item->optionGroups();
-    expect($groups->pluck('kind')->all())->toBe(['swap', 'included', 'extras'])
-        ->and($groups->firstWhere('kind', 'included')->options->pluck('name')->all())->toBe(['Cotto salami', 'Mortadella'])
-        ->and($groups->firstWhere('kind', 'extras')->options->pluck('name')->all())->toBe(['Extra Mortadella'])
+    expect($groups->pluck('kind')->all())->toBe(['swap', 'ingredient', 'ingredient', 'ingredient', 'ingredient'])
+        ->and($groups->firstWhere('name', 'Mortadella')->options->pluck('name')->all())->toBe(['None', 'Half', 'Regular', 'Double'])
+        ->and($groups->firstWhere('name', 'Mortadella')->options->firstWhere('name', 'Double')->price_delta_cents)->toBe(150)
+        // Not removable: no None; Half stays on by default.
+        ->and($groups->firstWhere('name', 'Mayo')->options->pluck('name')->all())->toBe(['Half', 'Regular'])
         ->and($item->defaultSelections()->pluck('item_template_options.id')->all())->toContain($f['provolone']->id);
 });
 
@@ -87,7 +89,7 @@ test('re-saving keeps rows by id, deletes the rest, and preserves generated opti
 
     $item = $f['item']->fresh();
     $salami = $item->ingredients->firstWhere('name', 'Cotto salami');
-    $salamiOptionId = $item->optionGroups()->firstWhere('kind', 'included')->options->firstWhere('name', 'Cotto salami')->id;
+    $salamiOptionId = $item->optionGroups()->firstWhere('name', 'Cotto salami')->options->firstWhere('name', 'Regular')->id;
 
     $this->actingAs($f['admin'])->put($url, ['ingredients' => [
         ['id' => $salami->id, 'name' => 'Cotto Salami', 'is_removable' => true, 'extra_price' => '2.00'],
@@ -97,7 +99,7 @@ test('re-saving keeps rows by id, deletes the rest, and preserves generated opti
     $item = $f['item']->fresh();
     expect($item->ingredients->pluck('name')->all())->toBe(['Cotto Salami', 'Lettuce'])
         ->and($item->ingredients->firstWhere('name', 'Cotto Salami')->id)->toBe($salami->id)
-        ->and($item->optionGroups()->firstWhere('kind', 'included')->options->firstWhere('name', 'Cotto Salami')->id)->toBe($salamiOptionId)
+        ->and($item->optionGroups()->firstWhere('name', 'Cotto Salami')->options->firstWhere('name', 'Regular')->id)->toBe($salamiOptionId)
         ->and(MenuItemIngredient::where('menu_item_id', $item->id)->where('name', 'Mortadella')->exists())->toBeFalse();
 });
 
@@ -141,7 +143,7 @@ test('the admin console saves ingredients through the same controller', function
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
-    expect($f['item']->fresh()->optionGroups()->firstWhere('kind', 'extras')->options->pluck('name')->all())->toBe(['Extra Lettuce']);
+    expect($f['item']->fresh()->optionGroups()->firstWhere('name', 'Lettuce')->options->pluck('name')->all())->toBe(['None', 'Half', 'Regular', 'Double']);
 });
 
 test('an item from another tenant is not reachable through the admin console', function () {
@@ -201,7 +203,7 @@ test('applying rules to a category updates matching ingredients by name and reco
         expect($item->ingredients->firstWhere('name', 'Provolone')->extra_price_cents)->toBe(100)
             ->and($item->ingredients->firstWhere('name', 'Provolone')->swap_template_id)->toBe($f['cheeses']->id)
             ->and($item->templates()->pluck('item_templates.id')->all())->toContain($f['cheeses']->id)
-            ->and($item->optionGroups()->firstWhere('kind', 'extras')->options->pluck('name')->all())->toContain('Extra Provolone');
+            ->and($item->optionGroups()->firstWhere('name', 'Provolone')->options->firstWhere('name', 'Double')->price_delta_cents)->toBe(100);
     }
 
     // The sibling has no mortadella, so nothing was invented for it.

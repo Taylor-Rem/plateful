@@ -184,6 +184,7 @@ id: number,
 name: string,
 position: number,
 isRemovable: boolean,
+allowHalf: boolean,
 extraPriceCents: number | null,
 swapTemplateId: number | null,
 };
