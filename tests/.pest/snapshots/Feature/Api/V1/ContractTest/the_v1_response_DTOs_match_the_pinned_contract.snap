@@ -1,0 +1,21 @@
+{
+    "App\\Data\\MeData": {
+        "id": "int",
+        "name": "string",
+        "email": "string",
+        "phone": "?string",
+        "avatar": "?string",
+        "emailVerified": "bool",
+        "twoFactorEnabled": "bool",
+        "linkedProviders": "array",
+        "createdAt": "string"
+    },
+    "App\\Data\\AuthSessionData": {
+        "token": "string",
+        "user": "App\\Data\\MeData"
+    },
+    "App\\Data\\TwoFactorChallengeData": {
+        "twoFactorRequired": "bool",
+        "challengeToken": "string"
+    }
+}

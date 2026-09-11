@@ -3,7 +3,9 @@
 _Drafted 2026-09-09, trimmed the same day to **API and data work only**. The
 app itself (stack, screens, builds, store submission) is planned in the
 separate app repo: `~/Projects/plateful-app/docs/app_plan.md`. Status:
-**planning — not started.** Locked at drafting: **one Plateful app, not
+**Phase 0 built 2026-09-11** (Sanctum, `/api/v1` auth incl. Google + Apple
+ID tokens, two-factor challenge, `GET/DELETE /me`, `ResolveTenantFromRoute`,
+contract snapshot); Phase 1 next. Locked at drafting: **one Plateful app, not
 per-restaurant apps**; every restaurant's storefront lives inside it. The app
 is therefore a marketplace, and the API embraces that._
 
@@ -195,10 +197,34 @@ Today the Vue pages ship with the payloads; the app doesn't. From v1 ship:
 
 ## Phases (server side; the app repo's phases align to these)
 
-### Phase 0 — API foundation (~2 sessions)
+### Phase 0 — API foundation — DONE 2026-09-11 (one session)
 Sanctum; `routes/api.php`; `ResolveTenantFromRoute`; auth endpoints incl.
 Google + Apple verifiers and `apple_id`; `GET /me`, `DELETE /me`; DTO
 snapshot test; Pest coverage for every endpoint.
+
+As built (decisions taken at build time, all recommended-path):
+- Registration is **tenant-less** (`POST /auth/register` makes a plain
+  Plateful account; the `restaurant_customer` row arrives with the first
+  order/favorite). Login accepts any live account — no admin/tenant split.
+- Two-factor: login answers **202** with a 5-minute challenge token
+  (ability `two-factor-challenge`); `POST /auth/two-factor` takes a TOTP or
+  recovery code and swaps it for the device token. Skipped in `local`, same
+  as the web pipeline.
+- ID tokens are verified against the providers' JWKS (`firebase/php-jwt`,
+  now a direct dependency; keys cached 1h). Google accepts
+  `GOOGLE_APP_CLIENT_IDS` (iOS/Android) plus the web client id; Apple
+  accepts `APPLE_CLIENT_IDS`. Unconfigured provider → 503. Apple's name is
+  forwarded by the app on first sign-in (`name` field). No nonce check yet.
+- The matching rules moved to `SocialAccountResolver`, shared with the web
+  Google callback, so web and app customers are one account.
+- `DELETE /me` = the web hard delete; the bearer token is the proof of
+  intent (no password re-entry — social accounts have none). Last super
+  admin → 409.
+- One token per device (`device_name`); re-login replaces it. Sanctum runs
+  pure-bearer (`sanctum.guard = []`), so a browser session never reaches
+  `/api/*`. Limiters: `api` 120/min, `api-auth` 10/min/IP, `login` (Fortify's).
+- Contract test: `tests/Feature/Api/V1/ContractTest.php` snapshots the
+  constructor shape of every v1 DTO; add new DTOs to `API_V1_CONTRACT`.
 
 ### Phase 1 — read API + discovery data (~1–2 sessions)
 Geo/cuisine/`marketplace_listed` migration + backfill; restaurants

@@ -28,6 +28,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -94,6 +95,16 @@ class AppServiceProvider extends ServiceProvider
         // Resend's default API rate limit; applied to SendCampaignBatch jobs
         // (each job is one batch API call) whenever a real key is configured.
         RateLimiter::for('campaign-batches', fn (): Limit => Limit::perSecond(2));
+
+        // Public API (/api/v1): per token when authenticated, per IP otherwise.
+        // The auth endpoints layer stricter, purpose-specific limiters on top.
+        RateLimiter::for('api', fn (Request $request): Limit => Limit::perMinute(120)
+            ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
+
+        RateLimiter::for('api-auth', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()));
+
+        RateLimiter::for('api-two-factor', fn (Request $request): Limit => Limit::perMinute(5)
+            ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
 
         Restaurant::observe(RestaurantObserver::class);
         MenuItem::observe(MenuItemObserver::class);

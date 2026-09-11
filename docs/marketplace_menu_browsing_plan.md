@@ -124,7 +124,9 @@ with menu-page links.
   plain redirect; add this when funnel data says the extra step loses people.
 - **Cross-restaurant search of menu items** ("who has birria near me") —
   powerful and expensive; needs search infrastructure. Not now.
-- **Ordering on plateful.fyi itself** — never, by design. The whole pitch is
+- **Ordering on plateful.fyi itself (on the web)** — never, by design. (The
+  Plateful app orders through `/api/v1` on the same 4% — see
+  `plateful_app_plan.md`; that protects the same principle, not the domain.) The whole pitch is
   that the transaction happens on *their* site with *their* customer
   relationship. The marketplace browses; the storefront sells.
 

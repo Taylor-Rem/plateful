@@ -26,6 +26,10 @@ id: number,
 name: string,
 email: string,
 };
+export type AuthSessionData = {
+token: string,
+user: App.Data.MeData,
+};
 export type CampaignData = {
 id: number,
 subject: string,
@@ -152,6 +156,17 @@ ingredientId: number | null,
 priceDeltaCents: number,
 isAvailable: boolean,
 position: number,
+};
+export type MeData = {
+id: number,
+name: string,
+email: string,
+phone: string | null,
+avatar: string | null,
+emailVerified: boolean,
+twoFactorEnabled: boolean,
+linkedProviders: string[],
+createdAt: string,
 };
 export type MenuCategoryData = {
 id: number,
@@ -319,6 +334,10 @@ imageUrl: string | null,
 imageMediumUrl: string | null,
 imageThumbUrl: string | null,
 };
+export type TwoFactorChallengeData = {
+twoFactorRequired: boolean,
+challengeToken: string,
+};
 }
 namespace Enums {
 export type AutoCancelRefundMode = 'auto' | 'manual';
@@ -345,6 +364,7 @@ export type RestaurantRole = 'admin' | 'staff';
 export type RestaurantStatus = 'pending_review' | 'approved' | 'active' | 'suspended';
 export type RevenueRole = 'founder' | 'operator' | 'recruiter' | 'overseer' | 'delivery_margin';
 export type SelfDeliveryTipRecipient = 'driver' | 'pool' | 'split_50_50';
+export type SocialProvider = 'google' | 'apple';
 export type TipRecipient = 'pool' | 'driver' | 'split';
 }
 }

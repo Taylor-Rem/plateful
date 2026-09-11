@@ -876,11 +876,16 @@ restaurant's connected account at the **same 4% and cap**, write the same `resta
 consent / loyalty rows, and hit the same POS + delivery pipeline. Amends §13's "never order on
 plateful.fyi" to "on the web." Growth surface, not launch surface._
 
-- [ ] **Phase 0 — API foundation** (~2 sessions): Sanctum (⚑ new dependency), `routes/api.php`
+- [x] **Phase 0 — API foundation** — DONE 2026-09-11 (one session, 50 API tests): Sanctum installed, `routes/api.php`
       at `/api/v1`, `ResolveTenantFromRoute` setting `CurrentTenant` from a subdomain-bound
       restaurant, token login + Google/**Apple** ID-token sign-in (Apple 4.8), `GET/DELETE /me`,
       DTO-shape snapshot test — the Spatie `app/Data` DTOs and their generated
       `resources/js/types/generated.d.ts` *are* the contract the app repo consumes.
+      Built: tenant-less register, 202 two-factor challenge, JWKS-verified Google/Apple ID
+      tokens (`GOOGLE_APP_CLIENT_IDS` / `APPLE_CLIENT_IDS` env), `SocialAccountResolver` shared
+      with the web Google flow, `MeData`/`AuthSessionData`/`TwoFactorChallengeData` in
+      `generated.d.ts`. Needs from Taylor: the iOS/Android Google client ids and the Apple
+      bundle id in prod env; `php artisan migrate` (personal_access_tokens + `users.apple_id`).
 - [ ] **Phase 1 — read API + discovery data** (~1–2): `latitude/longitude` (Places geocode +
       backfill), `cuisine_tags` (from menu extraction), `marketplace_listed` (⚑ default on);
       restaurants near-me/open-now/cuisine list, detail, menu (shared query object also unblocks
