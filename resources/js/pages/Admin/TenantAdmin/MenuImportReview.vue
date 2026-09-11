@@ -656,7 +656,9 @@ const discard = (): void => {
                         {{ existingItemCount === 1 ? 'item' : 'items' }}).
                     </strong>
                     Past orders keep their history, but items customers still
-                    have in open carts will be removed from those carts.
+                    have in open carts will be removed from those carts. Option
+                    templates with the same name are refreshed in place, and any
+                    template nothing uses afterwards is removed.
                 </div>
 
                 <div

@@ -148,13 +148,20 @@ class MenuBuilder
             return $swapSets[$key];
         }
 
-        $template = ItemTemplate::create([
-            'restaurant_id' => $restaurant->id,
-            'name' => $set['name'],
-            'description' => null,
-            'is_active' => true,
-            'position' => 0,
-        ]);
+        $template = $this->reusableTemplate($restaurant, (string) $set['name']);
+
+        if ($template) {
+            $template->groups()->delete();
+            $template->update(['is_active' => true]);
+        } else {
+            $template = ItemTemplate::create([
+                'restaurant_id' => $restaurant->id,
+                'name' => $set['name'],
+                'description' => null,
+                'is_active' => true,
+                'position' => 0,
+            ]);
+        }
 
         $group = ItemTemplateGroup::create([
             'item_template_id' => $template->id,
@@ -191,13 +198,23 @@ class MenuBuilder
         $templates = [];
 
         foreach ($optionSets as $setPos => $set) {
-            $template = ItemTemplate::create([
-                'restaurant_id' => $restaurant->id,
-                'name' => $set['name'],
-                'description' => null,
-                'is_active' => true,
-                'position' => $setPos,
-            ]);
+            // A re-import must not stack a second "Sandwich size" next to the
+            // first: reuse the template of the same name and replace its
+            // contents with what this import read.
+            $template = $this->reusableTemplate($restaurant, $set['name']);
+
+            if ($template) {
+                $template->groups()->delete();
+                $template->update(['is_active' => true, 'position' => $setPos]);
+            } else {
+                $template = ItemTemplate::create([
+                    'restaurant_id' => $restaurant->id,
+                    'name' => $set['name'],
+                    'description' => null,
+                    'is_active' => true,
+                    'position' => $setPos,
+                ]);
+            }
 
             $defaultOptionIds = [];
 
@@ -232,6 +249,45 @@ class MenuBuilder
         }
 
         return $templates;
+    }
+
+    /**
+     * The restaurant's existing template with this name (case-insensitive),
+     * if any.
+     */
+    private function reusableTemplate(Restaurant $restaurant, string $name): ?ItemTemplate
+    {
+        return ItemTemplate::query()
+            ->where('restaurant_id', $restaurant->id)
+            ->whereRaw('lower(name) = ?', [mb_strtolower(trim($name))])
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * Templates nothing points at any more — not attached to an item, not a
+     * swap set an ingredient references. After a re-import replaces the
+     * menu these are the previous import's leftovers; removing them is what
+     * makes the refresh clean. Returns how many were removed.
+     */
+    public function pruneUnusedTemplates(Restaurant $restaurant): int
+    {
+        return $this->withTenant($restaurant, function () use ($restaurant): int {
+            $orphans = ItemTemplate::query()
+                ->where('restaurant_id', $restaurant->id)
+                ->whereDoesntHave('menuItems')
+                ->whereNotIn('id', MenuItemIngredient::query()
+                    ->whereNotNull('swap_template_id')
+                    ->whereHas('menuItem', fn ($q) => $q->where('restaurant_id', $restaurant->id))
+                    ->select('swap_template_id'))
+                ->get();
+
+            foreach ($orphans as $template) {
+                $template->delete();
+            }
+
+            return $orphans->count();
+        });
     }
 
     /**

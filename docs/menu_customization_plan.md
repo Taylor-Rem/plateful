@@ -290,6 +290,14 @@ is removed for suggestions, because suggestions are labeled and gated.
 - ~~⚑ P3 — **Re-import carry-over**~~ — done as planned (by name,
   case-insensitive, banner for non-matches). Rows from the current menu win
   over the fresh extraction for a matching item.
+- ~~**Re-import stacked duplicate templates**~~ (found by Taylor 2026-09-11):
+  confirm kept every template and the builder created a fresh one per
+  option set, so each re-import added another "Sandwich size". Now an
+  imported set (or inline swap set) reuses the template of the same name
+  and replaces its contents, and `MenuBuilder::pruneUnusedTemplates()` runs
+  after the build: templates attached to no item and referenced by no
+  ingredient swap are deleted. The old promise that hand-built templates
+  survive a re-import is gone — only templates still in use survive.
 - ⚑ P3 — **Suggestion source**: Claude per import (built) vs a curated
   per-cuisine list. Judge on the first real testaurant re-import (Phase 4);
   if suggestions are noisy, add the curated list as a filter, not a

@@ -159,7 +159,8 @@ it('re-imports carried-over rows that reference an existing swap set, and reject
     $item = $restaurant->menuItems()->where('name', 'Classic Italian')->sole();
     expect($item->templates()->pluck('item_templates.id')->all())->toBe([$cheeses->id])
         ->and($item->defaultSelections()->pluck('item_template_options.id')->all())->toContain($provolone->id)
-        ->and(ItemTemplate::withoutTenantScope()->where('restaurant_id', $restaurant->id)->count())->toBe(2);
+        // Toppings was attached to nothing, so the refresh removed it.
+        ->and(ItemTemplate::withoutTenantScope()->where('restaurant_id', $restaurant->id)->pluck('name')->all())->toBe(['Cheeses']);
 });
 
 it('flashes sanitized suggestions for a hand-made item from both hosts', function () {
@@ -209,4 +210,39 @@ it('reports a friendly error when the suggestion call fails', function () {
         ->assertRedirect()
         ->assertSessionHas('error')
         ->assertSessionMissing('itemSuggestions');
+});
+
+it('re-importing reuses a swap set by name and keeps swap sets that carried-over rows reference', function () {
+    [$owner, $restaurant] = micOwnerAndRestaurant();
+    $cheeses = ItemTemplate::withoutTenantScope()->create(['restaurant_id' => $restaurant->id, 'name' => 'Cheeses', 'is_active' => true, 'position' => 0]);
+    $g = ItemTemplateGroup::create(['item_template_id' => $cheeses->id, 'name' => 'Cheese', 'kind' => 'swap', 'min_selections' => 1, 'max_selections' => 1, 'position' => 0]);
+    ItemTemplateOption::create(['item_template_group_id' => $g->id, 'name' => 'Provolone', 'price_delta_cents' => 0, 'is_available' => true, 'position' => 0]);
+    $breads = ItemTemplate::withoutTenantScope()->create(['restaurant_id' => $restaurant->id, 'name' => 'Breads', 'is_active' => true, 'position' => 1]);
+    $bg = ItemTemplateGroup::create(['item_template_id' => $breads->id, 'name' => 'Bread', 'kind' => 'swap', 'min_selections' => 1, 'max_selections' => 1, 'position' => 0]);
+    ItemTemplateOption::create(['item_template_group_id' => $bg->id, 'name' => 'White', 'price_delta_cents' => 0, 'is_available' => true, 'position' => 0]);
+    $unused = ItemTemplate::withoutTenantScope()->create(['restaurant_id' => $restaurant->id, 'name' => 'Leftover', 'is_active' => true, 'position' => 2]);
+
+    $import = MenuImport::factory()->needsReview()->create(['restaurant_id' => $restaurant->id]);
+
+    $this->actingAs($owner)
+        ->post(MIC_ADMIN_HOST."/deli/menu-import/{$import->id}/confirm", [
+            'categories' => [[
+                'name' => 'Sandwiches',
+                'items' => [['name' => 'Classic Italian', 'description' => null, 'price_cents' => 1050, 'option_set' => null, 'ingredients' => [
+                    // Carried over: references the existing Breads set by id.
+                    ['name' => 'Sourdough', 'is_removable' => false, 'swap_template_id' => $breads->id],
+                    // Inline set with a name that already exists: reused, options replaced.
+                    ['name' => 'Provolone', 'is_removable' => true, 'swap_set' => ['name' => 'cheeses', 'options' => [
+                        ['name' => 'Provolone', 'price_delta_cents' => 0],
+                        ['name' => 'Swiss', 'price_delta_cents' => 50],
+                    ]]],
+                ]]],
+            ]],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $names = ItemTemplate::withoutTenantScope()->where('restaurant_id', $restaurant->id)->orderBy('id')->pluck('name', 'id');
+    expect($names->all())->toBe([$cheeses->id => 'Cheeses', $breads->id => 'Breads'])
+        ->and(ItemTemplate::withoutTenantScope()->whereKey($unused->id)->exists())->toBeFalse()
+        ->and($cheeses->fresh()->groups->first()->options->pluck('name')->all())->toBe(['Provolone', 'Swiss']);
 });

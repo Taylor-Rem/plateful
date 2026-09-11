@@ -935,6 +935,11 @@ one-template-per-item limit already duplicated "Add salad/soup" into four templa
       (`allow_half` column, default on; only Double priced; Regular default and silent on tickets;
       legacy kinds still render). Migration recompiles existing items — dev DB done, testaurant's
       Classic Italian verified in the cart as `7" · Double Mortadella · No Provolone cheese`.
+- [x] **Re-import refresh (2026-09-11):** imported option sets and inline swap sets reuse the
+      template of the same name; templates left unused after the import are pruned. Testaurant dev
+      still carries the duplicates from earlier re-imports — prune once with
+      `app(App\Support\Menus\MenuBuilder::class)->pruneUnusedTemplates(App\Models\Restaurant::where('subdomain','testaurant')->first())`
+      (tailnet was down when this shipped).
 - [~] **Phase 4 — rollout** — dev half done 2026-09-10: The Rose PDF (now at
       `~/Documents/Plateful/menus/Summer+Weeday+Menu26.pdf`) re-extracted on testaurant dev via a
       synchronous `ExtractMenuJob` (bypassing the shared dev queue worker — it may run stale code);

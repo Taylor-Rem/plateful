@@ -144,9 +144,11 @@ class MenuImportController extends Controller
     /**
      * Import the owner-confirmed (possibly edited) draft into the real menu.
      * Any existing menu is replaced in the same transaction: categories
-     * cascade to items and cart lines, order history keeps its snapshots
-     * (order_items null their menu_item_id), and item templates are kept so
-     * hand-built ones survive a re-import.
+     * cascade to items and cart lines, and order history keeps its snapshots
+     * (order_items null their menu_item_id). Templates are refreshed rather
+     * than stacked: an imported set reuses the template of the same name,
+     * carried-over customizations keep the swap sets they reference, and
+     * whatever ends up attached to nothing is removed.
      */
     public function confirm(
         MenuImportConfirmRequest $request,
@@ -168,7 +170,10 @@ class MenuImportController extends Controller
             $replaced = $restaurant->menuCategories()->exists();
             $restaurant->menuCategories()->delete();
 
-            return $menuBuilder->buildFromImport($restaurant, $validated['categories'], $optionSets);
+            $created = $menuBuilder->buildFromImport($restaurant, $validated['categories'], $optionSets);
+            $menuBuilder->pruneUnusedTemplates($restaurant);
+
+            return $created;
         });
 
         $menuImport->update(['status' => MenuImportStatus::Completed]);
