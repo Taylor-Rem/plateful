@@ -5,6 +5,7 @@ namespace App\Services;
 use Anthropic\Client;
 use Anthropic\Messages\JSONOutputFormat;
 use Anthropic\Messages\OutputConfig;
+use App\Support\Cuisines;
 use RuntimeException;
 
 /**
@@ -42,11 +43,14 @@ class MenuExtractionService
         - kind is "extra" for adding more of something or an add-on, "swap" for choosing an alternative, "remove" for an ingredient customers commonly leave out that is not in the printed list. Do not repeat a choice that is already an option_set on the item.
         - For a "swap", swap_options MUST start with what the item comes with as printed or by default, then the alternatives: ["Whole milk", "Oat milk", "Almond milk"], ["Regular", "Decaf"], ["Bacon", "Fried halloumi"]. Never list only the alternatives — the first entry is what a customer gets without choosing.
         - Never attach prices to suggestions — the owner sets those. At most 8 suggestions per item.
+
+        Cuisine:
+        - cuisine_tags is 1 to 3 tags from the allowed list that best describe the restaurant as a whole, judged from the menu (a taqueria is ["mexican"]; a diner serving eggs, burgers and pie might be ["breakfast", "american"]). Pick the most specific tags that fit; never pick a tag the menu gives no evidence for. Empty only if nothing on the list fits.
         PROMPT;
 
     /**
      * @param  array<int, array{media_type: string, data: string}>  $files  raw binary + mime, images or PDFs
-     * @return array{categories: array<int, mixed>, option_sets: array<int, mixed>, warnings: array<int, string>, model: string, input_tokens: int, output_tokens: int}
+     * @return array{categories: array<int, mixed>, option_sets: array<int, mixed>, warnings: array<int, string>, cuisine_tags: array<int, string>, model: string, input_tokens: int, output_tokens: int}
      */
     public function extract(array $files): array
     {
@@ -74,7 +78,7 @@ class MenuExtractionService
         }
         $content[] = [
             'type' => 'text',
-            'text' => 'Extract the complete menu from the attached files.',
+            'text' => 'Extract the complete menu from the attached files. Allowed cuisine_tags: '.implode(', ', Cuisines::slugs()).'.',
         ];
 
         $message = $client->messages->create(
@@ -106,6 +110,7 @@ class MenuExtractionService
             'categories' => $decoded['categories'],
             'option_sets' => is_array($decoded['option_sets'] ?? null) ? $decoded['option_sets'] : [],
             'warnings' => array_values(array_filter($decoded['warnings'] ?? [], 'is_string')),
+            'cuisine_tags' => is_array($decoded['cuisine_tags'] ?? null) ? $decoded['cuisine_tags'] : [],
             'model' => $message->model,
             'input_tokens' => (int) $message->usage->inputTokens,
             'output_tokens' => (int) $message->usage->outputTokens,
@@ -283,8 +288,12 @@ class MenuExtractionService
                     'type' => 'array',
                     'items' => ['type' => 'string'],
                 ],
+                'cuisine_tags' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'string', 'enum' => Cuisines::slugs()],
+                ],
             ],
-            'required' => ['categories', 'option_sets', 'warnings'],
+            'required' => ['categories', 'option_sets', 'warnings', 'cuisine_tags'],
             'additionalProperties' => false,
         ];
     }

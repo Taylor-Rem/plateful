@@ -70,6 +70,12 @@ class RestaurantData extends Data
         public bool $hasGalleryPhotos,
         public ?string $createdAt,
         public string $publicUrl,
+        public ?float $latitude = null,
+        public ?float $longitude = null,
+        /** @var array<int, string> */
+        public array $cuisineTags = [],
+        /** Discoverable in the Plateful app's marketplace (owner opt-out). */
+        public bool $marketplaceListed = true,
     ) {}
 
     public static function fromModel(Restaurant $restaurant): self
@@ -143,6 +149,10 @@ class RestaurantData extends Data
                 : $restaurant->photos()->exists(),
             createdAt: $restaurant->created_at?->toIso8601String(),
             publicUrl: $restaurant->publicUrl(Request::getScheme() ?: 'https'),
+            latitude: $restaurant->latitude,
+            longitude: $restaurant->longitude,
+            cuisineTags: $restaurant->cuisineTags(),
+            marketplaceListed: (bool) $restaurant->marketplace_listed,
         );
     }
 

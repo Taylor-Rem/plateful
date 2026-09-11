@@ -886,7 +886,10 @@ plateful.fyi" to "on the web." Growth surface, not launch surface._
       with the web Google flow, `MeData`/`AuthSessionData`/`TwoFactorChallengeData` in
       `generated.d.ts`. Needs from Taylor: the iOS/Android Google client ids and the Apple
       bundle id in prod env; `php artisan migrate` (personal_access_tokens + `users.apple_id`).
-- [ ] **Phase 1 — read API + discovery data** (~1–2): `latitude/longitude` (Places geocode +
+- [x] **Phase 1 — read API + discovery data** — DONE 2026-09-11 (one session, 1361 green; as-built
+      notes in the plan doc). Needs from Taylor: set `GOOGLE_GEOCODING_API_KEY` (separate key, obtained 2026-09-11), run
+      `php artisan migrate` + `php artisan restaurants:geocode` on dev/prod, and tag existing
+      restaurants' cuisines in Settings (or re-run a menu import). Original scope: `latitude/longitude` (Places geocode +
       backfill), `cuisine_tags` (from menu extraction), `marketplace_listed` (⚑ default on);
       restaurants near-me/open-now/cuisine list, detail, menu (shared query object also unblocks
       §13 Phase 1). App work starts here.

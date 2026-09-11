@@ -137,6 +137,11 @@ return [
         // custom domain we onboard would be another entry to maintain. Keeping
         // it here also means it never reaches the client at all.
         'maps_api_key' => env('GOOGLE_MAPS_API_KEY'),
+
+        // Geocoding API key for placing restaurants on the map (app near-me
+        // search). A separate credential from the Places key above; falls
+        // back to it when a single key has both APIs enabled.
+        'geocoding_api_key' => env('GOOGLE_GEOCODING_API_KEY') ?: env('GOOGLE_MAPS_API_KEY'),
     ],
 
     'apple' => [

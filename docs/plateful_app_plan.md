@@ -3,9 +3,9 @@
 _Drafted 2026-09-09, trimmed the same day to **API and data work only**. The
 app itself (stack, screens, builds, store submission) is planned in the
 separate app repo: `~/Projects/plateful-app/docs/app_plan.md`. Status:
-**Phase 0 built 2026-09-11** (Sanctum, `/api/v1` auth incl. Google + Apple
-ID tokens, two-factor challenge, `GET/DELETE /me`, `ResolveTenantFromRoute`,
-contract snapshot); Phase 1 next. Locked at drafting: **one Plateful app, not
+**Phases 0–1 built 2026-09-11** (auth; discovery data + restaurants
+list/detail/menu). The app track can start. Phase 2 (ordering) next. Locked
+at drafting: **one Plateful app, not
 per-restaurant apps**; every restaurant's storefront lives inside it. The app
 is therefore a marketplace, and the API embraces that._
 
@@ -226,10 +226,44 @@ As built (decisions taken at build time, all recommended-path):
 - Contract test: `tests/Feature/Api/V1/ContractTest.php` snapshots the
   constructor shape of every v1 DTO; add new DTOs to `API_V1_CONTRACT`.
 
-### Phase 1 — read API + discovery data (~1–2 sessions)
+### Phase 1 — read API + discovery data — DONE 2026-09-11 (one session)
 Geo/cuisine/`marketplace_listed` migration + backfill; restaurants
 list/detail/menu; shared menu query object; regenerate and hand off
 `generated.d.ts`. **The app track starts here.**
+
+As built:
+- `restaurants.latitude/longitude/geocoded_at/cuisine_tags/marketplace_listed`
+  (listed by default). `RestaurantGeocoder` uses the **Geocoding API** with its own
+  key, `GOOGLE_GEOCODING_API_KEY` (a separate credential from the Places
+  key; falls back to `GOOGLE_MAPS_API_KEY` if unset), then
+  `php artisan restaurants:geocode`. The settings, onboarding-basics and
+  super-admin-create writers queue `GeocodeRestaurant` when the address
+  changes; the tests' phpunit.xml blanks the key so a real `.env` key never
+  leaks into the suite.
+- Cuisine taxonomy lives in `config/platform.php` (`cuisines`, slug =>
+  label; `App\Support\Cuisines`). Menu extraction now emits `cuisine_tags`
+  from that list (schema enum) and the import's confirm step seeds the
+  restaurant's tags only while it has none. Owners edit tags (max 5) and the
+  "Show my restaurant in the Plateful app" toggle on the tenant Settings page.
+- `GET /restaurants?lat&lng&radius_km&open_now&cuisine&q&fulfilment&page`
+  → `RestaurantSummaryData[]` + `PaginationMetaData`. `RestaurantSearch` does
+  a SQL bounding box then exact Haversine + open-now in PHP and paginates
+  in memory (20/page; radius default 25 km, max 100 — `platform.marketplace`).
+  Distance-ordered with a location, alphabetical without. Listed + live only.
+- `GET /restaurants/{subdomain}` → `RestaurantData` (now carries
+  `latitude`, `longitude`, `cuisineTags`, `marketplaceListed`) and
+  `GET /restaurants/{subdomain}/menu` → `MenuCategoryData[]`, both behind
+  `tenant.route` (any **live** restaurant, opted-out included — a link or a
+  past order still opens it; only discovery hides it).
+- `StorefrontMenuQuery` is the shared customer-menu query object; the
+  storefront `MenuController` uses it too, which is what the web marketplace
+  plan's Phase 1 wanted.
+- `Restaurant::isOpenAt()/nextOpenAt()` read eager-loaded `hours` when
+  present, so list endpoints don't N+1.
+- Contract snapshot now pins the read DTOs as well (`RestaurantData`,
+  `RestaurantSummaryData`, `MenuCategoryData`, `MenuItemData`,
+  `MenuItemIngredientData`, `ItemTemplateGroupData`, `ItemTemplateOptionData`,
+  `PaginationMetaData`).
 
 ### Phase 2 — ordering (~3–4 sessions; payments are most of it)
 Header-token carts; checkout intents + confirm + connected-account webhook

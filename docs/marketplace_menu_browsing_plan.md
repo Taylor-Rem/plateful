@@ -57,7 +57,9 @@ root domain. (Prefix deliberately: bare `/{subdomain}` would collide with
 `/savings`, `/press`, `/book`, every future root route.)
 
 - Controller (e.g. `MarketplaceRestaurantController`): resolve by `subdomain`
-  against `scopePublic()`, 404 otherwise. Reuse the `MenuController` category
+  against `scopePublic()`, 404 otherwise. The shared query object now exists
+  (`App\Support\Menus\StorefrontMenuQuery`, built for the app API 2026-09-11;
+  `MenuController` already uses it). Reuse the `MenuController` category
   query (extract to a shared query object/service so the two can't drift);
   never include the admin `editor` payload.
 - Page: restaurant hero (name, city, hours, description, hero image) + full

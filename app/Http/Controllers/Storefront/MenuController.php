@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Storefront;
 
 use App\Data\ItemTemplateData;
-use App\Data\MenuCategoryData;
 use App\Data\RestaurantData;
 use App\Http\Controllers\Controller;
 use App\Models\ItemTemplate;
 use App\Models\Restaurant;
+use App\Support\Menus\StorefrontMenuQuery;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,33 +15,14 @@ use Inertia\Response;
 
 class MenuController extends Controller
 {
-    public function __invoke(CurrentTenant $tenant, Request $request): Response
+    public function __invoke(CurrentTenant $tenant, Request $request, StorefrontMenuQuery $menu): Response
     {
         $restaurant = $tenant->get();
         $user = $request->user();
         $canEditMenu = $user
             && ($user->isSuperAdmin() || $user->isRestaurantAdminAt($restaurant));
 
-        $categories = $restaurant->menuCategories()
-            ->when(! $canEditMenu, fn ($q) => $q->where('is_active', true))
-            ->orderBy('position')
-            ->with([
-                'items' => function ($q) use ($canEditMenu): void {
-                    if (! $canEditMenu) {
-                        $q->where('is_available', true);
-                    }
-                    $q->orderBy('position');
-                },
-                'items.templates.groups.options',
-                'items.ownGroups.options',
-                'items.ingredients',
-                'items.defaultSelections',
-            ])
-            ->get()
-            ->when(! $canEditMenu, fn ($cats) => $cats->filter(fn ($c) => $c->items->isNotEmpty()))
-            ->values()
-            ->map(fn ($c) => MenuCategoryData::fromModel($c))
-            ->all();
+        $categories = $menu->categoryData($restaurant, includeHidden: (bool) $canEditMenu);
 
         return Inertia::render('Storefront/Menu', [
             'restaurant' => RestaurantData::fromModel($restaurant),

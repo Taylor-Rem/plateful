@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin\TenantAdmin;
 use App\Data\RestaurantData;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RestaurantSettingsRequest;
+use App\Jobs\GeocodeRestaurant;
 use App\Models\Restaurant;
 use App\Services\RestaurantImageService;
+use App\Support\Cuisines;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,6 +19,7 @@ class SettingsController extends Controller
     {
         return Inertia::render('Admin/TenantAdmin/Settings', [
             'restaurant' => RestaurantData::fromModel($restaurant),
+            'cuisineOptions' => Cuisines::all(),
         ]);
     }
 
@@ -38,6 +41,16 @@ class SettingsController extends Controller
             'pickup_refunds_enabled' => $request->boolean('pickup_refunds_enabled'),
             'delivery_refunds_enabled' => $request->boolean('delivery_refunds_enabled'),
         ]);
+
+        // App marketplace fields: only touched when the form carries them, so
+        // older partial submits leave the listing and tags alone.
+        if ($request->exists('marketplace_listed')) {
+            $restaurant->marketplace_listed = $request->boolean('marketplace_listed');
+        }
+
+        if ($request->exists('cuisine_tags')) {
+            $restaurant->cuisine_tags = Cuisines::filter((array) ($validated['cuisine_tags'] ?? []));
+        }
 
         // The settings form submits the whole address block together; only touch
         // the fields the request actually carries so a partial update (e.g. the
@@ -69,6 +82,10 @@ class SettingsController extends Controller
         }
 
         $restaurant->save();
+
+        if ($restaurant->addressWasChanged()) {
+            GeocodeRestaurant::dispatch($restaurant->id);
+        }
 
         return back()->with('success', 'Settings updated.');
     }

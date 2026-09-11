@@ -254,6 +254,12 @@ customerName: string,
 totalCents: number,
 placedAt: string | null,
 };
+export type PaginationMetaData = {
+currentPage: number,
+lastPage: number,
+perPage: number,
+total: number,
+};
 export type PendingInvitationData = {
 id: number,
 email: string,
@@ -313,6 +319,10 @@ hasAboutSection: boolean,
 hasGalleryPhotos: boolean,
 createdAt: string | null,
 publicUrl: string,
+latitude: number | null,
+longitude: number | null,
+cuisineTags: string[],
+marketplaceListed: boolean,
 };
 export type RestaurantHourData = {
 dayOfWeek: number,
@@ -333,6 +343,25 @@ position: number,
 imageUrl: string | null,
 imageMediumUrl: string | null,
 imageThumbUrl: string | null,
+};
+export type RestaurantSummaryData = {
+id: number,
+name: string,
+subdomain: string,
+description: string | null,
+logoThumbUrl: string | null,
+logoMediumUrl: string | null,
+heroImageMediumUrl: string | null,
+city: string | null,
+state: string | null,
+latitude: number | null,
+longitude: number | null,
+distanceKm: number | null,
+cuisineTags: string[],
+isOpen: boolean,
+openStatusLabel: string | null,
+deliveryEnabled: boolean,
+publicUrl: string,
 };
 export type TwoFactorChallengeData = {
 twoFactorRequired: boolean,

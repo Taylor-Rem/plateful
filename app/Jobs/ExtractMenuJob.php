@@ -44,6 +44,7 @@ class ExtractMenuJob implements ShouldQueue
         try {
             $result = $extraction->extract($this->loadFiles());
             $sanitized = ExtractedMenuSanitizer::sanitize($result['categories'], $result['warnings'], $result['option_sets'] ?? []);
+            $sanitized['cuisine_tags'] = ExtractedMenuSanitizer::sanitizeCuisineTags($result['cuisine_tags'] ?? []);
 
             $this->import->update([
                 'status' => MenuImportStatus::NeedsReview,

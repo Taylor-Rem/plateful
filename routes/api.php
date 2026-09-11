@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Auth\SocialLoginController;
 use App\Http\Controllers\Api\V1\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\RestaurantsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -47,4 +48,15 @@ Route::domain(config('platform.primary_domain'))
             Route::get('me', [MeController::class, 'show'])->name('me.show');
             Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
         });
+
+        // Discovery is public; guests browse and only sign in to order.
+        Route::get('restaurants', [RestaurantsController::class, 'index'])->name('restaurants.index');
+
+        Route::prefix('restaurants/{restaurant}')
+            ->name('restaurants.')
+            ->middleware('tenant.route')
+            ->group(function () {
+                Route::get('/', [RestaurantsController::class, 'show'])->name('show');
+                Route::get('menu', [RestaurantsController::class, 'menu'])->name('menu');
+            });
     });

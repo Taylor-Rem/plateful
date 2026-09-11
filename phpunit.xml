@@ -46,6 +46,8 @@
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="GOOGLE_MAPS_API_KEY" value=""/>
+        <env name="GOOGLE_GEOCODING_API_KEY" value=""/>
         <!-- Keyless on purpose: CampaignMailer logs batches instead of calling
              Resend, so campaign pipeline tests can never send real email. -->
         <env name="RESEND_API_KEY" value="" force="true"/>

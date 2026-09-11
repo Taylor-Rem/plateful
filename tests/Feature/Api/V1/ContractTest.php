@@ -1,7 +1,15 @@
 <?php
 
 use App\Data\AuthSessionData;
+use App\Data\ItemTemplateGroupData;
+use App\Data\ItemTemplateOptionData;
 use App\Data\MeData;
+use App\Data\MenuCategoryData;
+use App\Data\MenuItemData;
+use App\Data\MenuItemIngredientData;
+use App\Data\PaginationMetaData;
+use App\Data\RestaurantData;
+use App\Data\RestaurantSummaryData;
 use App\Data\TwoFactorChallengeData;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
@@ -16,6 +24,14 @@ const API_V1_CONTRACT = [
     MeData::class,
     AuthSessionData::class,
     TwoFactorChallengeData::class,
+    PaginationMetaData::class,
+    RestaurantSummaryData::class,
+    RestaurantData::class,
+    MenuCategoryData::class,
+    MenuItemData::class,
+    MenuItemIngredientData::class,
+    ItemTemplateGroupData::class,
+    ItemTemplateOptionData::class,
 ];
 
 /**

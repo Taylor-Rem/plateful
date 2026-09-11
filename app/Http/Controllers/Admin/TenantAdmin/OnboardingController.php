@@ -6,6 +6,7 @@ use App\Data\RestaurantData;
 use App\Enums\RestaurantStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\OnboardingBasicsRequest;
+use App\Jobs\GeocodeRestaurant;
 use App\Models\MenuImport;
 use App\Models\Restaurant;
 use App\Services\RestaurantImageService;
@@ -103,6 +104,10 @@ class OnboardingController extends Controller
         }
 
         $restaurant->save();
+
+        if ($restaurant->addressWasChanged()) {
+            GeocodeRestaurant::dispatch($restaurant->id);
+        }
 
         return back()->with('success', 'Basics saved.');
     }
