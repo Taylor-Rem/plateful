@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Data\MeData;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Me\UpdateMeRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,27 @@ class MeController extends Controller
     public function show(Request $request): JsonResponse
     {
         return response()->json(['data' => MeData::fromModel($request->user())]);
+    }
+
+    /**
+     * Partial profile update. Changing the email un-verifies it, as on the
+     * web profile page.
+     */
+    public function update(UpdateMeRequest $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $validated = $request->validated();
+
+        $user->fill(array_intersect_key($validated, array_flip(['name', 'email', 'phone', 'push_order_updates'])));
+
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
+
+        $user->save();
+
+        return response()->json(['data' => MeData::fromModel($user)]);
     }
 
     /**

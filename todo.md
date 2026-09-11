@@ -902,7 +902,10 @@ plateful.fyi" to "on the web." Growth surface, not launch surface._
       `createPaymentIntent()` on the connected account (application fee, manual capture for courier
       delivery) + confirm endpoint + connected-account webhook branch into
       `OrderPlacement::materialize()`; delivery quote/address endpoints.
-- [ ] **Phase 3 — retention + push** (~2–3): order history, reorder endpoint, addresses, rewards
+- [x] **Phase 3 — retention + push** — DONE 2026-09-11 (one session; as-built notes in the plan
+      doc). Needs from Taylor: deploy (migration adds `device_tokens`, `user_restaurant_favorites`,
+      `users.push_order_updates`); optionally `EXPO_ACCESS_TOKEN` in Cloud once the app's Expo
+      project has push security on. Original scope: order history, reorder endpoint, addresses, rewards
       wallet aggregate (§10 ownership unchanged), favorites, `device_tokens` + `OrderStatusChanged`
       push (⚑ Expo Push) from `OrderTransition` / delivery updates.
 - [ ] **Later**: universal-link association files, push campaigns as a §4 Campaigns extension

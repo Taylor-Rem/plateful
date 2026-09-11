@@ -7,8 +7,14 @@ use App\Http\Controllers\Api\V1\Auth\SocialLoginController;
 use App\Http\Controllers\Api\V1\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\Api\V1\CartController;
 use App\Http\Controllers\Api\V1\CheckoutController;
+use App\Http\Controllers\Api\V1\Me\AddressesController;
+use App\Http\Controllers\Api\V1\Me\DevicesController;
+use App\Http\Controllers\Api\V1\Me\FavoritesController;
+use App\Http\Controllers\Api\V1\Me\OrdersController as MyOrdersController;
+use App\Http\Controllers\Api\V1\Me\WalletController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\OrdersController;
+use App\Http\Controllers\Api\V1\RestaurantMembershipController;
 use App\Http\Controllers\Api\V1\RestaurantsController;
 use App\Http\Controllers\Storefront\AddressLookupController;
 use App\Http\Controllers\Storefront\DeliveryQuoteController;
@@ -51,7 +57,24 @@ Route::domain(config('platform.primary_domain'))
 
         Route::middleware(['auth:sanctum', 'abilities:customer'])->group(function () {
             Route::get('me', [MeController::class, 'show'])->name('me.show');
+            Route::patch('me', [MeController::class, 'update'])->name('me.update');
             Route::delete('me', [MeController::class, 'destroy'])->name('me.destroy');
+
+            // Retention (Phase 3): the account's footprint across restaurants.
+            Route::prefix('me')->name('me.')->group(function () {
+                Route::get('orders', [MyOrdersController::class, 'index'])->name('orders.index');
+                Route::get('orders/{number}', [MyOrdersController::class, 'show'])
+                    ->where('number', '[A-Za-z0-9-]+')
+                    ->name('orders.show');
+                Route::get('addresses', [AddressesController::class, 'index'])->name('addresses.index');
+                Route::post('addresses', [AddressesController::class, 'store'])->name('addresses.store');
+                Route::patch('addresses/{address}', [AddressesController::class, 'update'])->name('addresses.update');
+                Route::delete('addresses/{address}', [AddressesController::class, 'destroy'])->name('addresses.destroy');
+                Route::get('wallet', [WalletController::class, 'index'])->name('wallet');
+                Route::get('favorites', [FavoritesController::class, 'index'])->name('favorites');
+                Route::post('devices', [DevicesController::class, 'store'])->name('devices.store');
+                Route::delete('devices', [DevicesController::class, 'destroy'])->name('devices.destroy');
+            });
         });
 
         // Discovery is public; guests browse and only sign in to order.
@@ -90,6 +113,17 @@ Route::domain(config('platform.primary_domain'))
                     Route::get('orders/{number}', [OrdersController::class, 'show'])
                         ->where('number', '[A-Za-z0-9-]+')
                         ->name('orders.show');
+                    Route::post('orders/{number}/reorder', [OrdersController::class, 'reorder'])
+                        ->where('number', '[A-Za-z0-9-]+')
+                        ->name('orders.reorder');
+                });
+
+                // Per-restaurant state of the signed-in customer.
+                Route::middleware(['auth:sanctum', 'abilities:customer'])->group(function () {
+                    Route::get('me', [RestaurantMembershipController::class, 'show'])->name('membership.show');
+                    Route::put('favorite', [RestaurantMembershipController::class, 'favorite'])->name('membership.favorite');
+                    Route::delete('favorite', [RestaurantMembershipController::class, 'unfavorite'])->name('membership.unfavorite');
+                    Route::put('marketing-consent', [RestaurantMembershipController::class, 'marketingConsent'])->name('membership.marketing');
                 });
             });
     });

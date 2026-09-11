@@ -34,11 +34,28 @@ class CartManager
         protected Request $request,
     ) {}
 
+    protected ?Cart $pinned = null;
+
+    /**
+     * Use this cart for the rest of the request. Reorder creates a guest
+     * cart on its first line and must keep adding to it, but the request
+     * carried no token for it — without pinning, every add would start
+     * another cart.
+     */
+    public function pin(Cart $cart): void
+    {
+        $this->pinned = $cart;
+    }
+
     public function current(): ?Cart
     {
         $tenantId = $this->tenant->id();
         if (! $tenantId) {
             return null;
+        }
+
+        if ($this->pinned !== null && $this->pinned->restaurant_id === $tenantId) {
+            return $this->pinned;
         }
 
         $user = $this->request->user();

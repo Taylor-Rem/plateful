@@ -8,7 +8,8 @@
         "emailVerified": "bool",
         "twoFactorEnabled": "bool",
         "linkedProviders": "array",
-        "createdAt": "string"
+        "createdAt": "string",
+        "pushOrderUpdates": "bool"
     },
     "App\\Data\\AuthSessionData": {
         "token": "string",
@@ -245,5 +246,45 @@
         "country": "string",
         "instructions": "?string",
         "isDefault": "bool"
+    },
+    "App\\Data\\OrderHistoryItemData": {
+        "id": "int",
+        "number": "string",
+        "status": "string",
+        "type": "string",
+        "totalCents": "int",
+        "itemCount": "int",
+        "placedAt": "?string",
+        "deliveryStatus": "?string",
+        "restaurantName": "string",
+        "restaurantSubdomain": "string",
+        "restaurantLogoThumbUrl": "?string"
+    },
+    "App\\Data\\ReorderResultData": {
+        "cart": "?App\\Data\\CartData",
+        "cartToken": "?string",
+        "skipped": "array"
+    },
+    "App\\Data\\WalletEntryData": {
+        "restaurant": "App\\Data\\RestaurantSummaryData",
+        "loyaltyPoints": "int",
+        "pointsPerDollar": "int",
+        "totalOrders": "int",
+        "totalSpentCents": "int",
+        "lastOrderedAt": "?string"
+    },
+    "App\\Data\\RestaurantMembershipData": {
+        "isFavorite": "bool",
+        "marketingOptedIn": "bool",
+        "loyaltyPoints": "int",
+        "totalOrders": "int",
+        "totalSpentCents": "int",
+        "lastOrderedAt": "?string"
+    },
+    "App\\Data\\DeviceTokenData": {
+        "token": "string",
+        "platform": "string",
+        "deviceName": "?string",
+        "lastSeenAt": "?string"
     }
 }

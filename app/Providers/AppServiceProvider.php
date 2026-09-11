@@ -7,10 +7,12 @@ use App\Enums\PosProviderName;
 use App\Listeners\MergeGuestCartOnLogin;
 use App\Listeners\PurgeUserSessionsOnLogout;
 use App\Models\Campaign;
+use App\Models\DeliveryAssignment;
 use App\Models\ItemTemplate;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Restaurant;
+use App\Observers\DeliveryAssignmentObserver;
 use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
 use App\Services\Campaigns\CampaignContentReviewer;
@@ -111,6 +113,7 @@ class AppServiceProvider extends ServiceProvider
 
         Restaurant::observe(RestaurantObserver::class);
         MenuItem::observe(MenuItemObserver::class);
+        DeliveryAssignment::observe(DeliveryAssignmentObserver::class);
 
         Event::listen(Login::class, MergeGuestCartOnLogin::class);
         Event::listen(Logout::class, PurgeUserSessionsOnLogout::class);

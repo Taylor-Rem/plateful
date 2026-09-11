@@ -6,6 +6,7 @@ use App\Data\CartData;
 use App\Data\CartItemData;
 use App\Data\CheckoutIntentData;
 use App\Data\DeliveryAssignmentData;
+use App\Data\DeviceTokenData;
 use App\Data\ItemTemplateGroupData;
 use App\Data\ItemTemplateOptionData;
 use App\Data\MeData;
@@ -13,12 +14,16 @@ use App\Data\MenuCategoryData;
 use App\Data\MenuItemData;
 use App\Data\MenuItemIngredientData;
 use App\Data\OrderData;
+use App\Data\OrderHistoryItemData;
 use App\Data\OrderItemData;
 use App\Data\OrderPlacedData;
 use App\Data\PaginationMetaData;
+use App\Data\ReorderResultData;
 use App\Data\RestaurantData;
+use App\Data\RestaurantMembershipData;
 use App\Data\RestaurantSummaryData;
 use App\Data\TwoFactorChallengeData;
+use App\Data\WalletEntryData;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
@@ -48,6 +53,11 @@ const API_V1_CONTRACT = [
     OrderItemData::class,
     DeliveryAssignmentData::class,
     AddressData::class,
+    OrderHistoryItemData::class,
+    ReorderResultData::class,
+    WalletEntryData::class,
+    RestaurantMembershipData::class,
+    DeviceTokenData::class,
 ];
 
 /**

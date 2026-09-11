@@ -15,6 +15,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
@@ -41,6 +42,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
 
         $middleware->throttleApi();
+
+        // The API tenant must be known before route-model bindings resolve, so
+        // tenant-scoped models bound on /restaurants/{restaurant}/... routes
+        // are looked up inside that tenant (see ResolveTenantFromRoute).
+        $middleware->prependToPriorityList(SubstituteBindings::class, ResolveTenantFromRoute::class);
 
         $middleware->validateCsrfTokens(except: ['stripe/webhook', 'webhooks/uber', 'webhooks/doordash', 'webhooks/resend']);
 

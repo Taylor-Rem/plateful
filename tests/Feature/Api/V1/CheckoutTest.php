@@ -220,7 +220,7 @@ describe('confirm', function () {
             ->assertJsonStructure(['data' => ['order' => ['number', 'items', 'delivery'], 'confirmationToken']]);
 
         $order = Order::firstOrFail();
-        expect($order->stripe_payment_intent_id)->toBe('pi_app_1')
+        expect($order->stripe_payment_intent_id)->toBe(PendingCheckout::findOrFail($pendingId)->stripe_payment_intent_id)
             ->and($order->payment_state)->toBe(PaymentState::Captured)
             ->and($order->stripe_checkout_session_id)->toBeNull()
             ->and($response->json('data.confirmationToken'))->toBe($order->confirmation_token)
@@ -309,16 +309,17 @@ describe('webhook', function () {
             ->postJson(apiRestaurantBase($f['restaurant']).'/checkout/intents', pickupCheckoutPayload())
             ->json('data.pendingCheckoutId');
         $this->flushHeaders();
+        $intentId = PendingCheckout::findOrFail($pendingId)->stripe_payment_intent_id;
 
-        postStripeEvent('payment_intent.succeeded', ['id' => 'pi_app_1', 'object' => 'payment_intent', 'status' => 'succeeded'])->assertOk();
+        postStripeEvent('payment_intent.succeeded', ['id' => $intentId, 'object' => 'payment_intent', 'status' => 'succeeded'])->assertOk();
 
         $order = Order::firstOrFail();
         expect($order->payment_state)->toBe(PaymentState::Captured)
-            ->and($order->stripe_payment_intent_id)->toBe('pi_app_1')
+            ->and($order->stripe_payment_intent_id)->toBe($intentId)
             ->and(PendingCheckout::findOrFail($pendingId)->status)->toBe(PendingCheckout::STATUS_CONSUMED);
 
         // Duplicate delivery + the app's own confirm: still one order.
-        postStripeEvent('payment_intent.succeeded', ['id' => 'pi_app_1', 'object' => 'payment_intent', 'status' => 'succeeded'])->assertOk();
+        postStripeEvent('payment_intent.succeeded', ['id' => $intentId, 'object' => 'payment_intent', 'status' => 'succeeded'])->assertOk();
         $this->withHeader('X-Cart-Token', $token)
             ->postJson(apiRestaurantBase($f['restaurant'])."/checkout/{$pendingId}/confirm")
             ->assertOk()->assertJsonPath('data.order.number', $order->number);
@@ -330,13 +331,15 @@ describe('webhook', function () {
         $f = cartFixture();
         [, $token] = addPepViaApi($f);
         fakePaymentIntents('requires_capture');
-        $this->withHeader('X-Cart-Token', $token)
+        $pendingId = $this->withHeader('X-Cart-Token', $token)
             ->postJson(apiRestaurantBase($f['restaurant']).'/checkout/intents', pickupCheckoutPayload())
-            ->assertCreated();
+            ->assertCreated()
+            ->json('data.pendingCheckoutId');
         $this->flushHeaders();
+        $intentId = PendingCheckout::findOrFail($pendingId)->stripe_payment_intent_id;
         Queue::fake();
 
-        postStripeEvent('payment_intent.amount_capturable_updated', ['id' => 'pi_app_1', 'object' => 'payment_intent', 'status' => 'requires_capture'])->assertOk();
+        postStripeEvent('payment_intent.amount_capturable_updated', ['id' => $intentId, 'object' => 'payment_intent', 'status' => 'requires_capture'])->assertOk();
 
         expect(Order::firstOrFail()->payment_state)->toBe(PaymentState::Authorized);
     });

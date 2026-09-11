@@ -3,10 +3,11 @@
 _Drafted 2026-09-09, trimmed the same day to **API and data work only**. The
 app itself (stack, screens, builds, store submission) is planned in the
 separate app repo: `~/Projects/plateful-app/docs/app_plan.md`. Status:
-**Phases 0–2 built 2026-09-11** (auth; discovery + read API; carts,
-checkout intents, confirm, webhook, quotes, order show). The app can take a
-real order once the Stripe webhook events below are enabled. Phase 3
-(retention + push) next. Locked at drafting: **one Plateful app, not
+**Phases 0–3 built 2026-09-11** (auth; discovery + read API; carts,
+checkout intents, confirm, webhook, quotes, order show; history, reorder,
+addresses, wallet, favourites, devices + Expo push). The live Stripe Connect
+webhook was recreated the same day. Only the "Later" items remain. Locked at
+drafting: **one Plateful app, not
 per-restaurant apps**; every restaurant's storefront lives inside it. The app
 is therefore a marketplace, and the API embraces that._
 
@@ -319,9 +320,49 @@ As built (guest checkout: **yes**, per ⚑):
   `CheckoutIntentData`, `OrderPlacedData`, `OrderData`, `OrderItemData`,
   `DeliveryAssignmentData`, `AddressData`.
 
-### Phase 3 — retention + push (~2–3 sessions)
+### Phase 3 — retention + push — DONE 2026-09-11 (one session)
 Order history, reorder, addresses, wallet, favorites, device tokens,
 `OrderStatusChanged` notifications, notification preferences.
+
+As built (Expo Push via a hand-written channel, milestones only, one
+preference — all the recommended paths):
+- **Account** (`auth:sanctum` + `customer`): `GET /me/orders` (cross-restaurant
+  `OrderHistoryItemData[]` + meta), `GET /me/orders/{number}` (numbers are
+  globally unique), `PATCH /me` (partial: name/email/phone/`push_order_updates`;
+  a new email un-verifies), `GET/POST /me/addresses`,
+  `PATCH/DELETE /me/addresses/{id}` (rules + one-default logic now live in
+  `AddressBook`, shared with the web page), `GET /me/wallet`
+  (`WalletEntryData[]`: per-restaurant points + standing, read-only until §10),
+  `GET /me/favorites` (live restaurants only), `POST /me/devices` (upsert by
+  token; a token re-homes to whoever registers it), `DELETE /me/devices`.
+- **Per-restaurant, signed in**: `GET /restaurants/{r}/me` →
+  `RestaurantMembershipData` (favourite, marketing consent, points, totals);
+  `PUT/DELETE /restaurants/{r}/favorite`; `PUT /restaurants/{r}/marketing-consent`
+  (`MarketingConsentService`, source `account`, same audit trail as the web).
+- **Reorder** `POST /restaurants/{r}/orders/{number}/reorder` (owner or
+  `X-Order-Token`): rebuilds a cart at today's prices from each line's
+  modifiers snapshot (`selections[].option_id`), `ReorderResultData` with
+  `skipped[{name, reason}]` for gone/unavailable items or options that no
+  longer validate. `CartManager::pin()` keeps a fresh guest cart for the
+  whole request.
+- **Push**: `device_tokens` (Expo tokens, `ExponentPushToken[...]` validated),
+  `users.push_order_updates` (default on), `ExpoPushChannel` (POST to
+  exp.host in chunks of 100, optional `EXPO_ACCESS_TOKEN`, prunes
+  `DeviceNotRegistered` tokens), `OrderStatusChanged` (queued, plain
+  title/body/data), `OrderNotifier` decides wording. Triggers: order
+  transitions to confirmed / ready (pickup only) / completed / cancelled from
+  `OrderTransition::apply()`, and courier picked-up / delivered from
+  `DeliveryAssignmentObserver` (whichever writer moved the status). Guests and
+  opted-out users get nothing. Push data: `{type: 'order', orderNumber,
+  restaurant, status}` for deep links. The app should DELETE its device before
+  signing out.
+- **Tenant before bindings**: `ResolveTenantFromRoute` now runs ahead of
+  `SubstituteBindings` (priority list in bootstrap) and resolves the tenant
+  from the raw subdomain, so `{menuItem}` etc. are bound inside the tenant —
+  restaurant A's URL can never reach restaurant B's rows (pinned by a test).
+- Contract snapshot additionally pins `OrderHistoryItemData`,
+  `ReorderResultData`, `WalletEntryData`, `RestaurantMembershipData`,
+  `DeviceTokenData`; `MeData` gained `pushOrderUpdates`.
 
 ### Later (on evidence)
 Universal-link association files; push campaigns as a Campaigns extension;

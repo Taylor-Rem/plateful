@@ -142,6 +142,12 @@ pickupEtaAt: string | null,
 dropoffEtaAt: string | null,
 updatedAt: string | null,
 };
+export type DeviceTokenData = {
+token: string,
+platform: string,
+deviceName: string | null,
+lastSeenAt: string | null,
+};
 export type ItemTemplateData = {
 id: number,
 name: string,
@@ -180,6 +186,7 @@ emailVerified: boolean,
 twoFactorEnabled: boolean,
 linkedProviders: string[],
 createdAt: string,
+pushOrderUpdates: boolean,
 };
 export type MenuCategoryData = {
 id: number,
@@ -245,6 +252,19 @@ occurredAt: string,
 userName: string | null,
 note: string | null,
 };
+export type OrderHistoryItemData = {
+id: number,
+number: string,
+status: string,
+type: string,
+totalCents: number,
+itemCount: number,
+placedAt: string | null,
+deliveryStatus: string | null,
+restaurantName: string,
+restaurantSubdomain: string,
+restaurantLogoThumbUrl: string | null,
+};
 export type OrderItemData = {
 id: number,
 name: string,
@@ -283,6 +303,14 @@ email: string,
 expiresAt: string | null,
 invitedByName: string | null,
 role: App.Enums.RestaurantRole,
+};
+export type ReorderResultData = {
+cart: App.Data.CartData | null,
+cartToken: string | null,
+skipped: {
+name: string,
+reason: string,
+}[],
 };
 export type RestaurantData = {
 id: number,
@@ -353,6 +381,14 @@ name: string,
 email: string,
 role: App.Enums.RestaurantRole,
 };
+export type RestaurantMembershipData = {
+isFavorite: boolean,
+marketingOptedIn: boolean,
+loyaltyPoints: number,
+totalOrders: number,
+totalSpentCents: number,
+lastOrderedAt: string | null,
+};
 export type RestaurantPhotoData = {
 id: number,
 caption: string | null,
@@ -383,6 +419,14 @@ publicUrl: string,
 export type TwoFactorChallengeData = {
 twoFactorRequired: boolean,
 challengeToken: string,
+};
+export type WalletEntryData = {
+restaurant: App.Data.RestaurantSummaryData,
+loyaltyPoints: number,
+pointsPerDollar: number,
+totalOrders: number,
+totalSpentCents: number,
+lastOrderedAt: string | null,
 };
 }
 namespace Enums {

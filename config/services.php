@@ -145,6 +145,12 @@ return [
         'geocoding_api_key' => env('GOOGLE_GEOCODING_API_KEY') ?: env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    'expo' => [
+        // Optional Expo push security token (Expo dashboard → Access tokens);
+        // without it Expo accepts pushes from anyone holding a device token.
+        'access_token' => env('EXPO_ACCESS_TOKEN'),
+    ],
+
     'apple' => [
         // Sign in with Apple audiences: the iOS app's bundle id (native flow)
         // and, if ever used, the Services ID (web/Android flow). Apple's

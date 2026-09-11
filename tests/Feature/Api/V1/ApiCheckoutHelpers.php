@@ -27,7 +27,9 @@ function fakePaymentIntents(string $retrievedStatus = 'succeeded'): MockInterfac
         [app(StripeClient::class)]
     );
 
-    $seq = 0;
+    // Process-wide so a test that starts several checkouts (or re-fakes)
+    // never reuses an intent id — pending_checkouts pins them unique.
+    static $seq = 0;
     $mock->shouldReceive('createPaymentIntent')->andReturnUsing(function () use (&$seq) {
         $seq++;
 

@@ -27,6 +27,8 @@ class MeData extends Data
         public bool $twoFactorEnabled,
         public array $linkedProviders,
         public string $createdAt,
+        /** Push notifications for order milestones (default on). */
+        public bool $pushOrderUpdates = true,
     ) {}
 
     public static function fromModel(User $user): self
@@ -49,6 +51,7 @@ class MeData extends Data
             twoFactorEnabled: $user->hasEnabledTwoFactorAuthentication(),
             linkedProviders: $linked,
             createdAt: $user->created_at->toIso8601String(),
+            pushOrderUpdates: (bool) ($user->push_order_updates ?? true),
         );
     }
 }

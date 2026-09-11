@@ -56,6 +56,14 @@ test('a cart token from one restaurant never reaches another restaurant', functi
         ->and(Cart::withoutTenantScope()->where('token', $tokenA)->firstOrFail()->items()->count())->toBe(1);
 });
 
+test('another restaurant\'s menu item cannot be added through this restaurant\'s URL', function () {
+    $a = cartFixture('marcos');
+    $b = cartFixture('luigis');
+
+    $this->postJson(apiRestaurantBase($a['restaurant']).'/cart/items/'.$b['simple']->id)->assertNotFound();
+    $this->postJson(apiRestaurantBase($b['restaurant']).'/cart/items/'.$b['simple']->id)->assertCreated();
+});
+
 test('lines can be updated, replaced, removed, and the cart cleared', function () {
     $f = cartFixture();
     $base = apiRestaurantBase($f['restaurant']);
