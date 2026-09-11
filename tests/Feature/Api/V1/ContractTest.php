@@ -1,12 +1,20 @@
 <?php
 
+use App\Data\AddressData;
 use App\Data\AuthSessionData;
+use App\Data\CartData;
+use App\Data\CartItemData;
+use App\Data\CheckoutIntentData;
+use App\Data\DeliveryAssignmentData;
 use App\Data\ItemTemplateGroupData;
 use App\Data\ItemTemplateOptionData;
 use App\Data\MeData;
 use App\Data\MenuCategoryData;
 use App\Data\MenuItemData;
 use App\Data\MenuItemIngredientData;
+use App\Data\OrderData;
+use App\Data\OrderItemData;
+use App\Data\OrderPlacedData;
 use App\Data\PaginationMetaData;
 use App\Data\RestaurantData;
 use App\Data\RestaurantSummaryData;
@@ -32,6 +40,14 @@ const API_V1_CONTRACT = [
     MenuItemIngredientData::class,
     ItemTemplateGroupData::class,
     ItemTemplateOptionData::class,
+    CartData::class,
+    CartItemData::class,
+    CheckoutIntentData::class,
+    OrderPlacedData::class,
+    OrderData::class,
+    OrderItemData::class,
+    DeliveryAssignmentData::class,
+    AddressData::class,
 ];
 
 /**

@@ -7,6 +7,7 @@ use App\Data\MeData;
 use App\Data\TwoFactorChallengeData;
 use App\Models\User;
 use App\Services\Auth\ApiTokenIssuer;
+use App\Services\CartManager;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -34,6 +35,9 @@ trait IssuesApiSessions
 
     protected function sessionResponse(User $user, string $token): JsonResponse
     {
+        // A guest who built a cart and then signed in keeps it (web parity).
+        app(CartManager::class)->mergeHeaderCartIntoUser($user);
+
         return response()->json([
             'data' => new AuthSessionData(
                 token: $token,

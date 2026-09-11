@@ -893,7 +893,11 @@ plateful.fyi" to "on the web." Growth surface, not launch surface._
       backfill), `cuisine_tags` (from menu extraction), `marketplace_listed` (⚑ default on);
       restaurants near-me/open-now/cuisine list, detail, menu (shared query object also unblocks
       §13 Phase 1). App work starts here.
-- [ ] **Phase 2 — ordering** (~3–4, payments are most of it): `CartManager` reads `X-Cart-Token`;
+- [x] **Phase 2 — ordering** — DONE 2026-09-11 (one session; as-built notes in the plan doc).
+      Needs from Taylor: `php artisan migrate` (pending_checkouts intent id + orders partial unique),
+      **enable `payment_intent.succeeded` + `payment_intent.amount_capturable_updated` on the Stripe
+      Connect webhook endpoint**, and `STRIPE_KEY` set in every environment (the intents endpoint
+      hands it to PaymentSheet). Original scope: `CartManager` reads `X-Cart-Token`;
       `createPaymentIntent()` on the connected account (application fee, manual capture for courier
       delivery) + confirm endpoint + connected-account webhook branch into
       `OrderPlacement::materialize()`; delivery quote/address endpoints.

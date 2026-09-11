@@ -353,6 +353,20 @@ class OrderPlacement
             }
         }
 
+        // The app pays by PaymentIntent with no session at all, so the same
+        // short-circuit keys on the intent: confirm endpoint + webhook + a
+        // later `payment_intent.succeeded` after capture all land here.
+        $intentId = $payment['stripe_payment_intent_id'] ?? null;
+
+        if ($sessionId === null && $intentId) {
+            $existing = Order::withoutTenantScope()
+                ->where('stripe_payment_intent_id', $intentId)
+                ->first();
+            if ($existing) {
+                return $existing;
+            }
+        }
+
         $restaurant = Restaurant::query()->findOrFail($snapshot['restaurant_id']);
 
         $order = DB::transaction(function () use ($snapshot, $payment, $user, $restaurant) {
@@ -648,6 +662,11 @@ class OrderPlacement
                         ->where('stripe_checkout_session_id', $payment['stripe_checkout_session_id'])
                         ->firstOrFail();
                 }
+                if ($this->isPaymentIntentViolation($e) && ! empty($payment['stripe_payment_intent_id'])) {
+                    return Order::withoutTenantScope()
+                        ->where('stripe_payment_intent_id', $payment['stripe_payment_intent_id'])
+                        ->firstOrFail();
+                }
                 if ($attempts >= 10 || ! $this->isUniqueViolation($e)) {
                     throw $e;
                 }
@@ -694,6 +713,12 @@ class OrderPlacement
         return $e->getCode() === '23505'
             || str_contains((string) $e->getMessage(), 'orders_number_unique')
             || str_contains((string) $e->getMessage(), 'UNIQUE constraint');
+    }
+
+    protected function isPaymentIntentViolation(QueryException $e): bool
+    {
+        return str_contains((string) $e->getMessage(), 'orders_stripe_payment_intent_id_unique')
+            || str_contains((string) $e->getMessage(), 'orders.stripe_payment_intent_id');
     }
 
     protected function isSessionViolation(QueryException $e): bool

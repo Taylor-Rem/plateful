@@ -78,6 +78,19 @@ selectedOptionIds: number[],
 notes: string | null,
 isAvailable: boolean,
 };
+export type CheckoutIntentData = {
+pendingCheckoutId: number,
+paymentIntentId: string,
+clientSecret: string,
+publishableKey: string,
+stripeAccountId: string,
+manualCapture: boolean,
+subtotalCents: number,
+taxCents: number,
+deliveryFeeCents: number,
+tipCents: number,
+totalCents: number,
+};
 export type CustomerData = {
 id: number,
 name: string,
@@ -244,6 +257,10 @@ groupName: string,
 selectionNames: string[],
 }[],
 notes: string | null,
+};
+export type OrderPlacedData = {
+order: App.Data.OrderData,
+confirmationToken: string,
 };
 export type OrderSummaryData = {
 id: number,

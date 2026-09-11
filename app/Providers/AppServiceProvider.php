@@ -103,6 +103,9 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('api-auth', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()));
 
+        RateLimiter::for('api-checkout', fn (Request $request): Limit => Limit::perMinute(10)
+            ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
+
         RateLimiter::for('api-two-factor', fn (Request $request): Limit => Limit::perMinute(5)
             ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
 

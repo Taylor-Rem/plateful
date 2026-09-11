@@ -150,5 +150,100 @@
         "priceDeltaCents": "int",
         "isAvailable": "bool",
         "position": "int"
+    },
+    "App\\Data\\CartData": {
+        "id": "int",
+        "itemCount": "int",
+        "subtotalCents": "int",
+        "items": "array"
+    },
+    "App\\Data\\CartItemData": {
+        "id": "int",
+        "menuItemId": "int",
+        "menuItemName": "string",
+        "imageThumbUrl": "?string",
+        "quantity": "int",
+        "unitPriceCents": "int",
+        "lineTotalCents": "int",
+        "selectionSummary": "string",
+        "selectionGroups": "array",
+        "selectedOptionIds": "array",
+        "notes": "?string",
+        "isAvailable": "bool"
+    },
+    "App\\Data\\CheckoutIntentData": {
+        "pendingCheckoutId": "int",
+        "paymentIntentId": "string",
+        "clientSecret": "string",
+        "publishableKey": "string",
+        "stripeAccountId": "string",
+        "manualCapture": "bool",
+        "subtotalCents": "int",
+        "taxCents": "int",
+        "deliveryFeeCents": "int",
+        "tipCents": "int",
+        "totalCents": "int"
+    },
+    "App\\Data\\OrderPlacedData": {
+        "order": "App\\Data\\OrderData",
+        "confirmationToken": "string"
+    },
+    "App\\Data\\OrderData": {
+        "id": "int",
+        "number": "string",
+        "status": "string",
+        "type": "string",
+        "customerName": "string",
+        "customerEmail": "string",
+        "customerPhone": "?string",
+        "deliveryAddress": "?array",
+        "delivery": "?App\\Data\\DeliveryAssignmentData",
+        "subtotalCents": "int",
+        "taxCents": "int",
+        "tipCents": "int",
+        "tipRecipient": "string",
+        "deliveryFeeCents": "int",
+        "totalCents": "int",
+        "awardedLoyaltyPoints": "int",
+        "notes": "?string",
+        "placedAt": "?string",
+        "items": "array"
+    },
+    "App\\Data\\OrderItemData": {
+        "id": "int",
+        "name": "string",
+        "quantity": "int",
+        "unitPriceCents": "int",
+        "subtotalCents": "int",
+        "modifierSummary": "string",
+        "modifierGroups": "array",
+        "notes": "?string"
+    },
+    "App\\Data\\DeliveryAssignmentData": {
+        "provider": "string",
+        "status": "string",
+        "providerStatus": "?string",
+        "statusLabel": "string",
+        "isActive": "bool",
+        "trackingUrl": "?string",
+        "supportReference": "?string",
+        "externalId": "?string",
+        "driverName": "?string",
+        "driverPhone": "?string",
+        "pickupEtaAt": "?string",
+        "dropoffEtaAt": "?string",
+        "updatedAt": "?string"
+    },
+    "App\\Data\\AddressData": {
+        "id": "int",
+        "label": "?string",
+        "street": "string",
+        "street2": "?string",
+        "city": "string",
+        "state": "string",
+        "postalCode": "string",
+        "country": "string",
+        "instructions": "?string",
+        "isDefault": "bool"
     }
 }

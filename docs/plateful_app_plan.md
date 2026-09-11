@@ -3,9 +3,10 @@
 _Drafted 2026-09-09, trimmed the same day to **API and data work only**. The
 app itself (stack, screens, builds, store submission) is planned in the
 separate app repo: `~/Projects/plateful-app/docs/app_plan.md`. Status:
-**Phases 0–1 built 2026-09-11** (auth; discovery data + restaurants
-list/detail/menu). The app track can start. Phase 2 (ordering) next. Locked
-at drafting: **one Plateful app, not
+**Phases 0–2 built 2026-09-11** (auth; discovery + read API; carts,
+checkout intents, confirm, webhook, quotes, order show). The app can take a
+real order once the Stripe webhook events below are enabled. Phase 3
+(retention + push) next. Locked at drafting: **one Plateful app, not
 per-restaurant apps**; every restaurant's storefront lives inside it. The app
 is therefore a marketplace, and the API embraces that._
 
@@ -265,10 +266,58 @@ As built:
   `MenuItemIngredientData`, `ItemTemplateGroupData`, `ItemTemplateOptionData`,
   `PaginationMetaData`).
 
-### Phase 2 — ordering (~3–4 sessions; payments are most of it)
+### Phase 2 — ordering — DONE 2026-09-11 (one session)
 Header-token carts; checkout intents + confirm + connected-account webhook
 branch; quote + address endpoints; order show. Add manual-capture and
 idempotency cases beside the existing `StripeCheckoutTest` ones.
+
+As built (guest checkout: **yes**, per ⚑):
+- **Carts** `/restaurants/{r}/cart[...]` (GET, POST items/{menuItem},
+  PATCH/PUT/DELETE items/{cartItem}, DELETE cart) reuse `CartManager` and
+  the storefront request classes. Identity: `X-Cart-Token` header first,
+  cookie second (`CartManager::tokenFromRequest()`); every cart response
+  carries `cartToken` (null for a user-bound cart). Sign-in with the header
+  present merges the guest cart into the account
+  (`CartManager::mergeHeaderCartIntoUser()` from `IssuesApiSessions`).
+  `auth.optional` middleware (`OptionalSanctumAuth`) makes Sanctum the guard
+  behind `$request->user()` without rejecting guests.
+- **Intents** `POST /restaurants/{r}/checkout/intents` (`CheckoutIntentRequest`
+  = the web rules with `tip_cents` as plain cents) → `OrderPlacement::prepare()`
+  → `PendingCheckout` (new nullable-unique `stripe_payment_intent_id`) →
+  `StripeConnectService::createPaymentIntent()` on the connected account
+  (application fee, `capture_method: manual` for courier delivery,
+  `automatic_payment_methods`, idempotency `pending_checkout_{id}`, metadata
+  `pending_checkout_id` + `channel: app`) → `CheckoutIntentData` with
+  `clientSecret`, `publishableKey` (**new** `services.stripe.key` /
+  `STRIPE_KEY`), `stripeAccountId`, `manualCapture`, server totals. 503 if
+  the publishable key is unset; 422 `payment` if the restaurant isn't
+  Stripe-ready; 403 with no cart. The parity test pins that the app and web
+  snapshots for the same cart are identical.
+- **Confirm** `POST /restaurants/{r}/checkout/{pending}/confirm`: retrieves
+  the intent; `succeeded` → Captured, `requires_capture` → Authorized, else
+  409 `{message, paymentStatus}`. Readable only by the pending's user or the
+  guest holding its cart token (404 otherwise). Returns `OrderPlacedData`
+  (`order` + `confirmationToken`), 201 first time, 200 on repeats.
+- **Webhook**: `payment_intent.succeeded` / `payment_intent.amount_capturable_updated`
+  on the existing Connect endpoint, matched by `pending_checkouts.stripe_payment_intent_id`
+  (web intents have no row and are ignored). ⚑ **Enable those two event
+  types on the Connect webhook endpoint in the Stripe dashboard.**
+- **Idempotency**: `materialize()` short-circuits on the intent id when there
+  is no session id; new partial unique `orders_stripe_payment_intent_id_unique`
+  plus a unique-violation catch return the existing order on a race.
+- **Quotes + address**: the storefront `DeliveryQuoteController` and
+  `AddressLookupController` are mounted as-is under the API (same 60/min).
+- **Order show** `GET /restaurants/{r}/orders/{number}` → `OrderData`
+  (incl. `delivery` with tracking URL); access via `OrderPolicy::view` with
+  the bearer user or `X-Order-Token` = the confirmation token.
+- Limiters: `api-checkout` 10/min (user or IP) on intents + confirm.
+- Not done (deliberate): cancelling a superseded intent when the customer
+  re-runs intents after editing the cart (Stripe leaves it in
+  `requires_payment_method`; harmless). Apple/Google Pay are PaymentSheet
+  config on the app side, nothing server-side.
+- Contract snapshot now also pins `CartData`, `CartItemData`,
+  `CheckoutIntentData`, `OrderPlacedData`, `OrderData`, `OrderItemData`,
+  `DeliveryAssignmentData`, `AddressData`.
 
 ### Phase 3 — retention + push (~2–3 sessions)
 Order history, reorder, addresses, wallet, favorites, device tokens,

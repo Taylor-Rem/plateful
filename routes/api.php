@@ -5,8 +5,13 @@ use App\Http\Controllers\Api\V1\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Auth\SocialLoginController;
 use App\Http\Controllers\Api\V1\Auth\TwoFactorChallengeController;
+use App\Http\Controllers\Api\V1\CartController;
+use App\Http\Controllers\Api\V1\CheckoutController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\OrdersController;
 use App\Http\Controllers\Api\V1\RestaurantsController;
+use App\Http\Controllers\Storefront\AddressLookupController;
+use App\Http\Controllers\Storefront\DeliveryQuoteController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -58,5 +63,33 @@ Route::domain(config('platform.primary_domain'))
             ->group(function () {
                 Route::get('/', [RestaurantsController::class, 'show'])->name('show');
                 Route::get('menu', [RestaurantsController::class, 'menu'])->name('menu');
+
+                // Guest or signed-in: the bearer token is honoured when present
+                // and X-Cart-Token identifies a guest cart.
+                Route::middleware('auth.optional')->group(function () {
+                    Route::get('cart', [CartController::class, 'show'])->name('cart.show');
+                    Route::post('cart/items/{menuItem}', [CartController::class, 'addItem'])->name('cart.add');
+                    Route::patch('cart/items/{cartItem}', [CartController::class, 'updateItem'])->name('cart.update');
+                    Route::put('cart/items/{cartItem}', [CartController::class, 'replaceItem'])->name('cart.replace');
+                    Route::delete('cart/items/{cartItem}', [CartController::class, 'removeItem'])->name('cart.remove');
+                    Route::delete('cart', [CartController::class, 'clear'])->name('cart.clear');
+
+                    // The storefront's own quote + address controllers: same
+                    // validation, same throttles, JSON already.
+                    Route::middleware('throttle:60,1')->group(function () {
+                        Route::post('checkout/address/suggest', [AddressLookupController::class, 'suggest'])->name('checkout.address.suggest');
+                        Route::post('checkout/address/resolve', [AddressLookupController::class, 'resolve'])->name('checkout.address.resolve');
+                        Route::post('checkout/delivery-quote', DeliveryQuoteController::class)->name('checkout.deliveryQuote');
+                    });
+
+                    Route::middleware('throttle:api-checkout')->group(function () {
+                        Route::post('checkout/intents', [CheckoutController::class, 'intents'])->name('checkout.intents');
+                        Route::post('checkout/{pendingCheckout}/confirm', [CheckoutController::class, 'confirm'])->name('checkout.confirm');
+                    });
+
+                    Route::get('orders/{number}', [OrdersController::class, 'show'])
+                        ->where('number', '[A-Za-z0-9-]+')
+                        ->name('orders.show');
+                });
             });
     });

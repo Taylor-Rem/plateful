@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\OptionalSanctumAuth;
 use App\Http\Middleware\RequireAdmin;
 use App\Http\Middleware\RequireRestaurantAdmin;
 use App\Http\Middleware\RequireSuperAdmin;
@@ -59,6 +60,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.restaurant.admin' => RequireRestaurantAdmin::class,
             'two-factor.required' => RequireTwoFactorEnrollment::class,
             'tenant.route' => ResolveTenantFromRoute::class,
+            'auth.optional' => OptionalSanctumAuth::class,
             'abilities' => CheckAbilities::class,
             'ability' => CheckForAnyAbility::class,
         ]);

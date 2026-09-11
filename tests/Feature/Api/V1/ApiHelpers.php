@@ -108,4 +108,7 @@ function apiTokenFor(User $user, string $device = 'iPhone'): string
 function forgetApiGuards(): void
 {
     app('auth')->forgetGuards();
+    // withToken()/withHeader() persist as default headers for the whole
+    // test; drop them too so the next request starts as a stranger.
+    test()->flushHeaders();
 }
