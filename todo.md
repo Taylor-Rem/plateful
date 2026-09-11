@@ -895,9 +895,10 @@ plateful.fyi" to "on the web." Growth surface, not launch surface._
       §13 Phase 1). App work starts here.
 - [x] **Phase 2 — ordering** — DONE 2026-09-11 (one session; as-built notes in the plan doc).
       Needs from Taylor: `php artisan migrate` (pending_checkouts intent id + orders partial unique),
-      **enable `payment_intent.succeeded` + `payment_intent.amount_capturable_updated` on the Stripe
-      Connect webhook endpoint**, and `STRIPE_KEY` set in every environment (the intents endpoint
-      hands it to PaymentSheet). Original scope: `CartManager` reads `X-Cart-Token`;
+      paste the new `plateful-production` webhook's signing secret into Laravel Cloud as
+      `STRIPE_WEBHOOK_SECRET` (the live account had NO webhook on 2026-09-11 — recreated with all five
+      events, see DEPLOY.md), and `STRIPE_KEY` set in every environment (the intents endpoint hands
+      it to PaymentSheet). Original scope: `CartManager` reads `X-Cart-Token`;
       `createPaymentIntent()` on the connected account (application fee, manual capture for courier
       delivery) + confirm endpoint + connected-account webhook branch into
       `OrderPlacement::materialize()`; delivery quote/address endpoints.

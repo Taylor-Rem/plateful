@@ -128,15 +128,28 @@ On Growth+ with Redis/KV available, switch all three to `redis`.
 
 `scripts/cloud-check.php` reports these as LIVE/TEST by prefix — run it after setting them.
 
-**The live webhook (configured 2026-08-11, verified with a real order).** The production
-endpoint is `https://admin.plateful.fyi/stripe/webhook`, created in the Stripe dashboard as a
-**Connect endpoint** — it must listen to *connected-account* events, not account events, or
-`checkout.session.completed` from direct charges never arrives and orders never materialize.
-It subscribes to exactly the three events `StripeWebhookController` handles:
+**The live webhook (recreated 2026-09-11 as destination `plateful-production`).** On 2026-09-11 the
+live account had **no** webhook destinations at all (the 2026-08-11 endpoint was gone; the test
+sandbox had none either), so production orders were materializing only through the checkout
+return URL and `account.updated` never synced. The endpoint is
+`https://admin.plateful.fyi/stripe/webhook`, created in Workbench → Webhooks as a
+**Connected accounts** destination (scope matters: with "Your account" scope,
+`checkout.session.completed` from direct charges never arrives and orders never materialize),
+API version `2026-05-27.dahlia` (= stripe-php's pinned version). It subscribes to exactly the
+five events `StripeWebhookController` handles:
 
 - `account.updated` — connected-account onboarding status
-- `checkout.session.completed` — order materialization
+- `checkout.session.completed` — web order materialization
+- `payment_intent.succeeded` — app order materialization (captured)
+- `payment_intent.amount_capturable_updated` — app order materialization (courier hold)
 - `charge.dispute.created` — chargeback visibility
+
+Verified 2026-09-11: a metadata touch on testaurant via the Cloud Commands tab
+(`accounts->update(..., ["metadata" => [...]])`) delivered `account.updated` with HTTP 200 — that is
+the reusable live-mode probe, since Workbench offers no test events in live mode.
+
+To check it exists: Workbench → Webhooks lists destinations (the Workbench shell is read-only in
+live mode; `GET /v1/webhook_endpoints` with the live key is the API equivalent).
 
 Its `whsec_…` signing secret lives **only** in the Laravel Cloud environment as
 `STRIPE_WEBHOOK_SECRET` — never in the repo, `.env.example`, or a chat session.
