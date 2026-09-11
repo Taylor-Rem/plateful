@@ -75,6 +75,42 @@ class StripeConnectService
     }
 
     /**
+     * The app's counterpart of {@see createCheckoutSession()}: a PaymentIntent
+     * as a DIRECT charge on the restaurant's connected account, confirmed
+     * on-device by Stripe's PaymentSheet with the returned client secret.
+     * Same application fee, same manual-capture rule for courier delivery,
+     * same `pending_checkout_id` metadata; the webhook and the confirm
+     * endpoint both key on the intent id afterwards.
+     */
+    public function createPaymentIntent(
+        Restaurant $restaurant,
+        int $totalCents,
+        int $applicationFeeCents,
+        string $customerEmail,
+        string $idempotencyKey,
+        int $pendingCheckoutId,
+        bool $manualCapture = false,
+    ): PaymentIntent {
+        $params = [
+            'amount' => $totalCents,
+            'currency' => 'usd',
+            'application_fee_amount' => $applicationFeeCents,
+            'receipt_email' => $customerEmail,
+            'automatic_payment_methods' => ['enabled' => true],
+            'metadata' => ['pending_checkout_id' => (string) $pendingCheckoutId, 'channel' => 'app'],
+        ];
+
+        if ($manualCapture) {
+            $params['capture_method'] = 'manual';
+        }
+
+        return $this->withSuppressedStripeNotices(fn () => $this->stripe->paymentIntents->create($params, [
+            'stripe_account' => $restaurant->stripe_account_id,
+            'idempotency_key' => $idempotencyKey,
+        ]));
+    }
+
+    /**
      * Turn a hold into money. Called once a courier is actually confirmed —
      * the first moment anyone can honestly say the delivery will happen.
      */

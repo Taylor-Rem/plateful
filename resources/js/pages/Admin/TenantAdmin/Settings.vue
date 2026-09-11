@@ -11,6 +11,7 @@ import { update as settingsUpdate } from '@/routes/admin/restaurant/settings';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
+    cuisineOptions: Record<string, string>;
 }>();
 
 const form = useForm({
@@ -35,7 +36,21 @@ const form = useForm({
     delivery_fee: ((props.restaurant.deliveryFeeCents ?? 0) / 100).toFixed(2),
     pickup_refunds_enabled: props.restaurant.pickupRefundsEnabled ?? false,
     delivery_refunds_enabled: props.restaurant.deliveryRefundsEnabled ?? false,
+    marketplace_listed: props.restaurant.marketplaceListed ?? true,
+    cuisine_tags: [...(props.restaurant.cuisineTags ?? [])] as string[],
 });
+
+const MAX_CUISINE_TAGS = 5;
+
+const toggleCuisine = (slug: string): void => {
+    const index = form.cuisine_tags.indexOf(slug);
+
+    if (index >= 0) {
+        form.cuisine_tags.splice(index, 1);
+    } else if (form.cuisine_tags.length < MAX_CUISINE_TAGS) {
+        form.cuisine_tags.push(slug);
+    }
+};
 
 const newLogoPreview = ref<string | null>(null);
 
@@ -372,6 +387,61 @@ defineOptions({ layout: TenantAdminLayout });
                             >
                         </span>
                     </label>
+                </div>
+            </section>
+
+            <section class="rounded-lg border border-border bg-card p-5">
+                <h3 class="text-base font-medium text-foreground">
+                    Plateful app
+                </h3>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    Diners browsing the Plateful app can find you nearby and
+                    order at the same 4% as your own site. Cuisine tags power
+                    the app's filters; pick up to five.
+                </p>
+                <div class="mt-4 grid gap-4">
+                    <label
+                        class="flex items-start gap-3"
+                        for="marketplace-listed"
+                    >
+                        <input
+                            id="marketplace-listed"
+                            v-model="form.marketplace_listed"
+                            type="checkbox"
+                            class="mt-1 h-4 w-4 rounded border-input"
+                        />
+                        <span class="grid gap-0.5">
+                            <span class="text-sm font-medium text-foreground"
+                                >Show my restaurant in the Plateful app</span
+                            >
+                            <span class="text-sm text-muted-foreground"
+                                >Turn this off to hide from search and browsing.
+                                Customers with a direct link can still
+                                order.</span
+                            >
+                        </span>
+                    </label>
+                    <div class="grid gap-2">
+                        <Label>Cuisine tags</Label>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                v-for="(label, slug) in cuisineOptions"
+                                :key="slug"
+                                type="button"
+                                class="rounded-full border px-3 py-1 text-sm transition-colors"
+                                :class="
+                                    form.cuisine_tags.includes(slug)
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border bg-background text-foreground hover:bg-muted'
+                                "
+                                :aria-pressed="form.cuisine_tags.includes(slug)"
+                                @click="toggleCuisine(slug)"
+                            >
+                                {{ label }}
+                            </button>
+                        </div>
+                        <InputError :message="form.errors.cuisine_tags" />
+                    </div>
                 </div>
             </section>
 

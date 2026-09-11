@@ -43,9 +43,10 @@ return [
     ],
 
     'stripe' => [
-        // Note: STRIPE_KEY (publishable) is not read via config anywhere —
-        // checkout is Stripe-hosted, so no Stripe.js runs in the browser.
-        // scripts/cloud-check.php still verifies the env var is set.
+        // Publishable key. The web storefront never needs it (checkout is
+        // Stripe-hosted), but the mobile app's PaymentSheet does — it is
+        // handed out by POST /api/v1/restaurants/{r}/checkout/intents.
+        'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
         // Country the Express connected accounts are created under.
@@ -116,6 +117,10 @@ return [
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        // OAuth client IDs the mobile app signs in with (iOS + Android). A
+        // Google ID token's audience must be one of these — or the web
+        // client above — for POST /api/v1/auth/google to accept it.
+        'app_client_ids' => array_values(array_filter(array_map('trim', explode(',', (string) env('GOOGLE_APP_CLIENT_IDS', ''))))),
         // The Google OAuth client registers a single redirect URI on the
         // platform host (Google forbids wildcard subdomains), so the callback
         // always resolves on the root domain regardless of the storefront the
@@ -133,6 +138,24 @@ return [
         // custom domain we onboard would be another entry to maintain. Keeping
         // it here also means it never reaches the client at all.
         'maps_api_key' => env('GOOGLE_MAPS_API_KEY'),
+
+        // Geocoding API key for placing restaurants on the map (app near-me
+        // search). A separate credential from the Places key above; falls
+        // back to it when a single key has both APIs enabled.
+        'geocoding_api_key' => env('GOOGLE_GEOCODING_API_KEY') ?: env('GOOGLE_MAPS_API_KEY'),
+    ],
+
+    'expo' => [
+        // Optional Expo push security token (Expo dashboard → Access tokens);
+        // without it Expo accepts pushes from anyone holding a device token.
+        'access_token' => env('EXPO_ACCESS_TOKEN'),
+    ],
+
+    'apple' => [
+        // Sign in with Apple audiences: the iOS app's bundle id (native flow)
+        // and, if ever used, the Services ID (web/Android flow). Apple's
+        // identity token must carry one of these as `aud`.
+        'client_ids' => array_values(array_filter(array_map('trim', explode(',', (string) env('APPLE_CLIENT_IDS', ''))))),
     ],
 
 ];

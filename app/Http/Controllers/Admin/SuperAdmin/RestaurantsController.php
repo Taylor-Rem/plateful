@@ -11,6 +11,7 @@ use App\Http\Requests\Admin\SuperAdmin\StoreRestaurantRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantDomainRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantFeeRequest;
 use App\Http\Requests\Admin\SuperAdmin\UpdateRestaurantRolesRequest;
+use App\Jobs\GeocodeRestaurant;
 use App\Models\AdminInvitation;
 use App\Models\PlatformRoleHolder;
 use App\Models\Restaurant;
@@ -93,6 +94,10 @@ class RestaurantsController extends Controller
             'delivery_fee_cents' => $request->input('delivery_fee_cents', 0),
             'is_active' => true,
         ]);
+
+        if ($restaurant->hasStreetAddress()) {
+            GeocodeRestaurant::dispatch($restaurant->id);
+        }
 
         if (! empty($validated['owner_email'])) {
             $invitations->send(

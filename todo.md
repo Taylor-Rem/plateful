@@ -876,20 +876,36 @@ restaurant's connected account at the **same 4% and cap**, write the same `resta
 consent / loyalty rows, and hit the same POS + delivery pipeline. Amends §13's "never order on
 plateful.fyi" to "on the web." Growth surface, not launch surface._
 
-- [ ] **Phase 0 — API foundation** (~2 sessions): Sanctum (⚑ new dependency), `routes/api.php`
+- [x] **Phase 0 — API foundation** — DONE 2026-09-11 (one session, 50 API tests): Sanctum installed, `routes/api.php`
       at `/api/v1`, `ResolveTenantFromRoute` setting `CurrentTenant` from a subdomain-bound
       restaurant, token login + Google/**Apple** ID-token sign-in (Apple 4.8), `GET/DELETE /me`,
       DTO-shape snapshot test — the Spatie `app/Data` DTOs and their generated
       `resources/js/types/generated.d.ts` *are* the contract the app repo consumes.
-- [ ] **Phase 1 — read API + discovery data** (~1–2): `latitude/longitude` (Places geocode +
+      Built: tenant-less register, 202 two-factor challenge, JWKS-verified Google/Apple ID
+      tokens (`GOOGLE_APP_CLIENT_IDS` / `APPLE_CLIENT_IDS` env), `SocialAccountResolver` shared
+      with the web Google flow, `MeData`/`AuthSessionData`/`TwoFactorChallengeData` in
+      `generated.d.ts`. Needs from Taylor: the iOS/Android Google client ids and the Apple
+      bundle id in prod env; `php artisan migrate` (personal_access_tokens + `users.apple_id`).
+- [x] **Phase 1 — read API + discovery data** — DONE 2026-09-11 (one session, 1361 green; as-built
+      notes in the plan doc). Needs from Taylor: set `GOOGLE_GEOCODING_API_KEY` (separate key, obtained 2026-09-11), run
+      `php artisan migrate` + `php artisan restaurants:geocode` on dev/prod, and tag existing
+      restaurants' cuisines in Settings (or re-run a menu import). Original scope: `latitude/longitude` (Places geocode +
       backfill), `cuisine_tags` (from menu extraction), `marketplace_listed` (⚑ default on);
       restaurants near-me/open-now/cuisine list, detail, menu (shared query object also unblocks
       §13 Phase 1). App work starts here.
-- [ ] **Phase 2 — ordering** (~3–4, payments are most of it): `CartManager` reads `X-Cart-Token`;
+- [x] **Phase 2 — ordering** — DONE 2026-09-11 (one session; as-built notes in the plan doc).
+      Needs from Taylor: `php artisan migrate` (pending_checkouts intent id + orders partial unique),
+      paste the new `plateful-production` webhook's signing secret into Laravel Cloud as
+      `STRIPE_WEBHOOK_SECRET` (the live account had NO webhook on 2026-09-11 — recreated with all five
+      events, see DEPLOY.md), and `STRIPE_KEY` set in every environment (the intents endpoint hands
+      it to PaymentSheet). Original scope: `CartManager` reads `X-Cart-Token`;
       `createPaymentIntent()` on the connected account (application fee, manual capture for courier
       delivery) + confirm endpoint + connected-account webhook branch into
       `OrderPlacement::materialize()`; delivery quote/address endpoints.
-- [ ] **Phase 3 — retention + push** (~2–3): order history, reorder endpoint, addresses, rewards
+- [x] **Phase 3 — retention + push** — DONE 2026-09-11 (one session; as-built notes in the plan
+      doc). Needs from Taylor: deploy (migration adds `device_tokens`, `user_restaurant_favorites`,
+      `users.push_order_updates`); optionally `EXPO_ACCESS_TOKEN` in Cloud once the app's Expo
+      project has push security on. Original scope: order history, reorder endpoint, addresses, rewards
       wallet aggregate (§10 ownership unchanged), favorites, `device_tokens` + `OrderStatusChanged`
       push (⚑ Expo Push) from `OrderTransition` / delivery updates.
 - [ ] **Later**: universal-link association files, push campaigns as a §4 Campaigns extension

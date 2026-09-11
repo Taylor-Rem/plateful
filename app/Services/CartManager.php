@@ -22,17 +22,40 @@ class CartManager
 
     public const COOKIE_DAYS = 30;
 
+    /**
+     * The mobile app has no cookie jar: it stores the cart token it is handed
+     * and sends it back here. Header wins over cookie when both are present.
+     */
+    public const HEADER_NAME = 'X-Cart-Token';
+
     public function __construct(
         protected CurrentTenant $tenant,
         protected CookieJar $cookies,
         protected Request $request,
     ) {}
 
+    protected ?Cart $pinned = null;
+
+    /**
+     * Use this cart for the rest of the request. Reorder creates a guest
+     * cart on its first line and must keep adding to it, but the request
+     * carried no token for it — without pinning, every add would start
+     * another cart.
+     */
+    public function pin(Cart $cart): void
+    {
+        $this->pinned = $cart;
+    }
+
     public function current(): ?Cart
     {
         $tenantId = $this->tenant->id();
         if (! $tenantId) {
             return null;
+        }
+
+        if ($this->pinned !== null && $this->pinned->restaurant_id === $tenantId) {
+            return $this->pinned;
         }
 
         $user = $this->request->user();
@@ -47,7 +70,7 @@ class CartManager
             }
         }
 
-        $token = $this->request->cookie(self::COOKIE_NAME);
+        $token = $this->tokenFromRequest();
         if (! $token) {
             return null;
         }
@@ -89,6 +112,40 @@ class CartManager
         }
 
         return $cart;
+    }
+
+    /**
+     * The guest cart token the request carries, header first, cookie second.
+     */
+    public function tokenFromRequest(): ?string
+    {
+        $header = $this->request->header(self::HEADER_NAME);
+        if (is_string($header) && $header !== '') {
+            return $header;
+        }
+
+        $cookie = $this->request->cookie(self::COOKIE_NAME);
+
+        return is_string($cookie) && $cookie !== '' ? $cookie : null;
+    }
+
+    /**
+     * Attach the request's guest cart (by header token) to a user who just
+     * signed in through the API — the header-token twin of
+     * MergeGuestCartOnLogin, which only knows the cookie.
+     */
+    public function mergeHeaderCartIntoUser(User $user): void
+    {
+        $header = $this->request->header(self::HEADER_NAME);
+        if (! is_string($header) || $header === '') {
+            return;
+        }
+
+        $guestCart = Cart::query()->where('token', $header)->first();
+
+        if ($guestCart !== null && $guestCart->user_id === null) {
+            $this->mergeGuestCartIntoUser($guestCart, $user);
+        }
     }
 
     protected function queueCookie(string $token): void

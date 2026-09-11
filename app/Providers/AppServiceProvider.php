@@ -7,10 +7,12 @@ use App\Enums\PosProviderName;
 use App\Listeners\MergeGuestCartOnLogin;
 use App\Listeners\PurgeUserSessionsOnLogout;
 use App\Models\Campaign;
+use App\Models\DeliveryAssignment;
 use App\Models\ItemTemplate;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Restaurant;
+use App\Observers\DeliveryAssignmentObserver;
 use App\Observers\MenuItemObserver;
 use App\Observers\RestaurantObserver;
 use App\Services\Campaigns\CampaignContentReviewer;
@@ -28,6 +30,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -95,8 +98,22 @@ class AppServiceProvider extends ServiceProvider
         // (each job is one batch API call) whenever a real key is configured.
         RateLimiter::for('campaign-batches', fn (): Limit => Limit::perSecond(2));
 
+        // Public API (/api/v1): per token when authenticated, per IP otherwise.
+        // The auth endpoints layer stricter, purpose-specific limiters on top.
+        RateLimiter::for('api', fn (Request $request): Limit => Limit::perMinute(120)
+            ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
+
+        RateLimiter::for('api-auth', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()));
+
+        RateLimiter::for('api-checkout', fn (Request $request): Limit => Limit::perMinute(10)
+            ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
+
+        RateLimiter::for('api-two-factor', fn (Request $request): Limit => Limit::perMinute(5)
+            ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
+
         Restaurant::observe(RestaurantObserver::class);
         MenuItem::observe(MenuItemObserver::class);
+        DeliveryAssignment::observe(DeliveryAssignmentObserver::class);
 
         Event::listen(Login::class, MergeGuestCartOnLogin::class);
         Event::listen(Logout::class, PurgeUserSessionsOnLogout::class);

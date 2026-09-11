@@ -13,6 +13,7 @@ use App\Models\MenuImport;
 use App\Models\Restaurant;
 use App\Services\PhotoConversionService;
 use App\Services\RestaurantImageService;
+use App\Support\Cuisines;
 use App\Support\Menus\MenuBuilder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -177,6 +178,13 @@ class MenuImportController extends Controller
         });
 
         $menuImport->update(['status' => MenuImportStatus::Completed]);
+
+        // The extraction's read of the cuisine seeds the app's marketplace
+        // filter, but only until the owner has chosen tags themselves.
+        $extractedCuisine = Cuisines::filter((array) ($menuImport->result['cuisine_tags'] ?? []), 3);
+        if ($extractedCuisine !== [] && $restaurant->cuisineTags() === []) {
+            $restaurant->update(['cuisine_tags' => $extractedCuisine]);
+        }
 
         $summary = ($replaced ? 'Menu replaced — ' : 'Menu imported — ')."{$created} items";
         if (($sets = count($optionSets)) > 0) {

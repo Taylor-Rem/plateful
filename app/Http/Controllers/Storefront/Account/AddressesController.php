@@ -8,10 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Storefront\Account\StoreAddressRequest;
 use App\Http\Requests\Storefront\Account\UpdateAddressRequest;
 use App\Models\Address;
+use App\Services\AddressBook;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -34,61 +34,20 @@ class AddressesController extends Controller
         ]);
     }
 
-    public function store(StoreAddressRequest $request): RedirectResponse
+    public function store(StoreAddressRequest $request, AddressBook $addresses): RedirectResponse
     {
-        $user = $request->user();
-        $data = $request->validated();
-
-        DB::transaction(function () use ($user, $data): void {
-            $isDefault = (bool) ($data['is_default'] ?? false);
-            if ($isDefault) {
-                $user->addresses()->update(['is_default' => false]);
-            }
-
-            $user->addresses()->create([
-                'label' => $data['label'] ?? null,
-                'street' => $data['street'],
-                'street2' => $data['street2'] ?? null,
-                'city' => $data['city'],
-                'state' => $data['state'],
-                'postal_code' => $data['postal_code'],
-                'country' => $data['country'] ?: 'US',
-                'instructions' => $data['instructions'] ?? null,
-                'is_default' => $isDefault,
-            ]);
-        });
+        $addresses->store($request->user(), $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Address saved.']);
 
         return to_route('storefront.account.addresses.index');
     }
 
-    public function update(UpdateAddressRequest $request, Address $address): RedirectResponse
+    public function update(UpdateAddressRequest $request, Address $address, AddressBook $addresses): RedirectResponse
     {
         abort_if($address->user_id !== $request->user()->id, 404);
 
-        $data = $request->validated();
-
-        DB::transaction(function () use ($request, $address, $data): void {
-            $isDefault = (bool) ($data['is_default'] ?? false);
-            if ($isDefault) {
-                $request->user()->addresses()
-                    ->where('id', '!=', $address->id)
-                    ->update(['is_default' => false]);
-            }
-
-            $address->update([
-                'label' => $data['label'] ?? null,
-                'street' => $data['street'],
-                'street2' => $data['street2'] ?? null,
-                'city' => $data['city'],
-                'state' => $data['state'],
-                'postal_code' => $data['postal_code'],
-                'country' => $data['country'] ?: 'US',
-                'instructions' => $data['instructions'] ?? null,
-                'is_default' => $isDefault,
-            ]);
-        });
+        $addresses->update($address, $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Address updated.']);
 

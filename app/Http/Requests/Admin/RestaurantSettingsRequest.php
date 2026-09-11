@@ -3,7 +3,9 @@
 namespace App\Http\Requests\Admin;
 
 use App\Services\PhotoConversionService;
+use App\Support\Cuisines;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class RestaurantSettingsRequest extends FormRequest
 {
@@ -35,6 +37,9 @@ class RestaurantSettingsRequest extends FormRequest
             'delivery_fee' => ['nullable', 'numeric', 'between:0,500'],
             'pickup_refunds_enabled' => ['nullable', 'boolean'],
             'delivery_refunds_enabled' => ['nullable', 'boolean'],
+            'marketplace_listed' => ['nullable', 'boolean'],
+            'cuisine_tags' => ['nullable', 'array', 'max:5'],
+            'cuisine_tags.*' => ['string', Rule::in(Cuisines::slugs())],
         ];
     }
 

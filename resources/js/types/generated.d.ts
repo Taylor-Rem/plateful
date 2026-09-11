@@ -26,6 +26,10 @@ id: number,
 name: string,
 email: string,
 };
+export type AuthSessionData = {
+token: string,
+user: App.Data.MeData,
+};
 export type CampaignData = {
 id: number,
 subject: string,
@@ -73,6 +77,19 @@ selectionNames: string[],
 selectedOptionIds: number[],
 notes: string | null,
 isAvailable: boolean,
+};
+export type CheckoutIntentData = {
+pendingCheckoutId: number,
+paymentIntentId: string,
+clientSecret: string,
+publishableKey: string,
+stripeAccountId: string,
+manualCapture: boolean,
+subtotalCents: number,
+taxCents: number,
+deliveryFeeCents: number,
+tipCents: number,
+totalCents: number,
 };
 export type CustomerData = {
 id: number,
@@ -125,6 +142,12 @@ pickupEtaAt: string | null,
 dropoffEtaAt: string | null,
 updatedAt: string | null,
 };
+export type DeviceTokenData = {
+token: string,
+platform: string,
+deviceName: string | null,
+lastSeenAt: string | null,
+};
 export type ItemTemplateData = {
 id: number,
 name: string,
@@ -152,6 +175,18 @@ ingredientId: number | null,
 priceDeltaCents: number,
 isAvailable: boolean,
 position: number,
+};
+export type MeData = {
+id: number,
+name: string,
+email: string,
+phone: string | null,
+avatar: string | null,
+emailVerified: boolean,
+twoFactorEnabled: boolean,
+linkedProviders: string[],
+createdAt: string,
+pushOrderUpdates: boolean,
 };
 export type MenuCategoryData = {
 id: number,
@@ -217,6 +252,19 @@ occurredAt: string,
 userName: string | null,
 note: string | null,
 };
+export type OrderHistoryItemData = {
+id: number,
+number: string,
+status: string,
+type: string,
+totalCents: number,
+itemCount: number,
+placedAt: string | null,
+deliveryStatus: string | null,
+restaurantName: string,
+restaurantSubdomain: string,
+restaurantLogoThumbUrl: string | null,
+};
 export type OrderItemData = {
 id: number,
 name: string,
@@ -230,6 +278,10 @@ selectionNames: string[],
 }[],
 notes: string | null,
 };
+export type OrderPlacedData = {
+order: App.Data.OrderData,
+confirmationToken: string,
+};
 export type OrderSummaryData = {
 id: number,
 number: string,
@@ -239,12 +291,26 @@ customerName: string,
 totalCents: number,
 placedAt: string | null,
 };
+export type PaginationMetaData = {
+currentPage: number,
+lastPage: number,
+perPage: number,
+total: number,
+};
 export type PendingInvitationData = {
 id: number,
 email: string,
 expiresAt: string | null,
 invitedByName: string | null,
 role: App.Enums.RestaurantRole,
+};
+export type ReorderResultData = {
+cart: App.Data.CartData | null,
+cartToken: string | null,
+skipped: {
+name: string,
+reason: string,
+}[],
 };
 export type RestaurantData = {
 id: number,
@@ -298,6 +364,10 @@ hasAboutSection: boolean,
 hasGalleryPhotos: boolean,
 createdAt: string | null,
 publicUrl: string,
+latitude: number | null,
+longitude: number | null,
+cuisineTags: string[],
+marketplaceListed: boolean,
 };
 export type RestaurantHourData = {
 dayOfWeek: number,
@@ -311,6 +381,14 @@ name: string,
 email: string,
 role: App.Enums.RestaurantRole,
 };
+export type RestaurantMembershipData = {
+isFavorite: boolean,
+marketingOptedIn: boolean,
+loyaltyPoints: number,
+totalOrders: number,
+totalSpentCents: number,
+lastOrderedAt: string | null,
+};
 export type RestaurantPhotoData = {
 id: number,
 caption: string | null,
@@ -318,6 +396,37 @@ position: number,
 imageUrl: string | null,
 imageMediumUrl: string | null,
 imageThumbUrl: string | null,
+};
+export type RestaurantSummaryData = {
+id: number,
+name: string,
+subdomain: string,
+description: string | null,
+logoThumbUrl: string | null,
+logoMediumUrl: string | null,
+heroImageMediumUrl: string | null,
+city: string | null,
+state: string | null,
+latitude: number | null,
+longitude: number | null,
+distanceKm: number | null,
+cuisineTags: string[],
+isOpen: boolean,
+openStatusLabel: string | null,
+deliveryEnabled: boolean,
+publicUrl: string,
+};
+export type TwoFactorChallengeData = {
+twoFactorRequired: boolean,
+challengeToken: string,
+};
+export type WalletEntryData = {
+restaurant: App.Data.RestaurantSummaryData,
+loyaltyPoints: number,
+pointsPerDollar: number,
+totalOrders: number,
+totalSpentCents: number,
+lastOrderedAt: string | null,
 };
 }
 namespace Enums {
@@ -345,6 +454,7 @@ export type RestaurantRole = 'admin' | 'staff';
 export type RestaurantStatus = 'pending_review' | 'approved' | 'active' | 'suspended';
 export type RevenueRole = 'founder' | 'operator' | 'recruiter' | 'overseer' | 'delivery_margin';
 export type SelfDeliveryTipRecipient = 'driver' | 'pool' | 'split_50_50';
+export type SocialProvider = 'google' | 'apple';
 export type TipRecipient = 'pool' | 'driver' | 'split';
 }
 }

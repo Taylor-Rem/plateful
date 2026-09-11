@@ -11,6 +11,7 @@ use App\Enums\SelfDeliveryTipRecipient;
 use App\Services\RestaurantImageService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -76,6 +77,10 @@ class Restaurant extends Model
         'self_delivery_tip_recipient',
         'delivery_fallback_action',
         'auto_cancel_refund_mode',
+        'latitude',
+        'longitude',
+        'cuisine_tags',
+        'marketplace_listed',
     ];
 
     /**
@@ -127,6 +132,11 @@ class Restaurant extends Model
             'social_links' => 'array',
             'campaigns_approved_at' => 'datetime',
             'campaigns_paused_at' => 'datetime',
+            'latitude' => 'float',
+            'longitude' => 'float',
+            'geocoded_at' => 'datetime',
+            'cuisine_tags' => 'array',
+            'marketplace_listed' => 'boolean',
         ];
     }
 
@@ -216,6 +226,46 @@ class Restaurant extends Model
         return $query
             ->where('status', RestaurantStatus::Active)
             ->where('is_active', true);
+    }
+
+    /**
+     * Live restaurants that have not opted out of the Plateful app's
+     * marketplace listing. Detail and menu by subdomain stay reachable for
+     * opted-out restaurants; only discovery hides them.
+     */
+    public function scopeMarketplaceListed(Builder $query): Builder
+    {
+        return $query->public()->where('marketplace_listed', true);
+    }
+
+    public function hasCoordinates(): bool
+    {
+        return $this->latitude !== null && $this->longitude !== null;
+    }
+
+    public function hasStreetAddress(): bool
+    {
+        return trim((string) $this->street) !== ''
+            && trim((string) $this->city) !== ''
+            && trim((string) $this->state) !== '';
+    }
+
+    /**
+     * True right after a save that touched the street address — the signal
+     * for re-geocoding. Creation counts, since a new address is a change.
+     */
+    public function addressWasChanged(): bool
+    {
+        return $this->wasRecentlyCreated
+            || $this->wasChanged(['street', 'city', 'state', 'postal_code', 'country']);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function cuisineTags(): array
+    {
+        return array_values(array_filter((array) ($this->cuisine_tags ?? []), 'is_string'));
     }
 
     public function isLive(): bool
@@ -427,6 +477,18 @@ class Restaurant extends Model
             ->orderBy('position');
     }
 
+    /**
+     * Hours for the open/closed calculations: the eager-loaded relation when
+     * a list endpoint has it, otherwise one query. Never cached on the model
+     * beyond that, so an hours edit is visible on the next call.
+     *
+     * @return Collection<int, RestaurantHour>
+     */
+    protected function loadedHours(): Collection
+    {
+        return $this->relationLoaded('hours') ? $this->getRelation('hours') : $this->hours()->get();
+    }
+
     public function photos(): HasMany
     {
         return $this->hasMany(RestaurantPhoto::class)
@@ -444,7 +506,7 @@ class Restaurant extends Model
         $tz = $this->timezone ?: 'America/New_York';
         $moment = ($when ?? CarbonImmutable::now())->setTimezone($tz);
 
-        $all = $this->hours()->get();
+        $all = $this->loadedHours();
         if ($all->isEmpty()) {
             return true;
         }
@@ -492,7 +554,7 @@ class Restaurant extends Model
         $tz = $this->timezone ?: 'America/New_York';
         $moment = ($when ?? CarbonImmutable::now())->setTimezone($tz);
 
-        $all = $this->hours()->get();
+        $all = $this->loadedHours();
         if ($all->isEmpty()) {
             return null;
         }
@@ -542,7 +604,7 @@ class Restaurant extends Model
         $tz = $this->timezone ?: 'America/New_York';
         $moment = ($when ?? CarbonImmutable::now())->setTimezone($tz);
 
-        $all = $this->hours()->get();
+        $all = $this->loadedHours();
         if ($all->isEmpty()) {
             return null;
         }

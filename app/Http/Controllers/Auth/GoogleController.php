@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\SocialProvider;
 use App\Http\Controllers\Controller;
 use App\Models\Restaurant;
 use App\Models\RestaurantCustomer;
 use App\Models\User;
+use App\Services\Auth\SocialAccountResolver;
+use App\Services\Auth\SocialIdentity;
 use App\Support\StorefrontLoginHandoff;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
@@ -30,7 +32,10 @@ class GoogleController extends Controller
 {
     private const RETURN_HOST_SESSION_KEY = 'auth.google.return_host';
 
-    public function __construct(private readonly StorefrontLoginHandoff $handoff) {}
+    public function __construct(
+        private readonly StorefrontLoginHandoff $handoff,
+        private readonly SocialAccountResolver $resolver,
+    ) {}
 
     /**
      * Send the customer to Google, remembering the storefront to return to.
@@ -126,46 +131,20 @@ class GoogleController extends Controller
     }
 
     /**
-     * Match, or create, the local user for a Google account.
-     *
-     * Order: (1) an existing google_id, then (2) an existing email — but only
-     * auto-link by email when Google reports it verified. Returns null when the
-     * email is taken but unverified (the caller treats this as a failure).
+     * Match, or create, the local user for a Google account. The matching
+     * rules live in SocialAccountResolver, shared with the API's ID-token
+     * sign-in so web and app customers are one account.
      */
     private function resolveUser(SocialiteUser $googleUser): ?User
     {
-        $existingByGoogleId = User::query()->where('google_id', $googleUser->getId())->first();
-
-        if ($existingByGoogleId !== null) {
-            return $existingByGoogleId;
-        }
-
-        $emailVerified = ($googleUser->user['email_verified'] ?? false) === true;
-        $existingByEmail = User::query()->where('email', $googleUser->getEmail())->first();
-
-        if ($existingByEmail !== null) {
-            if (! $emailVerified) {
-                return null;
-            }
-
-            $existingByEmail->forceFill([
-                'google_id' => $googleUser->getId(),
-                'avatar' => $googleUser->getAvatar(),
-            ])->save();
-
-            return $existingByEmail;
-        }
-
-        return tap(new User, function (User $user) use ($googleUser, $emailVerified): void {
-            $user->forceFill([
-                'name' => $googleUser->getName() ?: $googleUser->getEmail(),
-                'email' => $googleUser->getEmail(),
-                'google_id' => $googleUser->getId(),
-                'avatar' => $googleUser->getAvatar(),
-                'password' => Str::password(32),
-                'email_verified_at' => $emailVerified ? now() : null,
-            ])->save();
-        });
+        return $this->resolver->resolve(new SocialIdentity(
+            provider: SocialProvider::Google,
+            id: (string) $googleUser->getId(),
+            email: $googleUser->getEmail(),
+            emailVerified: ($googleUser->user['email_verified'] ?? false) === true,
+            name: $googleUser->getName(),
+            avatar: $googleUser->getAvatar(),
+        ));
     }
 
     private function googleConfigured(): bool

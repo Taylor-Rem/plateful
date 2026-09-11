@@ -28,6 +28,7 @@ class OrderTransition
         protected DeliveryDispatcher $dispatcher,
         protected RefundCalculator $refunds,
         protected RevenueSplitResolver $revenueSplits,
+        protected OrderNotifier $notifier,
     ) {}
 
     public function apply(
@@ -71,6 +72,9 @@ class OrderTransition
             Mail::to($order->customer_email)
                 ->queue(new OrderReadyForPickupToCustomer($order));
         }
+
+        // Push for the app (milestones only; OrderNotifier decides which).
+        $this->notifier->orderTransitioned($order, $toStatus);
 
         return $order;
     }

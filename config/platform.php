@@ -224,6 +224,69 @@ return [
         ],
     ],
 
+    /*
+    |---------------------------------------------------------------------------
+    | Cuisines
+    |---------------------------------------------------------------------------
+    |
+    | The cuisine taxonomy (slug => label) behind the Plateful app's cuisine
+    | filter. Menu extraction picks from this list, owners pick from it on
+    | the Settings page, and restaurants.cuisine_tags only ever holds these
+    | slugs. Add freely; renaming a slug needs a data migration.
+    |
+    */
+    'cuisines' => [
+        'american' => 'American',
+        'bakery' => 'Bakery',
+        'bar' => 'Bar & Pub',
+        'bbq' => 'BBQ',
+        'breakfast' => 'Breakfast & Brunch',
+        'burgers' => 'Burgers',
+        'cafe' => 'Café',
+        'caribbean' => 'Caribbean',
+        'chinese' => 'Chinese',
+        'coffee' => 'Coffee & Tea',
+        'deli' => 'Deli & Sandwiches',
+        'dessert' => 'Dessert',
+        'filipino' => 'Filipino',
+        'french' => 'French',
+        'greek' => 'Greek',
+        'hawaiian' => 'Hawaiian',
+        'healthy' => 'Healthy',
+        'indian' => 'Indian',
+        'italian' => 'Italian',
+        'japanese' => 'Japanese',
+        'korean' => 'Korean',
+        'mediterranean' => 'Mediterranean',
+        'mexican' => 'Mexican',
+        'middle_eastern' => 'Middle Eastern',
+        'pizza' => 'Pizza',
+        'ramen' => 'Ramen & Noodles',
+        'seafood' => 'Seafood',
+        'soul' => 'Soul Food',
+        'steakhouse' => 'Steakhouse',
+        'sushi' => 'Sushi',
+        'thai' => 'Thai',
+        'vegan' => 'Vegan & Vegetarian',
+        'vietnamese' => 'Vietnamese',
+        'wings' => 'Wings',
+    ],
+
+    /*
+    |---------------------------------------------------------------------------
+    | Marketplace Search
+    |---------------------------------------------------------------------------
+    |
+    | Defaults for GET /api/v1/restaurants. The radius is a diner's "near me";
+    | the cap keeps a single request from scanning the whole country.
+    |
+    */
+    'marketplace' => [
+        'default_radius_km' => (float) env('MARKETPLACE_DEFAULT_RADIUS_KM', 25),
+        'max_radius_km' => (float) env('MARKETPLACE_MAX_RADIUS_KM', 100),
+        'per_page' => (int) env('MARKETPLACE_PER_PAGE', 20),
+    ],
+
     'timezones' => [
         'America/New_York',
         'America/Chicago',

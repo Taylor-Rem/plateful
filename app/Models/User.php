@@ -15,13 +15,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'is_super_admin', 'google_id', 'avatar'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'is_super_admin', 'google_id', 'apple_id', 'avatar', 'push_order_updates'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
      * @return array<string, string>
@@ -33,6 +34,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'is_super_admin' => 'bool',
+            'push_order_updates' => 'bool',
         ];
     }
 
@@ -65,6 +67,36 @@ class User extends Authenticatable
     public function addresses(): HasMany
     {
         return $this->hasMany(Address::class);
+    }
+
+    /**
+     * Phones registered for push from the Plateful app.
+     */
+    public function deviceTokens(): HasMany
+    {
+        return $this->hasMany(DeviceToken::class);
+    }
+
+    /**
+     * Restaurants the user favourited in the app (platform-level, not tenant
+     * scoped — it answers "what does this account follow?").
+     */
+    public function favoriteRestaurants(): BelongsToMany
+    {
+        return $this->belongsToMany(Restaurant::class, 'user_restaurant_favorites')->withTimestamps();
+    }
+
+    /**
+     * Expo push tokens for the notification channel.
+     *
+     * @return array<int, string>
+     */
+    public function routeNotificationForExpo(): array
+    {
+        return $this->deviceTokens()
+            ->where('provider', DeviceToken::PROVIDER_EXPO)
+            ->pluck('token')
+            ->all();
     }
 
     /**

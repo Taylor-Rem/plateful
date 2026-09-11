@@ -2,6 +2,7 @@
 
 namespace App\Support\Menus;
 
+use App\Support\Cuisines;
 use RuntimeException;
 
 /**
@@ -327,6 +328,16 @@ class ExtractedMenuSanitizer
         }
 
         return $clean;
+    }
+
+    /**
+     * Restaurant-level cuisine tags: only taxonomy slugs, at most three.
+     *
+     * @return array<int, string>
+     */
+    public static function sanitizeCuisineTags(mixed $raw): array
+    {
+        return is_array($raw) ? Cuisines::filter($raw, 3) : [];
     }
 
     private static function cleanString(mixed $value, int $max): ?string
