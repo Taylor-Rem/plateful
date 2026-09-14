@@ -137,6 +137,11 @@ test('the ledger still names a restaurant and an earner that were later deleted'
         ->assertOk()
         ->assertJsonPath('data.0.userName', 'Ben')
         ->assertJsonPath('data.0.userEmail', 'ben@example.test');
+
+    $this->getJson(API_BASE.'/operator/platform/earnings?month=2026-09')
+        ->assertOk()
+        ->assertJsonPath('data.earners.0.name', 'Ben')
+        ->assertJsonPath('data.earners.0.userId', $ben->id);
 });
 
 test('platform reports are gated to platform actors holding platform:read', function () {

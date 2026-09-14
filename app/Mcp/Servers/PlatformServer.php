@@ -10,10 +10,13 @@ use App\Mcp\Tools\GetOrder;
 use App\Mcp\Tools\GetRestaurant;
 use App\Mcp\Tools\KitchenBoard;
 use App\Mcp\Tools\ListCustomers;
+use App\Mcp\Tools\ListGalleryPhotos;
 use App\Mcp\Tools\ListOrders;
 use App\Mcp\Tools\ListRestaurants;
+use App\Mcp\Tools\RemoveImage;
 use App\Mcp\Tools\SetMenuItemAvailability;
 use App\Mcp\Tools\TransitionOrder;
+use App\Mcp\Tools\UploadImage;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -52,6 +55,9 @@ class PlatformServer extends Server
         ListCustomers::class,
         GetMenu::class,
         SetMenuItemAvailability::class,
+        ListGalleryPhotos::class,
+        UploadImage::class,
+        RemoveImage::class,
         // Platform-only (platform:read).
         EarningsSummary::class,
         EarningsByRestaurant::class,

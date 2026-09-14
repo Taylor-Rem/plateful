@@ -480,6 +480,16 @@ opensAt: string,
 closesAt: string,
 position: number,
 };
+export type RestaurantImagesData = {
+restaurantId: number,
+logoUrl: string | null,
+logoMediumUrl: string | null,
+logoThumbUrl: string | null,
+heroImageUrl: string | null,
+heroImageMediumUrl: string | null,
+aboutImageUrl: string | null,
+aboutImageMediumUrl: string | null,
+};
 export type RestaurantMemberData = {
 id: number,
 name: string,
@@ -535,7 +545,7 @@ lastOrderedAt: string | null,
 };
 }
 namespace Enums {
-export type ApiKeyScope = '*' | 'restaurants:read' | 'orders:read' | 'orders:write' | 'menu:read' | 'menu:write' | 'customers:read' | 'api-keys:manage' | 'platform:read';
+export type ApiKeyScope = '*' | 'restaurants:read' | 'restaurants:write' | 'orders:read' | 'orders:write' | 'menu:read' | 'menu:write' | 'customers:read' | 'api-keys:manage' | 'platform:read';
 export type AutoCancelRefundMode = 'auto' | 'manual';
 export type CampaignRecipientStatus = 'queued' | 'sent' | 'failed' | 'bounced' | 'complained' | 'unsubscribed';
 export type CampaignStatus = 'draft' | 'pending_review' | 'scheduled' | 'sending' | 'sent' | 'cancelled' | 'paused_by_platform';
@@ -556,6 +566,7 @@ export type OrderType = 'delivery' | 'pickup';
 export type PaymentState = 'captured' | 'authorized' | 'voided';
 export type PosIntegrationStatus = 'connected' | 'disconnected' | 'token_expired' | 'error';
 export type PosProviderName = 'square' | 'clover';
+export type RestaurantImageKind = 'logo' | 'hero' | 'about';
 export type RestaurantRole = 'admin' | 'staff';
 export type RestaurantStatus = 'pending_review' | 'approved' | 'active' | 'suspended';
 export type RevenueRole = 'founder' | 'operator' | 'recruiter' | 'overseer' | 'delivery_margin';

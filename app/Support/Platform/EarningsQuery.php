@@ -64,7 +64,9 @@ class EarningsQuery
             ->groupBy('user_id', 'role')
             ->get();
 
-        $names = User::query()
+        // A deleted earner is still owed: name them rather than bucketing
+        // the money under "Removed user".
+        $names = User::withTrashed()
             ->whereIn('id', $aggregates->pluck('user_id')->filter()->unique())
             ->get(['id', 'name', 'email'])
             ->keyBy('id');

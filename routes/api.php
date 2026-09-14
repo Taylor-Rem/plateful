@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\Me\WalletController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\Operator\ApiKeysController as OperatorApiKeysController;
 use App\Http\Controllers\Api\V1\Operator\CustomersController as OperatorCustomersController;
+use App\Http\Controllers\Api\V1\Operator\ImagesController as OperatorImagesController;
 use App\Http\Controllers\Api\V1\Operator\MeController as OperatorMeController;
 use App\Http\Controllers\Api\V1\Operator\MenuController as OperatorMenuController;
 use App\Http\Controllers\Api\V1\Operator\OrdersController as OperatorOrdersController;
@@ -181,6 +182,21 @@ Route::domain(config('platform.primary_domain'))
                         Route::patch('menu-items/{menuItem}/availability', [OperatorMenuController::class, 'availability'])
                             ->middleware('operator.scope:menu:write')
                             ->name('menu.availability');
+                        Route::middleware('operator.scope:menu:write')->group(function () {
+                            Route::post('menu-items/{menuItem}/image', [OperatorImagesController::class, 'setMenuItemImage'])->name('menu.image.store');
+                            Route::delete('menu-items/{menuItem}/image', [OperatorImagesController::class, 'removeMenuItemImage'])->name('menu.image.destroy');
+                        });
+
+                        // Branding images and the gallery: admin role or restaurants:write.
+                        Route::get('photos', [OperatorImagesController::class, 'photos'])
+                            ->middleware('operator.scope:restaurants:read')
+                            ->name('photos.index');
+                        Route::middleware('operator.scope:restaurants:write')->group(function () {
+                            Route::post('images/{kind}', [OperatorImagesController::class, 'setRestaurantImage'])->name('images.store');
+                            Route::delete('images/{kind}', [OperatorImagesController::class, 'removeRestaurantImage'])->name('images.destroy');
+                            Route::post('photos', [OperatorImagesController::class, 'storePhoto'])->name('photos.store');
+                            Route::delete('photos/{photo}', [OperatorImagesController::class, 'destroyPhoto'])->name('photos.destroy');
+                        });
 
                         Route::get('customers', [OperatorCustomersController::class, 'index'])
                             ->middleware('operator.scope:customers:read')

@@ -393,5 +393,23 @@
         "percent": "float",
         "amountCents": "int",
         "earnedAt": "string"
+    },
+    "App\\Data\\RestaurantImagesData": {
+        "restaurantId": "int",
+        "logoUrl": "?string",
+        "logoMediumUrl": "?string",
+        "logoThumbUrl": "?string",
+        "heroImageUrl": "?string",
+        "heroImageMediumUrl": "?string",
+        "aboutImageUrl": "?string",
+        "aboutImageMediumUrl": "?string"
+    },
+    "App\\Data\\RestaurantPhotoData": {
+        "id": "int",
+        "caption": "?string",
+        "position": "int",
+        "imageUrl": "?string",
+        "imageMediumUrl": "?string",
+        "imageThumbUrl": "?string"
     }
 }
