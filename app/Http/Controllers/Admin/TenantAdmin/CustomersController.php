@@ -8,10 +8,10 @@ use App\Data\CustomerStatsMonthData;
 use App\Data\RestaurantData;
 use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
-use App\Models\LoyaltyPoints;
 use App\Models\Order;
 use App\Models\Restaurant;
 use App\Models\RestaurantCustomer;
+use App\Support\Customers\CustomersQuery;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -26,25 +26,19 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class CustomersController extends Controller
 {
-    protected const SORTABLE = [
-        'name' => 'users.name',
-        'total_orders' => 'restaurant_customer.total_orders',
-        'total_spent' => 'restaurant_customer.total_spent_cents',
-        'first_ordered' => 'restaurant_customer.first_ordered_at',
-        'last_ordered' => 'restaurant_customer.last_ordered_at',
-    ];
+    public function __construct(protected CustomersQuery $customers) {}
 
     public function index(Request $request, Restaurant $restaurant): Response
     {
         $filters = $this->normalizeFilters($request);
 
-        $sort = array_key_exists((string) $request->input('sort'), self::SORTABLE)
+        $sort = array_key_exists((string) $request->input('sort'), CustomersQuery::SORTABLE)
             ? (string) $request->input('sort')
             : 'last_ordered';
         $dir = $request->input('dir') === 'asc' ? 'asc' : 'desc';
 
         $query = $this->customersQuery($restaurant, $filters)
-            ->orderBy(self::SORTABLE[$sort], $dir)
+            ->orderBy(CustomersQuery::SORTABLE[$sort], $dir)
             ->orderBy('restaurant_customer.id', 'desc');
 
         $paginator = $query->paginate(25)->withQueryString();
@@ -304,41 +298,10 @@ class CustomersController extends Controller
     }
 
     /**
-     * Soft-deleted users are excluded outright: a deleted account's contact
-     * info must not appear on the page or in the export.
-     *
      * @param  array{search: string, ordered: ?int, marketing: ?string}  $filters
      */
     protected function customersQuery(Restaurant $restaurant, array $filters): Builder
     {
-        $query = RestaurantCustomer::query()
-            ->join('users', 'users.id', '=', 'restaurant_customer.user_id')
-            ->whereNull('users.deleted_at')
-            ->where('restaurant_customer.restaurant_id', $restaurant->id)
-            ->select('restaurant_customer.*')
-            ->addSelect([
-                'loyalty_points_balance' => LoyaltyPoints::withoutTenantScope()
-                    ->select('points')
-                    ->whereColumn('loyalty_points.user_id', 'restaurant_customer.user_id')
-                    ->where('loyalty_points.restaurant_id', $restaurant->id),
-            ])
-            ->with('user');
-
-        if ($filters['search'] !== '') {
-            $query->where(function (Builder $q) use ($filters): void {
-                $q->where('users.name', 'like', '%'.$filters['search'].'%')
-                    ->orWhere('users.email', 'like', '%'.$filters['search'].'%');
-            });
-        }
-
-        if ($filters['ordered'] !== null) {
-            $query->where('restaurant_customer.last_ordered_at', '>=', now()->subDays($filters['ordered']));
-        }
-
-        if ($filters['marketing'] === 'opted_in') {
-            $query->emailOptedIn();
-        }
-
-        return $query;
+        return $this->customers->build($restaurant, $filters);
     }
 }

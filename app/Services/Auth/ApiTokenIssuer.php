@@ -16,6 +16,12 @@ class ApiTokenIssuer
 
     public const ABILITY_TWO_FACTOR_CHALLENGE = 'two-factor-challenge';
 
+    /**
+     * Granted alongside `customer` to anyone with admin standing (super admin
+     * or a restaurant pivot row): it unlocks /api/v1/operator/*.
+     */
+    public const ABILITY_OPERATOR = 'operator';
+
     protected const CHALLENGE_TTL_MINUTES = 5;
 
     /**
@@ -26,7 +32,7 @@ class ApiTokenIssuer
     {
         $user->tokens()->where('name', $deviceName)->delete();
 
-        return $user->createToken($deviceName, [self::ABILITY_CUSTOMER])->plainTextToken;
+        return $user->createToken($deviceName, $this->abilitiesFor($user))->plainTextToken;
     }
 
     /**
@@ -73,6 +79,16 @@ class ApiTokenIssuer
         }
 
         return $user->hasEnabledTwoFactorAuthentication();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function abilitiesFor(User $user): array
+    {
+        return $user->isAdmin()
+            ? [self::ABILITY_CUSTOMER, self::ABILITY_OPERATOR]
+            : [self::ABILITY_CUSTOMER];
     }
 
     protected function challengeTokenName(string $deviceName): string

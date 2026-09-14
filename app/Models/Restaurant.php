@@ -437,6 +437,15 @@ class Restaurant extends Model
         return $this->hasMany(DeliveryIntegration::class);
     }
 
+    /**
+     * Machine credentials scoped to this restaurant (platform keys have no
+     * restaurant and are not listed here).
+     */
+    public function apiKeys(): HasMany
+    {
+        return $this->hasMany(ApiKey::class);
+    }
+
     public function menuImports(): HasMany
     {
         return $this->hasMany(MenuImport::class);

@@ -286,5 +286,62 @@
         "platform": "string",
         "deviceName": "?string",
         "lastSeenAt": "?string"
+    },
+    "App\\Data\\OperatorActorData": {
+        "type": "string",
+        "name": "string",
+        "isPlatform": "bool",
+        "scopes": "array",
+        "restaurants": "array"
+    },
+    "App\\Data\\OperatorRestaurantData": {
+        "id": "int",
+        "name": "string",
+        "subdomain": "string",
+        "status": "string",
+        "isActive": "bool",
+        "isLive": "bool",
+        "isStripeReady": "bool",
+        "deliveryEnabled": "bool",
+        "city": "?string",
+        "state": "?string",
+        "timezone": "string",
+        "publicUrl": "string",
+        "role": "?string",
+        "scopes": "array"
+    },
+    "App\\Data\\OperatorOrderData": {
+        "order": "App\\Data\\OrderData",
+        "paymentState": "?string",
+        "refundedAt": "?string",
+        "refundedCents": "int",
+        "posProvider": "?string",
+        "posPushedAt": "?string",
+        "updatedAt": "?string",
+        "events": "array"
+    },
+    "App\\Data\\OrderEventData": {
+        "id": "int",
+        "fromStatus": "?string",
+        "toStatus": "string",
+        "occurredAt": "string",
+        "userName": "?string",
+        "note": "?string"
+    },
+    "App\\Data\\ApiKeyData": {
+        "id": "int",
+        "name": "string",
+        "keyPrefix": "string",
+        "scopes": "array",
+        "isPlatform": "bool",
+        "lastUsedAt": "?string",
+        "expiresAt": "?string",
+        "revokedAt": "?string",
+        "createdByName": "?string",
+        "createdAt": "string"
+    },
+    "App\\Data\\ApiKeyCreatedData": {
+        "key": "App\\Data\\ApiKeyData",
+        "plainTextKey": "string"
     }
 }

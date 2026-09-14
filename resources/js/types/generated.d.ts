@@ -26,6 +26,22 @@ id: number,
 name: string,
 email: string,
 };
+export type ApiKeyCreatedData = {
+key: App.Data.ApiKeyData,
+plainTextKey: string,
+};
+export type ApiKeyData = {
+id: number,
+name: string,
+keyPrefix: string,
+scopes: string[],
+isPlatform: boolean,
+lastUsedAt: string | null,
+expiresAt: string | null,
+revokedAt: string | null,
+createdByName: string | null,
+createdAt: string,
+};
 export type AuthSessionData = {
 token: string,
 user: App.Data.MeData,
@@ -222,6 +238,39 @@ isRemovable: boolean,
 allowHalf: boolean,
 extraPriceCents: number | null,
 swapTemplateId: number | null,
+};
+export type OperatorActorData = {
+type: string,
+name: string,
+isPlatform: boolean,
+scopes: string[],
+restaurants: App.Data.OperatorRestaurantData[],
+};
+export type OperatorOrderData = {
+order: App.Data.OrderData,
+paymentState: string | null,
+refundedAt: string | null,
+refundedCents: number,
+posProvider: string | null,
+posPushedAt: string | null,
+updatedAt: string | null,
+events: App.Data.OrderEventData[],
+};
+export type OperatorRestaurantData = {
+id: number,
+name: string,
+subdomain: string,
+status: string,
+isActive: boolean,
+isLive: boolean,
+isStripeReady: boolean,
+deliveryEnabled: boolean,
+city: string | null,
+state: string | null,
+timezone: string,
+publicUrl: string,
+role: string | null,
+scopes: string[],
 };
 export type OrderData = {
 id: number,
@@ -430,6 +479,7 @@ lastOrderedAt: string | null,
 };
 }
 namespace Enums {
+export type ApiKeyScope = '*' | 'restaurants:read' | 'orders:read' | 'orders:write' | 'menu:read' | 'menu:write' | 'customers:read' | 'api-keys:manage';
 export type AutoCancelRefundMode = 'auto' | 'manual';
 export type CampaignRecipientStatus = 'queued' | 'sent' | 'failed' | 'bounced' | 'complained' | 'unsubscribed';
 export type CampaignStatus = 'draft' | 'pending_review' | 'scheduled' | 'sending' | 'sent' | 'cancelled' | 'paused_by_platform';

@@ -1,6 +1,8 @@
 <?php
 
 use App\Data\AddressData;
+use App\Data\ApiKeyCreatedData;
+use App\Data\ApiKeyData;
 use App\Data\AuthSessionData;
 use App\Data\CartData;
 use App\Data\CartItemData;
@@ -13,7 +15,11 @@ use App\Data\MeData;
 use App\Data\MenuCategoryData;
 use App\Data\MenuItemData;
 use App\Data\MenuItemIngredientData;
+use App\Data\OperatorActorData;
+use App\Data\OperatorOrderData;
+use App\Data\OperatorRestaurantData;
 use App\Data\OrderData;
+use App\Data\OrderEventData;
 use App\Data\OrderHistoryItemData;
 use App\Data\OrderItemData;
 use App\Data\OrderPlacedData;
@@ -58,6 +64,13 @@ const API_V1_CONTRACT = [
     WalletEntryData::class,
     RestaurantMembershipData::class,
     DeviceTokenData::class,
+    // Operator API (§16): additive from 2026-09-14.
+    OperatorActorData::class,
+    OperatorRestaurantData::class,
+    OperatorOrderData::class,
+    OrderEventData::class,
+    ApiKeyData::class,
+    ApiKeyCreatedData::class,
 ];
 
 /**

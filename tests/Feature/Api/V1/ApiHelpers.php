@@ -1,6 +1,10 @@
 <?php
 
+use App\Enums\ApiKeyScope;
+use App\Models\ApiKey;
+use App\Models\Restaurant;
 use App\Models\User;
+use App\Services\Auth\ApiTokenIssuer;
 use Firebase\JWT\JWT;
 use Illuminate\Support\Facades\Http;
 
@@ -111,4 +115,36 @@ function forgetApiGuards(): void
     // withToken()/withHeader() persist as default headers for the whole
     // test; drop them too so the next request starts as a stranger.
     test()->flushHeaders();
+}
+
+/**
+ * A device token with whatever abilities the issuer grants this user: an
+ * admin (pivot row or super) gets `operator` alongside `customer`.
+ */
+function operatorTokenFor(User $user, string $device = 'iPad'): string
+{
+    return $user->createToken($device, app(ApiTokenIssuer::class)->abilitiesFor($user))->plainTextToken;
+}
+
+/**
+ * Mint a key and return the plaintext to send as a bearer. No restaurant
+ * means a platform key; scopes default to everything the key kind allows.
+ *
+ * @param  array<int, ApiKeyScope>|null  $scopes
+ */
+function apiKeyFor(?Restaurant $restaurant, ?array $scopes = null, string $name = 'Test key'): string
+{
+    $scopes ??= $restaurant !== null
+        ? ApiKeyScope::restaurantScopes()
+        : [ApiKeyScope::All];
+
+    return ApiKey::mint($name, $scopes, $restaurant)['plainTextKey'];
+}
+
+/**
+ * The operator API's path for a restaurant.
+ */
+function operatorUrl(Restaurant $restaurant, string $path = ''): string
+{
+    return API_BASE.'/operator/restaurants/'.$restaurant->subdomain.($path !== '' ? '/'.ltrim($path, '/') : '');
 }
