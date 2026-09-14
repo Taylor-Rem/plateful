@@ -971,6 +971,29 @@ one-template-per-item limit already duplicated "Add salad/soup" into four templa
 
 ---
 
+## 16. Platform API — operator endpoints, API keys, outbound webhooks, docs
+_Added 2026-09-14. Plan in `docs/plateful_platform_api_plan.md` (hand-off doc; a fresh session
+should read it first and ask the ⚑ questions). Builds on §14's customer API, which is live.
+Estimate: 1–2 weeks of sessions total; Phase 1 alone unblocks an operator app._
+
+- [ ] **Decide first (⚑):** first consumer (our operator app vs third parties), machine
+      credential model (restaurant-owned API keys as Sanctum tokens — recommended — vs Passport),
+      webhook guarantees, docs generator (Scramble = new dependency), and whether `/v1`
+      backward-compat becomes a public promise.
+- [ ] **Phase 1 — Operator API** (~2–3): `operator` ability, `operator.access` middleware,
+      `/api/v1/operator/restaurants/{r}/...` wrapping the existing tenant-admin services: orders +
+      transitions + kitchen board, menu/categories/items/ingredients/templates/swap sets, hours,
+      settings subset, customers read, integration status.
+- [ ] **Phase 2 — API keys** (~1): `api_keys` table (hashed, prefixed, scoped), guard, per-key
+      limiter, Settings UI + operator endpoints to manage them.
+- [ ] **Phase 3 — Outbound webhooks** (~2): `webhook_endpoints` + `webhook_deliveries`, signed
+      HMAC deliveries with backoff off the `OrderPlacement` / `OrderTransition` /
+      `DeliveryAssignmentObserver` / `MenuItemObserver` seams, auto-disable, test ping.
+- [ ] **Phase 4 — Docs + idempotency** (~1–2): OpenAPI at `/docs/api`, `Idempotency-Key` on
+      writes, stable error codes, versioning note.
+
+---
+
 ## Suggested sequence
 1. **§0 launch blockers** + **§1 pricing** (parallel; both small, both gate revenue/story).
 2. ~~**§2a foundations**~~ — done.
