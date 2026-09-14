@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\OptionalSanctumAuth;
 use App\Http\Middleware\RequireAdmin;
+use App\Http\Middleware\RequireApiScope;
 use App\Http\Middleware\RequireRestaurantAdmin;
 use App\Http\Middleware\RequireSuperAdmin;
 use App\Http\Middleware\RequireTwoFactorEnrollment;
 use App\Http\Middleware\ResolveAdminRestaurant;
+use App\Http\Middleware\ResolveOperatorRestaurant;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\ResolveTenantFromRoute;
 use Illuminate\Foundation\Application;
@@ -47,6 +50,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // tenant-scoped models bound on /restaurants/{restaurant}/... routes
         // are looked up inside that tenant (see ResolveTenantFromRoute).
         $middleware->prependToPriorityList(SubstituteBindings::class, ResolveTenantFromRoute::class);
+        $middleware->prependToPriorityList(SubstituteBindings::class, ResolveOperatorRestaurant::class);
+        $middleware->prependToPriorityList(SubstituteBindings::class, RequireApiScope::class);
 
         $middleware->validateCsrfTokens(except: ['stripe/webhook', 'webhooks/uber', 'webhooks/doordash', 'webhooks/resend']);
 
@@ -67,6 +72,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'two-factor.required' => RequireTwoFactorEnrollment::class,
             'tenant.route' => ResolveTenantFromRoute::class,
             'auth.optional' => OptionalSanctumAuth::class,
+            'operator' => AuthenticateOperator::class,
+            'operator.restaurant' => ResolveOperatorRestaurant::class,
+            'operator.scope' => RequireApiScope::class,
             'abilities' => CheckAbilities::class,
             'ability' => CheckForAnyAbility::class,
         ]);
@@ -76,6 +84,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // API clients get JSON errors whether or not they sent an Accept header.
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request): bool => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request): bool => $request->is('api/*') || $request->is('mcp/*') || $request->expectsJson(),
         );
     })->create();

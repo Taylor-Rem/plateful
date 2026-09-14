@@ -13,6 +13,12 @@ use App\Http\Controllers\Api\V1\Me\FavoritesController;
 use App\Http\Controllers\Api\V1\Me\OrdersController as MyOrdersController;
 use App\Http\Controllers\Api\V1\Me\WalletController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\Operator\ApiKeysController as OperatorApiKeysController;
+use App\Http\Controllers\Api\V1\Operator\CustomersController as OperatorCustomersController;
+use App\Http\Controllers\Api\V1\Operator\MeController as OperatorMeController;
+use App\Http\Controllers\Api\V1\Operator\MenuController as OperatorMenuController;
+use App\Http\Controllers\Api\V1\Operator\OrdersController as OperatorOrdersController;
+use App\Http\Controllers\Api\V1\Operator\RestaurantsController as OperatorRestaurantsController;
 use App\Http\Controllers\Api\V1\OrdersController;
 use App\Http\Controllers\Api\V1\RestaurantMembershipController;
 use App\Http\Controllers\Api\V1\RestaurantsController;
@@ -21,7 +27,7 @@ use App\Http\Controllers\Storefront\DeliveryQuoteController;
 use Illuminate\Support\Facades\Route;
 
 /*
- * Public API for the Plateful mobile app — stateless JSON with Sanctum bearer
+ * Public API for the Plateful mobile app â stateless JSON with Sanctum bearer
  * tokens, mounted on the primary host at /api/v1. Response DTOs in app/Data
  * (and their generated TypeScript) are the contract the app repo consumes:
  * additive-only changes here, anything else goes to /v2.
@@ -125,5 +131,57 @@ Route::domain(config('platform.primary_domain'))
                     Route::delete('favorite', [RestaurantMembershipController::class, 'unfavorite'])->name('membership.unfavorite');
                     Route::put('marketing-consent', [RestaurantMembershipController::class, 'marketingConsent'])->name('membership.marketing');
                 });
+            });
+
+        /*
+         * Operator API (§16, docs/plateful_platform_api_plan.md): the restaurant's
+         * own staff and its machines. Signed by a Sanctum token carrying the
+         * `operator` ability or by an API key (`pfk_…`); ApiActor answers
+         * access questions for both. Restaurants resolve for the actor, live
+         * or not, and anything out of reach is a 404.
+         */
+        Route::prefix('operator')
+            ->name('operator.')
+            ->middleware(['auth:sanctum,api-key', 'operator', 'throttle:api-operator'])
+            ->group(function () {
+                Route::get('me', [OperatorMeController::class, 'show'])->name('me');
+                Route::get('restaurants', [OperatorRestaurantsController::class, 'index'])->name('restaurants.index');
+
+                Route::prefix('restaurants/{restaurant}')
+                    ->name('restaurants.')
+                    ->middleware('operator.restaurant')
+                    ->group(function () {
+                        Route::get('/', [OperatorRestaurantsController::class, 'show'])
+                            ->middleware('operator.scope:restaurants:read')
+                            ->name('show');
+
+                        Route::middleware('operator.scope:orders:read')->group(function () {
+                            Route::get('orders', [OperatorOrdersController::class, 'index'])->name('orders.index');
+                            Route::get('orders/{order:number}', [OperatorOrdersController::class, 'show'])->name('orders.show');
+                            Route::get('kitchen', [OperatorOrdersController::class, 'kitchen'])->name('kitchen');
+                        });
+                        Route::post('orders/{order:number}/transition', [OperatorOrdersController::class, 'transition'])
+                            ->middleware('operator.scope:orders:write')
+                            ->name('orders.transition');
+
+                        Route::get('menu', [OperatorMenuController::class, 'index'])
+                            ->middleware('operator.scope:menu:read')
+                            ->name('menu');
+                        Route::patch('menu-items/{menuItem}/availability', [OperatorMenuController::class, 'availability'])
+                            ->middleware('operator.scope:menu:write')
+                            ->name('menu.availability');
+
+                        Route::get('customers', [OperatorCustomersController::class, 'index'])
+                            ->middleware('operator.scope:customers:read')
+                            ->name('customers.index');
+
+                        Route::middleware('operator.scope:api-keys:manage')->group(function () {
+                            Route::get('api-keys', [OperatorApiKeysController::class, 'index'])->name('api-keys.index');
+                            Route::post('api-keys', [OperatorApiKeysController::class, 'store'])->name('api-keys.store');
+                            Route::delete('api-keys/{apiKey}', [OperatorApiKeysController::class, 'destroy'])
+                                ->whereNumber('apiKey')
+                                ->name('api-keys.destroy');
+                        });
+                    });
             });
     });

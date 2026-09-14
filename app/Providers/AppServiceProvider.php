@@ -6,6 +6,7 @@ use App\Enums\DeliveryProviderName;
 use App\Enums\PosProviderName;
 use App\Listeners\MergeGuestCartOnLogin;
 use App\Listeners\PurgeUserSessionsOnLogout;
+use App\Models\ApiKey;
 use App\Models\Campaign;
 use App\Models\DeliveryAssignment;
 use App\Models\ItemTemplate;
@@ -31,6 +32,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -98,10 +100,17 @@ class AppServiceProvider extends ServiceProvider
         // (each job is one batch API call) whenever a real key is configured.
         RateLimiter::for('campaign-batches', fn (): Limit => Limit::perSecond(2));
 
-        // Public API (/api/v1): per token when authenticated, per IP otherwise.
-        // The auth endpoints layer stricter, purpose-specific limiters on top.
+        // Public API (/api/v1): per principal when authenticated, per IP
+        // otherwise. The auth endpoints layer stricter, purpose-specific
+        // limiters on top; operator routes get a roomier bucket of their own.
         RateLimiter::for('api', fn (Request $request): Limit => Limit::perMinute(120)
-            ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
+            ->by($this->limiterKey($request)));
+
+        RateLimiter::for('api-operator', fn (Request $request): Limit => Limit::perMinute(300)
+            ->by($this->limiterKey($request)));
+
+        // Bearer `pfk_…` keys for the operator API and the MCP server.
+        Auth::viaRequest('api-key', fn (Request $request): ?ApiKey => ApiKey::authenticate($request->bearerToken()));
 
         RateLimiter::for('api-auth', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()));
 
@@ -176,6 +185,19 @@ class AppServiceProvider extends ServiceProvider
             return $template;
         });
 
+    }
+
+    /**
+     * Rate-limit bucket for a request: the principal's class and id, so a
+     * user and an API key that happen to share an id never share a bucket.
+     */
+    protected function limiterKey(Request $request): string
+    {
+        $principal = $request->user();
+
+        return $principal !== null
+            ? class_basename($principal).':'.$principal->getAuthIdentifier()
+            : (string) $request->ip();
     }
 
     /**

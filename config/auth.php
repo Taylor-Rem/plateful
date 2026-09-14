@@ -42,6 +42,13 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Machine credentials for the operator API and the MCP server; the
+        // driver is registered in AppServiceProvider (Auth::viaRequest).
+        'api-key' => [
+            'driver' => 'api-key',
+            'provider' => 'users',
+        ],
     ],
 
     /*

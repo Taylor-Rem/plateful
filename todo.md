@@ -971,6 +971,35 @@ one-template-per-item limit already duplicated "Add salad/soup" into four templa
 
 ---
 
+## 16. Platform API — operator endpoints, API keys, MCP server, outbound webhooks, docs
+_Added 2026-09-14; decisions taken and Phase 1 built the same day. Plan + shipped surface in
+`docs/plateful_platform_api_plan.md` (read it first). Builds on §14's customer API._
+
+- [x] **Decided 2026-09-14:** first consumer is Claude on live data (operator app later, same
+      surface); restaurant-scoped keys **and** platform keys (super-admin reach) in one `api_keys`
+      table, no Passport; reads + scoped writes from day one; Scramble approved for docs;
+      `/v1` additive-only is a public promise.
+- [x] **Phase 1 — keys, guard, operator REST subset, MCP server** (2026-09-14, 37 tests):
+      `api_keys` + `ApiKeyScope`, `api-key` guard, `ApiActor`, `operator` / `operator.restaurant` /
+      `operator.scope` middleware, `api-key:create`, `operator` Sanctum ability on admin sign-in;
+      `/api/v1/operator/…` me, restaurants, orders (list/show/transition/kitchen), menu (read +
+      availability), customers, api-keys; MCP at `/mcp/platform` with 9 tools wrapping the same
+      queries. **Next step for Taylor:** mint the platform key on Laravel Cloud
+      (`php artisan api-key:create "Claude" --platform --user=<email>`) and
+      `claude mcp add --transport http plateful https://plateful.fyi/mcp/platform --header
+      "Authorization: Bearer pfk_live_…"`.
+- [ ] **Phase 1b — rest of the operator surface** (when the operator app is scheduled): menu
+      CRUD/reorder/ingredients/templates/swap sets, hours, settings subset, integration status,
+      Settings-page UI for restaurant keys, platform-only tools for Claude (earnings, lifecycle,
+      campaign review) as needs surface.
+- [ ] **Phase 3 — Outbound webhooks** (~2): `webhook_endpoints` + `webhook_deliveries`, signed
+      HMAC deliveries with backoff off the `OrderPlacement` / `OrderTransition` /
+      `DeliveryAssignmentObserver` / `MenuItemObserver` seams, auto-disable, test ping.
+- [ ] **Phase 4 — Docs + idempotency** (~1–2): Scramble OpenAPI at `/docs/api`, `Idempotency-Key` on
+      writes, stable error codes, versioning note.
+
+---
+
 ## Suggested sequence
 1. **§0 launch blockers** + **§1 pricing** (parallel; both small, both gate revenue/story).
 2. ~~**§2a foundations**~~ — done.

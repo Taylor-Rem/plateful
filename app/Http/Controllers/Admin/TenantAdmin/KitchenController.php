@@ -8,27 +8,15 @@ use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Restaurant;
+use App\Support\Operator\OperatorOrders;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class KitchenController extends Controller
 {
-    /**
-     * Statuses surfaced on the kitchen board, in display order. Pending is on
-     * the board because an order only exists once it is PAID — hiding it here
-     * meant a tablet-only restaurant never saw a new order without leaving the
-     * kitchen to accept it from the back-office Orders table.
-     */
-    private const BOARD_STATUSES = [
-        OrderStatus::Pending,
-        OrderStatus::Confirmed,
-        OrderStatus::Preparing,
-        OrderStatus::Ready,
-    ];
-
     public function index(Restaurant $restaurant): Response
     {
-        $statuses = array_map(fn (OrderStatus $s) => $s->value, self::BOARD_STATUSES);
+        $statuses = array_map(fn (OrderStatus $s) => $s->value, OperatorOrders::BOARD_STATUSES);
 
         $orders = Order::query()
             ->where('restaurant_id', $restaurant->id)
