@@ -164,6 +164,44 @@ platform: string,
 deviceName: string | null,
 lastSeenAt: string | null,
 };
+export type EarnerData = {
+userId: number | null,
+name: string,
+email: string | null,
+roles: Record<string, number>,
+totalCents: number,
+};
+export type EarningsSummaryData = {
+month: string,
+monthLabel: string,
+totalCents: number,
+shares: Record<string, number>,
+founder: {
+id: number,
+name: string,
+} | null,
+operator: {
+id: number,
+name: string,
+} | null,
+earners: App.Data.EarnerData[],
+};
+export type FeeDistributionData = {
+id: number,
+orderId: number,
+orderNumber: string | null,
+orderRefunded: boolean,
+restaurantId: number,
+restaurantName: string | null,
+restaurantSubdomain: string | null,
+userId: number | null,
+userName: string | null,
+userEmail: string | null,
+role: string,
+percent: number,
+amountCents: number,
+earnedAt: string,
+};
 export type ItemTemplateData = {
 id: number,
 name: string,
@@ -418,6 +456,24 @@ longitude: number | null,
 cuisineTags: string[],
 marketplaceListed: boolean,
 };
+export type RestaurantEarningsData = {
+restaurantId: number,
+name: string,
+subdomain: string,
+status: string,
+month: string,
+orders: number,
+refundedOrders: number,
+foodSubtotalCents: number,
+applicationFeeCents: number,
+commissionCents: number,
+deliveryMarginCents: number,
+ledgerCents: number,
+feePercent: number,
+capCents: number,
+capReached: boolean,
+capRemainingCents: number | null,
+};
 export type RestaurantHourData = {
 dayOfWeek: number,
 opensAt: string,
@@ -479,7 +535,7 @@ lastOrderedAt: string | null,
 };
 }
 namespace Enums {
-export type ApiKeyScope = '*' | 'restaurants:read' | 'orders:read' | 'orders:write' | 'menu:read' | 'menu:write' | 'customers:read' | 'api-keys:manage';
+export type ApiKeyScope = '*' | 'restaurants:read' | 'orders:read' | 'orders:write' | 'menu:read' | 'menu:write' | 'customers:read' | 'api-keys:manage' | 'platform:read';
 export type AutoCancelRefundMode = 'auto' | 'manual';
 export type CampaignRecipientStatus = 'queued' | 'sent' | 'failed' | 'bounced' | 'complained' | 'unsubscribed';
 export type CampaignStatus = 'draft' | 'pending_review' | 'scheduled' | 'sending' | 'sent' | 'cancelled' | 'paused_by_platform';

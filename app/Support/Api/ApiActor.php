@@ -105,6 +105,10 @@ final class ApiActor
      */
     public function hasScope(ApiKeyScope $scope, ?Restaurant $restaurant = null): bool
     {
+        if ($scope->isPlatformOnly() && ! $this->isPlatform()) {
+            return false;
+        }
+
         if ($this->key !== null) {
             return $this->key->hasScope($scope);
         }

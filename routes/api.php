@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\Operator\CustomersController as OperatorCustomer
 use App\Http\Controllers\Api\V1\Operator\MeController as OperatorMeController;
 use App\Http\Controllers\Api\V1\Operator\MenuController as OperatorMenuController;
 use App\Http\Controllers\Api\V1\Operator\OrdersController as OperatorOrdersController;
+use App\Http\Controllers\Api\V1\Operator\Platform\EarningsController as PlatformEarningsController;
 use App\Http\Controllers\Api\V1\Operator\RestaurantsController as OperatorRestaurantsController;
 use App\Http\Controllers\Api\V1\OrdersController;
 use App\Http\Controllers\Api\V1\RestaurantMembershipController;
@@ -146,6 +147,16 @@ Route::domain(config('platform.primary_domain'))
             ->group(function () {
                 Route::get('me', [OperatorMeController::class, 'show'])->name('me');
                 Route::get('restaurants', [OperatorRestaurantsController::class, 'index'])->name('restaurants.index');
+
+                // Platform-wide reads: super admins and platform keys only.
+                Route::prefix('platform')
+                    ->name('platform.')
+                    ->middleware('operator.scope:platform:read')
+                    ->group(function () {
+                        Route::get('earnings', [PlatformEarningsController::class, 'summary'])->name('earnings.summary');
+                        Route::get('earnings/restaurants', [PlatformEarningsController::class, 'restaurants'])->name('earnings.restaurants');
+                        Route::get('earnings/ledger', [PlatformEarningsController::class, 'ledger'])->name('earnings.ledger');
+                    });
 
                 Route::prefix('restaurants/{restaurant}')
                     ->name('restaurants.')

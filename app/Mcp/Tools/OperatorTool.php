@@ -54,6 +54,28 @@ abstract class OperatorTool extends Tool
         return $restaurant;
     }
 
+    /**
+     * Require a platform-wide scope (no restaurant in play). Only super
+     * admins and platform keys can hold one.
+     *
+     * @throws AuthorizationException
+     */
+    protected function platform(Request $request, ApiKeyScope $scope): ApiActor
+    {
+        $actor = $this->actor($request);
+
+        if (! $actor->hasScope($scope)) {
+            throw new AuthorizationException("This credential lacks the {$scope->value} scope; platform reports need a platform key or a super admin.");
+        }
+
+        return $actor;
+    }
+
+    protected function monthArgument(JsonSchema $schema): mixed
+    {
+        return $schema->string()->description('Calendar month as YYYY-MM. Defaults to the current month.');
+    }
+
     protected function restaurantArgument(JsonSchema $schema): mixed
     {
         return $schema->string()

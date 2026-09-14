@@ -21,6 +21,12 @@ enum ApiKeyScope: string
     case CustomersRead = 'customers:read';
     case ApiKeysManage = 'api-keys:manage';
 
+    /**
+     * Platform-wide reads (earnings, lifecycle, review queues). Only a
+     * platform key or a super admin can hold it; `All` implies it.
+     */
+    case PlatformRead = 'platform:read';
+
     public function label(): string
     {
         return match ($this) {
@@ -32,18 +38,27 @@ enum ApiKeyScope: string
             self::MenuWrite => 'Change menu item availability',
             self::CustomersRead => 'Read the customer list',
             self::ApiKeysManage => 'Create and revoke this restaurant\'s API keys',
+            self::PlatformRead => 'Read platform-wide reports (earnings, lifecycle)',
         };
     }
 
     /**
-     * The scopes a restaurant-scoped key may be granted (everything but the
-     * platform wildcard).
+     * The scopes a restaurant-scoped key may be granted: everything that acts
+     * within one restaurant.
      *
      * @return array<int, self>
      */
     public static function restaurantScopes(): array
     {
-        return array_values(array_filter(self::cases(), fn (self $scope) => $scope !== self::All));
+        return array_values(array_filter(self::cases(), fn (self $scope) => ! $scope->isPlatformOnly()));
+    }
+
+    /**
+     * Scopes that only make sense on a platform key.
+     */
+    public function isPlatformOnly(): bool
+    {
+        return $this === self::All || $this === self::PlatformRead;
     }
 
     /**

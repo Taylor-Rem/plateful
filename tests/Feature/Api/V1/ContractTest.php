@@ -9,6 +9,9 @@ use App\Data\CartItemData;
 use App\Data\CheckoutIntentData;
 use App\Data\DeliveryAssignmentData;
 use App\Data\DeviceTokenData;
+use App\Data\EarnerData;
+use App\Data\EarningsSummaryData;
+use App\Data\FeeDistributionData;
 use App\Data\ItemTemplateGroupData;
 use App\Data\ItemTemplateOptionData;
 use App\Data\MeData;
@@ -26,6 +29,7 @@ use App\Data\OrderPlacedData;
 use App\Data\PaginationMetaData;
 use App\Data\ReorderResultData;
 use App\Data\RestaurantData;
+use App\Data\RestaurantEarningsData;
 use App\Data\RestaurantMembershipData;
 use App\Data\RestaurantSummaryData;
 use App\Data\TwoFactorChallengeData;
@@ -64,13 +68,18 @@ const API_V1_CONTRACT = [
     WalletEntryData::class,
     RestaurantMembershipData::class,
     DeviceTokenData::class,
-    // Operator API (�16): additive from 2026-09-14.
+    // Operator API (§16): additive from 2026-09-14.
     OperatorActorData::class,
     OperatorRestaurantData::class,
     OperatorOrderData::class,
     OrderEventData::class,
     ApiKeyData::class,
     ApiKeyCreatedData::class,
+    // Platform reports (§16 Phase 1b): additive from 2026-09-14.
+    EarningsSummaryData::class,
+    EarnerData::class,
+    RestaurantEarningsData::class,
+    FeeDistributionData::class,
 ];
 
 /**
