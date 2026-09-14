@@ -37,7 +37,8 @@ class EarningsLedgerRequest extends FormRequest
 
     /**
      * `user` accepts an id or an email. `month` expands to a from/to pair
-     * unless an explicit range was given.
+     * unless an explicit range was given. Deleted restaurants and users still
+     * resolve: the ledger is history.
      *
      * @return array{restaurant: ?Restaurant, user: ?User, order: ?string, role: ?RevenueRole, from: ?CarbonImmutable, to: ?CarbonImmutable, include_refunded: bool}
      */
@@ -63,7 +64,7 @@ class EarningsLedgerRequest extends FormRequest
 
         return [
             'restaurant' => $this->filled('restaurant')
-                ? Restaurant::query()->where('subdomain', $this->input('restaurant'))->first()
+                ? Restaurant::withTrashed()->where('subdomain', $this->input('restaurant'))->first()
                 : null,
             'user' => $user,
             'order' => $this->filled('order') ? (string) $this->input('order') : null,

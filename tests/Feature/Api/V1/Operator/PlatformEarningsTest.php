@@ -118,6 +118,27 @@ test('the ledger filters by restaurant, person, order, role and month', function
     $this->getJson(API_BASE.'/operator/platform/earnings/ledger?role=ceo')->assertStatus(422);
 });
 
+test('the ledger still names a restaurant and an earner that were later deleted', function () {
+    ['ben' => $ben, 'luigis' => $luigis] = earningsFixture();
+    $luigis->delete();
+    $ben->delete();
+
+    $this->withToken(apiKeyFor(null))
+        ->getJson(API_BASE.'/operator/platform/earnings/ledger?month=2026-09&restaurant=luigis')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 2);
+
+    $this->getJson(API_BASE.'/operator/platform/earnings/ledger?order=LUI-00001')
+        ->assertOk()
+        ->assertJsonPath('data.0.restaurantName', 'Luigis')
+        ->assertJsonPath('data.0.restaurantSubdomain', 'luigis');
+
+    $this->getJson(API_BASE.'/operator/platform/earnings/ledger?order=MAR-00001')
+        ->assertOk()
+        ->assertJsonPath('data.0.userName', 'Ben')
+        ->assertJsonPath('data.0.userEmail', 'ben@example.test');
+});
+
 test('platform reports are gated to platform actors holding platform:read', function () {
     ['marcos' => $marcos] = earningsFixture();
     $admin = adminForRestaurant($marcos);
