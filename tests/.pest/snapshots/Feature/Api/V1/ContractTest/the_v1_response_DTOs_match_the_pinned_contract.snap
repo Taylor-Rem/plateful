@@ -343,5 +343,55 @@
     "App\\Data\\ApiKeyCreatedData": {
         "key": "App\\Data\\ApiKeyData",
         "plainTextKey": "string"
+    },
+    "App\\Data\\EarningsSummaryData": {
+        "month": "string",
+        "monthLabel": "string",
+        "totalCents": "int",
+        "shares": "array",
+        "founder": "?array",
+        "operator": "?array",
+        "earners": "array"
+    },
+    "App\\Data\\EarnerData": {
+        "userId": "?int",
+        "name": "string",
+        "email": "?string",
+        "roles": "array",
+        "totalCents": "int"
+    },
+    "App\\Data\\RestaurantEarningsData": {
+        "restaurantId": "int",
+        "name": "string",
+        "subdomain": "string",
+        "status": "string",
+        "month": "string",
+        "orders": "int",
+        "refundedOrders": "int",
+        "foodSubtotalCents": "int",
+        "applicationFeeCents": "int",
+        "commissionCents": "int",
+        "deliveryMarginCents": "int",
+        "ledgerCents": "int",
+        "feePercent": "float",
+        "capCents": "int",
+        "capReached": "bool",
+        "capRemainingCents": "?int"
+    },
+    "App\\Data\\FeeDistributionData": {
+        "id": "int",
+        "orderId": "int",
+        "orderNumber": "?string",
+        "orderRefunded": "bool",
+        "restaurantId": "int",
+        "restaurantName": "?string",
+        "restaurantSubdomain": "?string",
+        "userId": "?int",
+        "userName": "?string",
+        "userEmail": "?string",
+        "role": "string",
+        "percent": "float",
+        "amountCents": "int",
+        "earnedAt": "string"
     }
 }

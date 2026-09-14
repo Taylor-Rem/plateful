@@ -48,6 +48,7 @@ test('the server lists its tools with annotations', function () {
     expect($tools->keys()->all())->toBe([
         'list-restaurants', 'get-restaurant', 'list-orders', 'get-order', 'kitchen-board',
         'transition-order', 'list-customers', 'get-menu', 'set-menu-item-availability',
+        'earnings-summary', 'earnings-by-restaurant', 'earnings-ledger',
     ])
         ->and($tools['list-orders']->toArray()['annotations'])->toHaveKey('readOnlyHint', true)
         ->and($tools['transition-order']->toArray()['annotations'])->not->toHaveKey('readOnlyHint')

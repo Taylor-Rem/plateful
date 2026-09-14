@@ -33,7 +33,12 @@ server); Phases 2–4 open.** Builds on the customer API shipped 2026-09-11
   `created_by_user_id`). `ApiKey::mint()` returns the plaintext once:
   `pfk_live_…` in production, `pfk_test_…` elsewhere (49 chars).
 - `ApiKeyScope` enum: `*`, `restaurants:read`, `orders:read`, `orders:write`,
-  `menu:read`, `menu:write`, `customers:read`, `api-keys:manage`.
+  `menu:read`, `menu:write`, `customers:read`, `api-keys:manage`, and the
+  platform-only `platform:read` (added 2026-09-14 with the earnings tools:
+  `api-key:create "Reports" --platform --scopes=platform:read` mints a
+  read-only platform key; `*` implies it; restaurant keys can never hold it,
+  and `ApiActor::hasScope()` refuses platform-only scopes to non-platform
+  actors even if a row somehow carried one).
   `forRole()` maps pivot roles onto scopes for signed-in people (staff:
   restaurants/orders read, orders write, menu read; admin: everything but `*`).
 - Guard `api-key` (`Auth::viaRequest` in `AppServiceProvider`, config in
@@ -79,12 +84,17 @@ credential is refused before any id lookup can leak existence.
 | `PATCH restaurants/{r}/menu-items/{id}/availability` | menu:write | `MenuItemData` |
 | `GET restaurants/{r}/customers` | customers:read | `CustomerData[]` + meta; `search`, `ordered=30|90`, `marketing=opted_in`, `sort`, `dir` |
 | `GET/POST/DELETE restaurants/{r}/api-keys[/{id}]` | api-keys:manage | `ApiKeyData[]` / `ApiKeyCreatedData` (plaintext once) / 204 |
+| `GET platform/earnings` | platform:read | `EarningsSummaryData` (payout sheet for `?month=YYYY-MM`, default current) |
+| `GET platform/earnings/restaurants` | platform:read | `RestaurantEarningsData[]` per restaurant for the month: orders, food, gross fee, commission vs cap, delivery margin, ledger total |
+| `GET platform/earnings/ledger` | platform:read | `FeeDistributionData[]` + meta; filters `restaurant`, `user` (id or email), `order`, `role`, `month` or `from`/`to`, `include_refunded` |
 
 Shared query classes so REST and MCP never drift: `App\Support\Operator\
-OperatorOrders` (paginate, board, find by id-or-number, statusCounts) and
+OperatorOrders` (paginate, board, find by id-or-number, statusCounts),
 `App\Support\Customers\CustomersQuery` (extracted from the tenant admin
-`CustomersController`, which now delegates). `KitchenController` reads
-`OperatorOrders::BOARD_STATUSES`.
+`CustomersController`, which now delegates), and `App\Support\Platform\
+EarningsQuery` (payout summary, per-restaurant breakdown, ledger; the
+super-admin `EarningsController` now delegates to it). `KitchenController`
+reads `OperatorOrders::BOARD_STATUSES`.
 
 ### MCP — `POST https://plateful.fyi/mcp/platform`
 
@@ -92,7 +102,9 @@ OperatorOrders` (paginate, board, find by id-or-number, statusCounts) and
 a dependency), guarded by `auth:api-key` + the operator limiter. Tools, each
 taking the restaurant **subdomain**: `list-restaurants`, `get-restaurant`,
 `list-orders`, `get-order` (number or id), `kitchen-board`,
-`transition-order`, `list-customers`, `get-menu`, `set-menu-item-availability`.
+`transition-order`, `list-customers`, `get-menu`, `set-menu-item-availability`,
+and the platform-only `earnings-summary`, `earnings-by-restaurant`,
+`earnings-ledger` (gated on `platform:read` via `OperatorTool::platform()`).
 Read tools carry `readOnlyHint`; the server instructions tell the agent to
 confirm before writes. Errors (unknown restaurant, missing scope, illegal
 transition, validation) come back as tool errors, not exceptions.
@@ -111,12 +123,16 @@ Keep the key out of chat and transcripts (see `project_secret_hygiene`).
 ### DTOs added to `API_V1_CONTRACT` (snapshot updated, `generated.d.ts` regenerated)
 
 `OperatorActorData`, `OperatorRestaurantData`, `OperatorOrderData`,
-`OrderEventData`, `ApiKeyData`, `ApiKeyCreatedData`. Enum `ApiKeyScope`.
+`OrderEventData`, `ApiKeyData`, `ApiKeyCreatedData`; platform reports:
+`EarningsSummaryData`, `EarnerData`, `RestaurantEarningsData`,
+`FeeDistributionData`. Enum `ApiKeyScope`.
 
 ### Tests
 
 `tests/Feature/Api/V1/Operator/{ApiKeyAuthTest,OperatorOrdersTest,
 OperatorMenuCustomersTest,OperatorApiKeysTest}.php`,
+`tests/Feature/Api/V1/Operator/PlatformEarningsTest.php` + fixture in
+`EarningsTestHelpers.php`, `tests/Feature/Mcp/PlatformEarningsToolsTest.php`,
 `tests/Feature/Mcp/PlatformServerTest.php` (tool matrix via
 `PlatformServer::actingAs($key, 'api-key')->tool(...)`, plus a real HTTP
 `initialize` + `tools/list` round trip). Helpers in
@@ -137,8 +153,13 @@ tool, and add each new DTO to `API_V1_CONTRACT`.
   admin role), delivery + POS integration *status* (read-only).
 - Customers export stays web. Push "new order" to operator devices later
   (reuse `device_tokens` + `ExpoPushChannel`).
-- Platform-only tools for Claude as needs surface: earnings/attribution
-  reads, restaurant lifecycle reads, campaign review queue.
+- Platform-only tools for Claude as needs surface: ~~earnings/attribution~~
+  (done 2026-09-14), restaurant lifecycle reads (pending review / approved /
+  suspended with dates and Stripe state), campaign review queue, delivery +
+  POS integration status across restaurants, menu import status, users.
+  Pattern: a query class in `app/Support/Platform`, a DTO in the contract, a
+  REST route under `operator/platform/...` behind `operator.scope:platform:read`,
+  and an MCP tool calling `$this->platform($request, ApiKeyScope::PlatformRead)`.
 - Settings-page UI for restaurant keys (create / revoke / list; admin role).
   The REST endpoints exist; only the Vue page is missing.
 
@@ -195,6 +216,13 @@ tool, and add each new DTO to `API_V1_CONTRACT`.
 - `Response::error()` inside a tool is the right way to fail; only
   `AuthenticationException`, `AuthorizationException` and
   `ValidationException` are converted for you.
+- Earnings month windows use the app timezone (like the super-admin page);
+  only `capRemainingCents` uses the restaurant's local current month via
+  `MonthlyCommissionCap`, and it is null for any month but the current one.
+- `assertJsonPath` compares strictly and JSON drops `.0`, so a float DTO
+  field that happens to be whole (e.g. `feePercent` 4.0) needs `toEqual`.
+- Editing files with `perl -pi` and `\x{00a7}`-style escapes writes a raw
+  0xA7 byte, not UTF-8 `§`; use python or a literal character.
 - `MenuItemData::fromModel()` lazy-loads templates/ingredients when they are
   not loaded; fine for one item, eager-load for lists.
 - `withToken()` persists for the whole test and guards memoise; call

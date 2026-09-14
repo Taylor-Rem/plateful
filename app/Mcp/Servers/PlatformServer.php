@@ -2,6 +2,9 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\EarningsByRestaurant;
+use App\Mcp\Tools\EarningsLedger;
+use App\Mcp\Tools\EarningsSummary;
 use App\Mcp\Tools\GetMenu;
 use App\Mcp\Tools\GetOrder;
 use App\Mcp\Tools\GetRestaurant;
@@ -49,5 +52,9 @@ class PlatformServer extends Server
         ListCustomers::class,
         GetMenu::class,
         SetMenuItemAvailability::class,
+        // Platform-only (platform:read).
+        EarningsSummary::class,
+        EarningsByRestaurant::class,
+        EarningsLedger::class,
     ];
 }

@@ -988,10 +988,14 @@ _Added 2026-09-14; decisions taken and Phase 1 built the same day. Plan + shippe
       (`php artisan api-key:create "Claude" --platform --user=<email>`) and
       `claude mcp add --transport http plateful https://plateful.fyi/mcp/platform --header
       "Authorization: Bearer pfk_live_…"`.
-- [ ] **Phase 1b — rest of the operator surface** (when the operator app is scheduled): menu
-      CRUD/reorder/ingredients/templates/swap sets, hours, settings subset, integration status,
-      Settings-page UI for restaurant keys, platform-only tools for Claude (earnings, lifecycle,
-      campaign review) as needs surface.
+- [ ] **Phase 1b — rest of the operator surface.** Platform read tools for Claude, in progress:
+      - [x] Earnings (2026-09-14): `platform:read` scope (read-only platform keys), `EarningsQuery`
+            shared with the super-admin page, REST `operator/platform/earnings[/restaurants|/ledger]`,
+            MCP `earnings-summary` / `earnings-by-restaurant` / `earnings-ledger`.
+      - [ ] Restaurant lifecycle reads, campaign review queue, delivery/POS integration status,
+            menu import status, users.
+      - [ ] When the operator app is scheduled: menu CRUD/reorder/ingredients/templates/swap sets,
+            hours, settings subset, Settings-page UI for restaurant keys.
 - [ ] **Phase 3 — Outbound webhooks** (~2): `webhook_endpoints` + `webhook_deliveries`, signed
       HMAC deliveries with backoff off the `OrderPlacement` / `OrderTransition` /
       `DeliveryAssignmentObserver` / `MenuItemObserver` seams, auto-disable, test ping.

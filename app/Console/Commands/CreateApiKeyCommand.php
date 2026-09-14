@@ -105,7 +105,7 @@ class CreateApiKeyCommand extends Command
         foreach ($requested as $value) {
             $scope = ApiKeyScope::tryFrom((string) $value);
 
-            if ($scope === null || (! $platform && $scope === ApiKeyScope::All)) {
+            if ($scope === null || (! $platform && $scope->isPlatformOnly())) {
                 $this->error("Unknown or disallowed scope [{$value}]. Valid: ".implode(', ', array_map(
                     fn (ApiKeyScope $s) => $s->value,
                     $platform ? ApiKeyScope::cases() : ApiKeyScope::restaurantScopes(),
