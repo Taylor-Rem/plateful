@@ -30,7 +30,9 @@ use App\Data\PaginationMetaData;
 use App\Data\ReorderResultData;
 use App\Data\RestaurantData;
 use App\Data\RestaurantEarningsData;
+use App\Data\RestaurantImagesData;
 use App\Data\RestaurantMembershipData;
+use App\Data\RestaurantPhotoData;
 use App\Data\RestaurantSummaryData;
 use App\Data\TwoFactorChallengeData;
 use App\Data\WalletEntryData;
@@ -80,6 +82,9 @@ const API_V1_CONTRACT = [
     EarnerData::class,
     RestaurantEarningsData::class,
     FeeDistributionData::class,
+    // Operator images: additive from 2026-09-14.
+    RestaurantImagesData::class,
+    RestaurantPhotoData::class,
 ];
 
 /**

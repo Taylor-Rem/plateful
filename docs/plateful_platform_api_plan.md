@@ -84,6 +84,10 @@ credential is refused before any id lookup can leak existence.
 | `PATCH restaurants/{r}/menu-items/{id}/availability` | menu:write | `MenuItemData` |
 | `GET restaurants/{r}/customers` | customers:read | `CustomerData[]` + meta; `search`, `ordered=30|90`, `marketing=opted_in`, `sort`, `dir` |
 | `GET/POST/DELETE restaurants/{r}/api-keys[/{id}]` | api-keys:manage | `ApiKeyData[]` / `ApiKeyCreatedData` (plaintext once) / 204 |
+| `POST/DELETE restaurants/{r}/menu-items/{id}/image` | menu:write | `MenuItemData`; multipart `image` or `source_url` |
+| `POST/DELETE restaurants/{r}/images/{logo\|hero\|about}` | restaurants:write | `RestaurantImagesData` (replaces the slot; old variants deleted) |
+| `GET restaurants/{r}/photos` | restaurants:read | `RestaurantPhotoData[]` gallery in order |
+| `POST restaurants/{r}/photos`, `DELETE photos/{id}` | restaurants:write | `RestaurantPhotoData` (201, optional `caption`) / 204 |
 | `GET platform/earnings` | platform:read | `EarningsSummaryData` (payout sheet for `?month=YYYY-MM`, default current) |
 | `GET platform/earnings/restaurants` | platform:read | `RestaurantEarningsData[]` per restaurant for the month: orders, food, gross fee, commission vs cap, delivery margin, ledger total |
 | `GET platform/earnings/ledger` | platform:read | `FeeDistributionData[]` + meta; filters `restaurant`, `user` (id or email), `order`, `role`, `month` or `from`/`to`, `include_refunded` |
@@ -93,7 +97,11 @@ OperatorOrders` (paginate, board, find by id-or-number, statusCounts),
 `App\Support\Customers\CustomersQuery` (extracted from the tenant admin
 `CustomersController`, which now delegates), and `App\Support\Platform\
 EarningsQuery` (payout summary, per-restaurant breakdown, ledger; the
-super-admin `EarningsController` now delegates to it). `KitchenController`
+super-admin `EarningsController` now delegates to it), and `App\Support\
+Operator\OperatorImages` (menu item / logo / hero / about / gallery writes
+through `RestaurantImageService`, plus `fromUrl()` / `fromBase64()` that turn
+a fetched or decoded image into an `UploadedFile` validated against
+`PhotoConversionService::acceptedPhotoMimes()`, 8 MB cap). `KitchenController`
 reads `OperatorOrders::BOARD_STATUSES`.
 
 ### MCP — `POST https://plateful.fyi/mcp/platform`
@@ -103,7 +111,9 @@ a dependency), guarded by `auth:api-key` + the operator limiter. Tools, each
 taking the restaurant **subdomain**: `list-restaurants`, `get-restaurant`,
 `list-orders`, `get-order` (number or id), `kitchen-board`,
 `transition-order`, `list-customers`, `get-menu`, `set-menu-item-availability`,
-and the platform-only `earnings-summary`, `earnings-by-restaurant`,
+`list-gallery-photos`, `upload-image` (target `menu_item|logo|hero|about|gallery`,
+image as `source_url` or `image_base64` since MCP has no multipart),
+`remove-image`, and the platform-only `earnings-summary`, `earnings-by-restaurant`,
 `earnings-ledger` (gated on `platform:read` via `OperatorTool::platform()`).
 Read tools carry `readOnlyHint`; the server instructions tell the agent to
 confirm before writes. Errors (unknown restaurant, missing scope, illegal
@@ -125,7 +135,8 @@ Keep the key out of chat and transcripts (see `project_secret_hygiene`).
 `OperatorActorData`, `OperatorRestaurantData`, `OperatorOrderData`,
 `OrderEventData`, `ApiKeyData`, `ApiKeyCreatedData`; platform reports:
 `EarningsSummaryData`, `EarnerData`, `RestaurantEarningsData`,
-`FeeDistributionData`. Enum `ApiKeyScope`.
+`FeeDistributionData`; images: `RestaurantImagesData`, `RestaurantPhotoData`.
+Enums `ApiKeyScope` (now also `restaurants:write`, admin role only), `RestaurantImageKind`.
 
 ### Tests
 
@@ -145,8 +156,9 @@ Every item wraps an existing tenant-admin controller's service call; reuse
 the form request and DTO where one exists, add the REST route *and* the MCP
 tool, and add each new DTO to `API_V1_CONTRACT`.
 
+- ~~Images~~ (done 2026-09-14: menu item photo, logo/hero/about, gallery).
 - Menu writes: categories CRUD + reorder (`MenuCategoryController`), items
-  CRUD + reorder (`MenuController`, `MenuItemObserver` handles images),
+  CRUD + reorder (`MenuController`),
   ingredients (`MenuItemIngredientController` → `IngredientEditor::sync()`,
   which lives in `app/Support/Menus`), templates, swap sets, apply-to-category.
 - Hours (`HoursController`), settings subset (`RestaurantSettingsRequest`,
@@ -219,6 +231,9 @@ tool, and add each new DTO to `API_V1_CONTRACT`.
 - Earnings month windows use the app timezone (like the super-admin page);
   only `capRemainingCents` uses the restaurant's local current month via
   `MonthlyCommissionCap`, and it is null for any month but the current one.
+- `UploadedFile::fake()->image()` deletes its temp file when the object is
+  garbage-collected: assign it to a variable before reading the bytes.
+- `Http::fake()` patterns match in order; put a specific URL before a wildcard.
 - `assertJsonPath` compares strictly and JSON drops `.0`, so a float DTO
   field that happens to be whole (e.g. `feePercent` 4.0) needs `toEqual`.
 - Editing files with `perl -pi` and `\x{00a7}`-style escapes writes a raw

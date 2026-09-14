@@ -14,6 +14,7 @@ enum ApiKeyScope: string
 {
     case All = '*';
     case RestaurantsRead = 'restaurants:read';
+    case RestaurantsWrite = 'restaurants:write';
     case OrdersRead = 'orders:read';
     case OrdersWrite = 'orders:write';
     case MenuRead = 'menu:read';
@@ -32,6 +33,7 @@ enum ApiKeyScope: string
         return match ($this) {
             self::All => 'Full access',
             self::RestaurantsRead => 'Read restaurant profile and hours',
+            self::RestaurantsWrite => 'Change the restaurant\'s logo, hero, about and gallery images',
             self::OrdersRead => 'Read orders and the kitchen board',
             self::OrdersWrite => 'Move orders between statuses',
             self::MenuRead => 'Read the full menu, hidden items included',

@@ -992,6 +992,8 @@ _Added 2026-09-14; decisions taken and Phase 1 built the same day. Plan + shippe
       - [x] Earnings (2026-09-14): `platform:read` scope (read-only platform keys), `EarningsQuery`
             shared with the super-admin page, REST `operator/platform/earnings[/restaurants|/ledger]`,
             MCP `earnings-summary` / `earnings-by-restaurant` / `earnings-ledger`.
+      - [x] Images (2026-09-14): `restaurants:write` scope; REST + MCP `upload-image` / `remove-image` /
+            `list-gallery-photos` for menu item photos, logo/hero/about and the gallery, via URL or base64.
       - [ ] Restaurant lifecycle reads, campaign review queue, delivery/POS integration status,
             menu import status, users.
       - [ ] When the operator app is scheduled: menu CRUD/reorder/ingredients/templates/swap sets,
