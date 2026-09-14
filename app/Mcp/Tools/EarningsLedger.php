@@ -43,7 +43,7 @@ class EarningsLedger extends OperatorTool
         $restaurant = null;
 
         if (! empty($input['restaurant'])) {
-            $restaurant = Restaurant::query()->where('subdomain', $input['restaurant'])->first();
+            $restaurant = Restaurant::withTrashed()->where('subdomain', $input['restaurant'])->first();
 
             if ($restaurant === null) {
                 return Response::error("No restaurant [{$input['restaurant']}]. Call list-restaurants for subdomains.");

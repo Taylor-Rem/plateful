@@ -32,7 +32,11 @@ class FeeDistributionData extends Data
 
     public static function fromModel(FeeDistribution $row): self
     {
-        $row->loadMissing(['order:id,number,refunded_at', 'restaurant:id,name,subdomain', 'user:id,name,email']);
+        $row->loadMissing([
+            'order:id,number,refunded_at',
+            'restaurant' => fn ($q) => $q->withTrashed()->select(['id', 'name', 'subdomain']),
+            'user' => fn ($q) => $q->withTrashed()->select(['id', 'name', 'email']),
+        ]);
 
         return new self(
             id: $row->id,

@@ -186,8 +186,14 @@ class EarningsQuery
      */
     public function ledger(array $filters, int $perPage = 50, int $page = 1): LengthAwarePaginator
     {
+        // History must survive deletions: a removed restaurant or earner is
+        // still named on the row it earned.
         $query = FeeDistribution::query()
-            ->with(['order:id,number,refunded_at', 'restaurant:id,name,subdomain', 'user:id,name,email'])
+            ->with([
+                'order:id,number,refunded_at',
+                'restaurant' => fn ($q) => $q->withTrashed()->select(['id', 'name', 'subdomain']),
+                'user' => fn ($q) => $q->withTrashed()->select(['id', 'name', 'email']),
+            ])
             ->when($filters['restaurant'] ?? null, fn (Builder $q, Restaurant $r) => $q->where('restaurant_id', $r->id))
             ->when($filters['user'] ?? null, fn (Builder $q, User $u) => $q->where('user_id', $u->id))
             ->when($filters['order'] ?? null, fn (Builder $q, string $number) => $q->whereHas('order', fn ($o) => $o->where('number', $number)))
