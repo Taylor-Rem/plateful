@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { useHttp } from '@inertiajs/vue3';
 import { onBeforeUnmount, ref, watch } from 'vue';
-import {
-    resolve,
-    suggest,
-} from '@/actions/App/Http/Controllers/Storefront/AddressLookupController';
+// Named storefront routes, not the controller actions: the same controller
+// methods are also mounted under /api/v1 for the mobile app, so Wayfinder
+// exports the actions as a URL-keyed dictionary rather than callables.
+import { resolve, suggest } from '@/routes/storefront/checkout/address';
 
 export type AddressSnapshot = {
     street: string;
