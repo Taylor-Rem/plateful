@@ -5,7 +5,7 @@ import {
     landing as forRestaurantsLanding,
 } from '@/actions/App/Http/Controllers/OwnerSignupController';
 import AppWordmark from '@/components/AppWordmark.vue';
-import { booking, home, privacy, savings, support, terms } from '@/routes';
+import { ai, booking, home, privacy, savings, support, terms } from '@/routes';
 
 defineProps<{
     adminUrl?: string | null;
@@ -102,6 +102,13 @@ defineProps<{
                                     :href="savings()"
                                     class="transition hover:text-white"
                                     >Savings calculator</Link
+                                >
+                            </li>
+                            <li>
+                                <Link
+                                    :href="ai()"
+                                    class="transition hover:text-white"
+                                    >AI for restaurants</Link
                                 >
                             </li>
                             <li>

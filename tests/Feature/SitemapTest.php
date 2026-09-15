@@ -45,6 +45,7 @@ it('lists the marketing pages and published stories, excluding drafts', function
         ->toContain('http://plateful.test')
         ->toContain('http://plateful.test/for-restaurants')
         ->toContain('http://plateful.test/support')
+        ->toContain('http://plateful.test/ai')
         ->toContain('http://plateful.test/stories')
         ->toContain('http://plateful.test/stories/live-story')
         ->not->toContain('http://plateful.test/stories/draft-story')

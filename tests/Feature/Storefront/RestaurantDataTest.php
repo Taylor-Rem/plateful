@@ -23,21 +23,21 @@ function presentationRestaurant(array $attributes = []): Restaurant
 }
 
 test('phone numbers are formatted for display with a tel href', function () {
-    $r = presentationRestaurant(['phone' => '14359017141']);
+    $r = presentationRestaurant(['phone' => '15555550123']);
 
     $data = RestaurantData::fromModel($r);
 
-    expect($data->phoneDisplay)->toBe('(435) 901-7141')
-        ->and($data->phoneHref)->toBe('tel:+14359017141');
+    expect($data->phoneDisplay)->toBe('(555) 555-0123')
+        ->and($data->phoneHref)->toBe('tel:+15555550123');
 });
 
 test('ten digit phone numbers format the same way', function () {
-    expect(RestaurantData::formatPhone('4359017141'))->toBe('(435) 901-7141')
-        ->and(RestaurantData::phoneHref('4359017141'))->toBe('tel:+14359017141');
+    expect(RestaurantData::formatPhone('5555550123'))->toBe('(555) 555-0123')
+        ->and(RestaurantData::phoneHref('5555550123'))->toBe('tel:+15555550123');
 });
 
 test('already formatted and international numbers pass through sensibly', function () {
-    expect(RestaurantData::formatPhone('(435) 901-7141'))->toBe('(435) 901-7141')
+    expect(RestaurantData::formatPhone('(555) 555-0123'))->toBe('(555) 555-0123')
         ->and(RestaurantData::formatPhone('+44 20 7946 0958'))->toBe('+44 20 7946 0958')
         ->and(RestaurantData::phoneHref('+44 20 7946 0958'))->toBe('tel:+442079460958');
 });

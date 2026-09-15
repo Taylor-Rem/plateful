@@ -79,3 +79,24 @@ it('keeps pos out of the onboarding wizard steps', function () {
             ->where('steps', fn ($steps) => collect($steps)->pluck('key')->doesntContain('pos'))
         );
 });
+
+it('flags a provider whose environment is still sandbox', function () {
+    // Both providers default to sandbox and pick their API hosts off it; an
+    // owner in production must be told when a connect would go to the test
+    // environment instead of failing silently later at the register.
+    [$owner, $restaurant] = posPageOwnerAndRestaurant();
+    config()->set('services.square.environment', 'production');
+    config()->set('services.clover.environment', 'sandbox');
+
+    $this->actingAs($owner)
+        ->get(POS_ADMIN_HOST."/{$restaurant->subdomain}/settings/pos")
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->where('providers.0.provider', 'square')
+            ->where('providers.0.environment', 'production')
+            ->where('providers.0.sandbox', false)
+            ->where('providers.1.provider', 'clover')
+            ->where('providers.1.environment', 'sandbox')
+            ->where('providers.1.sandbox', true)
+        );
+});

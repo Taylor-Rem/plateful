@@ -17,7 +17,8 @@ use Illuminate\Console\Command;
     {--restaurant= : Subdomain of the restaurant the key is scoped to}
     {--scopes=* : Scopes to grant (default: every restaurant scope, or * for --platform)}
     {--user= : Email of the person minting it, recorded as the creator}
-    {--expires= : When the key stops working, e.g. "2027-01-01" or "+90 days"}')]
+    {--expires= : When the key stops working, e.g. "2027-01-01" or "+90 days"}
+    {--rate-limit= : Requests per minute this key may make (default: the platform ceiling)}')]
 #[Description('Mint an API key for the operator API and the MCP server. The key is printed once.')]
 class CreateApiKeyCommand extends Command
 {
@@ -64,21 +65,31 @@ class CreateApiKeyCommand extends Command
 
         $expiresAt = $this->option('expires') ? CarbonImmutable::parse((string) $this->option('expires')) : null;
 
+        $rateLimit = $this->option('rate-limit') !== null ? (int) $this->option('rate-limit') : null;
+
+        if ($rateLimit !== null && ($rateLimit < 1 || $rateLimit > ApiKey::DEFAULT_RATE_LIMIT_PER_MINUTE)) {
+            $this->error('--rate-limit must be between 1 and '.ApiKey::DEFAULT_RATE_LIMIT_PER_MINUTE.'.');
+
+            return self::INVALID;
+        }
+
         ['key' => $key, 'plainTextKey' => $plain] = ApiKey::mint(
             name: (string) $this->argument('name'),
             scopes: $scopes,
             restaurant: $restaurant,
             createdBy: $creator,
             expiresAt: $expiresAt,
+            rateLimitPerMinute: $rateLimit,
         );
 
         $this->info(sprintf(
-            '%s key [%s] created (id=%d, scopes: %s%s).',
+            '%s key [%s] created (id=%d, scopes: %s%s, %d requests/min).',
             $platform ? 'Platform' : 'Restaurant',
             $key->name,
             $key->id,
             implode(', ', (array) $key->scopes),
             $expiresAt ? ', expires '.$expiresAt->toDateString() : '',
+            $key->rateLimitPerMinute(),
         ));
         $this->newLine();
         $this->line('Copy it now; it is not stored and cannot be shown again:');

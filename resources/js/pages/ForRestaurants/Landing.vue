@@ -12,7 +12,7 @@ import {
 import { computed } from 'vue';
 import { create as createSignup } from '@/actions/App/Http/Controllers/OwnerSignupController';
 import MarketingLayout from '@/layouts/MarketingLayout.vue';
-import { booking, savings as savingsCalculator } from '@/routes';
+import { ai, booking, savings as savingsCalculator } from '@/routes';
 
 const props = defineProps<{
     authUserName: string | null;
@@ -138,6 +138,12 @@ const feeComparison: {
                 href="#how-it-works"
                 class="hidden rounded-full px-3.5 py-2 font-medium text-stone-600 transition hover:bg-stone-900/5 hover:text-stone-900 sm:inline-block"
                 >How it works</a
+            >
+            <Link
+                :href="ai()"
+                class="hidden rounded-full px-3.5 py-2 font-medium text-stone-600 transition hover:bg-stone-900/5 hover:text-stone-900 sm:inline-block"
+                data-test="nav-ai-link"
+                >AI</Link
             >
         </template>
 

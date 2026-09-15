@@ -93,8 +93,11 @@ nothing below waits on either anymore):**
       the production Uber Client Secret. Those transcripts are now **redacted in place**
       (values replaced with `[REDACTED-<KEY>]`; sessions still intact) — but **redaction is not
       rotation**: every value below is still live until rotated at its source. Priority order:
-      - [ ] `LARAVEL_CLOUD_TOKEN` — highest value: it can read the production env, which will soon
-            hold **live** Stripe keys. Rotate in the Laravel Cloud dashboard.
+      - [ ] `LARAVEL_CLOUD_TOKEN` — highest value: it can read the production env, which now
+            holds **live** Stripe keys. Rotate in the Laravel Cloud dashboard. Put the new one
+            in `~/.config/claude-tools/env` (`setenv.sh LARAVEL_CLOUD_TOKEN`) and delete it from
+            `plateful/.env` — since 2026-09-14 `cloud-check.php` reads it from there too, so it
+            no longer needs to live in the project tree at all.
       - [ ] **Production Uber Client Secret** — the prod account is now live (2026-08-12, §3), so
             this is due NOW if the live credentials descend from the set exposed 2026-07-14; a
             freshly issued secret moots it. Rotating means updating `UBER_DIRECT_CLIENT_SECRET`
@@ -102,9 +105,10 @@ nothing below waits on either anymore):**
       - [ ] `CLAUDE_API_KEY` — live and billed; one click in the Anthropic console.
       - [ ] Low value / rotate at leisure: `SQUARE_APPLICATION_SECRET`, `CLOVER_APP_SECRET`,
             `GOOGLE_CLIENT_SECRET`, `GOOGLE_MAPS_API_KEY` (the IP restriction below matters more),
-            the Uber **sandbox** secret, and `APP_KEY` (rotating it invalidates existing sessions
-            and any `encrypted` cast — **do NOT rotate once `pos_integrations` /
-            `delivery_integrations` hold real tokens**; it would render them undecryptable).
+            the Uber **sandbox** secret, and `APP_KEY` (rotatable since 2026-09-14 **only via
+            `APP_PREVIOUS_KEYS`** — set it to the old key first, or every `encrypted` cast on
+            `pos_integrations` / `delivery_integrations` becomes undecryptable; procedure in
+            DEPLOY.md "Rotating `APP_KEY`". Optional; the audit found no exposure of it).
       - [x] Stripe test keys: **do not bother rotating** — superseded by the live swap. The live
             keys were set **directly in the Cloud dashboard** (2026-08-11), never pasted into a
             chat session. Same rule for every secret above.
@@ -131,16 +135,25 @@ nothing below waits on either anymore):**
       granted). `CLOVER_ENVIRONMENT` defaults to `sandbox` in `config/services.php` and the
       API/OAuth hosts key entirely off it — unset, every connect and ticket push silently goes to
       sandbox hosts and real registers never see an order (the same silent-fallback class as the
-      `MEDIA_DISK` item below). `cloud-check.php` checks these (added 2026-07-15). DEPLOY.md
-      Step 5 documents them.
+      `MEDIA_DISK` item below). `cloud-check.php` checks these (added 2026-07-15) and lists
+      them as launch blockers (2026-09-14). DEPLOY.md Step 5 documents them. **Code side done
+      2026-09-14:** the POS settings page now shows owners a per-provider "Sandbox mode" notice
+      whenever `SQUARE_ENVIRONMENT` / `CLOVER_ENVIRONMENT` isn't `production`, so the fallback
+      is no longer silent. What's left is Taylor's: the approvals, then the four Cloud vars.
 - [x] **Onboarding/delivery keys in Cloud — DONE (confirmed by Taylor 2026-07-31).**
       `CLAUDE_API_KEY` and `GOOGLE_MAPS_API_KEY` are both present in Laravel Cloud. Both are checked
       by `cloud-check.php`. (Key restriction is still open — see §3's "restrict the Google Maps key
       to Places API (New) + the production server IP".)
 - [x] **Resend transactional email — DONE (confirmed by Taylor 2026-07-31).** Configured and
       sending.
-- [ ] **Sentry error monitoring**: set `SENTRY_LARAVEL_DSN` in Cloud. `cloud-check.php` already
-      checks for it; confirm errors report before launch.
+- [ ] **Sentry error monitoring**: set `SENTRY_LARAVEL_DSN` in Cloud, redeploy, run
+      `php artisan sentry:test` from the Cloud command runner and confirm the event lands in the
+      project; then add an alert rule on the issue `StaleAuthorizationsDetected`. **Code side
+      done 2026-09-14:** the DSN is the only var needed (traces default to `0.1` in
+      `config/sentry.php`), `cloud-check.php` lists it as a launch blocker, and the hourly
+      `orders:alert-stale-authorizations` schedule reports stranded card holds (orders left
+      `authorized` past the courier deadline) through `report()` → Sentry — the queue-worker
+      backstop §3 asked for "once Sentry is set". DEPLOY.md Step 5 has the steps.
 - [x] **S3 restaurant-asset storage — DONE (confirmed by Taylor 2026-08-12: configured and
       working in Laravel Cloud).** Set `FILESYSTEM_DISK=s3` and leave `MEDIA_DISK` unset, + AWS
       creds/bucket in Cloud (menu/logo/hero images). `cloud-check.php` reports the **effective**
@@ -149,8 +162,11 @@ nothing below waits on either anymore):**
       with `FILESYSTEM_DISK=local`, so following the runbook would have parked every upload on the
       container's ephemeral disk while the check printed green. The real knob is `config/media.php`:
       `MEDIA_DISK` if set, else `FILESYSTEM_DISK`.)
-- [ ] Final verification: `php scripts/cloud-check.php` shows Stripe LIVE + mail + Sentry + S3
-      configured with no recent errors.
+- [ ] Final verification: `php scripts/cloud-check.php` exits 0 — Stripe LIVE + mail + Sentry +
+      S3 + Clover production configured, its closing "Launch blockers" list empty, no recent
+      errors. (Since 2026-09-14 the script covers every §0 item plus the Uber Direct, mail
+      alias, primary-domain and session-cookie checks, and fails the exit code on any blocker;
+      it needs the Cloud token, so only Taylor can run it.)
 
 ## 1. Pricing model change — LOCKED: 4% flat
 _Decision (2026-07-10): platform fee = **4% flat of the food subtotal**, charged as the Stripe
@@ -996,8 +1012,14 @@ _Added 2026-09-14; decisions taken and Phase 1 built the same day. Plan + shippe
             `list-gallery-photos` for menu item photos, logo/hero/about and the gallery, via URL or base64.
       - [ ] Restaurant lifecycle reads, campaign review queue, delivery/POS integration status,
             menu import status, users.
+      - [x] Connect page + per-key rate limit + audit log (2026-09-15, `docs/mcp.md`): Manage → AI
+            assistant mints a restaurant key with scopes + requests/min, shows it once with the
+            Claude Code / claude.ai / ChatGPT setup (connector URL `/mcp/platform/{key}` for
+            header-less clients), revokes, lists the last 50 `api_call_logs` rows (MCP + REST,
+            refusals included). Claude Code verified; claude.ai / ChatGPT connector flows not yet
+            exercised against production (TAYLOR-TODO).
       - [ ] When the operator app is scheduled: menu CRUD/reorder/ingredients/templates/swap sets,
-            hours, settings subset, Settings-page UI for restaurant keys.
+            hours, settings subset.
 - [ ] **Phase 3 — Outbound webhooks** (~2): `webhook_endpoints` + `webhook_deliveries`, signed
       HMAC deliveries with backoff off the `OrderPlacement` / `OrderTransition` /
       `DeliveryAssignmentObserver` / `MenuItemObserver` seams, auto-disable, test ping.

@@ -35,7 +35,7 @@ class RestaurantData extends Data
         public ?string $secondaryColor,
         public ?string $email,
         public ?string $phone,
-        /** Human-readable phone, e.g. "(435) 901-7141". */
+        /** Human-readable phone, e.g. "(555) 555-0123". */
         public ?string $phoneDisplay,
         /** tel: URI for the phone number. */
         public ?string $phoneHref,
@@ -158,7 +158,7 @@ class RestaurantData extends Data
 
     /**
      * Format a stored phone number for display. US 10-digit numbers (with or
-     * without a leading 1) become "(435) 901-7141"; anything else is returned
+     * without a leading 1) become "(555) 555-0123"; anything else is returned
      * as stored.
      */
     public static function formatPhone(?string $phone): ?string

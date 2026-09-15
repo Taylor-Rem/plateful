@@ -3,6 +3,7 @@
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\LogOperatorApiCall;
 use App\Http\Middleware\OptionalSanctumAuth;
 use App\Http\Middleware\RequireAdmin;
 use App\Http\Middleware\RequireApiScope;
@@ -52,6 +53,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(SubstituteBindings::class, ResolveTenantFromRoute::class);
         $middleware->prependToPriorityList(SubstituteBindings::class, ResolveOperatorRestaurant::class);
         $middleware->prependToPriorityList(SubstituteBindings::class, RequireApiScope::class);
+        // The operator audit log must wrap the restaurant and scope checks so
+        // their 404s and 403s are recorded as refused calls; anything not on
+        // the priority list sorts after it, so it is placed here explicitly.
+        $middleware->prependToPriorityList(ResolveOperatorRestaurant::class, LogOperatorApiCall::class);
 
         $middleware->validateCsrfTokens(except: ['stripe/webhook', 'webhooks/uber', 'webhooks/doordash', 'webhooks/resend']);
 
@@ -75,6 +80,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'operator' => AuthenticateOperator::class,
             'operator.restaurant' => ResolveOperatorRestaurant::class,
             'operator.scope' => RequireApiScope::class,
+            'operator.log' => LogOperatorApiCall::class,
             'abilities' => CheckAbilities::class,
             'ability' => CheckForAnyAbility::class,
         ]);

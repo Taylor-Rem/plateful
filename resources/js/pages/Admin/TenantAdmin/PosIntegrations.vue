@@ -12,6 +12,8 @@ type PosProviderCard = {
     lastError: string | null;
     connectedAt: string | null;
     available: boolean;
+    environment: string | null;
+    sandbox: boolean;
     connectUrl: string | null;
     disconnectUrl: string | null;
 };
@@ -100,6 +102,15 @@ defineOptions({ layout: TenantAdminLayout });
                                 class="mt-1 text-sm text-red-600"
                             >
                                 {{ card.lastError }}
+                            </p>
+                            <p
+                                v-if="card.sandbox"
+                                class="mt-1 text-sm text-amber-700"
+                                data-test="pos-sandbox-notice"
+                            >
+                                Sandbox mode: this connects to
+                                {{ card.label }}'s test environment, so a real
+                                register will not receive orders yet.
                             </p>
                         </div>
                     </div>

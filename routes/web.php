@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\OwnerSignupController;
@@ -97,6 +98,18 @@ Route::domain(config('platform.primary_domain'))->group(function () {
     |
     */
     Route::get('/book', BookingController::class)->name('booking');
+
+    /*
+    |---------------------------------------------------------------------------
+    | AI for restaurants
+    |---------------------------------------------------------------------------
+    |
+    | The marketing page for the two AI tiers: bring your own assistant over
+    | the MCP server (free) and "text us" on prepaid credits. Public, on the
+    | root domain — /ai is short enough to say out loud.
+    |
+    */
+    Route::get('/ai', AiController::class)->name('ai');
 
     Route::get('/terms', fn () => Inertia::render('Legal/Terms'))->name('terms');
     Route::get('/privacy', fn () => Inertia::render('Legal/Privacy'))->name('privacy');

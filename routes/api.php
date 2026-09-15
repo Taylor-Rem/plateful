@@ -144,7 +144,7 @@ Route::domain(config('platform.primary_domain'))
          */
         Route::prefix('operator')
             ->name('operator.')
-            ->middleware(['auth:sanctum,api-key', 'operator', 'throttle:api-operator'])
+            ->middleware(['auth:sanctum,api-key', 'operator', 'throttle:api-operator', 'operator.log'])
             ->group(function () {
                 Route::get('me', [OperatorMeController::class, 'show'])->name('me');
                 Route::get('restaurants', [OperatorRestaurantsController::class, 'index'])->name('restaurants.index');

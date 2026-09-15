@@ -80,6 +80,7 @@ In the project **Environment** tab, set the following. Anything marked *auto* is
 | `APP_NAME` | `Plateful` |
 | `APP_ENV` | `production` |
 | `APP_KEY` | Click "Generate" in Cloud (or `php artisan key:generate --show` locally) |
+| `APP_PREVIOUS_KEYS` | leave unset; only used while rotating `APP_KEY` (see "Rotating `APP_KEY`" under gotchas below) |
 | `APP_DEBUG` | `false` |
 | `APP_URL` | `https://your-app.laravel.cloud` (whatever Cloud assigns you — see Step 6) |
 | `APP_LOCALE` | `en` |
@@ -205,12 +206,24 @@ runs both courier networks with a per-restaurant **preferred courier network** p
 |---|---|
 | `CLAUDE_API_KEY` | Anthropic API key — without it the menu photo/PDF import (`ExtractMenuJob`) fails and the "free setup" onboarding flow is dead |
 
-### Error monitoring
+### Error monitoring (Sentry)
+
+`sentry/sentry-laravel` is installed and wired into `bootstrap/app.php` (`Integration::handles`),
+and stays a no-op until a DSN is present — locally and in CI nothing is sent. The DSN is the
+**only** var production needs.
 
 | Key | Value |
 |---|---|
-| `SENTRY_LARAVEL_DSN` | project DSN (see "Consider adding later" below for details) |
-| `SENTRY_TRACES_SAMPLE_RATE` | `0.1` |
+| `SENTRY_LARAVEL_DSN` | the DSN from the Sentry project: **Settings → Projects → [project] → Client Keys (DSN)** |
+| `SENTRY_TRACES_SAMPLE_RATE` | optional; defaults to `0.1` (10% of requests traced) in `config/sentry.php` |
+| `LOG_CHANNEL` / `LOG_STACK` | optional: `LOG_CHANNEL=stack` + `LOG_STACK=stderr,sentry` also forwards `Log::error()` lines (not just exceptions) as Sentry events |
+
+**Verify before launch** (todo.md §0): after the redeploy, run `php artisan sentry:test` from the
+Cloud dashboard's command runner (or `cloud ssh`). It sends one test event, which must appear in
+the Sentry project within a minute. Then add an alert rule on the issue
+`StaleAuthorizationsDetected`: the hourly `orders:alert-stale-authorizations` schedule reports
+through it whenever a customer's card hold is stranded because the queue worker is down — the one
+dependency env vars cannot prove (see "Queue" in `scripts/cloud-check.php`).
 
 ### Storage (restaurant assets → Cloud object storage)
 
@@ -347,9 +360,14 @@ placeholders):
   DoorDash Drive production access lands — umbrella model, all four `UBER_DIRECT_*` vars set in
   Cloud; auth + the organizations scope verified by minting real production tokens (no live
   delivery placed yet). Root-account webhook at `https://admin.plateful.fyi/webhooks/uber`.
-- **Ops without the dashboard:** Laravel Cloud REST API / CLI. A token lives in
-  local `.env` as `LARAVEL_CLOUD_TOKEN` (gitignored, never in the repo or Cloud).
-  Read-only readiness check: `php scripts/cloud-check.php`.
+- **Ops without the dashboard:** Laravel Cloud REST API / CLI. The token
+  (`LARAVEL_CLOUD_TOKEN`, never in the repo or Cloud) is read from local `.env`,
+  the process environment, or `~/.config/claude-tools/env` (the toolbelt key
+  file — preferred, so it lives outside the project tree). Read-only readiness
+  check: `php scripts/cloud-check.php` prints every todo.md §0 check, ends with
+  a "Launch blockers" list, and exits 0 only when that list is empty
+  (1 = blockers remain, 2 = could not reach Cloud). Unit-tested without a
+  token in `tests/Unit/CloudCheckTest.php`.
 - **Inbox mail:** Zoho (`founder@plateful.fyi` + `orders@`/`service@`/`support@`
   aliases). Outbound app mail goes through Resend on a **separate sending
   subdomain** so the two SPF records don't collide (see gotchas).
@@ -370,6 +388,16 @@ placeholders):
 - **DNS lookups:** public-resolver queries against Porkbun/Cloudflare can return
   inconsistent results across nodes. Trust the Porkbun records table or a
   real-world send/receive test over a single one-off lookup.
+- **Rotating `APP_KEY`:** safe, but only with `APP_PREVIOUS_KEYS`.
+  `pos_integrations` and `delivery_integrations` hold `encrypted` casts, so a
+  bare key swap makes every stored POS/delivery token undecryptable. Procedure:
+  (1) `php artisan key:generate --show` locally; (2) in Cloud set
+  `APP_PREVIOUS_KEYS` to the *current* `APP_KEY` value, then set `APP_KEY` to
+  the new value, redeploy; (3) existing sessions and stored tokens keep
+  decrypting, everything written from now on uses the new key; (4) drop the
+  old key from `APP_PREVIOUS_KEYS` only once every token row has been
+  rewritten (POS refresh tokens rotate on every refresh; otherwise reconnect
+  the register).
 
 ## Recurring release checklist (every deploy)
 
@@ -390,7 +418,7 @@ placeholders):
 
 - [ ] Confirm migrations ran
 - [ ] Smoke test: homepage, a restaurant storefront, an order, and login
-- [ ] `php scripts/cloud-check.php` clean
+- [ ] `php scripts/cloud-check.php` exits 0 (its "Launch blockers" list is empty)
 - [ ] Spot-check production logs for new errors
 
 > **Current launch status and blockers** (Stripe go-live, Resend wiring, etc.)
@@ -399,11 +427,7 @@ placeholders):
 
 ## Consider adding later
 
-- **Error monitoring (Sentry)**: `sentry/sentry-laravel` is installed and wired into `bootstrap/app.php`, and stays a no-op until a DSN is present. To turn it on in production, set two env vars in Cloud's **Environment** tab:
-  - `SENTRY_LARAVEL_DSN` — the DSN from your Sentry project dashboard (**Settings → Projects → [project] → Client Keys (DSN)**). Leave it blank/unset locally and in tests so no events are sent.
-  - `SENTRY_TRACES_SAMPLE_RATE` — `0.1` to start (10% of requests traced); raise or lower as needed.
-
-  Logging is unaffected — `LOG_CHANNEL=stderr` keeps working; Sentry is additive. After setting the vars, redeploy and confirm the next unhandled exception shows up in Sentry.
+- **Error monitoring (Sentry)**: wired and documented in Step 5 "Error monitoring (Sentry)" — set the DSN, redeploy, run `php artisan sentry:test`. Logging is unaffected (`LOG_CHANNEL=stderr` keeps working; Sentry is additive).
 - **Custom queue worker**: as background work grows, move from `database` queue + sync to a dedicated Cloud queue worker on Growth.
 - **Scheduled cleanup**: nothing prunes `pending_checkouts` (each row is a full order snapshot; abandoned checkouts accumulate forever) or expired `delivery_quotes`. Add prune jobs once volume makes it matter — the scheduler is already enabled (Step 4).
 - **Backups**: Cloud Postgres is managed but verify the backup policy on Starter and set up an off-Cloud DB snapshot routine if needed.

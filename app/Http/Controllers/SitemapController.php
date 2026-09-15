@@ -17,6 +17,7 @@ class SitemapController extends Controller
             route('home'),
             route('owner-signup.landing'),
             route('savings'),
+            route('ai'),
             route('support'),
             route('stories.index'),
             route('press'),

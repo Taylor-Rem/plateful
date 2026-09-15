@@ -215,3 +215,11 @@ Vue components must have a single root element.
 - IMPORTANT: Activate `inertia-vue-development` when working with Inertia Vue client-side patterns.
 
 </laravel-boost-guidelines>
+
+## Relay-facing work
+
+If your task mentions the relay, Patch, intake, credits, `/internal/relay/*`,
+or the MCP server, read `~/projects/VISION.md` first: Plateful is the only
+server we run, so it hosts the relay's web-facing endpoints, and the relay
+*polls* them (never inbound to the laptop). Scope lives in
+`~/projects/sms-relay/plans/`.
