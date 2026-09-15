@@ -6,6 +6,9 @@ import {
     Bike,
     ClipboardList,
     CreditCard,
+    MessageSquareText,
+    Plug,
+    Sparkles,
     Store,
     Users,
 } from 'lucide-vue-next';
@@ -139,11 +142,11 @@ const feeComparison: {
                 class="hidden rounded-full px-3.5 py-2 font-medium text-stone-600 transition hover:bg-stone-900/5 hover:text-stone-900 sm:inline-block"
                 >How it works</a
             >
-            <Link
-                :href="ai()"
+            <a
+                href="#ai"
                 class="hidden rounded-full px-3.5 py-2 font-medium text-stone-600 transition hover:bg-stone-900/5 hover:text-stone-900 sm:inline-block"
                 data-test="nav-ai-link"
-                >AI</Link
+                >AI</a
             >
         </template>
 
@@ -488,6 +491,84 @@ const feeComparison: {
                         <p class="mt-2 text-sm leading-relaxed text-stone-600">
                             {{ step.description }}
                         </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI for restaurants -->
+        <section id="ai" class="py-20 sm:py-24" data-test="ai-section">
+            <div class="mx-auto max-w-6xl px-6">
+                <div class="grid items-start gap-12 lg:grid-cols-[1fr_1.2fr]">
+                    <div>
+                        <span
+                            class="inline-flex items-center gap-1.5 rounded-full border border-teal-700/15 bg-teal-50 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-teal-800"
+                        >
+                            <Sparkles class="size-3.5" />
+                            Included with every restaurant
+                        </span>
+                        <h2
+                            class="mt-5 text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl"
+                        >
+                            Run the small stuff by text, or with your own AI
+                        </h2>
+                        <p class="mt-4 leading-relaxed text-stone-600">
+                            86 an item, put a photo on a dish, check what came
+                            in today. Plateful's API lets Claude do the constant
+                            little jobs of running a menu, so you don't have to
+                            open the admin for them.
+                        </p>
+                        <Link
+                            :href="ai()"
+                            class="mt-8 inline-flex items-center gap-2 rounded-full bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-teal-900/20 transition hover:bg-teal-800"
+                            data-test="ai-section-cta"
+                        >
+                            See what it can do
+                            <ArrowRight class="size-4" />
+                        </Link>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div
+                            class="rounded-2xl bg-white p-6 ring-1 ring-stone-900/5"
+                        >
+                            <div
+                                class="flex h-10 w-10 items-center justify-center rounded-full bg-teal-700 text-white shadow-md shadow-teal-900/20"
+                            >
+                                <Plug class="size-4" />
+                            </div>
+                            <h3
+                                class="mt-4 text-lg font-semibold text-stone-900"
+                            >
+                                Bring your own assistant
+                            </h3>
+                            <p
+                                class="mt-2 text-sm leading-relaxed text-stone-600"
+                            >
+                                Connect the AI you already pay for to your
+                                restaurant with a scoped key. Free for every
+                                restaurant on Plateful.
+                            </p>
+                        </div>
+                        <div
+                            class="rounded-2xl bg-teal-900 p-6 text-teal-50 ring-1 ring-teal-950/40"
+                        >
+                            <div
+                                class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-teal-900 shadow-md"
+                            >
+                                <MessageSquareText class="size-4" />
+                            </div>
+                            <h3 class="mt-4 text-lg font-semibold text-white">
+                                Text us, it's handled
+                            </h3>
+                            <p
+                                class="mt-2 text-sm leading-relaxed text-teal-100/80"
+                            >
+                                Text a photo or "86 the soup" and Claude does it
+                                through the same API. Prepaid credits, from
+                                $0.50 a message.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
