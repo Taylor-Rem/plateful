@@ -31,6 +31,15 @@ class PosIntegrationsController extends Controller
             'providers' => collect(PosProviderName::cases())->map(function (PosProviderName $provider) use ($integrations, $restaurant, $connectable): array {
                 $available = in_array($provider, $connectable, strict: true);
 
+                // Square and Clover both default to `sandbox` in config/services.php
+                // and select their API/OAuth hosts off it. A production deploy
+                // that has not set the var connects real owners to the test
+                // environment, where real registers never see an order — so the
+                // page says so instead of letting it fail silently.
+                $environment = $available
+                    ? (string) config("services.{$provider->value}.environment", 'sandbox')
+                    : null;
+
                 return [
                     'provider' => $provider->value,
                     'label' => $provider->label(),
@@ -39,6 +48,8 @@ class PosIntegrationsController extends Controller
                     'lastError' => ($integrations[$provider->value] ?? null)?->last_error,
                     'connectedAt' => ($integrations[$provider->value] ?? null)?->created_at?->toIso8601String(),
                     'available' => $available,
+                    'environment' => $environment,
+                    'sandbox' => $environment !== null && $environment !== 'production',
                     'connectUrl' => $available
                         ? route("admin.restaurant.pos.{$provider->value}.connect", ['restaurant' => $restaurant->subdomain])
                         : null,
