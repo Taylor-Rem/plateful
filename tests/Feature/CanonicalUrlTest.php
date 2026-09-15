@@ -9,7 +9,7 @@
 it('declares a self-referencing canonical URL on the marketing pages', function () {
     config()->set('platform.booking_url', 'https://cal.com/plateful-founder/15min');
 
-    foreach (['/for-restaurants', '/support', '/savings', '/book', '/terms', '/privacy'] as $path) {
+    foreach (['/for-restaurants', '/support', '/savings', '/ai', '/book', '/terms', '/privacy'] as $path) {
         $this->get('http://plateful.test'.$path)
             ->assertOk()
             ->assertSee('<link rel="canonical" href="http://plateful.test'.$path.'">', false);
