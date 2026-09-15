@@ -334,6 +334,7 @@
         "keyPrefix": "string",
         "scopes": "array",
         "isPlatform": "bool",
+        "rateLimitPerMinute": "int",
         "lastUsedAt": "?string",
         "expiresAt": "?string",
         "revokedAt": "?string",

@@ -150,6 +150,34 @@ OperatorMenuCustomersTest,OperatorApiKeysTest}.php`,
 `tests/Feature/Api/V1/ApiHelpers.php`: `operatorTokenFor()`, `apiKeyFor()`,
 `operatorUrl()`.
 
+### Connect page, per-key rate limit, audit log (2026-09-15) — `docs/mcp.md`
+
+- **Admin page** `admin.<domain>/<sub>/settings/ai` (Manage → AI assistant,
+  restaurant admins): `TenantAdmin\AiAssistantController` mints a restaurant
+  key (scopes pre-ticked: restaurants r/w, menu r/w, orders read; rate limit
+  default 60/min), flashes the plaintext for one page load with the setup
+  for Claude Code (header), claude.ai and ChatGPT (connector URL), lists and
+  revokes keys, shows the last 50 audit rows. `AiAssistantKeyRequest`
+  extends the REST `ApiKeyStoreRequest`.
+- **Connector URL** `POST /mcp/platform/{connectKey}` (`mcp.platform.connect`,
+  `Route::pattern` `pfk_[A-Za-z0-9_]+`): the `api-key` guard reads the key
+  from the path when there is no bearer header, for clients that only take a
+  URL. Same server, same limiter.
+- **Per-key rate limit** `api_keys.rate_limit_per_minute` (nullable, 1–300;
+  null = `ApiKey::DEFAULT_RATE_LIMIT_PER_MINUTE` 300). `api-operator` reads
+  it off the principal; REST `rate_limit_per_minute`, CLI `--rate-limit=`,
+  `ApiKeyData.rateLimitPerMinute` (additive, snapshot updated).
+- **Audit log** `api_call_logs` / `ApiCallLog` / `ApiCallLogger`:
+  `PlatformServer::runMethodHandle()` wraps `tools/call`; `LogOperatorApiCall`
+  (`operator.log`) on the REST group, on the priority list before
+  `ResolveOperatorRestaurant` (anything off the list sorts *after* every
+  priority middleware, so refusals were invisible until it was added).
+  Arguments redacted (`image_base64`, `source_url`, >200-char strings).
+  Restaurant attribution ignores a stale `CurrentTenant` unless it matches
+  the named/routed restaurant. `ApiCallLogData` (page only, not in the v1 contract).
+- Tests: `tests/Feature/Mcp/{McpAuditLogTest,McpRateLimitTest,McpConnectUrlTest}.php`,
+  `tests/Feature/Admin/AiAssistantPageTest.php`.
+
 ## Phase 1b — the rest of the operator surface (when the operator app is scheduled)
 
 Every item wraps an existing tenant-admin controller's service call; reuse
@@ -172,8 +200,8 @@ tool, and add each new DTO to `API_V1_CONTRACT`.
   Pattern: a query class in `app/Support/Platform`, a DTO in the contract, a
   REST route under `operator/platform/...` behind `operator.scope:platform:read`,
   and an MCP tool calling `$this->platform($request, ApiKeyScope::PlatformRead)`.
-- Settings-page UI for restaurant keys (create / revoke / list; admin role).
-  The REST endpoints exist; only the Vue page is missing.
+- ~~Settings-page UI for restaurant keys~~ (done 2026-09-15: the AI
+  assistant page, `docs/mcp.md`).
 
 ## Phase 3 — Outbound webhooks (~2 sessions, when a third party wants them)
 
@@ -234,6 +262,22 @@ tool, and add each new DTO to `API_V1_CONTRACT`.
 - `UploadedFile::fake()->image()` deletes its temp file when the object is
   garbage-collected: assign it to a variable before reading the bytes.
 - `Http::fake()` patterns match in order; put a specific URL before a wildcard.
+- Middleware not on the priority list sorts *after* every middleware that
+  is (`SortedMiddleware`), whatever order the group lists them in. A
+  middleware that must wrap `operator.restaurant` / `operator.scope` has to
+  be added to the priority list itself (see `LogOperatorApiCall`).
+- Browser tests (pest-plugin-browser) run an in-process server on
+  `127.0.0.1:<port>` and only *spoof* the Host header, so an absolute URL to
+  `admin.plateful.test` (or whatever host Wayfinder baked in from `.env` at
+  build time) never reaches it: a form posting to a Wayfinder `url()` or a
+  controller redirecting with `redirect()->route()` silently fails (status
+  0). Pages that must work there post to a path prop
+  (`route(..., absolute: false)`) and controllers return `back()`, like the
+  AI assistant page.
+- `laravel/pao` captures test stdout when it detects an agent; a fatal at
+  collection (e.g. extending a `final` class in a test) then shows as a bare
+  exit 2 with no output. `PAO_DISABLE=1` does not help there; `php -l`
+  and reading the file do.
 - `assertJsonPath` compares strictly and JSON drops `.0`, so a float DTO
   field that happens to be whole (e.g. `feePercent` 4.0) needs `toEqual`.
 - Editing files with `perl -pi` and `\x{00a7}`-style escapes writes a raw

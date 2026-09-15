@@ -41,6 +41,9 @@ class ApiKeysController extends Controller
             restaurant: $restaurant,
             createdBy: ApiActor::fromRequest($request)->auditUser(),
             expiresAt: $expiresAt !== null ? now()->parse($expiresAt) : null,
+            rateLimitPerMinute: $request->validated('rate_limit_per_minute') !== null
+                ? (int) $request->validated('rate_limit_per_minute')
+                : null,
         );
 
         return response()->json(['data' => ApiKeyCreatedData::fromMint($key, $plain)], 201);

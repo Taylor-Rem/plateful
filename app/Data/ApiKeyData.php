@@ -22,6 +22,8 @@ class ApiKeyData extends Data
         public string $keyPrefix,
         public array $scopes,
         public bool $isPlatform,
+        /** Effective requests per minute: the key's own ceiling or the platform default. */
+        public int $rateLimitPerMinute,
         public ?string $lastUsedAt,
         public ?string $expiresAt,
         public ?string $revokedAt,
@@ -37,6 +39,7 @@ class ApiKeyData extends Data
             keyPrefix: $key->key_prefix,
             scopes: array_values((array) $key->scopes),
             isPlatform: $key->isPlatform(),
+            rateLimitPerMinute: $key->rateLimitPerMinute(),
             lastUsedAt: $key->last_used_at?->toIso8601String(),
             expiresAt: $key->expires_at?->toIso8601String(),
             revokedAt: $key->revoked_at?->toIso8601String(),

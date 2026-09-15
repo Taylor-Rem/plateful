@@ -36,6 +36,7 @@ test('restaurant admins see the full grouped sidebar', function () {
         ->assertSee('Operations')
         ->assertSee('Payouts')
         ->assertSee('Team')
+        ->assertSee('AI assistant')
         ->assertSee('Settings');
 });
 

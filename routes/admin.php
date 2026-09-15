@@ -157,6 +157,14 @@ Route::domain('admin.'.config('platform.primary_domain'))->group(function () {
                 Route::get('/settings', [TenantAdmin\SettingsController::class, 'edit'])->name('settings.edit');
                 Route::put('/settings', [TenantAdmin\SettingsController::class, 'update'])->name('settings.update');
 
+                // "Connect an AI assistant": restaurant-scoped API keys for
+                // the MCP server, with setup snippets and the call audit log.
+                Route::get('/settings/ai', [TenantAdmin\AiAssistantController::class, 'show'])->name('ai.show');
+                Route::post('/settings/ai/keys', [TenantAdmin\AiAssistantController::class, 'store'])->name('ai.keys.store');
+                Route::delete('/settings/ai/keys/{apiKey}', [TenantAdmin\AiAssistantController::class, 'destroy'])
+                    ->whereNumber('apiKey')
+                    ->name('ai.keys.destroy');
+
                 Route::get('/members', [TenantAdmin\MembersController::class, 'index'])->name('members.index');
                 Route::put('/members/{member}', [TenantAdmin\MembersController::class, 'update'])->name('members.update');
                 Route::delete('/members/{member}', [TenantAdmin\MembersController::class, 'destroy'])->name('members.destroy');
