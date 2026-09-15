@@ -1012,8 +1012,14 @@ _Added 2026-09-14; decisions taken and Phase 1 built the same day. Plan + shippe
             `list-gallery-photos` for menu item photos, logo/hero/about and the gallery, via URL or base64.
       - [ ] Restaurant lifecycle reads, campaign review queue, delivery/POS integration status,
             menu import status, users.
+      - [x] Connect page + per-key rate limit + audit log (2026-09-15, `docs/mcp.md`): Manage → AI
+            assistant mints a restaurant key with scopes + requests/min, shows it once with the
+            Claude Code / claude.ai / ChatGPT setup (connector URL `/mcp/platform/{key}` for
+            header-less clients), revokes, lists the last 50 `api_call_logs` rows (MCP + REST,
+            refusals included). Claude Code verified; claude.ai / ChatGPT connector flows not yet
+            exercised against production (TAYLOR-TODO).
       - [ ] When the operator app is scheduled: menu CRUD/reorder/ingredients/templates/swap sets,
-            hours, settings subset, Settings-page UI for restaurant keys.
+            hours, settings subset.
 - [ ] **Phase 3 — Outbound webhooks** (~2): `webhook_endpoints` + `webhook_deliveries`, signed
       HMAC deliveries with backoff off the `OrderPlacement` / `OrderTransition` /
       `DeliveryAssignmentObserver` / `MenuItemObserver` seams, auto-disable, test ping.

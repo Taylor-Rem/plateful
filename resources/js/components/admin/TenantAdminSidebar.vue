@@ -4,6 +4,7 @@ import {
     Banknote,
     BookOpen,
     BookUser,
+    Bot,
     ChefHat,
     ClipboardCheck,
     Clock,
@@ -31,6 +32,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes/admin/restaurant';
+import { show as aiShow } from '@/routes/admin/restaurant/ai';
 import { index as campaignsIndex } from '@/routes/admin/restaurant/campaigns';
 import { index as customersIndex } from '@/routes/admin/restaurant/customers';
 import { show as deliveryShow } from '@/routes/admin/restaurant/delivery';
@@ -125,6 +127,7 @@ const groups = computed<NavGroup[]>(() => {
             { title: 'Team', href: membersIndex(restaurant), icon: Users },
             { title: 'Delivery', href: deliveryShow(restaurant), icon: Truck },
             { title: 'POS', href: posShow(restaurant), icon: Plug },
+            { title: 'AI assistant', href: aiShow(restaurant), icon: Bot },
             {
                 title: 'Settings',
                 href: settingsEdit(restaurant),

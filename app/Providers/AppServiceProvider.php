@@ -106,11 +106,25 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', fn (Request $request): Limit => Limit::perMinute(120)
             ->by($this->limiterKey($request)));
 
-        RateLimiter::for('api-operator', fn (Request $request): Limit => Limit::perMinute(300)
-            ->by($this->limiterKey($request)));
+        // Operator API + MCP: a key may carry its own ceiling (set on the AI
+        // assistant page); people and unlimited keys get the platform default.
+        RateLimiter::for('api-operator', function (Request $request): Limit {
+            $principal = $request->user();
+            $perMinute = $principal instanceof ApiKey
+                ? $principal->rateLimitPerMinute()
+                : ApiKey::DEFAULT_RATE_LIMIT_PER_MINUTE;
 
-        // Bearer `pfk_…` keys for the operator API and the MCP server.
-        Auth::viaRequest('api-key', fn (Request $request): ?ApiKey => ApiKey::authenticate($request->bearerToken()));
+            return Limit::perMinute($perMinute)->by($this->limiterKey($request));
+        });
+
+        // Bearer `pfk_…` keys for the operator API and the MCP server. The
+        // MCP connector route (mcp.platform.connect) carries the key in the
+        // path instead, for clients that cannot send a header.
+        Auth::viaRequest('api-key', function (Request $request): ?ApiKey {
+            $fromRoute = $request->route('connectKey');
+
+            return ApiKey::authenticate($request->bearerToken() ?? (is_string($fromRoute) ? $fromRoute : null));
+        });
 
         RateLimiter::for('api-auth', fn (Request $request): Limit => Limit::perMinute(10)->by($request->ip()));
 

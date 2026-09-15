@@ -9,6 +9,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
@@ -28,6 +29,12 @@ class ApiKey extends Model implements Authenticatable
     public const PREFIX_LIVE = 'pfk_live_';
 
     public const PREFIX_TEST = 'pfk_test_';
+
+    /**
+     * Requests per minute for a key with no ceiling of its own; also the
+     * most a restaurant may grant a key from the AI assistant page.
+     */
+    public const DEFAULT_RATE_LIMIT_PER_MINUTE = 300;
 
     /**
      * Rows are touched at most this often so a busy key does not write on
@@ -57,6 +64,11 @@ class ApiKey extends Model implements Authenticatable
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
+    public function calls(): HasMany
+    {
+        return $this->hasMany(ApiCallLog::class);
+    }
+
     /**
      * Mint a key. The returned plaintext is the only time it is readable.
      *
@@ -69,6 +81,7 @@ class ApiKey extends Model implements Authenticatable
         ?Restaurant $restaurant = null,
         ?User $createdBy = null,
         ?\DateTimeInterface $expiresAt = null,
+        ?int $rateLimitPerMinute = null,
     ): array {
         $plain = static::prefix().Str::random(40);
 
@@ -78,6 +91,7 @@ class ApiKey extends Model implements Authenticatable
             'key_prefix' => static::visiblePrefix($plain),
             'key_hash' => static::hashKey($plain),
             'scopes' => array_values(array_unique(array_map(fn (ApiKeyScope $s) => $s->value, $scopes))),
+            'rate_limit_per_minute' => $rateLimitPerMinute,
             'expires_at' => $expiresAt,
             'created_by_user_id' => $createdBy?->id,
         ]);
@@ -138,6 +152,14 @@ class ApiKey extends Model implements Authenticatable
     public function isExpired(): bool
     {
         return $this->expires_at !== null && $this->expires_at->isPast();
+    }
+
+    /**
+     * The key's own ceiling, or the platform default when it has none.
+     */
+    public function rateLimitPerMinute(): int
+    {
+        return $this->rate_limit_per_minute ?? self::DEFAULT_RATE_LIMIT_PER_MINUTE;
     }
 
     public function hasScope(ApiKeyScope $scope): bool
