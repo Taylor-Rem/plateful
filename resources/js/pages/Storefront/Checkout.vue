@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Head, useForm, useHttp, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import deliveryQuote from '@/actions/App/Http/Controllers/Storefront/DeliveryQuoteController';
 import AddressAutocomplete from '@/pages/Storefront/components/AddressAutocomplete.vue';
 import type { AddressSnapshot } from '@/pages/Storefront/components/AddressAutocomplete.vue';
+import { deliveryQuote } from '@/routes/storefront/checkout';
 
 const props = defineProps<{
     restaurant: App.Data.RestaurantData;
