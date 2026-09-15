@@ -20,7 +20,7 @@ The reset wipes three things the demo depends on. After a reset:
    `PermissionException`):
 
    ```bash
-   "/Users/taylorremund/Library/Application Support/Herd/bin/php" artisan tinker --execute '$r = App\Models\Restaurant::where("subdomain","testaurant")->first(); $r->forceFill(["stripe_account_id" => "acct_1TxvqrPLYSSHzvDc"])->save(); echo $r->stripe_account_id."\n";'
+   php artisan tinker --execute '$r = App\Models\Restaurant::where("subdomain","testaurant")->first(); $r->forceFill(["stripe_account_id" => "acct_XXXXXXXXXXXX"])->save(); echo $r->stripe_account_id."\n";'
    ```
 
 2. **Reconnect Clover** on testaurant: admin → testaurant → Settings → POS → Connect.
